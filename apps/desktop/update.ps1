@@ -307,9 +307,12 @@ function Test-PortableLayout {
             throw ('The release manifest is missing: ' + $field)
         }
     }
-    if ($ExpectedDistributionVersion -and
-        (Normalize-Version ([string]$releaseManifest.distributionVersion) -ne (Normalize-Version $ExpectedDistributionVersion))) {
-        throw ('The release manifest version does not match the release tag: ' + $releaseManifest.distributionVersion)
+    if ($ExpectedDistributionVersion) {
+        $actualDistributionVersion = Normalize-Version ([string]$releaseManifest.distributionVersion)
+        $expectedDistributionVersion = Normalize-Version $ExpectedDistributionVersion
+        if ($actualDistributionVersion -ne $expectedDistributionVersion) {
+            throw ('The release manifest version does not match the release tag: ' + $releaseManifest.distributionVersion)
+        }
     }
 
     $manifestPath = Join-Path $Root 'runtime\resources\app\package.json'
