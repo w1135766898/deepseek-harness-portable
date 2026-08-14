@@ -3,11 +3,21 @@
 ; ==============================================================================
 
 #define MyAppName "DeepSeek Harness"
-#define MyAppVersion "0.1.0-rc.6"
 #define MyAppPublisher "DeepSeek Harness Contributors"
 #define MyAppURL "https://github.com/deepseek-ai/deepseek-harness"
 #define MyAppExeName "runtime\DeepSeek Harness.exe"
-#define MyZipName "DeepSeek-Harness-0.1.0-rc.6-win32-x64.zip"
+#ifndef MyAppVersion
+  #define MyAppVersion "0.0.0"
+#endif
+#ifndef MyZipName
+  #define MyZipName "DeepSeek-Harness-0.0.0-win32-x64.zip"
+#endif
+#ifndef MyReleaseDir
+  #define MyReleaseDir "..\release"
+#endif
+#ifndef MyIconPath
+  #define MyIconPath "..\apps\desktop\assets\deepseek.ico"
+#endif
 
 [Setup]
 AppId={{D5E8E89B-4C08-4EA4-8A89-E654C115F05A}
@@ -21,9 +31,9 @@ DefaultDirName={localappdata}\Programs\DeepSeek Harness
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE
-OutputDir=C:\Users\Ryan\Desktop\deepseek-harness-portable\release
+OutputDir={#MyReleaseDir}
 OutputBaseFilename=DeepSeek-Harness-Setup-{#MyAppVersion}-win32-x64
-SetupIconFile=C:\Users\Ryan\Desktop\deepseek-harness-portable\apps\desktop\assets\deepseek.ico
+SetupIconFile={#MyIconPath}
 Compression=none
 SolidCompression=no
 WizardStyle=modern
@@ -40,8 +50,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
-Source: "..\release\{#MyZipName}"; DestDir: "{tmp}"; Flags: deleteafterinstall nocompression
-Source: "C:\Users\Ryan\Desktop\deepseek-harness-portable\apps\desktop\assets\deepseek.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
+Source: "{#MyReleaseDir}\{#MyZipName}"; DestDir: "{tmp}"; Flags: deleteafterinstall nocompression
+Source: "{#MyIconPath}"; DestDir: "{app}\assets"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}\runtime"
