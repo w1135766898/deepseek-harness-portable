@@ -406,7 +406,7 @@ class DesktopExeBuild {
    * Apply the Windows directory-picker fixes to the deployed dependency.
    *
    * Electron must launch the dialog child in Node mode, and the child must
-   * keep IPC connected after its non-terminal `showing` notice. These are
+   * keep IPC connected until the parent acknowledges a terminal result. These are
    * local release patches until the corresponding upstream package includes
    * both fixes.
    */
@@ -432,15 +432,11 @@ class DesktopExeBuild {
     await copyFile(indexSource, indexTarget)
     const worker = await readFile(workerTarget, 'utf8')
     const oldPost = `const post = (message) => {\n\t/* v8 ignore next 3 -- disconnect needs a live IPC channel the unit lane must not sever (built-worker.e2e.ts owns the real close path). */\n\tsend(message, () => {\n\t\tif (process.connected) process.disconnect();\n\t});\n};`
-    const newPost = `const post = (message) => {\n\tsend(message);\n};\nconst finish = (message) => {\n\t/* Disconnect only after the terminal message has reached the parent. The\n\t * earlier \`showing\` notice is non-terminal: disconnecting there triggers\n\t * the handler below and exits while the native dialog is still open. */\n\tsend(message, () => {\n\t\tif (process.connected) process.disconnect();\n\t});\n};`
+    const newPost = `const post = (message) => {\n\tsend(message);\n};`
     if (!worker.includes(oldPost)) {
       throw new Error('build-desktop-web-exe: directory-picker worker no longer matches the expected upstream IPC code.')
     }
-    const terminalMessages = /\t\tpost\(\{\n\t\t\tkind: "(done|error)",/g
-    const patchedWorker = worker.replace(oldPost, newPost).replace(terminalMessages, '\t\tfinish({\n\t\t\tkind: "$1",')
-    if ((patchedWorker.match(/\t\tfinish\(\{/g) ?? []).length !== 2) {
-      throw new Error('build-desktop-web-exe: failed to patch both terminal directory-picker worker messages.')
-    }
+    const patchedWorker = worker.replace(oldPost, newPost)
     await writeFile(workerTarget, patchedWorker)
     console.log('build-desktop-web-exe: applied Windows directory-picker runtime patches')
   }

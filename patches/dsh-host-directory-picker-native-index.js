@@ -140,8 +140,11 @@ async function pickWin32Directory(signal, internals = {}) {
 			settled = true;
 			if (closeTimer !== void 0) clearInterval(closeTimer);
 			signal.removeEventListener("abort", onAbort);
-			worker.unref?.();
 			outcome();
+			// The parent owns IPC shutdown. A terminal worker message is therefore
+			// handled before disconnect can make the child exit.
+			if (worker.connected) worker.disconnect();
+			worker.unref?.();
 		};
 		const postClose = () => {
 			if (dialogThreadId !== void 0) closeWindows(dialogThreadId).catch(() => void 0);
