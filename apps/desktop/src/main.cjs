@@ -6,6 +6,15 @@ const { join } = require('node:path')
 const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 const { mergeReleaseHistory, normalizeReleaseNotes } = require('./release-notes.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
+const {
+  isActiveUpdateStatus,
+  readUpdateStatus,
+  reconcileUpdateStatus,
+  statusNeedsNotice,
+  statusPath,
+  updateStatusKey,
+  writeUpdateStatus,
+} = require('./update-status.cjs')
 
 const APP_NAME = 'DeepSeek Harness'
 const PORTABLE_RELEASE_REPO = 'wsnxxxs/deepseek-harness-portable'
@@ -476,6 +485,17 @@ function saveReleaseHistory(history) {
   })
 }
 
+function getCurrentUpdateStatus() {
+  const userDataPath = app.getPath('userData')
+  const current = readUpdateStatus(userDataPath)
+  if (current === undefined) return undefined
+  const reconciled = reconcileUpdateStatus(current)
+  if (updateStatusKey(reconciled) !== updateStatusKey(current)) {
+    return writeUpdateStatus(userDataPath, reconciled)
+  }
+  return reconciled
+}
+
 async function buildReleaseNotesData(context = {}) {
   const localInfo = getLocalReleaseInfo()
   const localRelease = normalizeReleaseNotes({
@@ -510,6 +530,7 @@ async function buildReleaseNotesData(context = {}) {
     currentRelease,
     latestRelease: updateAvailable || context.mode === 'update' ? latestRelease : undefined,
     updateAvailable,
+    updateStatus: getCurrentUpdateStatus(),
     selectedVersion: context.selectedVersion
       || (context.mode === 'update' ? latestRelease.version : currentRelease.version),
     history,
@@ -536,6 +557,11 @@ function markVersionSeen(version) {
   if (typeof version === 'string' && version.trim() !== '') updateConfig({ lastSeenVersion: version.trim() })
 }
 
+function markUpdateStatusSeen(status) {
+  const key = updateStatusKey(status)
+  if (key !== '') updateConfig({ lastAcknowledgedUpdateStatus: key })
+}
+
 function closeWhatsNewWindow() {
   if (whatsNewWindow !== undefined && !whatsNewWindow.isDestroyed()) whatsNewWindow.close()
 }
@@ -550,6 +576,7 @@ function registerReleaseNotesIpc() {
         mode: 'whats-new',
         currentVersion: localInfo.distributionVersion,
         currentRelease: localInfo.releaseNotes,
+        updateStatus: getCurrentUpdateStatus(),
       }
     }
     throw new Error('Unknown release notes window')
@@ -571,8 +598,16 @@ function registerReleaseNotesIpc() {
     }
 
     if (action.type === 'update' && kind === 'full') {
-      event.sender.send('release-notes:update-state', { label: 'Updater started… / 更新程序已启动…' })
-      if (!triggerInPlaceUpdate()) event.sender.send('release-notes:update-state', { label: 'Open the release page in your browser / 已在浏览器打开发布页' })
+      const currentStatus = getCurrentUpdateStatus()
+      if (isActiveUpdateStatus(currentStatus)) {
+        event.sender.send('release-notes:update-state', { label: '更新已在进行中…' })
+        return
+      }
+      const targetVersion = releaseNotesContext.update?.version || ''
+      event.sender.send('release-notes:update-state', { label: '更新器已启动，正在安全退出应用…' })
+      if (!triggerPortableUpdate(targetVersion)) {
+        event.sender.send('release-notes:update-state', { label: '无法启动便携版更新器，已打开发布页' })
+      }
       return
     }
 
@@ -685,7 +720,14 @@ async function showWhatsNewWindow() {
 
 async function showWhatsNewIfNeeded() {
   const current = getLocalVersion()
-  const lastSeen = readConfig().lastSeenVersion
+  const config = readConfig()
+  const updateStatus = getCurrentUpdateStatus()
+  if (updateStatus !== undefined && statusNeedsNotice(updateStatus, config.lastAcknowledgedUpdateStatus)) {
+    markUpdateStatusSeen(updateStatus)
+    await showWhatsNewWindow()
+    return
+  }
+  const lastSeen = config.lastSeenVersion
   if (typeof lastSeen !== 'string' || lastSeen.trim() === '') {
     markVersionSeen(current)
     await showWhatsNewWindow()
@@ -696,17 +738,69 @@ async function showWhatsNewIfNeeded() {
   await showWhatsNewWindow()
 }
 
-function triggerInPlaceUpdate() {
+function triggerPortableUpdate(targetVersion) {
   const root = findPortableRoot(__dirname)
   if (root !== undefined) {
     const updatePs1 = join(root, 'update.ps1')
-    spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', updatePs1], {
-      cwd: root,
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: true,
-    }).unref()
-    return true
+    const userDataPath = app.getPath('userData')
+    const fromVersion = getLocalVersion()
+    const startedAt = new Date().toISOString()
+    writeUpdateStatus(userDataPath, {
+      state: 'starting',
+      fromVersion,
+      targetVersion,
+      stage: 'launch',
+      message: 'Portable updater is starting.',
+      startedAt,
+      updatedAt: startedAt,
+      processId: 0,
+    })
+    try {
+      const updater = spawn('powershell.exe', [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        updatePs1,
+        '-StatusFile',
+        statusPath(userDataPath),
+        '-FromVersion',
+        fromVersion,
+        '-TargetVersion',
+        targetVersion,
+        '-LaunchAfterUpdate',
+      ], {
+        cwd: root,
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true,
+      })
+      updater.once('error', error => {
+        writeUpdateStatus(userDataPath, {
+          state: 'failed',
+          fromVersion,
+          targetVersion,
+          stage: 'launch',
+          message: errorMessage(error),
+          processId: 0,
+        })
+      })
+      updater.unref()
+      setTimeout(() => {
+        if (!quitting) app.quit()
+      }, 350).unref()
+      return true
+    } catch (error) {
+      writeUpdateStatus(userDataPath, {
+        state: 'failed',
+        fromVersion,
+        targetVersion,
+        stage: 'launch',
+        message: errorMessage(error),
+        processId: 0,
+      })
+      return false
+    }
   } else {
     openExternalSafe(`https://github.com/${PORTABLE_RELEASE_REPO}/releases`)
     return false
