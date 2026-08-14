@@ -415,6 +415,11 @@
       background: var(--surface-hover);
       border-color: var(--border-focus);
     }
+    .btn:disabled {
+      opacity: 0.65;
+      cursor: default;
+      pointer-events: none;
+    }
     .btn-primary {
       background: var(--accent);
       border-color: var(--accent);
@@ -439,6 +444,34 @@
       padding: 6px;
       border-radius: 6px;
     }
+    .status-strip {
+      margin: 12px 24px 0;
+      padding: 10px 14px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface-elevated);
+    }
+    .status-strip.failed {
+      color: var(--red);
+      border-color: var(--red-soft);
+      background: var(--red-soft);
+    }
+    .status-strip.interrupted {
+      color: var(--amber);
+      border-color: var(--amber-soft);
+      background: var(--amber-soft);
+    }
+    .status-strip-text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -449,6 +482,7 @@
       const app = document.getElementById('app')
       let data
       let updateState = ''
+      let updateRequested = false
 
       function escapeHtml(val) {
         return String(val == null ? '' : val)
@@ -479,21 +513,49 @@
 
       const WHALE_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12c0-3.8 3.2-7 7.5-7 4.8 0 8.5 3.2 11.5 1.5 0 2.8-1.8 4.8-3.5 5.8 2.2 1.5 4.5 1.5 5 4.2-1.8.5-4 0-6.2-1.5-2.2 3.2-6 4.2-9.3 3-4-1.2-5-4.2-5-6z" fill="currentColor"/><circle cx="6.5" cy="10.5" r="1.1" fill="#ffffff"/></svg>'
 
+      function isUpdateBusy(status) {
+        return updateRequested || Boolean(status && ['starting', 'checking', 'downloading', 'verifying', 'extracting', 'replacing'].includes(status.state))
+      }
+
+      function renderStatusStrip(status) {
+        if (!status || (status.state !== 'failed' && status.state !== 'interrupted')) return ''
+        const interrupted = status.state === 'interrupted'
+        const title = interrupted ? '上次更新未完成' : '更新失败'
+        const detail = status.message || (interrupted ? '当前安装仍可使用，请重新检查更新。' : '请重新检查更新。')
+        return '<div class="status-strip ' + (interrupted ? 'interrupted' : 'failed') + '">' +
+          '<span class="status-strip-text">' + title + ' · ' + escapeHtml(detail) + '</span>' +
+          '<button class="btn btn-ghost" data-action="retry-update">重新检查</button>' +
+        '</div>'
+      }
+
       function renderHUD() {
         document.body.className = 'compact'
         const currentVer = data.currentVersion || (data.currentRelease && data.currentRelease.version) || '1.0.1'
+        const status = data.updateStatus || {}
+        const targetVer = status.targetVersion || currentVer
+        const isFailed = status.state === 'failed'
+        const isInterrupted = status.state === 'interrupted'
+        const title = isFailed
+          ? '更新失败'
+          : (isInterrupted ? '上次更新未完成' : '已更新至 v' + targetVer)
+        const desc = isFailed || isInterrupted
+          ? (status.message || '当前安装仍可使用 · 点击重新检查更新')
+          : '更新完成 · 点击查看新特性'
+        const action = isFailed || isInterrupted
+          ? '<button class="btn btn-primary" data-action="retry-update">重新检查</button>'
+          : '<button class="btn btn-primary" data-action="open-notes">查看特性</button>'
         app.innerHTML =
           '<div class="hud-wrapper">' +
             '<div class="hud-card">' +
               '<div class="hud-lead">' +
                 '<div class="hud-icon">' + WHALE_ICON + '</div>' +
                 '<div class="hud-texts">' +
-                  '<div class="hud-title">DeepSeek Harness v' + escapeHtml(currentVer) + '</div>' +
-                  '<div class="hud-desc">已平滑完成升级 · 点击查看新特性</div>' +
+                  '<div class="hud-title">' + escapeHtml(title) + '</div>' +
+                  '<div class="hud-desc">' + escapeHtml(desc) + '</div>' +
                 '</div>' +
               '</div>' +
               '<div class="hud-actions">' +
-                '<button class="btn btn-primary" data-action="open-notes">查看特性</button>' +
+                action +
                 '<button class="btn btn-ghost btn-icon-only" data-action="close" title="关闭">✕</button>' +
               '</div>' +
             '</div>' +
@@ -548,6 +610,10 @@
         const info = data.localInfo || {}
         const update = data.latestRelease
         const hasUpdate = data.updateAvailable && update
+        const status = data.updateStatus || {}
+        const updateBusy = isUpdateBusy(status)
+        const updateButtonLabel = updateState || (updateBusy ? '更新进行中…' : '🚀 立即更新')
+        const updateButtonDisabled = updateBusy ? ' disabled' : ''
 
         const topBanner = hasUpdate
           ? '<div class="top-action-bar">' +
@@ -555,10 +621,10 @@
                 '<span class="pulse-dot"></span>' +
                 '<div>' +
                   '<div class="action-text">新版本 v' + escapeHtml(update.version) + ' 已发布</div>' +
-                  '<div class="action-sub">包含重要功能与稳定性增强 · 镜像通道加速</div>' +
+                  '<div class="action-sub">将下载并校验完整便携包，随后安全退出应用完成替换</div>' +
                 '</div>' +
               '</div>' +
-              '<button class="btn btn-primary" data-action="update">' + (updateState || '🚀 一键热升级') + '</button>' +
+              '<button class="btn btn-primary" data-action="update"' + updateButtonDisabled + '>' + updateButtonLabel + '</button>' +
             '</div>'
           : ''
 
@@ -576,6 +642,7 @@
               '</div>' +
             '</header>' +
             topBanner +
+            renderStatusStrip(status) +
             '<main class="feed">' +
               renderTimeline(data.history || [data.currentRelease].filter(Boolean)) +
             '</main>' +
@@ -604,6 +671,7 @@
         api.getData().then(next => {
           data = next
           updateState = ''
+          updateRequested = false
           render()
         }).catch(err => {
           app.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-dim)">无法加载更新说明: ' + escapeHtml(err && err.message) + '</div>'
@@ -620,6 +688,10 @@
           api.sendAction({ type: 'open-notes' })
           return
         }
+        if (action === 'retry-update') {
+          api.sendAction({ type: 'retry-update' })
+          return
+        }
         if (action === 'close') {
           api.sendAction({ type: 'close' })
           return
@@ -633,7 +705,9 @@
           return
         }
         if (action === 'update') {
-          updateState = '正在启动更新…'
+          if (isUpdateBusy(data && data.updateStatus)) return
+          updateRequested = true
+          updateState = '更新器已启动，正在安全退出应用…'
           render()
           api.sendAction({ type: 'update' })
           return

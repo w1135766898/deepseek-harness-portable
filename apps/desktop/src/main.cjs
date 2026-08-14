@@ -617,6 +617,12 @@ function registerReleaseNotesIpc() {
       return
     }
 
+    if (action.type === 'retry-update' && (kind === 'whats-new' || kind === 'full')) {
+      if (kind === 'whats-new') closeWhatsNewWindow()
+      void checkForUpdates(true)
+      return
+    }
+
     if (action.type === 'show-about' && kind === 'full') {
       releaseNotesContext = { ...releaseNotesContext, mode: 'about' }
       releaseNotesWindow?.webContents.send('release-notes:reload')
