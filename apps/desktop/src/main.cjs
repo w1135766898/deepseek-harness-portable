@@ -27,18 +27,27 @@ const RELEASE_NOTES_FILE_NAME = 'release-notes.json'
 const DESKTOP_PRELOAD_NAME = 'desktop-preload.cjs'
 const SPLASH_PAGE_NAME = 'splash.html'
 const RELEASE_HISTORY_LIMIT = 20
+const SLOW_STARTUP_MS = 10_000
 const STARTUP_TIMEOUT_MS = 60_000
+const RENDERER_FIRST_PAINT_TIMEOUT_MS = 5_000
+const SPLASH_FADE_MS = 420
 const STOP_TIMEOUT_MS = 5_000
 
 let window
+let splashWindow
 let tray
 let harness
 let harnessUrl
 let restartPromise
+let activeStartupController
+let queuedRestart = false
 let quitting = false
 let restarting = false
 let releaseNotesContext = { mode: 'history' }
 let rendererReady = false
+let rendererFirstPaint = false
+let rendererFirstPaintWaiters = []
+let lastStartupLog = ''
 let inAppNotice
 let queuedReleaseNotesContext
 let boundsSaveTimer
@@ -104,8 +113,141 @@ function showInAppNotice(notice) {
 }
 
 function sendSplashStatus(status) {
-  if (window === undefined || window.isDestroyed()) return
-  window.webContents.send('desktop:splash-status', { status })
+  if (splashWindow === undefined || splashWindow.isDestroyed()) return
+  splashWindow.webContents.send('desktop:splash-status', { status })
+}
+
+function sendSplashState(state) {
+  if (splashWindow === undefined || splashWindow.isDestroyed()) return
+  splashWindow.webContents.send('desktop:splash-state', state && typeof state === 'object' ? state : {})
+}
+
+function syncSplashBounds() {
+  if (window === undefined || window.isDestroyed() || splashWindow === undefined || splashWindow.isDestroyed()) return
+  try {
+    const bounds = window.getBounds()
+    if (bounds.width > 0 && bounds.height > 0) splashWindow.setBounds(bounds)
+  } catch {}
+}
+
+function showSplashWindow() {
+  if (splashWindow === undefined || splashWindow.isDestroyed()) return
+  syncSplashBounds()
+  if (!splashWindow.isVisible()) splashWindow.show()
+  splashWindow.focus()
+}
+
+function hideSplashWindow() {
+  const current = splashWindow
+  if (current === undefined || current.isDestroyed()) return Promise.resolve()
+
+  return new Promise(resolve => {
+    let settled = false
+    let timer
+    const finish = () => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve()
+    }
+    current.once('closed', finish)
+    timer = setTimeout(() => {
+      if (!current.isDestroyed()) current.close()
+      setTimeout(finish, 60).unref()
+    }, SPLASH_FADE_MS + 80)
+    timer.unref()
+    try {
+      current.webContents.send('desktop:splash-transition', 'hide')
+    } catch {
+      finish()
+    }
+  })
+}
+
+function destroySplashWindow() {
+  if (splashWindow === undefined || splashWindow.isDestroyed()) return
+  try { splashWindow.destroy() } catch {}
+}
+
+async function createSplashWindow() {
+  if (window === undefined || window.isDestroyed()) throw new Error('Main window is unavailable')
+  splashWindow = new BrowserWindow({
+    ...window.getBounds(),
+    parent: window,
+    show: false,
+    frame: false,
+    resizable: false,
+    movable: false,
+    skipTaskbar: true,
+    backgroundColor: '#0c1220',
+    icon: iconPath(),
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      preload: join(__dirname, DESKTOP_PRELOAD_NAME),
+    },
+  })
+  splashWindow.on('closed', () => {
+    splashWindow = undefined
+  })
+  await splashWindow.loadFile(join(__dirname, SPLASH_PAGE_NAME))
+}
+
+function waitForRendererFirstPaint() {
+  if (rendererFirstPaint) return Promise.resolve()
+  return new Promise(resolve => {
+    const waiter = { resolve, timer: undefined }
+    waiter.timer = setTimeout(() => {
+      rendererFirstPaintWaiters = rendererFirstPaintWaiters.filter(item => item !== waiter)
+      resolve()
+    }, RENDERER_FIRST_PAINT_TIMEOUT_MS)
+    waiter.timer.unref()
+    rendererFirstPaintWaiters.push(waiter)
+  })
+}
+
+function notifyRendererFirstPaint() {
+  rendererFirstPaint = true
+  const waiters = rendererFirstPaintWaiters
+  rendererFirstPaintWaiters = []
+  waiters.forEach(waiter => {
+    clearTimeout(waiter.timer)
+    waiter.resolve()
+  })
+}
+
+function makeStartupError(message, output = '', code = undefined) {
+  const error = new Error(message)
+  error.code = code
+  error.startupLog = output
+  return error
+}
+
+function startupLog(error) {
+  if (error && typeof error.startupLog === 'string' && error.startupLog.trim() !== '') return error.startupLog
+  return lastStartupLog
+}
+
+function isPortInUseError(error) {
+  const value = `${errorMessage(error)}\n${startupLog(error)}`
+  return /EADDRINUSE|address already in use|only one usage of each socket address|端口[^\n]*(占用|使用)|bind[^\n]*(failed|error)/i.test(value)
+}
+
+function startupStateForError(error) {
+  const portInUse = isPortInUseError(error)
+  const log = startupLog(error) || errorMessage(error)
+  return {
+    kind: 'error',
+    title: portInUse ? '启动端口被占用' : '后台启动失败',
+    message: portInUse
+      ? '本地服务端口已被其他程序占用。请关闭占用程序后重试，或切换工作区。'
+      : '后台引擎没有成功启动，请查看启动日志后重试。',
+    detail: portInUse
+      ? '如果问题持续存在，请确认没有其他 DeepSeek Harness 实例正在运行。'
+      : errorMessage(error),
+    log,
+  }
 }
 
 function currentWindowBounds() {
@@ -227,7 +369,8 @@ function resolveUnifiedDshHome() {
   return targetHome
 }
 
-function startHarness(cwd) {
+function startHarness(cwd, signal) {
+  lastStartupLog = ''
   const packagedBin = join(__dirname, '..', 'lib', 'packaged-bin.js')
   if (!existsSync(packagedBin)) {
     throw new Error(`The packaged Harness entry is missing: ${packagedBin}. Run the desktop build first.`)
@@ -255,21 +398,49 @@ function startHarness(cwd) {
     let output = ''
     let ready = false
     let readyUrlSeen = false
+    let portIssueShown = false
     let settled = false
-    const timeout = setTimeout(() => {
-      child.kill()
-      fail(`Harness startup timed out.`)
-    }, STARTUP_TIMEOUT_MS)
-    timeout.unref()
+    let timeout
+    let slowTimer
     const finish = (callback) => {
       if (settled) return
       settled = true
       clearTimeout(timeout)
+      clearTimeout(slowTimer)
+      signal?.removeEventListener('abort', onAbort)
       callback()
     }
-    const fail = message => finish(() => reject(new Error(`${message}\n\n${output}`)))
+    const fail = (message, code) => finish(() => {
+      lastStartupLog = output
+      reject(makeStartupError(message, output, code))
+    })
+    const onAbort = () => {
+      child.kill()
+      fail('Harness startup was cancelled.', 'ABORTED')
+    }
+    timeout = setTimeout(() => {
+      child.kill()
+      fail('Harness startup timed out.', 'TIMEOUT')
+    }, STARTUP_TIMEOUT_MS)
+    timeout.unref()
+    slowTimer = setTimeout(() => {
+      if (portIssueShown) return
+      sendSplashState({
+        kind: 'slow',
+        title: '启动时间较长',
+        message: '后台仍在启动中，可以查看日志、重试，或切换工作区。',
+        log: output,
+      })
+    }, SLOW_STARTUP_MS)
+    slowTimer.unref()
+    signal?.addEventListener('abort', onAbort, { once: true })
+    if (signal?.aborted) onAbort()
     const onOutput = chunk => {
       output = appendOutput(output, chunk)
+      if (!portIssueShown && isPortInUseError(makeStartupError('', output, 'EADDRINUSE'))) {
+        portIssueShown = true
+        sendSplashState(startupStateForError(makeStartupError('Port is already in use.', output, 'EADDRINUSE')))
+      }
       const url = readyUrl(output)
       if (url !== undefined && !readyUrlSeen) {
         readyUrlSeen = true
@@ -281,14 +452,14 @@ function startHarness(cwd) {
           },
           error => {
             child.kill()
-            fail(`Harness host was not ready: ${error instanceof Error ? error.message : String(error)}`)
+            fail(`Harness host was not ready: ${error instanceof Error ? error.message : String(error)}`, 'NOT_READY')
           },
         )
       }
     }
     child.stdout.on('data', onOutput)
     child.stderr.on('data', onOutput)
-    child.once('error', error => fail(`Harness failed to start: ${error.message}`))
+    child.once('error', error => fail(`Harness failed to start: ${error.message}`, error.code || 'SPAWN_ERROR'))
     child.once('exit', code => {
       if (harness === child) {
         harness = undefined
@@ -301,30 +472,50 @@ function startHarness(cwd) {
           })
         }
       }
-      if (!ready) fail(`Harness exited before it was ready (code ${code}).`)
+      if (!ready) fail(`Harness exited before it was ready (code ${code}).`, `EXIT_${code ?? 'UNKNOWN'}`)
     })
   })
 }
 
 async function restartHarness() {
   if (restartPromise !== undefined) return restartPromise
+  const controller = new AbortController()
+  let restartAgain = false
   const currentRestart = (async () => {
     restarting = true
+    activeStartupController = controller
+    showSplashWindow()
+    sendSplashState({ kind: 'loading' })
     try {
       sendSplashStatus('engine')
       await stopHarness()
-      const url = await startHarness(workspace())
+      const url = await startHarness(workspace(), controller.signal)
+      if (controller.signal.aborted) throw makeStartupError('Harness startup was cancelled.', lastStartupLog, 'ABORTED')
       harnessUrl = url
       sendSplashStatus('interface')
-      if (window !== undefined && !window.isDestroyed()) await window.loadURL(url)
+      if (window !== undefined && !window.isDestroyed()) {
+        await window.loadURL(url)
+        if (controller.signal.aborted) throw makeStartupError('Harness startup was cancelled.', lastStartupLog, 'ABORTED')
+        if (!window.isVisible()) window.show()
+        await waitForRendererFirstPaint()
+        if (controller.signal.aborted) throw makeStartupError('Harness startup was cancelled.', lastStartupLog, 'ABORTED')
+        sendSplashState({ kind: 'ready' })
+        showWindow()
+        await hideSplashWindow()
+      }
+      return true
     } catch (error) {
-      await dialog.showMessageBox({
-        type: 'error',
-        title: `${APP_NAME} failed to start`,
-        message: errorMessage(error),
-      })
+      harnessUrl = undefined
+      if (!controller.signal.aborted && !quitting) sendSplashState(startupStateForError(error))
+      return false
     } finally {
+      if (activeStartupController === controller) activeStartupController = undefined
       restarting = false
+      restartAgain = queuedRestart && !quitting
+      if (restartAgain) {
+        queuedRestart = false
+        await stopHarness()
+      }
     }
   })()
   restartPromise = currentRestart
@@ -332,7 +523,17 @@ async function restartHarness() {
     await currentRestart
   } finally {
     if (restartPromise === currentRestart) restartPromise = undefined
+    if (restartAgain && !quitting) void restartHarness()
   }
+}
+
+function requestHarnessRestart() {
+  if (restartPromise !== undefined) {
+    queuedRestart = true
+    activeStartupController?.abort()
+    return restartPromise
+  }
+  return restartHarness()
 }
 
 async function openWebUiInBrowser() {
@@ -350,10 +551,9 @@ async function openWebUiInBrowser() {
 }
 
 async function chooseWorkspace() {
-  if (window !== undefined && !window.isDestroyed() && !window.isVisible()) {
-    showWindow()
-  }
-  const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible() ? window : undefined
+  const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible()
+    ? window
+    : (splashWindow !== undefined && !splashWindow.isDestroyed() && splashWindow.isVisible() ? splashWindow : undefined)
   const result = await dialog.showOpenDialog(parentWindow, {
     title: 'Choose workspace',
     defaultPath: workspace(),
@@ -361,7 +561,7 @@ async function chooseWorkspace() {
   })
   if (result.canceled || result.filePaths[0] === undefined) return
   saveWorkspace(result.filePaths[0])
-  await restartHarness()
+  await requestHarnessRestart()
   rebuildMenus()
 }
 
@@ -642,6 +842,10 @@ function isMainRenderer(sender) {
   return window !== undefined && !window.isDestroyed() && window.webContents.id === sender.id
 }
 
+function isSplashRenderer(sender) {
+  return splashWindow !== undefined && !splashWindow.isDestroyed() && splashWindow.webContents.id === sender.id
+}
+
 function updateNoticeKind(status) {
   if (status?.state === 'failed') return 'failed'
   if (status?.state === 'interrupted') return 'interrupted'
@@ -657,6 +861,22 @@ function registerReleaseNotesIpc() {
     if (queuedReleaseNotesContext !== undefined) {
       event.sender.send('desktop:release-notes:open', queuedReleaseNotesContext)
       queuedReleaseNotesContext = undefined
+    }
+  })
+
+  ipcMain.on('desktop:renderer-first-paint', event => {
+    if (!isMainRenderer(event.sender)) return
+    notifyRendererFirstPaint()
+  })
+
+  ipcMain.on('desktop:splash-action', (event, action = {}) => {
+    if (!isSplashRenderer(event.sender) || !action || typeof action.type !== 'string') return
+    if (action.type === 'retry') {
+      void requestHarnessRestart()
+      return
+    }
+    if (action.type === 'choose-workspace') {
+      void chooseWorkspace()
     }
   })
 
@@ -872,11 +1092,11 @@ function menuItems() {
       enabled: workspace() !== homedir(),
       click: async () => {
         saveWorkspace(homedir())
-        await restartHarness()
+        await requestHarnessRestart()
         rebuildMenus()
       },
     },
-    { label: 'Restart Harness', click: () => { void restartHarness() } },
+    { label: 'Restart Harness', click: () => { void requestHarnessRestart() } },
     { type: 'separator' },
     { label: 'Quit', accelerator: process.platform === 'darwin' ? 'Command+Q' : 'Alt+F4', click: () => app.quit() },
   ]
@@ -933,19 +1153,25 @@ async function createApp() {
 
   window.webContents.on('did-start-loading', () => {
     rendererReady = false
+    rendererFirstPaint = false
   })
   window.on('close', event => {
     persistWindowBounds()
     if (!quitting) {
       event.preventDefault()
       window.hide()
+      if (splashWindow !== undefined && !splashWindow.isDestroyed()) splashWindow.hide()
     }
   })
   for (const eventName of ['resize', 'move', 'maximize', 'unmaximize']) {
-    window.on(eventName, scheduleWindowBoundsPersistence)
+    window.on(eventName, () => {
+      syncSplashBounds()
+      scheduleWindowBoundsPersistence()
+    })
   }
   window.on('closed', () => {
     rendererReady = false
+    destroySplashWindow()
     window = undefined
   })
   window.webContents.setWindowOpenHandler(({ url }) => {
@@ -960,13 +1186,14 @@ async function createApp() {
   rebuildMenus()
 
   try {
-    await window.loadFile(join(__dirname, SPLASH_PAGE_NAME))
     if (shouldMaximize) window.maximize()
-    showWindow()
+    await createSplashWindow()
+    showSplashWindow()
     sendSplashStatus('engine')
     await restartHarness()
   } catch (error) {
-    await dialog.showMessageBox(window, {
+    if (splashWindow !== undefined && !splashWindow.isDestroyed()) sendSplashState(startupStateForError(error))
+    else await dialog.showMessageBox(window, {
       type: 'error',
       title: `${APP_NAME} failed to start`,
       message: errorMessage(error),
@@ -995,6 +1222,7 @@ if (!gotLock) {
     if (tray !== undefined && !tray.isDestroyed()) {
       tray.destroy()
     }
+    destroySplashWindow()
     if (harness !== undefined) {
       event.preventDefault()
       void stopHarness().then(() => app.quit())

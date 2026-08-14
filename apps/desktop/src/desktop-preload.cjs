@@ -4,10 +4,18 @@ const SPLASH_STATUSES = new Set(['engine', 'workspace', 'interface'])
 const isSplashDocument = window.location.protocol === 'file:'
 
 const splashListeners = new Set()
+const splashStateListeners = new Set()
+const splashTransitionListeners = new Set()
 ipcRenderer.on('desktop:splash-status', (_event, value) => {
   const status = value && typeof value === 'object' ? value.status : value
   if (!SPLASH_STATUSES.has(status)) return
   splashListeners.forEach(listener => listener(status))
+})
+ipcRenderer.on('desktop:splash-state', (_event, value) => {
+  splashStateListeners.forEach(listener => listener(value && typeof value === 'object' ? value : {}))
+})
+ipcRenderer.on('desktop:splash-transition', (_event, value) => {
+  splashTransitionListeners.forEach(listener => listener(value))
 })
 
 contextBridge.exposeInMainWorld('deepSeekSplash', {
@@ -16,6 +24,18 @@ contextBridge.exposeInMainWorld('deepSeekSplash', {
     splashListeners.add(callback)
     return () => splashListeners.delete(callback)
   },
+  onState: callback => {
+    if (typeof callback !== 'function') return () => {}
+    splashStateListeners.add(callback)
+    return () => splashStateListeners.delete(callback)
+  },
+  onTransition: callback => {
+    if (typeof callback !== 'function') return () => {}
+    splashTransitionListeners.add(callback)
+    return () => splashTransitionListeners.delete(callback)
+  },
+  retry: () => ipcRenderer.send('desktop:splash-action', { type: 'retry' }),
+  chooseWorkspace: () => ipcRenderer.send('desktop:splash-action', { type: 'choose-workspace' }),
 })
 
 contextBridge.exposeInMainWorld('deepSeekDesktop', {
@@ -102,33 +122,6 @@ if (!isSplashDocument) {
       button, a, input, textarea, select, [role="button"] { -webkit-user-select: none; user-select: none; }
     `
     document.head.appendChild(style)
-  }
-
-  function mountStartupCover() {
-    const cover = document.createElement('div')
-    cover.id = 'dsh-startup-cover'
-    cover.innerHTML = '<div class="dsh-startup-mark">◈</div><div class="dsh-startup-name">DeepSeek Harness</div><div class="dsh-startup-copy">正在加载界面…</div><div class="dsh-startup-progress"><i></i></div>'
-    const style = document.createElement('style')
-    style.textContent = `
-      #dsh-startup-cover { position: fixed; inset: 0; z-index: 2147483646; display: grid; place-content: center; justify-items: center; gap: 10px; background: #0c1220; color: #f8fbff; opacity: 1; transition: opacity .42s ease, visibility .42s ease; font: 13px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif; }
-      #dsh-startup-cover.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-      .dsh-startup-mark { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 18px; color: #fff; background: linear-gradient(145deg, #2f82ff, #1760d0); box-shadow: 0 10px 38px rgba(31, 111, 255, .34); font-size: 26px; animation: dsh-breathe 1.8s ease-in-out infinite; }
-      .dsh-startup-name { font-size: 17px; font-weight: 650; letter-spacing: .01em; }
-      .dsh-startup-copy { color: rgba(226, 234, 249, .72); }
-      .dsh-startup-progress { width: 128px; height: 3px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.12); }
-      .dsh-startup-progress i { display: block; width: 45%; height: 100%; border-radius: inherit; background: #55a4ff; animation: dsh-progress 1.3s ease-in-out infinite; }
-      @keyframes dsh-breathe { 50% { transform: scale(1.06); box-shadow: 0 12px 48px rgba(31, 111, 255, .5); } }
-      @keyframes dsh-progress { from { transform: translateX(-120%); } to { transform: translateX(300%); } }
-    `
-    document.head.appendChild(style)
-    document.documentElement.appendChild(cover)
-    const hide = () => {
-      if (!cover.isConnected) return
-      cover.classList.add('is-hidden')
-      setTimeout(() => cover.remove(), 520)
-    }
-    window.addEventListener('load', () => setTimeout(hide, 100), { once: true })
-    setTimeout(hide, 1800)
   }
 
   function renderReleaseSections(release) {
@@ -428,9 +421,16 @@ if (!isSplashDocument) {
   function mount() {
     mountGlobalStyles()
     document.documentElement.appendChild(host)
-    mountStartupCover()
     render()
     ipcRenderer.send('desktop:renderer-ready')
+    const reportFirstPaint = () => {
+      if (typeof requestAnimationFrame !== 'function') {
+        ipcRenderer.send('desktop:renderer-first-paint')
+        return
+      }
+      requestAnimationFrame(() => requestAnimationFrame(() => ipcRenderer.send('desktop:renderer-first-paint')))
+    }
+    reportFirstPaint()
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true })
