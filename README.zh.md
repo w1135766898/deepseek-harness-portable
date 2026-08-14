@@ -4,12 +4,21 @@
 
 这个目录说明 DeepSeek Harness 的个人 Windows 分发渠道。发布物是未封装的 Electron 原生桌面外壳，会在自己的窗口中启动本地 Web 运行时。它不是官方签名版本。
 
-## 快速安装与自动更新（推荐方式）
+## 快速安装方式（三选一）
 
-### 1. 一键在线极速安装
-在 Windows PowerShell 终端中粘贴并运行以下命令，即可全自动完成最新版本的下载、解压、桌面快捷方式创建与环境变量配置：
+### 方式一：标准 Windows 单文件安装包 (Setup.exe，新手首选)
+从 Release 页面直接下载 **`DeepSeek-Harness-Setup-0.1.0-rc.5-win32-x64.exe`**：
+- **双击即装**：无需任何解压工具，双击安装包即可一步到位。
+- **规范安装路径**：自动安装至 `%LOCALAPPDATA%\Programs\DeepSeek Harness`（无需管理员 UAC 权限）。
+- **全自动系统集成**：自动创建桌面图标、开始菜单入口，并注册到 Windows 控制面板“已安装的应用/添加或删除程序”（可随时一键彻底干净卸载）。
+- **内置安全证书**：安装过程中自动配置本机代码签名信任，彻底免疫 Windows 11 智能应用控制 (SAC) 拦截。
 
-- **🇨🇳 中国大陆用户推荐（内置高速镜像通道，秒级响应）**：
+---
+
+### 方式二：终端一键极速在线安装 (PowerShell)
+在 Windows PowerShell 终端中粘贴并运行以下命令，全自动完成下载、安装、桌面快捷方式创建与环境变量配置：
+
+- **🇨🇳 中国大陆用户推荐（内置国内高速镜像通道）**：
   ```powershell
   irm https://ghfast.top/https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
   ```
@@ -18,9 +27,14 @@
   irm https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
   ```
 
-安装完成后，可在桌面直接打开 **DeepSeek Harness**，或在任何命令行中输入 **`dsh`** 启动。
+---
 
-### 2. 快速热更新（免手动重新下载大包）
+### 方式三：免安装绿色便携版 (ZIP)
+下载 **`DeepSeek-Harness-0.1.0-rc.5-win32-x64.zip`**，解压到任意文件夹后直接双击 **`启动网页版.bat`** 即可即开即用，随身携带，不污染系统。
+
+---
+
+## 快速热更新（免重新下载大包）
 当后续发布新版本时，自动通过多节点加速通道增量升级，保留所有用户数据与配置：
 - **方式 A**：双击软件根目录下的 **`在线更新.bat`**。
 - **方式 B**：在任何终端中直接执行命令：

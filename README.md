@@ -4,23 +4,37 @@ English | [中文](README.zh.md)
 
 This directory documents the personal Windows distribution channel for DeepSeek Harness. The release is an unpacked Electron desktop shell that starts the local Web runtime in its own window. It is not an official signed release.
 
-## Quick Online Install & Auto-Update (Recommended)
+## Quick Installation (3 Options)
 
-### 1. One-Click Online Installer
-Paste and run the following command in Windows PowerShell to automatically download, extract, create desktop shortcuts, and configure PATH:
+### Option 1: Standard Windows Setup Installer (Setup.exe - Recommended)
+Download **`DeepSeek-Harness-Setup-0.1.0-rc.5-win32-x64.exe`** from the Releases page:
+- **Zero Configuration**: Double-click to install in seconds. No archive extraction needed.
+- **Standard Program Directory**: Automatically installed into `%LOCALAPPDATA%\Programs\DeepSeek Harness` (zero admin/UAC elevation required).
+- **Full OS Integration**: Automatically creates Desktop & Start Menu shortcuts, and registers under Windows "Installed Apps" / "Add or Remove Programs" for 1-click clean uninstallation.
+- **Built-in Security Trust**: Automatically provisions local code-signing trust to prevent Windows 11 Smart App Control (SAC) blocks.
 
-- **🇨🇳 For Users in Mainland China (High-speed mirror acceleration)**:
+---
+
+### Option 2: One-Line Online Installation (PowerShell)
+Paste and run in PowerShell to automatically download, unpack, configure shortcuts, and set up PATH:
+
+- **🇨🇳 Mainland China (Built-in High-Speed Mirror)**:
   ```powershell
   irm https://ghfast.top/https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
   ```
-- **🌍 Global / Direct Access**:
+- **🌍 Global / Direct**:
   ```powershell
   irm https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
   ```
 
-- After installation, launch **DeepSeek Harness** directly from your Desktop, or type **`dsh`** in any terminal.
+---
 
-### 2. Fast In-Place Updates (No large re-downloads)
+### Option 3: Portable ZIP Archive
+Download **`DeepSeek-Harness-0.1.0-rc.5-win32-x64.zip`**, extract to any directory, and double-click **`启动网页版.bat`** to run instantly without altering system settings.
+
+---
+
+## Fast In-Place Updates
 When a new release is published, update seamlessly in seconds through multi-mirror acceleration while preserving all workspace data and settings:
 - **Option A**: Double-click **`在线更新.bat`** in the application directory.
 - **Option B**: Run the update command in any terminal:
