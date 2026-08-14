@@ -189,6 +189,43 @@ function isLauncherFlag(arg: string): arg is '--no-open' | '--open' {
   return arg === '--no-open' || arg === '--open'
 }
 
+/** The browser shell cannot activate until these graph entries exist. */
+const REQUIRED_CLIENT_ENTRIES = [
+  '@deepseek-ai/dsh-client-runtime',
+  '@deepseek-ai/dsh-client-ui-layout',
+]
+
+/**
+ * Check the boot graph embedded in the exact index document that the browser
+ * will consume. Follow declared inject edges so a partially scanned roster is
+ * not mistaken for a ready client surface.
+ */
+function hasRequiredClientGraph(html: string): boolean {
+  const match = html.match(/window\.__DSH_BOOT__\s*=\s*(\{[\s\S]*?\})\s*<\/script>/)
+  if (match === null) return false
+  let manifest: { entries?: Array<{ id?: string; inject?: string[] }> }
+  try {
+    manifest = JSON.parse(match[1]) as { entries?: Array<{ id?: string; inject?: string[] }> }
+  } catch {
+    return false
+  }
+  if (!Array.isArray(manifest.entries)) return false
+  const rows = new Map(manifest.entries
+    .filter(row => row !== null && typeof row === 'object' && typeof row.id === 'string')
+    .map(row => [row.id as string, row]))
+  const pending = [...REQUIRED_CLIENT_ENTRIES]
+  const seen = new Set<string>()
+  while (pending.length > 0) {
+    const id = pending.pop() as string
+    if (seen.has(id)) continue
+    seen.add(id)
+    const row = rows.get(id)
+    if (row === undefined) return false
+    if (Array.isArray(row.inject)) pending.push(...row.inject)
+  }
+  return true
+}
+
 /**
  * Poll the local web URL until the server answers, then open it in the
  * default browser. Bounded, non-fatal: a server that never answers only
@@ -205,7 +242,11 @@ async function openBrowserWhenReady(ctx: Context): Promise<void> {
   while (Date.now() < deadline) {
     try {
       const response = await fetch(url)
-      if (response.ok) {
+      if (!response.ok) {
+        lastReason = `web index HTTP ${response.status}`
+      } else if (!hasRequiredClientGraph(await response.text())) {
+        lastReason = 'client plugin graph is not populated'
+      } else {
         const apiResponse = await fetch(`${url}api/settings.describe`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -231,7 +272,7 @@ async function openBrowserWhenReady(ctx: Context): Promise<void> {
         }
       }
     } catch {
-      // Server or api-gateway not up yet; keep polling.
+      // Server, client graph, or api-gateway not up yet; keep polling.
     }
     await new Promise(resolve => setTimeout(resolve, 400))
   }

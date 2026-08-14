@@ -12,6 +12,8 @@ const STOP_TIMEOUT_MS = 5_000
 let window
 let tray
 let harness
+let harnessUrl
+let restartPromise
 let quitting = false
 let restarting = false
 
@@ -56,6 +58,7 @@ function appendOutput(current, chunk) {
 
 function stopHarness() {
   return new Promise(resolve => {
+    harnessUrl = undefined
     if (harness === undefined) {
       resolve()
       return
@@ -178,6 +181,7 @@ function startHarness(cwd) {
     child.once('exit', code => {
       if (harness === child) {
         harness = undefined
+        harnessUrl = undefined
         if (!quitting && !restarting && ready) {
           void dialog.showMessageBox({
             type: 'error',
@@ -192,21 +196,44 @@ function startHarness(cwd) {
 }
 
 async function restartHarness() {
-  if (restarting) return
-  restarting = true
+  if (restartPromise !== undefined) return restartPromise
+  const currentRestart = (async () => {
+    restarting = true
+    try {
+      await stopHarness()
+      const url = await startHarness(workspace())
+      harnessUrl = url
+      if (window !== undefined && !window.isDestroyed()) await window.loadURL(url)
+    } catch (error) {
+      await dialog.showMessageBox({
+        type: 'error',
+        title: `${APP_NAME} failed to start`,
+        message: errorMessage(error),
+      })
+    } finally {
+      restarting = false
+    }
+  })()
+  restartPromise = currentRestart
   try {
-    await stopHarness()
-    const url = await startHarness(workspace())
-    if (window !== undefined && !window.isDestroyed()) await window.loadURL(url)
-  } catch (error) {
+    await currentRestart
+  } finally {
+    if (restartPromise === currentRestart) restartPromise = undefined
+  }
+}
+
+async function openWebUiInBrowser() {
+  if (harnessUrl === undefined) await restartHarness()
+  if (harnessUrl === undefined) {
     await dialog.showMessageBox({
       type: 'error',
-      title: `${APP_NAME} failed to start`,
-      message: errorMessage(error),
+      title: `${APP_NAME} Web UI unavailable`,
+      message: 'The Web UI is not ready yet.',
+      detail: 'Please try again after the desktop client finishes starting.',
     })
-  } finally {
-    restarting = false
+    return
   }
+  void shell.openExternal(harnessUrl)
 }
 
 async function chooseWorkspace() {
@@ -396,6 +423,7 @@ function menuItems() {
   return [
     { label: `Show ${APP_NAME}`, click: showWindow },
     { label: 'Check for Updates… (检查更新)', click: () => { void checkForUpdates(true) } },
+    { label: 'Open Web UI in Browser', click: () => { void openWebUiInBrowser() } },
     { type: 'separator' },
     { label: 'Choose Workspace…', click: () => { void chooseWorkspace() } },
     { label: `Open Workspace (${workspace()})`, click: () => { void shell.openPath(workspace()) } },

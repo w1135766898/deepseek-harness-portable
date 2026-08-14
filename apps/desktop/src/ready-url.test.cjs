@@ -13,17 +13,26 @@ test('extracts only the loopback readiness URL', () => {
   assert.equal(readyUrl(null), undefined)
 })
 
-test('waits for the onboarding namespace instead of trusting the first HTTP 200', async () => {
-  let attempts = 0
+test('waits for onboarding and the complete client graph instead of trusting the first HTTP 200', async () => {
+  let settingsAttempts = 0
+  let indexAttempts = 0
   const server = createServer((request, response) => {
     if (request.url !== '/api/settings.describe') {
+      indexAttempts += 1
+      const entries = indexAttempts < 3
+        ? []
+        : [
+            { id: '@deepseek-ai/dsh-client-runtime', inject: ['@deepseek-ai/dsh-client-connection'] },
+            { id: '@deepseek-ai/dsh-client-connection', inject: [] },
+            { id: '@deepseek-ai/dsh-client-ui-layout', inject: ['@deepseek-ai/dsh-client-runtime'] },
+          ]
       response.writeHead(200, { 'content-type': 'text/html' })
-      response.end('loading')
+      response.end(`<html><head><script>window.__DSH_BOOT__ = ${JSON.stringify({ entries })}</script></head></html>`)
       return
     }
-    attempts += 1
+    settingsAttempts += 1
     response.writeHead(200, { 'content-type': 'application/json' })
-    response.end(JSON.stringify(attempts < 3
+    response.end(JSON.stringify(settingsAttempts < 3
       ? { result: { ok: true, value: { namespaces: [] } } }
       : { result: { ok: true, value: { namespaces: [{ ns: 'ui-onboarding' }] } } }))
   })
@@ -31,7 +40,8 @@ test('waits for the onboarding namespace instead of trusting the first HTTP 200'
   try {
     const address = server.address()
     await waitForOnboardingReady(`http://127.0.0.1:${address.port}`, { timeoutMs: 2_000, intervalMs: 1 })
-    assert.equal(attempts, 3)
+    assert.equal(settingsAttempts, 3)
+    assert.equal(indexAttempts, 3)
   } finally {
     await new Promise(resolve => server.close(resolve))
   }
