@@ -4,252 +4,440 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
-  <title>Release Notes</title>
+  <title>DeepSeek Harness Updates</title>
   <style>
+    /* ─── Light Mode Default (Apple/Linear Crisp Clean Light) ─── */
     :root {
       color-scheme: light dark;
-      --bg: #f4f7fb;
-      --surface: rgba(255, 255, 255, .94);
-      --surface-muted: #eef3f8;
-      --text: #172333;
-      --muted: #6d7d91;
-      --border: rgba(45, 75, 108, .16);
-      --accent: #426b9c;
-      --accent-strong: #2f5889;
-      --accent-soft: #e2edf9;
-      --green: #2e8b71;
-      --green-soft: #e4f4ee;
-      --amber: #ad6a24;
-      --amber-soft: #fff0dc;
-      --red: #a75758;
-      --red-soft: #f8e7e7;
-      --shadow: 0 22px 70px rgba(25, 49, 80, .16);
+      --bg: #f8fafc;
+      --surface: rgba(255, 255, 255, 0.92);
+      --surface-glass: rgba(255, 255, 255, 0.84);
+      --surface-elevated: #f1f5f9;
+      --surface-hover: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+      --border: rgba(15, 23, 42, 0.08);
+      --border-focus: rgba(15, 23, 42, 0.16);
+      --border-glass: rgba(255, 255, 255, 0.9);
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-soft: rgba(37, 99, 235, 0.08);
+      --accent-border: rgba(37, 99, 235, 0.2);
+      --green: #059669;
+      --green-soft: rgba(5, 150, 105, 0.08);
+      --amber: #d97706;
+      --amber-soft: rgba(217, 119, 6, 0.08);
+      --red: #e11d48;
+      --red-soft: rgba(225, 29, 72, 0.08);
+      --shadow-glass: 0 16px 36px -4px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05);
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
 
+    /* ─── Dark Mode (Deep Obsidian Glass) ─── */
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #111821;
-        --surface: rgba(28, 38, 51, .96);
-        --surface-muted: #1c2938;
-        --text: #edf4fb;
-        --muted: #9cacbf;
-        --border: rgba(180, 204, 231, .16);
-        --accent: #8fb5df;
-        --accent-strong: #b9d5f4;
-        --accent-soft: #253a52;
-        --green: #7bd3b4;
-        --green-soft: #1d3a34;
-        --amber: #f0b36f;
-        --amber-soft: #42321e;
-        --red: #eea4a4;
-        --red-soft: #42272b;
-        --shadow: 0 22px 70px rgba(0, 0, 0, .34);
+        --bg: #090d14;
+        --surface: rgba(15, 21, 35, 0.94);
+        --surface-glass: rgba(15, 21, 35, 0.86);
+        --surface-elevated: #151d30;
+        --surface-hover: #1c263d;
+        --text: #f8fafc;
+        --text-muted: #94a3b8;
+        --text-dim: #4b586e;
+        --border: rgba(255, 255, 255, 0.08);
+        --border-focus: rgba(255, 255, 255, 0.18);
+        --border-glass: rgba(255, 255, 255, 0.12);
+        --accent: #3b82f6;
+        --accent-hover: #60a5fa;
+        --accent-soft: rgba(59, 130, 246, 0.14);
+        --accent-border: rgba(59, 130, 246, 0.3);
+        --green: #10b981;
+        --green-soft: rgba(16, 185, 129, 0.14);
+        --amber: #f59e0b;
+        --amber-soft: rgba(245, 158, 11, 0.14);
+        --red: #f43f5e;
+        --red-soft: rgba(244, 63, 94, 0.14);
+        --shadow-glass: 0 20px 48px -4px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
       }
     }
 
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; width: 100%; }
     body {
-      margin: 0;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 92% 0%, rgba(92, 143, 202, .14), transparent 34%),
-        var(--bg);
+      background: var(--bg);
       color: var(--text);
-      font: 14px/1.55 "Segoe UI", "Microsoft YaHei", sans-serif;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      line-height: 1.6;
+      overflow: hidden;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
     }
 
-    button, a { font: inherit; }
-    button { color: inherit; }
-    .app-shell { display: flex; flex-direction: column; height: 100%; }
-    .topbar {
-      padding: 28px 34px 22px;
-      border-bottom: 1px solid var(--border);
-      background: linear-gradient(135deg, rgba(255,255,255,.48), transparent);
-    }
-    .topbar-row, .title-row, .footer-row, .history-header {
+    /* ─── HUD Floating Toast (Light & Dark Reactive Glass) ─── */
+    .compact { background: transparent; }
+    .compact .hud-wrapper {
+      padding: 8px 12px;
+      height: 100%;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 16px;
     }
-    .eyebrow {
-      margin: 0 0 6px;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-    }
-    h1, h2, h3, p { margin: 0; }
-    h1 { font-size: 28px; letter-spacing: -.03em; }
-    h2 { font-size: 18px; letter-spacing: -.015em; }
-    h3 { font-size: 15px; }
-    .subtitle { margin-top: 6px; color: var(--muted); }
-    .version-badge, .type-badge, .source-badge {
-      display: inline-flex;
-      align-items: center;
-      min-height: 26px;
-      padding: 3px 10px;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      background: var(--surface-muted);
-      color: var(--accent-strong);
-      font-size: 12px;
-      font-weight: 700;
-      white-space: nowrap;
-    }
-    .version-badge { border-color: rgba(66, 107, 156, .3); background: var(--accent-soft); }
-    .meta-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; color: var(--muted); font-size: 12px; }
-    .meta-dot { opacity: .55; }
-    .toolbar { display: flex; gap: 8px; margin-top: 18px; }
-    .tab-button, .history-item, .icon-button, .button {
-      border: 1px solid var(--border);
-      background: var(--surface);
-      cursor: pointer;
-      transition: border-color .16s ease, background .16s ease, transform .16s ease;
-    }
-    .tab-button {
-      padding: 7px 12px;
-      border-radius: 8px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-    .tab-button:hover, .tab-button.active { border-color: rgba(66, 107, 156, .42); background: var(--accent-soft); color: var(--accent-strong); }
-    .body {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 255px;
-      flex: 1;
-      min-height: 0;
-    }
-    .content { overflow: auto; padding: 30px 34px 34px; }
-    .content-inner { max-width: 780px; margin: 0 auto; }
-    .history {
-      overflow: auto;
-      padding: 24px 18px;
-      border-left: 1px solid var(--border);
-      background: rgba(255,255,255,.17);
-    }
-    .history-header { margin-bottom: 12px; }
-    .history-title { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-    .history-count { color: var(--muted); font-size: 11px; }
-    .history-list { display: grid; gap: 8px; }
-    .history-item {
+    .hud-card {
       width: 100%;
-      padding: 11px 12px;
-      border-radius: 10px;
-      text-align: left;
-    }
-    .history-item:hover, .history-item.active { border-color: rgba(66, 107, 156, .42); background: var(--accent-soft); transform: translateY(-1px); }
-    .history-version { display: block; font-weight: 700; }
-    .history-date { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
-    .history-type { display: inline-block; margin-top: 7px; color: var(--muted); font-size: 10px; }
-    .update-banner {
+      background: var(--surface-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 14px;
+      padding: 10px 14px;
+      box-shadow: var(--shadow-glass);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 18px;
-      margin-bottom: 26px;
-      padding: 16px 18px;
-      border: 1px solid rgba(66, 107, 156, .28);
-      border-radius: 14px;
-      background: var(--accent-soft);
+      gap: 12px;
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+      animation: popIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .update-banner strong { display: block; font-size: 14px; }
-    .update-banner p { margin-top: 3px; color: var(--muted); font-size: 12px; }
-    .release-summary {
+    @keyframes popIn {
+      from { transform: translateY(10px) scale(0.96); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .hud-lead {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .hud-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), #1d4ed8);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px var(--accent-soft);
+    }
+    .hud-texts { min-width: 0; }
+    .hud-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hud-desc {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hud-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    /* ─── Main App Shell (Raycast Minimalist) ─── */
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: var(--bg);
+    }
+
+    /* ─── Header ─── */
+    .header {
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
       justify-content: space-between;
-      gap: 20px;
-      margin-bottom: 28px;
-    }
-    .release-summary .summary-copy { color: var(--muted); }
-    .release-summary .summary-copy p { margin-top: 6px; }
-    .section {
-      margin-top: 20px;
-      padding: 19px 20px 17px;
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--accent);
-      border-radius: 14px;
+      border-bottom: 1px solid var(--border);
       background: var(--surface);
-      box-shadow: 0 5px 18px rgba(25, 49, 80, .04);
+      backdrop-filter: blur(20px);
+      flex-shrink: 0;
     }
-    .section.features { border-left-color: var(--green); }
-    .section.improvements { border-left-color: var(--amber); }
-    .section.fixes { border-left-color: var(--red); }
-    .section.breaking { border-left-color: var(--accent); }
-    .section-heading { display: flex; align-items: center; gap: 9px; }
-    .section-icon { color: var(--accent-strong); font-size: 15px; font-weight: 800; }
-    .features .section-icon { color: var(--green); }
-    .improvements .section-icon { color: var(--amber); }
-    .fixes .section-icon { color: var(--red); }
-    .section-label { color: var(--muted); font-size: 12px; font-weight: 700; }
-    .section ul { display: grid; gap: 9px; margin: 14px 0 0; padding-left: 20px; }
-    .section li { padding-left: 3px; }
-    .section li::marker { color: var(--muted); }
-    code {
-      padding: 1px 5px;
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .app-logo {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .app-title {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+    .app-ver-tag {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      background: var(--surface-elevated);
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ─── Action Banner for New Update ─── */
+    .top-action-bar {
+      margin: 16px 24px 0;
+      padding: 12px 18px;
+      border-radius: 12px;
+      background: var(--surface-glass);
+      border: 1px solid var(--accent-border);
+      box-shadow: 0 4px 16px -2px var(--accent-soft);
+      backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .action-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .pulse-dot {
+      position: relative;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .pulse-dot::after {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      background: var(--accent);
+      opacity: 0.5;
+      animation: ripple 2s infinite ease-out;
+    }
+    @keyframes ripple {
+      0% { transform: scale(0.9); opacity: 0.6; }
+      100% { transform: scale(2.4); opacity: 0; }
+    }
+    .action-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .action-sub {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    /* ─── Timeline Feed ─── */
+    .feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px 48px;
+    }
+    .timeline {
+      position: relative;
+      padding-left: 20px;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 12px;
+      bottom: 12px;
+      width: 1px;
+      background: var(--border);
+    }
+
+    .release-entry {
+      position: relative;
+      margin-bottom: 34px;
+    }
+    .release-entry:last-child {
+      margin-bottom: 0;
+    }
+    .release-node {
+      position: absolute;
+      left: -20px;
+      top: 5px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--surface-elevated);
+      border: 2px solid var(--border-focus);
+      transition: all 0.2s;
+    }
+    .release-entry.is-current .release-node {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    .release-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .ver-badge {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      font-family: var(--font-mono);
+    }
+    .type-pill {
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .type-major { color: var(--green); background: var(--green-soft); }
+    .type-minor { color: var(--accent); background: var(--accent-soft); }
+    .type-patch { color: var(--text-muted); background: var(--surface-elevated); }
+
+    .release-time {
+      font-size: 11.5px;
+      color: var(--text-dim);
+      margin-left: auto;
+    }
+
+    /* ─── Atomic Item Rows ─── */
+    .entry-items {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .item-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+    .item-icon {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 6px;
       border-radius: 5px;
-      background: var(--surface-muted);
-      font-family: Consolas, monospace;
-      font-size: .92em;
+      flex-shrink: 0;
+      line-height: 1.2;
+      user-select: none;
     }
-    a { color: var(--accent-strong); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .empty-state, .offline-note, .component-card {
-      padding: 18px;
+    .item-icon.features { color: var(--green); background: var(--green-soft); }
+    .item-icon.improvements { color: var(--amber); background: var(--amber-soft); }
+    .item-icon.fixes { color: var(--red); background: var(--red-soft); }
+    .item-icon.other { color: var(--text-muted); background: var(--surface-elevated); }
+
+    .item-content {
+      flex: 1;
+      color: var(--text);
+    }
+    .item-content code {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: var(--surface-elevated);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      background: var(--surface);
+      color: var(--text);
     }
-    .empty-state { color: var(--muted); }
-    .offline-note { margin-top: 20px; color: var(--muted); font-size: 12px; }
-    .component-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
-    .component-card dt { color: var(--muted); font-size: 11px; }
-    .component-card dd { margin: 5px 0 0; overflow-wrap: anywhere; font-weight: 700; }
-    .component-card dd.commit { font-family: Consolas, monospace; font-size: 12px; }
+
+    /* ─── Footer ─── */
     .footer {
-      padding: 15px 34px;
+      padding: 12px 24px;
       border-top: 1px solid var(--border);
       background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
     }
-    .footer-note { color: var(--muted); font-size: 11px; }
-    .footer-actions { display: flex; align-items: center; gap: 8px; }
-    .button { padding: 8px 13px; border-radius: 8px; font-size: 12px; font-weight: 700; }
-    .button:hover { border-color: rgba(66, 107, 156, .44); background: var(--accent-soft); }
-    .button.primary { border-color: var(--accent-strong); background: var(--accent-strong); color: white; }
-    .button.primary:hover { background: var(--accent); }
-    .button:disabled { cursor: default; opacity: .6; transform: none; }
-    .icon-button { width: 28px; height: 28px; padding: 0; border-radius: 50%; font-size: 17px; line-height: 1; }
-    .update-status { color: var(--muted); font-size: 12px; }
+    .meta-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11.5px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+    .meta-item { display: flex; align-items: center; gap: 4px; }
+    .meta-item span { color: var(--text-muted); font-weight: 500; }
 
-    .compact {
-      background: transparent;
-      overflow: hidden;
-    }
-    .compact .app-shell { padding: 10px; }
-    .whats-new-card {
-      position: relative;
-      padding: 22px;
+    /* ─── Buttons ─── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 13px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
       border: 1px solid var(--border);
-      border-radius: 16px;
-      background: var(--surface);
-      box-shadow: var(--shadow);
+      background: var(--surface-elevated);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      outline: none;
     }
-    .compact .icon-button { position: absolute; top: 12px; right: 12px; background: transparent; border: 0; }
-    .whats-new-card .eyebrow { color: var(--accent-strong); }
-    .whats-new-card h1 { padding-right: 28px; font-size: 20px; }
-    .whats-new-card p { margin-top: 8px; color: var(--muted); font-size: 12px; }
-    .whats-new-card .button { margin-top: 18px; }
-    .fade-in { animation: fade-in .2s ease-out; }
-    @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-    @media (max-width: 760px) {
-      .body { grid-template-columns: 1fr; }
-      .history { display: none; }
-      .topbar, .content, .footer { padding-left: 20px; padding-right: 20px; }
-      .component-grid { grid-template-columns: 1fr; }
-      .update-banner, .footer-row { align-items: flex-start; flex-direction: column; }
+    .btn:hover {
+      background: var(--surface-hover);
+      border-color: var(--border-focus);
+    }
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 1px 6px var(--accent-soft);
+    }
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+    .btn-ghost {
+      background: transparent;
+      border-color: transparent;
+      color: var(--text-muted);
+    }
+    .btn-ghost:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+    }
+    .btn-icon-only {
+      padding: 6px;
+      border-radius: 6px;
     }
   </style>
 </head>
@@ -260,11 +448,10 @@
       const api = window.deepSeekReleaseNotes
       const app = document.getElementById('app')
       let data
-      let selectedVersion
       let updateState = ''
 
-      function escapeHtml(value) {
-        return String(value == null ? '' : value)
+      function escapeHtml(val) {
+        return String(val == null ? '' : val)
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
@@ -272,160 +459,154 @@
           .replace(/'/g, '&#039;')
       }
 
-      function formatDate(value) {
-        if (!value) return 'Date unavailable'
-        const date = new Date(value)
-        if (Number.isNaN(date.getTime())) return escapeHtml(value)
-        return new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: 'numeric' }).format(date)
+      function formatDate(val) {
+        if (!val) return ''
+        const d = new Date(val)
+        if (Number.isNaN(d.getTime())) return escapeHtml(val)
+        return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(d)
       }
 
-      function inlineMarkdown(value) {
-        let text = escapeHtml(value)
+      function inlineMarkdown(val) {
+        let txt = escapeHtml(val)
         const tick = String.fromCharCode(96)
-        text = text.replace(new RegExp(tick + '([^' + tick + ']+)' + tick, 'g'), '<code>$1</code>')
-        text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        text = text.replace(/__([^_]+)__/g, '<strong>$1</strong>')
-        text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (_, label, url) => (
-          '<a href="' + escapeHtml(url) + '" data-action="open-url" data-url="' + escapeHtml(url) + '">' + label + '</a>'
+        txt = txt.replace(new RegExp(tick + '([^' + tick + ']+)' + tick, 'g'), '<code>$1</code>')
+        txt = txt.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        txt = txt.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (_, lbl, u) => (
+          '<a href="' + escapeHtml(u) + '" data-action="open-url" data-url="' + escapeHtml(u) + '" style="color:var(--accent); text-decoration:none;">' + lbl + '</a>'
         ))
-        return text
+        return txt
       }
 
-      function releaseFor(version) {
-        return (data.history || []).find(item => item.version === version)
-          || data.currentRelease
-          || data.latestRelease
-      }
+      const WHALE_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12c0-3.8 3.2-7 7.5-7 4.8 0 8.5 3.2 11.5 1.5 0 2.8-1.8 4.8-3.5 5.8 2.2 1.5 4.5 1.5 5 4.2-1.8.5-4 0-6.2-1.5-2.2 3.2-6 4.2-9.3 3-4-1.2-5-4.2-5-6z" fill="currentColor"/><circle cx="6.5" cy="10.5" r="1.1" fill="#ffffff"/></svg>'
 
-      function releaseSections(release) {
-        if (release && Array.isArray(release.sections) && release.sections.length > 0) return release.sections
-        if (release && release.body) return [{ key: 'other', label: 'Other', labelZh: '其他', icon: '•', title: 'Release notes', items: [release.body] }]
-        return []
-      }
-
-      function renderSections(release) {
-        const sections = releaseSections(release)
-        if (sections.length === 0) {
-          return '<div class="empty-state">No detailed release notes are available for this version.</div>'
-        }
-        return sections.map(section => (
-          '<section class="section ' + escapeHtml(section.key || 'other') + ' fade-in">' +
-            '<div class="section-heading">' +
-              '<span class="section-icon">' + escapeHtml(section.icon || '•') + '</span>' +
-              '<div><h3>' + inlineMarkdown(section.title || section.label || 'Release notes') + '</h3>' +
-              '<div class="section-label">' + escapeHtml(section.labelZh || section.label || 'Other') + '</div></div>' +
-            '</div>' +
-            '<ul>' + section.items.map(item => '<li>' + inlineMarkdown(item) + '</li>').join('') + '</ul>' +
-          '</section>'
-        )).join('')
-      }
-
-      function renderHistory() {
-        const history = data.history || []
-        if (history.length === 0) return '<div class="empty-state">No release history is cached yet.</div>'
-        return history.map(release => (
-          '<button class="history-item ' + (release.version === selectedVersion ? 'active' : '') + '" data-action="select-release" data-version="' + escapeHtml(release.version) + '">' +
-            '<span class="history-version">v' + escapeHtml(release.version) + '</span>' +
-            '<span class="history-date">' + formatDate(release.publishedAt) + '</span>' +
-            '<span class="history-type">' + escapeHtml(release.releaseType || 'Patch') + '</span>' +
-          '</button>'
-        )).join('')
-      }
-
-      function renderComponents() {
-        const info = data.localInfo || {}
-        return '<div class="component-grid">' +
-          '<dl class="component-card"><dt>Distribution</dt><dd>v' + escapeHtml(info.distributionVersion || 'unknown') + '</dd></dl>' +
-          '<dl class="component-card"><dt>Desktop shell</dt><dd>v' + escapeHtml(info.desktopVersion || 'unknown') + '</dd></dl>' +
-          '<dl class="component-card"><dt>Kernel</dt><dd>v' + escapeHtml(info.kernelVersion || 'unknown') + '</dd></dl>' +
-          '<dl class="component-card"><dt>Kernel Git commit</dt><dd class="commit">' + escapeHtml(info.kernelCommit || 'unknown') + '</dd></dl>' +
-        '</div>'
-      }
-
-      function renderCompact() {
+      function renderHUD() {
         document.body.className = 'compact'
-        const release = data.currentRelease || {}
+        const currentVer = data.currentVersion || (data.currentRelease && data.currentRelease.version) || '1.0.0'
         app.innerHTML =
-          '<main class="app-shell">' +
-            '<section class="whats-new-card fade-in">' +
-              '<button class="icon-button" data-action="close" aria-label="Dismiss">×</button>' +
-              '<p class="eyebrow">DeepSeek Harness</p>' +
-              '<h1>Updated to v' + escapeHtml(data.currentVersion || release.version || 'unknown') + '</h1>' +
-              '<p>已成功更新。查看新功能、优化与问题修复。</p>' +
-              '<button class="button primary" data-action="open-notes">View what’s new / 查看新特性</button>' +
-            '</section>' +
-          '</main>'
+          '<div class="hud-wrapper">' +
+            '<div class="hud-card">' +
+              '<div class="hud-lead">' +
+                '<div class="hud-icon">' + WHALE_ICON + '</div>' +
+                '<div class="hud-texts">' +
+                  '<div class="hud-title">DeepSeek Harness v' + escapeHtml(currentVer) + '</div>' +
+                  '<div class="hud-desc">已平滑完成升级 · 点击查看新特性</div>' +
+                '</div>' +
+              '</div>' +
+              '<div class="hud-actions">' +
+                '<button class="btn btn-primary" data-action="open-notes">查看特性</button>' +
+                '<button class="btn btn-ghost btn-icon-only" data-action="close" title="关闭">✕</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>'
       }
 
-      function renderFull() {
+      function renderTimeline(releases) {
+        if (!releases || releases.length === 0) {
+          return '<div style="color:var(--text-dim); text-align:center; padding:40px 0;">暂无更新记录</div>'
+        }
+        return '<div class="timeline">' + releases.map(rel => {
+          const type = (rel.releaseType || 'Patch').toLowerCase()
+          const typePillClass = type === 'major' ? 'type-major' : (type === 'minor' ? 'type-minor' : 'type-patch')
+          const isCurrent = rel.version === data.currentVersion
+          const sections = rel.sections || []
+
+          let itemsHtml = ''
+          if (sections.length > 0) {
+            itemsHtml = sections.flatMap(sec => {
+              const iconClass = sec.key || 'other'
+              const iconLabel = sec.key === 'features' ? '✦ 新功能' : (sec.key === 'improvements' ? '↗ 优化' : (sec.key === 'fixes' ? '✓ 修复' : '• 变更'))
+              return (sec.items || []).map(item => (
+                '<div class="item-row">' +
+                  '<span class="item-icon ' + iconClass + '">' + iconLabel + '</span>' +
+                  '<span class="item-content">' + inlineMarkdown(item) + '</span>' +
+                '</div>'
+              ))
+            }).join('')
+          } else if (rel.body) {
+            itemsHtml = '<div class="item-row"><span class="item-content">' + inlineMarkdown(rel.body) + '</span></div>'
+          } else {
+            itemsHtml = '<div class="item-row" style="color:var(--text-dim)">常规维护与性能提升</div>'
+          }
+
+          return (
+            '<div class="release-entry ' + (isCurrent ? 'is-current' : '') + '">' +
+              '<div class="release-node"></div>' +
+              '<div class="release-header">' +
+                '<span class="ver-badge">v' + escapeHtml(rel.version) + '</span>' +
+                '<span class="type-pill ' + typePillClass + '">' + escapeHtml(rel.releaseType || 'Patch') + '</span>' +
+                (isCurrent ? '<span style="font-size:11px; color:var(--accent); font-weight:600;">当前安装</span>' : '') +
+                '<span class="release-time">' + formatDate(rel.publishedAt) + '</span>' +
+              '</div>' +
+              '<div class="entry-items">' + itemsHtml + '</div>' +
+            '</div>'
+          )
+        }).join('') + '</div>'
+      }
+
+      function renderApp() {
         document.body.className = ''
-        const release = releaseFor(selectedVersion)
-        const isAbout = data.mode === 'about'
+        const info = data.localInfo || {}
         const update = data.latestRelease
-        const updateBanner = data.updateAvailable && update
-          ? '<div class="update-banner">' +
-              '<div><strong>v' + escapeHtml(update.version) + ' is available / 有新版本可用</strong>' +
-              '<p>当前版本 v' + escapeHtml(data.currentVersion || 'unknown') + ' · ' + escapeHtml(update.channel || 'Portable Windows release') + '</p></div>' +
-              '<button class="button primary" data-action="update">' + (updateState || '🚀 Update now / 立即更新') + '</button>' +
+        const hasUpdate = data.updateAvailable && update
+
+        const topBanner = hasUpdate
+          ? '<div class="top-action-bar">' +
+              '<div class="action-left">' +
+                '<span class="pulse-dot"></span>' +
+                '<div>' +
+                  '<div class="action-text">新版本 v' + escapeHtml(update.version) + ' 已发布</div>' +
+                  '<div class="action-sub">包含重要功能与稳定性增强 · 镜像通道加速</div>' +
+                '</div>' +
+              '</div>' +
+              '<button class="btn btn-primary" data-action="update">' + (updateState || '🚀 一键热升级') + '</button>' +
             '</div>'
           : ''
-        const sourceNote = data.offline
-          ? '<div class="offline-note">Offline fallback: showing the bundled or cached release notes. 网络不可用，当前显示本地/缓存内容。</div>'
-          : '<div class="offline-note">Release notes are fetched from the release service and cached for offline viewing.</div>'
 
         app.innerHTML =
-          '<main class="app-shell">' +
-            '<header class="topbar">' +
-              '<div class="topbar-row"><div><p class="eyebrow">DeepSeek Harness</p><h1>' + (isAbout ? 'About' : 'Release Notes') + '</h1>' +
-                '<p class="subtitle">' + (isAbout ? 'Component versions and runtime identity' : '版本发布说明与历史记录') + '</p></div>' +
-                '<button class="icon-button" data-action="close" aria-label="Close">×</button></div>' +
-              '<div class="toolbar">' +
-                '<button class="tab-button ' + (!isAbout ? 'active' : '') + '" data-action="show-notes">Release notes / 更新日志</button>' +
-                '<button class="tab-button ' + (isAbout ? 'active' : '') + '" data-action="show-about">About / 关于</button>' +
+          '<div class="app-shell">' +
+            '<header class="header">' +
+              '<div class="header-left">' +
+                '<div class="app-logo">' + WHALE_ICON + '</div>' +
+                '<div class="app-title">DeepSeek Harness</div>' +
+                '<span class="app-ver-tag">v' + escapeHtml(data.currentVersion || '1.0.0') + '</span>' +
+              '</div>' +
+              '<div class="header-right">' +
+                '<button class="btn btn-ghost" data-action="open-github">GitHub 仓库 ↗</button>' +
+                '<button class="btn btn-ghost btn-icon-only" data-action="close" title="关闭">✕</button>' +
               '</div>' +
             '</header>' +
-            '<div class="body">' +
-              '<section class="content"><div class="content-inner">' +
-                (isAbout
-                  ? '<div class="release-summary"><div class="summary-copy"><h2>DeepSeek Harness</h2><p>Desktop shell, distribution and kernel identity for this installation.</p></div><span class="version-badge">v' + escapeHtml(data.currentVersion || 'unknown') + '</span></div>' +
-                    renderComponents() +
-                    '<div class="offline-note">GitHub release history remains available from the Release notes tab.</div>'
-                  : updateBanner +
-                    '<div class="release-summary"><div class="summary-copy"><h2>v' + escapeHtml((release && release.version) || 'unknown') + '</h2><p>' + escapeHtml((release && release.name) || 'DeepSeek Harness release') + '</p></div>' +
-                      '<div class="meta-line"><span class="version-badge">v' + escapeHtml((release && release.version) || 'unknown') + '</span><span class="type-badge">' + escapeHtml((release && release.releaseType) || 'Patch') + '</span><span>' + formatDate(release && release.publishedAt) + '</span></div></div>' +
-                    renderSections(release) + sourceNote) +
-              '</div></section>' +
-              '<aside class="history"><div class="history-header"><span class="history-title">History / 历史</span><span class="history-count">' + (data.history || []).length + '</span></div><div class="history-list">' + renderHistory() + '</div></aside>' +
-            '</div>' +
-            '<footer class="footer"><div class="footer-row">' +
-              '<span class="footer-note">' + (data.mode === 'update' ? 'Sessions and preferences are kept during the portable update.' : 'External links open in your system browser.') + '</span>' +
-              '<div class="footer-actions">' +
-                (data.mode === 'update' ? '<button class="button" data-action="close">Later / 稍后提醒</button>' : '') +
-                '<button class="button" data-action="open-github">Open GitHub / 浏览器打开</button>' +
-                (data.updateAvailable && update ? '<button class="button primary" data-action="update">' + (updateState || '🚀 Update now / 立即更新') + '</button>' : '') +
+            topBanner +
+            '<main class="feed">' +
+              renderTimeline(data.history || [data.currentRelease].filter(Boolean)) +
+            '</main>' +
+            '<footer class="footer">' +
+              '<div class="meta-bar">' +
+                '<div class="meta-item">内核: <span>v' + escapeHtml(info.kernelVersion || 'unknown') + '</span></div>' +
+                '·' +
+                '<div class="meta-item">外壳: <span>v' + escapeHtml(info.desktopVersion || 'unknown') + '</span></div>' +
+                '·' +
+                '<div class="meta-item">提交: <span>' + escapeHtml((info.kernelCommit || 'unknown').slice(0, 7)) + '</span></div>' +
               '</div>' +
-            '</div></footer>' +
-          '</main>'
+            '</footer>' +
+          '</div>'
       }
 
       function render() {
         if (!data) return
         if (data.mode === 'whats-new') {
-          renderCompact()
-          return
+          renderHUD()
+        } else {
+          renderApp()
         }
-        if (!selectedVersion) selectedVersion = data.selectedVersion || (data.currentRelease && data.currentRelease.version) || (data.latestRelease && data.latestRelease.version)
-        renderFull()
       }
 
       function refresh() {
         api.getData().then(next => {
           data = next
-          selectedVersion = next.selectedVersion
           updateState = ''
           render()
-        }).catch(error => {
-          app.innerHTML = '<div class="empty-state" style="margin:24px">Unable to load release notes: ' + escapeHtml(error && error.message) + '</div>'
+        }).catch(err => {
+          app.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-dim)">无法加载更新说明: ' + escapeHtml(err && err.message) + '</div>'
         })
       }
 
@@ -434,22 +615,17 @@
         if (!target) return
         event.preventDefault()
         const action = target.dataset.action
-        if (action === 'select-release') {
-          selectedVersion = target.dataset.version
-          render()
+
+        if (action === 'open-notes') {
+          api.sendAction({ type: 'open-notes' })
           return
         }
-        if (action === 'show-about') {
-          api.sendAction({ type: 'show-about' })
-          return
-        }
-        if (action === 'show-notes') {
-          api.sendAction({ type: 'show-notes' })
+        if (action === 'close') {
+          api.sendAction({ type: 'close' })
           return
         }
         if (action === 'open-github') {
-          const release = releaseFor(selectedVersion) || data.latestRelease
-          api.sendAction({ type: 'open-url', url: release && release.releaseUrl })
+          api.sendAction({ type: 'open-url', url: (data.currentRelease && data.currentRelease.releaseUrl) || 'https://github.com/wsnxxxs/deepseek-harness-portable' })
           return
         }
         if (action === 'open-url') {
@@ -457,23 +633,16 @@
           return
         }
         if (action === 'update') {
-          updateState = 'Starting updater… / 正在启动更新…'
+          updateState = '正在启动更新…'
           render()
           api.sendAction({ type: 'update' })
           return
         }
-        if (action === 'open-notes') {
-          api.sendAction({ type: 'open-notes' })
-          return
-        }
-        if (action === 'close') {
-          api.sendAction({ type: 'close' })
-        }
       })
 
       api.onReload(refresh)
-      api.onUpdateState(state => {
-        updateState = state && state.label ? state.label : ''
+      api.onUpdateState(st => {
+        updateState = st && st.label ? st.label : ''
         render()
       })
       refresh()

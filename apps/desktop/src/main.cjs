@@ -606,12 +606,12 @@ async function openReleaseNotesWindow(context = {}) {
 
   const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible() ? window : undefined
   releaseNotesWindow = new BrowserWindow({
-    width: 980,
-    height: 760,
-    minWidth: 760,
-    minHeight: 560,
+    width: 660,
+    height: 580,
+    minWidth: 540,
+    minHeight: 460,
     show: false,
-    title: `${APP_NAME} Release Notes`,
+    title: `${APP_NAME} Updates`,
     icon: iconPath(),
     parent: releaseNotesContext.mode === 'update' ? parentWindow : undefined,
     modal: releaseNotesContext.mode === 'update' && parentWindow !== undefined,
@@ -651,8 +651,8 @@ async function showWhatsNewWindow() {
   }
 
   whatsNewWindow = new BrowserWindow({
-    width: 390,
-    height: 220,
+    width: 430,
+    height: 76,
     resizable: false,
     movable: true,
     frame: false,
@@ -674,8 +674,8 @@ async function showWhatsNewWindow() {
     const workArea = screen.getPrimaryDisplay().workArea
     const [width, height] = whatsNewWindow.getSize()
     whatsNewWindow.setPosition(
-      Math.max(workArea.x + 12, workArea.x + workArea.width - width - 24),
-      Math.max(workArea.y + 12, workArea.y + workArea.height - height - 24),
+      Math.max(workArea.x + 16, workArea.x + workArea.width - width - 24),
+      Math.max(workArea.y + 16, workArea.y + workArea.height - height - 24),
     )
     whatsNewWindow.showInactive()
   } catch {
