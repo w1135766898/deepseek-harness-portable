@@ -24,8 +24,8 @@ Community distribution, not an official Microsoft-signed build. / 社区维护�
 
 ## Checksums & Security / 校验和与安全
 
-- Portable ZIP SHA-256 / 便携 ZIP：将在打包后写入 `SHA256SUMS.txt`。
-- Setup SHA-256 / 安装程序：将在打包后写入 `SHA256SUMS.txt`。
+- Portable ZIP SHA-256 / 便携 ZIP：`7C4ED6321FF9B0CB161DFF8730E2022189A4C4807BAC4111790FB52618B2729F`
+- Setup SHA-256 / 安装程序：`2EAA3E8B542A9DEE850491D1B1F41306F6D6FA143AAB1AD89BD595B232435E0D`
 - Verify `SHA256SUMS.txt` before launching. / 运行前请核对 `SHA256SUMS.txt`。
 - The executable is unsigned; Windows SmartScreen may warn. / 可执行文件未签名，Windows SmartScreen 可能提示风险。
 - Conversations, credentials, settings, and attachments stay outside the release directory during updates. / 更新时，会话、凭据、设置和附件保存在发布目录之外。
