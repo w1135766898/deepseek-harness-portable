@@ -195,14 +195,21 @@ function Extract-Release {
 function Install-ReleaseRoot {
     param([Parameter(Mandatory = $true)][string]$SourceRoot)
 
-    $backup = Join-Path $env:TEMP ('dsh-runtime-backup-' + [Guid]::NewGuid().ToString('N'))
+    # Keep the backup beside the target so the rename remains atomic even when
+    # the portable directory is installed on a drive other than %TEMP%.
+    $backup = Join-Path $APP_ROOT ('.runtime-backup-' + [Guid]::NewGuid().ToString('N'))
     Stop-RunningProcesses
     if (Test-Path -LiteralPath $RUNTIME_DIR) {
         Move-Item -LiteralPath $RUNTIME_DIR -Destination $backup
     }
     try {
         Move-Item -LiteralPath (Join-Path $SourceRoot 'runtime') -Destination $RUNTIME_DIR
-        foreach ($name in @('dsh.cmd', 'update.ps1', 'setup-shortcuts.ps1', 'start-web.cmd', 'start-desktop.cmd', 'smoke-native.cjs')) {
+        foreach ($name in @(
+            'dsh.cmd', 'update.ps1', 'setup-shortcuts.ps1', 'start-web.cmd', 'start-desktop.cmd',
+            'update.cmd', '启动网页版.bat', '启动桌面窗口.bat', '启动桌面版.bat',
+            '在线更新.bat', '创建桌面快捷方式.bat', '一键解除拦截(自签名信任).bat',
+            '使用说明.txt', 'smoke-native.cjs'
+        )) {
             $source = Join-Path $SourceRoot $name
             if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination (Join-Path $APP_ROOT $name) -Force }
         }
