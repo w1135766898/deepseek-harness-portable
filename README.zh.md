@@ -8,6 +8,29 @@
 
 原生桌面外壳请下载完整的 `DeepSeek Harness-win32-x64` 目录；单文件浏览器启动器请下载 `dsh-desktop-web-<version>-win-x64.exe`。原生目录中的所有文件必须保持在一起。
 
+## 为什么做这个项目
+
+这里提供的是 DeepSeek Harness 本身的分发层，而不是另一个聊天客户端。Web 界面和插件运行时仍然是 Harness 产品本身，保留 profile、session、skill、tool、workspace 流程以及可组合的插件图；这个仓库为同一个运行时补充 Windows 分发方式。
+
+下面的比较选取相邻的公开项目作为参照，并不把不同产品类别当成直接替代品。仓库会持续变化，以下内容根据 2026-08-14 查看的公开 README 和发布方式整理。
+
+| 项目 | 主要方向 | 这个项目为 Windows 用户增加的内容 |
+| --- | --- | --- |
+| [Eddie0521/turn-deepseek-into-desktop](https://github.com/Eddie0521/turn-deepseek-into-desktop) | 面向 macOS 的轻量原生外壳，提供一键安装、菜单栏常驻、回环地址绑定和关闭 telemetry。 | 把同样的外壳思路带到 Windows x64，同时提供 Electron 原生外壳和单文件浏览器启动器；便携分发物不需要 Xcode 或安装程序。 |
+| [doxdk/deepseek-desktop](https://github.com/doxdk/deepseek-desktop) | 通过 Electron 访问 DeepSeek 聊天网站，支持 localStorage/cookie，流程偏向安装程序。 | 打包的是 DeepSeek Harness agent 运行时，而不只是聊天页面，保留 profile、插件、session、tool 和 workspace 行为；单文件版本可以免安装运行。 |
+| [DeepFundAI/ai-browser](https://github.com/DeepFundAI/ai-browser) | 基于 Electron/Next.js 的更宽泛 AI 浏览器，包含多模态自动化、计划任务、社交集成、文件管理和多模型支持。 | 把范围聚焦在 DeepSeek Harness 的完整运行一致性上，提供更容易复制的 Windows 分发物，不要求终端用户准备应用构建环境。 |
+| [RealZST/HarnessKit](https://github.com/RealZST/HarnessKit) | 统一管理多个 agent 的 skill、MCP server、plugin、hook、配置和规则。 | 专注于忠实运行一套完整 Harness，原生窗口/托盘模式与浏览器模式共享同一个打包后的后端。 |
+
+### 主要优势
+
+- **保持上游一致：** 桌面层包装真实的 DeepSeek Harness composition，而不是另起一套聊天或 agent 客户端。
+- **两种 Windows 模式：** 使用带托盘控制的 Electron 原生窗口，或运行单个 `.exe` 启动回环 Web UI 并打开默认浏览器。
+- **真正便携：** 浏览器启动器不要求安装程序，默认把 `.dsh` home 放在可执行文件旁边，也可以通过 `DSH_HOME` 显式迁移。
+- **本地优先：** 服务默认绑定 `127.0.0.1`，桌面渠道关闭 telemetry，API key 在运行时填写，不嵌入分发文件。
+- **面向 Windows 的打包：** 分发物包含应用图标、打包后的运行时依赖、内置预设和第三方声明，可以整体复制目录或携带单文件。
+
+这种更窄的定位是有意为之：HarnessKit 和 AI Browser 覆盖更广的多 agent 或自动化管理，而这个项目的目标是让 DeepSeek Harness 本身更容易在 Windows 上携带和启动。
+
 ## 使用原生桌面外壳
 
 运行 `DeepSeek Harness.exe`。外壳会启动本地运行时，在自己的窗口中显示 Web 界面，保留托盘入口，记住所选 workspace，并使用 DeepSeek 图标。关闭窗口时会隐藏窗口；请使用托盘菜单退出或重启。
