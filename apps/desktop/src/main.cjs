@@ -208,9 +208,173 @@ async function chooseWorkspace() {
   rebuildMenus()
 }
 
+const https = require('node:https')
+
+function fetchJson(url, timeoutMs = 5000) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'DeepSeek-Harness-Desktop' }, timeout: timeoutMs }, res => {
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        return reject(new Error(`HTTP ${res.statusCode}`))
+      }
+      let data = ''
+      res.on('data', c => data += c)
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data))
+        } catch (e) {
+          reject(e)
+        }
+      })
+    })
+    req.on('error', reject)
+    req.on('timeout', () => {
+      req.destroy()
+      reject(new Error('请求超时'))
+    })
+  })
+}
+
+function getLocalVersion() {
+  try {
+    const pkgPath = join(__dirname, '..', 'package.json')
+    if (existsSync(pkgPath)) {
+      return JSON.parse(readFileSync(pkgPath, 'utf8')).version || '0.1.0-rc.5'
+    }
+  } catch {}
+  return '0.1.0-rc.5'
+}
+
+function compareVersions(v1, v2) {
+  const clean = v => (v || '').replace(/^v/, '').trim()
+  const s1 = clean(v1).split(/[-.]/)
+  const s2 = clean(v2).split(/[-.]/)
+  for (let i = 0; i < Math.max(s1.length, s2.length); i++) {
+    const p1 = isNaN(Number(s1[i])) ? s1[i] || '' : Number(s1[i])
+    const p2 = isNaN(Number(s2[i])) ? s2[i] || '' : Number(s2[i])
+    if (p1 < p2) return -1
+    if (p1 > p2) return 1
+  }
+  return 0
+}
+
+async function queryLatestVersion() {
+  // Multi-source concurrent racing: Alibaba Cloud domestic NPM mirror, Official GitHub API, Git mirror
+  const channels = [
+    {
+      name: '官方国内镜像 (Alibaba Cloud NPM)',
+      url: 'https://registry.npmmirror.com/@deepseek-ai/dsh',
+      parser: data => data['dist-tags']?.latest || data['dist-tags']?.next,
+      releaseUrl: 'https://github.com/deepseek-ai/deepseek-harness/releases',
+    },
+    {
+      name: 'GitHub 官方源 (Direct API)',
+      url: 'https://api.github.com/repos/w1135766898/deepseek-harness-portable/releases/latest',
+      parser: data => (data.tag_name || '').replace(/^v/, ''),
+      releaseUrl: data => data.html_url || 'https://github.com/w1135766898/deepseek-harness-portable/releases',
+    },
+    {
+      name: 'FastGit 国内加速节点',
+      url: 'https://raw.gitmirror.com/w1135766898/deepseek-harness-portable/main/apps/desktop/package.json',
+      parser: data => data.version,
+      releaseUrl: 'https://github.com/w1135766898/deepseek-harness-portable/releases',
+    },
+    {
+      name: '官方 NPM 全球源',
+      url: 'https://registry.npmjs.org/@deepseek-ai/dsh',
+      parser: data => data['dist-tags']?.latest,
+      releaseUrl: 'https://github.com/deepseek-ai/deepseek-harness/releases',
+    }
+  ]
+
+  const results = await Promise.allSettled(channels.map(async c => {
+    const data = await fetchJson(c.url)
+    const version = c.parser(data)
+    if (!version) throw new Error('No version tag found')
+    const relUrl = typeof c.releaseUrl === 'function' ? c.releaseUrl(data) : c.releaseUrl
+    return { channel: c.name, version, releaseUrl: relUrl }
+  }))
+
+  const successful = results
+    .filter(r => r.status === 'fulfilled')
+    .map(r => r.value)
+
+  if (successful.length === 0) {
+    throw new Error('所有更新节点连接超时，请检查网络。')
+  }
+
+  successful.sort((a, b) => compareVersions(b.version, a.version))
+  return successful[0]
+}
+
+function triggerInPlaceUpdate() {
+  const root = join(__dirname, '..', '..', '..')
+  const updateScript = join(root, '在线更新.bat')
+  const updatePs1 = join(root, 'runtime', 'update.ps1')
+
+  if (existsSync(updateScript)) {
+    shell.openPath(updateScript)
+  } else if (existsSync(updatePs1)) {
+    spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', updatePs1], {
+      detached: true,
+      stdio: 'ignore',
+    }).unref()
+  } else {
+    void shell.openExternal('https://github.com/w1135766898/deepseek-harness-portable/releases')
+  }
+}
+
+async function checkForUpdates(manual = true) {
+  const current = getLocalVersion()
+  try {
+    const latestInfo = await queryLatestVersion()
+    const hasUpdate = compareVersions(latestInfo.version, current) > 0
+
+    if (hasUpdate) {
+      const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible() ? window : undefined
+      const choice = await dialog.showMessageBox(parentWindow, {
+        type: 'info',
+        title: 'DeepSeek Harness 更新提示',
+        message: `发现 DeepSeek Harness 最新版本: v${latestInfo.version}`,
+        detail: `当前安装版本: v${current}\n已自动优选最佳测速通道: ${latestInfo.channel}\n\n是否立即启动一键增量热升级？（所有会话与配置将 100% 完好保留）`,
+        buttons: ['立即更新 (一键热升级)', '查看发布说明', '稍后提醒'],
+        defaultId: 0,
+        cancelId: 2,
+      })
+
+      if (choice.response === 0) {
+        triggerInPlaceUpdate()
+      } else if (choice.response === 1) {
+        void shell.openExternal(latestInfo.releaseUrl)
+      }
+    } else if (manual) {
+      const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible() ? window : undefined
+      await dialog.showMessageBox(parentWindow, {
+        type: 'info',
+        title: '检查更新',
+        message: '当前已是最新版本！',
+        detail: `当前版本: v${current}\n检测通道: ${latestInfo.channel} (连接正常)\n暂无可用更新。`,
+        buttons: ['确定'],
+      })
+    }
+  } catch (error) {
+    if (manual) {
+      const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible() ? window : undefined
+      await dialog.showMessageBox(parentWindow, {
+        type: 'warning',
+        title: '检查更新失败',
+        message: '无法连接到更新服务器',
+        detail: `错误详情: ${error.message}\n如果网络受到限制，您也可以直接运行目录下的【在线更新.bat】进行国内镜像换源更新。`,
+        buttons: ['确定'],
+      })
+    }
+  }
+}
+
 function menuItems() {
   return [
     { label: `Show ${APP_NAME}`, click: showWindow },
+    { label: 'Check for Updates… (检查更新)', click: () => { void checkForUpdates(true) } },
+    { type: 'separator' },
     { label: 'Choose Workspace…', click: () => { void chooseWorkspace() } },
     { label: `Open Workspace (${workspace()})`, click: () => { void shell.openPath(workspace()) } },
     {
@@ -273,6 +437,9 @@ async function createApp() {
   tray.on('double-click', () => showWindow())
   rebuildMenus()
   await restartHarness()
+  setTimeout(() => {
+    void checkForUpdates(false)
+  }, 4000)
 }
 
 const gotLock = app.requestSingleInstanceLock()

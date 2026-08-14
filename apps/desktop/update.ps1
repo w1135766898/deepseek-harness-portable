@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # DeepSeek Harness Portable - One-Click Fast Updater (With Domestic Mirror Acceleration)
 # ==============================================================================
 
@@ -45,22 +45,33 @@ function Get-LocalVersion {
 }
 
 function Get-RemoteRelease {
-    Write-Host '[1/4] 正在连接多节点查询最新发布版本...' -ForegroundColor Yellow
+    Write-Host '[1/4] 正在连接多节点查询官方最新发布版本 (含国内极速镜像)...' -ForegroundColor Yellow
     
     $endpoints = @(
+        'https://registry.npmmirror.com/@deepseek-ai/dsh',
         ('https://api.github.com/repos/' + $REPO + '/releases/latest'),
+        ('https://raw.gitmirror.com/' + $REPO + '/main/apps/desktop/package.json'),
         ('https://ghfast.top/https://raw.githubusercontent.com/' + $REPO + '/main/apps/desktop/package.json'),
-        ('https://raw.gitmirror.com/' + $REPO + '/main/apps/desktop/package.json')
+        'https://registry.npmjs.org/@deepseek-ai/dsh'
     )
 
     foreach ($ep in $endpoints) {
         try {
             $headers = @{ 'User-Agent' = 'DeepSeek-Harness-Updater' }
-            $res = Invoke-RestMethod -Uri $ep -Headers $headers -TimeoutSec 6
+            $res = Invoke-RestMethod -Uri $ep -Headers $headers -TimeoutSec 5
+            if ($res.'dist-tags'.latest) {
+                Write-Host ('  -> [连接成功] 来自官方国内镜像源 (Alibaba Cloud CDN): v' + $res.'dist-tags'.latest) -ForegroundColor Green
+                return [PSCustomObject]@{
+                    tag_name = ('v' + $res.'dist-tags'.latest)
+                    assets = @()
+                }
+            }
             if ($res.tag_name) {
+                Write-Host ('  -> [连接成功] 来自 GitHub 官方发布节点: ' + $res.tag_name) -ForegroundColor Green
                 return $res
             }
             if ($res.version) {
+                Write-Host ('  -> [连接成功] 来自 Git 国内加速镜像: v' + $res.version) -ForegroundColor Green
                 return [PSCustomObject]@{
                     tag_name = ('v' + $res.version)
                     assets = @()
