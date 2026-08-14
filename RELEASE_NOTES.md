@@ -1,8 +1,8 @@
-# DeepSeek Harness for Win v1.0.0
+# DeepSeek Harness for Win v1.0.1
 
 [中文](RELEASE_NOTES.zh.md)
 
-Windows x64 portable release · 2026-08-14
+Windows x64 portable release · 2026-08-15
 
 Community distribution, not an official Microsoft-signed build.
 
@@ -22,10 +22,10 @@ Community distribution, not an official Microsoft-signed build.
 
 ## Components
 
-- Distribution: 1.0.0
+- Distribution: 1.0.1
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.0-rc.5 (@deepseek-ai/dsh-web-app)
-- Tag: v1.0.0
+- Tag: v1.0.1
 
 ## Checksums and security
 
