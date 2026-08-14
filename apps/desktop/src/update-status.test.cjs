@@ -3,7 +3,10 @@ const { mkdtempSync, rmSync } = require('node:fs')
 const { tmpdir } = require('node:os')
 const { join } = require('node:path')
 const test = require('node:test')
+const { compareVersions } = require('./update-client.cjs')
 const {
+  clearUpdateStatus,
+  isSupersededByCurrentVersion,
   normalizeUpdateStatus,
   readUpdateStatus,
   reconcileUpdateStatus,
@@ -48,6 +51,25 @@ test('accepts the legacy version field and rejects malformed status', () => {
   })
 })
 
+test('clears an obsolete status after a direct replacement reaches its target', () => {
+  const userData = mkdtempSync(join(tmpdir(), 'dsh-update-status-'))
+  try {
+    const written = writeUpdateStatus(userData, {
+      state: 'interrupted',
+      fromVersion: '1.0.3',
+      targetVersion: '1.0.4',
+      stage: 'interrupted',
+      message: 'Portable updater is starting.',
+    })
+    assert.equal(isSupersededByCurrentVersion(written, '1.0.5', compareVersions), true)
+    assert.equal(isSupersededByCurrentVersion({ ...written, state: 'completed' }, '1.0.5', compareVersions), false)
+    assert.equal(clearUpdateStatus(userData), true)
+    assert.equal(readUpdateStatus(userData), undefined)
+  } finally {
+    rmSync(userData, { recursive: true, force: true })
+  }
+})
+
 test('reconciles an active status when its updater process has stopped', () => {
   const active = normalizeUpdateStatus({
     state: 'downloading',
@@ -64,6 +86,23 @@ test('reconciles an active status when its updater process has stopped', () => {
   assert.equal(reconciled.state, 'interrupted')
   assert.equal(reconciled.stage, 'interrupted')
   assert.match(reconciled.message, /download/)
+})
+
+test('reconciles a launch status without a process after its grace period', () => {
+  const active = normalizeUpdateStatus({
+    state: 'starting',
+    targetVersion: '1.0.5',
+    stage: 'launch',
+    message: 'Portable updater is starting.',
+    updatedAt: '2026-08-14T12:00:00.000Z',
+    processId: 0,
+  })
+  const reconciled = reconcileUpdateStatus(active, {
+    now: Date.parse('2026-08-14T12:00:31.000Z'),
+  })
+  assert.equal(reconciled.state, 'interrupted')
+  assert.equal(reconciled.stage, 'interrupted')
+  assert.equal(reconciled.message, 'The updater stopped before it could start. The current installation was kept.')
 })
 
 test('keeps a recent active status while its updater process is alive', () => {
