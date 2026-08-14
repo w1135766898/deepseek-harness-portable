@@ -1,0 +1,6 @@
+{
+  "version": "1.0.0",
+  "name": "DeepSeek Harness for Win v1.0.0",
+  "publishedAt": "2026-08-14",
+  "body": "## Features\n\n- View release notes and version history directly inside the desktop app.\n- See distribution, desktop shell, and kernel component versions from the About view.\n\n## Improvements\n\n- Keep release notes available from the local release manifest when the network is unavailable.\n- Make update decisions clearer by showing the release summary before starting the portable runtime updater.\n\n## Bug Fixes\n\n- Preserve desktop preferences while adding release-note state to the user configuration."
+}

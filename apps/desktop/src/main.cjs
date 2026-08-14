@@ -1,14 +1,19 @@
-const { app, BrowserWindow, dialog, Menu, nativeImage, shell, Tray } = require('electron')
+const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, shell, Tray } = require('electron')
 const { spawn } = require('node:child_process')
 const { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } = require('node:fs')
 const { homedir } = require('node:os')
 const { join } = require('node:path')
 const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
+const { mergeReleaseHistory, normalizeReleaseNotes } = require('./release-notes.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
 
 const APP_NAME = 'DeepSeek Harness'
 const PORTABLE_RELEASE_REPO = 'wsnxxxs/deepseek-harness-portable'
 const RELEASE_MANIFEST_NAME = 'release-manifest.json'
+const RELEASE_NOTES_FILE_NAME = 'release-notes.json'
+const RELEASE_NOTES_PAGE_NAME = 'release-notes.html'
+const RELEASE_NOTES_PRELOAD_NAME = 'release-notes-preload.cjs'
+const RELEASE_HISTORY_LIMIT = 20
 const STARTUP_TIMEOUT_MS = 60_000
 const STOP_TIMEOUT_MS = 5_000
 
@@ -19,6 +24,9 @@ let harnessUrl
 let restartPromise
 let quitting = false
 let restarting = false
+let releaseNotesWindow
+let whatsNewWindow
+let releaseNotesContext = { mode: 'history' }
 
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error)
@@ -28,9 +36,23 @@ function configPath() {
   return join(app.getPath('userData'), 'config.json')
 }
 
+function readConfig() {
+  try {
+    const value = JSON.parse(readFileSync(configPath(), 'utf8'))
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  } catch {
+    return {}
+  }
+}
+
+function updateConfig(patch) {
+  mkdirSync(app.getPath('userData'), { recursive: true })
+  writeFileSync(configPath(), `${JSON.stringify({ ...readConfig(), ...patch }, null, 2)}\n`)
+}
+
 function workspace() {
   try {
-    const saved = JSON.parse(readFileSync(configPath(), 'utf8')).workspace
+    const saved = readConfig().workspace
     if (typeof saved === 'string' && existsSync(saved) && statSync(saved).isDirectory()) return saved
   } catch {
     // A missing or invalid preference uses the documented home-directory default.
@@ -39,8 +61,7 @@ function workspace() {
 }
 
 function saveWorkspace(path) {
-  mkdirSync(app.getPath('userData'), { recursive: true })
-  writeFileSync(configPath(), `${JSON.stringify({ workspace: path }, null, 2)}\n`)
+  updateConfig({ workspace: path })
 }
 
 function iconPath() {
@@ -290,8 +311,13 @@ function firstVersion(...values) {
   return values.find(value => typeof value === 'string' && value.length > 0) || '0.0.0'
 }
 
+function firstText(...values) {
+  return values.find(value => typeof value === 'string' && value.trim().length > 0)?.trim() || 'unknown'
+}
+
 function getLocalReleaseInfo() {
   const packageManifest = readJsonIfPresent(join(__dirname, '..', 'package.json')) || {}
+  const bundledReleaseNotes = readJsonIfPresent(join(__dirname, RELEASE_NOTES_FILE_NAME)) || {}
   const portableRoot = findPortableRoot(__dirname)
   const releaseManifest = portableRoot === undefined
     ? undefined
@@ -313,6 +339,16 @@ function getLocalReleaseInfo() {
       appVersion,
     ),
     kernelVersion: firstVersion(releaseManifest?.kernelVersion, 'unknown'),
+    kernelCommit: firstText(releaseManifest?.kernelCommit),
+    releaseNotes: normalizeReleaseNotes(
+      releaseManifest?.releaseNotes || bundledReleaseNotes,
+      firstVersion(
+        releaseManifest?.distributionVersion,
+        packageManifest.distributionVersion,
+        packageManifest.version,
+        appVersion,
+      ),
+    ),
   }
 }
 
@@ -360,7 +396,17 @@ async function queryLatestVersion() {
       : undefined
     if (zipAsset === undefined) throw new Error('No portable ZIP asset found')
     const relUrl = typeof c.releaseUrl === 'function' ? c.releaseUrl(data) : c.releaseUrl
-    return { channel: c.name, version, releaseUrl: relUrl, assetName: zipAsset.name }
+    return {
+      ...normalizeReleaseNotes({
+        ...data,
+        version,
+        releaseUrl: relUrl,
+        channel: c.name,
+        assetName: zipAsset.name,
+      }, version),
+      channel: c.name,
+      assetName: zipAsset.name,
+    }
   }))
 
   const successful = results
@@ -375,6 +421,281 @@ async function queryLatestVersion() {
   return successful[0]
 }
 
+async function queryReleaseHistory() {
+  const channels = [
+    {
+      name: 'Portable Windows GitHub',
+      url: `https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases?per_page=${RELEASE_HISTORY_LIMIT}`,
+      releaseUrl: data => data.html_url || `https://github.com/${PORTABLE_RELEASE_REPO}/releases`,
+    },
+    {
+      name: 'Portable Windows GitHub mirror',
+      url: `https://ghfast.top/https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases?per_page=${RELEASE_HISTORY_LIMIT}`,
+      releaseUrl: `https://github.com/${PORTABLE_RELEASE_REPO}/releases`,
+    },
+  ]
+
+  const results = await Promise.allSettled(channels.map(async channel => {
+    const data = await fetchJson(channel.url)
+    if (!Array.isArray(data)) throw new Error('Release history response was not an array')
+    return data
+      .filter(release => release && !release.draft)
+      .map(release => normalizeReleaseNotes({
+        ...release,
+        releaseUrl: typeof channel.releaseUrl === 'function' ? channel.releaseUrl(release) : channel.releaseUrl,
+        channel: channel.name,
+        assetName: Array.isArray(release.assets)
+          ? release.assets.find(asset => asset?.name === `DeepSeek-Harness-${String(release.tag_name || '').replace(/^v/, '')}-win32-x64.zip`)?.name
+          : undefined,
+      }))
+      .filter(release => release.version !== '0.0.0')
+  }))
+
+  const successful = results
+    .filter(result => result.status === 'fulfilled')
+    .flatMap(result => result.value)
+  if (successful.length === 0) throw new Error('Release history is unavailable')
+  return successful
+}
+
+function sortReleaseHistory(history) {
+  return mergeReleaseHistory(history)
+    .sort((left, right) => compareVersions(right.version, left.version))
+    .slice(0, RELEASE_HISTORY_LIMIT)
+}
+
+function cachedReleaseHistory() {
+  const cached = readConfig().releaseHistory
+  return Array.isArray(cached) ? cached.map(item => normalizeReleaseNotes(item)).filter(item => item.version !== '0.0.0') : []
+}
+
+function saveReleaseHistory(history) {
+  updateConfig({
+    releaseHistory: sortReleaseHistory(history),
+    releaseHistoryFetchedAt: new Date().toISOString(),
+  })
+}
+
+async function buildReleaseNotesData(context = {}) {
+  const localInfo = getLocalReleaseInfo()
+  const localRelease = normalizeReleaseNotes({
+    ...localInfo.releaseNotes,
+    releaseUrl: localInfo.releaseNotes.releaseUrl || `https://github.com/${PORTABLE_RELEASE_REPO}/releases`,
+  }, localInfo.distributionVersion)
+  const cached = cachedReleaseHistory()
+  let remote = []
+  let offline = false
+  try {
+    remote = await queryReleaseHistory()
+    if (remote.length > 0) saveReleaseHistory(remote)
+  } catch {
+    offline = true
+  }
+
+  const update = context.update === undefined ? undefined : normalizeReleaseNotes(context.update)
+  const history = sortReleaseHistory([update, ...remote, ...cached, localRelease])
+  const latestRelease = history[0] || localRelease
+  const currentRelease = history.find(item => item.version === localInfo.distributionVersion) || localRelease
+  const updateAvailable = Boolean(
+    latestRelease
+      && latestRelease.assetName
+      && compareVersions(latestRelease.version, localInfo.distributionVersion) > 0,
+  )
+
+  return {
+    mode: context.mode || 'history',
+    offline,
+    currentVersion: localInfo.distributionVersion,
+    localInfo,
+    currentRelease,
+    latestRelease: updateAvailable || context.mode === 'update' ? latestRelease : undefined,
+    updateAvailable,
+    selectedVersion: context.selectedVersion
+      || (context.mode === 'update' ? latestRelease.version : currentRelease.version),
+    history,
+  }
+}
+
+function openExternalSafe(value) {
+  if (typeof value !== 'string' || value.trim() === '') return
+  try {
+    const url = new URL(value)
+    if (url.protocol === 'https:') void shell.openExternal(url.toString())
+  } catch {
+    // Release bodies are remote input; reject malformed or non-HTTPS links.
+  }
+}
+
+function releaseNotesWindowKind(senderId) {
+  if (releaseNotesWindow !== undefined && !releaseNotesWindow.isDestroyed() && releaseNotesWindow.webContents.id === senderId) return 'full'
+  if (whatsNewWindow !== undefined && !whatsNewWindow.isDestroyed() && whatsNewWindow.webContents.id === senderId) return 'whats-new'
+  return undefined
+}
+
+function markVersionSeen(version) {
+  if (typeof version === 'string' && version.trim() !== '') updateConfig({ lastSeenVersion: version.trim() })
+}
+
+function closeWhatsNewWindow() {
+  if (whatsNewWindow !== undefined && !whatsNewWindow.isDestroyed()) whatsNewWindow.close()
+}
+
+function registerReleaseNotesIpc() {
+  ipcMain.handle('release-notes:get-data', async event => {
+    const kind = releaseNotesWindowKind(event.sender.id)
+    if (kind === 'full') return buildReleaseNotesData(releaseNotesContext)
+    if (kind === 'whats-new') {
+      const localInfo = getLocalReleaseInfo()
+      return {
+        mode: 'whats-new',
+        currentVersion: localInfo.distributionVersion,
+        currentRelease: localInfo.releaseNotes,
+      }
+    }
+    throw new Error('Unknown release notes window')
+  })
+
+  ipcMain.on('release-notes:action', (event, action) => {
+    const kind = releaseNotesWindowKind(event.sender.id)
+    if (kind === undefined || !action || typeof action.type !== 'string') return
+
+    if (action.type === 'close') {
+      if (kind === 'full' && releaseNotesWindow !== undefined && !releaseNotesWindow.isDestroyed()) releaseNotesWindow.close()
+      if (kind === 'whats-new') closeWhatsNewWindow()
+      return
+    }
+
+    if (action.type === 'open-url') {
+      openExternalSafe(action.url)
+      return
+    }
+
+    if (action.type === 'update' && kind === 'full') {
+      event.sender.send('release-notes:update-state', { label: 'Updater started… / 更新程序已启动…' })
+      if (!triggerInPlaceUpdate()) event.sender.send('release-notes:update-state', { label: 'Open the release page in your browser / 已在浏览器打开发布页' })
+      return
+    }
+
+    if (action.type === 'open-notes' && kind === 'whats-new') {
+      closeWhatsNewWindow()
+      void openReleaseNotesWindow({ mode: 'history', selectedVersion: getLocalVersion() })
+      return
+    }
+
+    if (action.type === 'show-about' && kind === 'full') {
+      releaseNotesContext = { ...releaseNotesContext, mode: 'about' }
+      releaseNotesWindow?.webContents.send('release-notes:reload')
+      return
+    }
+
+    if (action.type === 'show-notes' && kind === 'full') {
+      releaseNotesContext = { ...releaseNotesContext, mode: releaseNotesContext.update ? 'update' : 'history' }
+      releaseNotesWindow?.webContents.send('release-notes:reload')
+    }
+  })
+}
+
+async function openReleaseNotesWindow(context = {}) {
+  releaseNotesContext = { ...context }
+  if (releaseNotesWindow !== undefined && !releaseNotesWindow.isDestroyed()) {
+    releaseNotesWindow.show()
+    releaseNotesWindow.focus()
+    releaseNotesWindow.webContents.send('release-notes:reload')
+    return
+  }
+
+  const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible() ? window : undefined
+  releaseNotesWindow = new BrowserWindow({
+    width: 980,
+    height: 760,
+    minWidth: 760,
+    minHeight: 560,
+    show: false,
+    title: `${APP_NAME} Release Notes`,
+    icon: iconPath(),
+    parent: releaseNotesContext.mode === 'update' ? parentWindow : undefined,
+    modal: releaseNotesContext.mode === 'update' && parentWindow !== undefined,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      preload: join(__dirname, RELEASE_NOTES_PRELOAD_NAME),
+    },
+  })
+  releaseNotesWindow.on('closed', () => { releaseNotesWindow = undefined })
+  releaseNotesWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openExternalSafe(url)
+    return { action: 'deny' }
+  })
+
+  try {
+    await releaseNotesWindow.loadFile(join(__dirname, RELEASE_NOTES_PAGE_NAME))
+    if (releaseNotesWindow !== undefined && !releaseNotesWindow.isDestroyed()) {
+      releaseNotesWindow.show()
+      releaseNotesWindow.focus()
+    }
+  } catch (error) {
+    if (releaseNotesWindow !== undefined && !releaseNotesWindow.isDestroyed()) releaseNotesWindow.close()
+    await dialog.showMessageBox({
+      type: 'error',
+      title: `${APP_NAME} Release Notes`,
+      message: `Unable to open release notes.\n\n${errorMessage(error)}`,
+    })
+  }
+}
+
+async function showWhatsNewWindow() {
+  if (whatsNewWindow !== undefined && !whatsNewWindow.isDestroyed()) {
+    whatsNewWindow.showInactive()
+    return
+  }
+
+  whatsNewWindow = new BrowserWindow({
+    width: 390,
+    height: 220,
+    resizable: false,
+    movable: true,
+    frame: false,
+    transparent: true,
+    hasShadow: true,
+    show: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      preload: join(__dirname, RELEASE_NOTES_PRELOAD_NAME),
+    },
+  })
+  whatsNewWindow.on('closed', () => { whatsNewWindow = undefined })
+  try {
+    await whatsNewWindow.loadFile(join(__dirname, RELEASE_NOTES_PAGE_NAME))
+    const workArea = screen.getPrimaryDisplay().workArea
+    const [width, height] = whatsNewWindow.getSize()
+    whatsNewWindow.setPosition(
+      Math.max(workArea.x + 12, workArea.x + workArea.width - width - 24),
+      Math.max(workArea.y + 12, workArea.y + workArea.height - height - 24),
+    )
+    whatsNewWindow.showInactive()
+  } catch {
+    if (whatsNewWindow !== undefined && !whatsNewWindow.isDestroyed()) whatsNewWindow.close()
+  }
+}
+
+async function showWhatsNewIfNeeded() {
+  const current = getLocalVersion()
+  const lastSeen = readConfig().lastSeenVersion
+  if (typeof lastSeen !== 'string' || lastSeen.trim() === '') {
+    markVersionSeen(current)
+    await showWhatsNewWindow()
+    return
+  }
+  if (compareVersions(current, lastSeen) <= 0) return
+  markVersionSeen(current)
+  await showWhatsNewWindow()
+}
+
 function triggerInPlaceUpdate() {
   const root = findPortableRoot(__dirname)
   if (root !== undefined) {
@@ -385,8 +706,10 @@ function triggerInPlaceUpdate() {
       stdio: 'ignore',
       windowsHide: true,
     }).unref()
+    return true
   } else {
-    void shell.openExternal('https://github.com/wsnxxxs/deepseek-harness-portable/releases')
+    openExternalSafe(`https://github.com/${PORTABLE_RELEASE_REPO}/releases`)
+    return false
   }
 }
 
@@ -397,31 +720,11 @@ async function checkForUpdates(manual = true) {
     const hasUpdate = compareVersions(latestInfo.version, current) > 0
 
     if (hasUpdate) {
-      const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible() ? window : undefined
-      const choice = await dialog.showMessageBox(parentWindow, {
-        type: 'info',
-        title: 'DeepSeek Harness 更新提示',
-        message: `发现 DeepSeek Harness 最新版本: v${latestInfo.version}`,
-        detail: `当前安装版本: v${current}\n已自动优选最佳测速通道: ${latestInfo.channel}\n\n是否立即启动一键增量热升级？（所有会话与配置将 100% 完好保留）`,
-        buttons: ['立即更新 (一键热升级)', '查看发布说明', '稍后提醒'],
-        defaultId: 0,
-        cancelId: 2,
-      })
-
-      if (choice.response === 0) {
-        triggerInPlaceUpdate()
-      } else if (choice.response === 1) {
-        void shell.openExternal(latestInfo.releaseUrl)
-      }
+      closeWhatsNewWindow()
+      await openReleaseNotesWindow({ mode: 'update', currentVersion: current, update: latestInfo })
+      return
     } else if (manual) {
-      const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible() ? window : undefined
-      await dialog.showMessageBox(parentWindow, {
-        type: 'info',
-        title: '检查更新',
-        message: '当前已是最新版本！',
-        detail: `当前版本: v${current}\n检测通道: ${latestInfo.channel} (连接正常)\n暂无可用更新。`,
-        buttons: ['确定'],
-      })
+      await openReleaseNotesWindow({ mode: 'history', selectedVersion: current })
     }
   } catch (error) {
     if (manual) {
@@ -440,10 +743,12 @@ async function checkForUpdates(manual = true) {
 function menuItems() {
   return [
     { label: `Show ${APP_NAME}`, click: showWindow },
-    { label: 'Check for Updates… (检查更新)', click: () => { void checkForUpdates(true) } },
+    { label: 'Check for Updates / 检查更新', click: () => { void checkForUpdates(true) } },
+    { label: 'Release Notes / 更新日志', click: () => { void openReleaseNotesWindow({ mode: 'history' }) } },
+    { label: 'About DeepSeek Harness / 关于', click: () => { void openReleaseNotesWindow({ mode: 'about' }) } },
     { label: 'Open Web UI in Browser', click: () => { void openWebUiInBrowser() } },
     { type: 'separator' },
-    { label: 'Choose Workspace…', click: () => { void chooseWorkspace() } },
+    { label: 'Choose Workspace / 选择工作区', click: () => { void chooseWorkspace() } },
     { label: `Open Workspace (${workspace()})`, click: () => { void shell.openPath(workspace()) } },
     {
       label: 'Use Home as Workspace',
@@ -472,6 +777,7 @@ function rebuildMenus() {
 }
 
 async function createApp() {
+  registerReleaseNotesIpc()
   window = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -506,7 +812,10 @@ async function createApp() {
   rebuildMenus()
   await restartHarness()
   setTimeout(() => {
-    void checkForUpdates(false)
+    void (async () => {
+      await showWhatsNewIfNeeded()
+      await checkForUpdates(false)
+    })()
   }, 4000)
 }
 

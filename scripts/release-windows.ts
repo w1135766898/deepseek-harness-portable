@@ -1,6 +1,6 @@
 /** Build, archive, sign (when configured), and checksum the Windows release. */
 
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { readFile, rm, writeFile } from 'node:fs/promises'
@@ -13,6 +13,7 @@ const desktopManifest = join(root, 'apps', 'desktop', 'package.json')
 const defaultBuildRoot = join(root, 'dist-desktop', 'electron', 'DeepSeek Harness-win32-x64')
 const KERNEL_PACKAGE = '@deepseek-ai/dsh-web-app'
 const RELEASE_MANIFEST_NAME = 'release-manifest.json'
+const RELEASE_NOTES_SOURCE = join(root, 'apps', 'desktop', 'src', 'release-notes.json')
 
 type Options = {
   input?: string
@@ -77,14 +78,43 @@ function kernelVersion(buildRoot: string): string {
   return validateVersion(manifest.version, `${KERNEL_PACKAGE} version in ${packagePath}`)
 }
 
+function kernelCommit(): string {
+  const configured = process.env.GITHUB_SHA || process.env.KERNEL_GIT_COMMIT
+  if (configured && /^[0-9a-f]{7,64}$/i.test(configured)) return configured
+  try {
+    const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
+    if (/^[0-9a-f]{7,64}$/i.test(commit)) return commit
+  } catch {
+    // Source archives may not contain a .git directory.
+  }
+  return 'unknown'
+}
+
+function bundledReleaseNotes(version: string): Record<string, unknown> {
+  let source: Record<string, unknown> = {}
+  if (existsSync(RELEASE_NOTES_SOURCE)) {
+    const parsed = JSON.parse(readFileSync(RELEASE_NOTES_SOURCE, 'utf8')) as unknown
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) source = parsed as Record<string, unknown>
+  }
+  const body = typeof source.body === 'string' ? source.body : ''
+  return {
+    version,
+    name: typeof source.name === 'string' && source.name.trim() ? source.name : `DeepSeek Harness for Win v${version}`,
+    ...(typeof source.publishedAt === 'string' && source.publishedAt.trim() ? { publishedAt: source.publishedAt } : {}),
+    body,
+  }
+}
+
 async function writeReleaseManifest(buildRoot: string, version: string, shellVersion: string): Promise<void> {
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     distributionVersion: version,
     desktopVersion: shellVersion,
     kernelVersion: kernelVersion(buildRoot),
+    kernelCommit: kernelCommit(),
     kernelPackage: KERNEL_PACKAGE,
     kernelRepository: 'https://github.com/deepseek-ai/deepseek-harness',
+    releaseNotes: bundledReleaseNotes(version),
   }
   await writeFile(join(buildRoot, RELEASE_MANIFEST_NAME), `${JSON.stringify(manifest, null, 2)}\n`)
   console.log(`Release manifest written: ${join(buildRoot, RELEASE_MANIFEST_NAME)}`)
