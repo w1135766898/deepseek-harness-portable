@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-这个 workspace 包构建 DeepSeek Harness for Win v1.0.5 的原生 Electron 桌面外壳。它会在回环地址启动现有 Web runtime，将页面嵌入 BrowserWindow，并保留托盘图标提供桌面操作。
+这个 workspace 包构建 DeepSeek Harness for Win v1.0.6 的原生 Electron 桌面外壳。它会在回环地址启动现有 Web runtime，将页面嵌入 BrowserWindow，并保留托盘图标提供桌面操作。
 
 ## 运行能力
 
@@ -12,7 +12,8 @@
 - 托盘和应用菜单提供工作区、浏览器模式、更新、更新日志和关于入口。
 - 从 GitHub 或配置的镜像获取发布说明，并支持缓存和本地清单离线降级。
 - 在应用内显示便携版更新的下载与校验进度，完成后再询问是否重启。
-- 在主窗口内显示更新 Banner，点击后在当前窗口滑出更新日志抽屉；不再创建独立通知窗口或二级更新窗口。
+- 在标题栏下方居中显示紧凑更新横幅，7 秒或关闭后销毁，支持按版本忽略，并在当前窗口滑出更新日志抽屉。
+- 原生侧边栏 Logo 融合桌面菜单：展开态左键打开菜单，收起态左键展开侧边栏、右键打开菜单。
 - Windows 11 下使用 Mica/标题栏覆盖与系统主题同步，并记忆窗口位置、尺寸和最大化状态。
 
 ## 构建与测试
@@ -32,8 +33,8 @@
 
 ## 发布身份
 
-- 发布：DeepSeek Harness for Win v1.0.5
-- 分发：1.0.5
+- 发布：DeepSeek Harness for Win v1.0.6
+- 分发：1.0.6
 - 外壳：0.1.0-shell.2
 - 内核：读取打包后的 @deepseek-ai/dsh-web-app manifest
 

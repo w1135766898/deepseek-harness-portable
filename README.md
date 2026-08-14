@@ -6,10 +6,10 @@ DeepSeek Harness for Win is a community Windows x64 distribution of DeepSeek Har
 
 ## Latest release
 
-- Release: DeepSeek Harness for Win v1.0.5
-- Tag: v1.0.5
-- Download: [GitHub Release](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.0.5)
-- Distribution version: 1.0.5
+- Release: DeepSeek Harness for Win v1.0.6
+- Tag: v1.0.6
+- Download: [GitHub Release](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.0.6)
+- Distribution version: 1.0.6
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.0-rc.5
 
@@ -44,7 +44,9 @@ Do not delete or rename the runtime directory.
 - dsh.cmd provides the same web entry and supports dsh update.
 - The desktop tray menu provides Check for Updates, Release Notes, and About.
 - When a new release is found, the desktop shell downloads and verifies it in-app with progress before asking to restart.
-- Release Notes and About open in a same-window slide-over drawer; after an upgrade, the banner collapses to a small update bell.
+- Update notices use a centered, transient banner below the title bar; they slide away and are destroyed after seven seconds or dismissal, with an optional per-version "Do not remind me again" choice.
+- The native sidebar logo is blue and opens the desktop menu when the sidebar is expanded; in the collapsed state, left click still expands the sidebar and right click opens the menu.
+- Release Notes and About open in a same-window slide-over drawer without a persistent update pill.
 - The Windows shell uses Mica/title-bar overlay styling, a staged startup splash, system theme synchronization, and persisted multi-monitor-safe window bounds.
 
 The updater verifies the prepared portable ZIP again, validates the release manifest and native dependencies, then replaces runtime as one operation after restart confirmation.
