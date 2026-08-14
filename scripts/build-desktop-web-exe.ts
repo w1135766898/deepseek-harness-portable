@@ -26,7 +26,7 @@ const root = resolve(import.meta.dirname, '..')
 const DEPLOY_ROOT_PACKAGE = 'dsh-desktop-web-pkg'
 /** The packaged boot entry inside the deployed closure (staged at the closure root). */
 const ENTRY_BIN = 'lib/packaged-bin.js'
-/** Base executable basename; the version is appended from the root manifest. */
+/** Base executable basename; the version is appended from the desktop manifest. */
 const OUTPUT_BASENAME = 'dsh-desktop-web'
 /** Default Node major; SEA mode requires at least Node 22. */
 const DEFAULT_NODE_RANGE = 'node24'
@@ -44,6 +44,20 @@ const ELECTRON_OUT_DIR = 'dist-desktop/electron'
 const STAGING_DIR = 'dist-desktop/node'
 /** Legacy deploy may hoist direct workspace packages into the deploy source's own node_modules. */
 const DEPLOY_SOURCE_NODE_MODULES = 'apps/desktop/node_modules'
+
+/** The desktop app owns the version used by every Windows artifact. */
+const DESKTOP_PACKAGE_JSON = resolve(root, 'apps/desktop/package.json')
+
+function desktopVersion(): string {
+  if (!existsSync(DESKTOP_PACKAGE_JSON)) {
+    throw new Error(`build-desktop-web-exe: desktop manifest is missing: ${DESKTOP_PACKAGE_JSON}`)
+  }
+  const version = (JSON.parse(readFileSync(DESKTOP_PACKAGE_JSON, 'utf8')) as { version?: unknown }).version
+  if (typeof version !== 'string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
+    throw new Error(`build-desktop-web-exe: invalid desktop package version in ${DESKTOP_PACKAGE_JSON}`)
+  }
+  return version
+}
 
 /**
  * Whole-tree assets cover Cordis's runtime bare-package imports, which pkg's
@@ -497,12 +511,7 @@ class DesktopExeBuild {
    */
   async pack(): Promise<string> {
     if (this.cli.electron) return this.packElectron()
-    const packageJsonPath = existsSync(join(root, 'package.json'))
-      ? join(root, 'package.json')
-      : join(root, 'apps', 'desktop', 'package.json')
-    const version = existsSync(packageJsonPath)
-      ? ((JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { version?: string }).version ?? '0.0.0')
-      : '0.0.0'
+    const version = desktopVersion()
     const product = join(this.outDir, `${OUTPUT_BASENAME}-${version}-win-x64.exe`)
     if (!this.cli.dryRun) await mkdir(this.outDir, { recursive: true })
     const baseReady = this.cli.dryRun ? true : await this.preparePkgBaseIcon()

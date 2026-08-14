@@ -260,7 +260,11 @@ function getLocalVersion() {
       if (ver && ver !== '0.0.1') return ver
     }
   } catch {}
-  return '0.1.0-rc.6'
+  try {
+    const appVersion = app.getVersion()
+    if (typeof appVersion === 'string' && appVersion.length > 0) return appVersion
+  } catch {}
+  return '0.0.0'
 }
 
 function compareVersions(v1, v2) {
