@@ -36,6 +36,10 @@ const STARTUP_TIMEOUT_MS = 60_000
 const RENDERER_FIRST_PAINT_TIMEOUT_MS = 5_000
 const SPLASH_FADE_MS = 420
 const STOP_TIMEOUT_MS = 5_000
+const DEFAULT_ZOOM_FACTOR = 1
+const MIN_ZOOM_FACTOR = 0.8
+const MAX_ZOOM_FACTOR = 1.5
+const ZOOM_STEP = 0.1
 
 let window
 let splashWindow
@@ -625,6 +629,43 @@ function requestHarnessRestart() {
   return restartHarness()
 }
 
+function normalizeZoomFactor(value) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return DEFAULT_ZOOM_FACTOR
+  return Math.min(MAX_ZOOM_FACTOR, Math.max(MIN_ZOOM_FACTOR, Math.round(numeric * 100) / 100))
+}
+
+function restoreRendererZoom() {
+  if (window === undefined || window.isDestroyed()) return
+  const factor = normalizeZoomFactor(readConfig().zoomFactor)
+  try { window.webContents.setZoomFactor(factor) } catch {}
+}
+
+function setRendererZoom(factor) {
+  if (window === undefined || window.isDestroyed()) return
+  const normalized = normalizeZoomFactor(factor)
+  try {
+    window.webContents.setZoomFactor(normalized)
+    updateConfig({ zoomFactor: normalized })
+  } catch {}
+}
+
+function adjustRendererZoom(action) {
+  if (window === undefined || window.isDestroyed()) return
+  let current = DEFAULT_ZOOM_FACTOR
+  try { current = window.webContents.getZoomFactor() } catch {}
+  if (action === 'reset') setRendererZoom(DEFAULT_ZOOM_FACTOR)
+  if (action === 'in') setRendererZoom(current + ZOOM_STEP)
+  if (action === 'out') setRendererZoom(current - ZOOM_STEP)
+}
+
+function reloadRenderer() {
+  if (window === undefined || window.isDestroyed()) return
+  rendererReady = false
+  rendererFirstPaint = false
+  window.webContents.reload()
+}
+
 async function openWebUiInBrowser() {
   if (harnessUrl === undefined) await restartHarness()
   if (harnessUrl === undefined) {
@@ -983,6 +1024,7 @@ function registerReleaseNotesIpc() {
     rendererReady = true
     event.sender.send('desktop:theme-changed', themePayload())
     event.sender.send('desktop:workspace:recents', recentWorkspacePayload())
+    restoreRendererZoom()
     if (inAppNotice !== undefined) event.sender.send('desktop:notice', inAppNotice)
     if (queuedReleaseNotesContext !== undefined) {
       event.sender.send('desktop:release-notes:open', queuedReleaseNotesContext)
@@ -1049,6 +1091,10 @@ function registerReleaseNotesIpc() {
       rebuildMenus()
       return
     }
+    if (action.type === 'reload-ui') {
+      reloadRenderer()
+      return
+    }
     if (action.type === 'restart') {
       void requestHarnessRestart()
       return
@@ -1056,6 +1102,11 @@ function registerReleaseNotesIpc() {
     if (action.type === 'open-browser') {
       void openWebUiInBrowser()
     }
+  })
+
+  ipcMain.on('desktop:zoom', (event, action = {}) => {
+    if (!isMainRenderer(event.sender) || !action || typeof action.type !== 'string') return
+    if (action.type === 'reset' || action.type === 'in' || action.type === 'out') adjustRendererZoom(action.type)
   })
 
   ipcMain.on('desktop:notice:show', event => {
@@ -1263,7 +1314,8 @@ function menuItems() {
         await switchWorkspace(homedir())
       },
     },
-    { label: 'Restart Harness', click: () => { void requestHarnessRestart() } },
+    { label: 'Refresh Interface / 刷新界面', accelerator: 'CmdOrCtrl+R', click: reloadRenderer },
+    { label: 'Restart Harness / 完全重启服务', accelerator: 'CmdOrCtrl+Shift+R', click: () => { void requestHarnessRestart() } },
     { type: 'separator' },
     { label: 'Quit', accelerator: process.platform === 'darwin' ? 'Command+Q' : 'Alt+F4', click: () => app.quit() },
   ]

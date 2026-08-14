@@ -248,7 +248,8 @@ if (!isSplashDocument) {
       '<div class="dsh-menu-heading">最近工作区</div>' +
       renderRecentWorkspaceItems() +
       '<div class="dsh-menu-separator"></div>' +
-      '<button class="dsh-menu-item" data-action="desktop-restart" role="menuitem"><span>↺</span><strong>重启 Harness</strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-reload-ui" role="menuitem"><span>⟳</span><strong>刷新界面 <kbd>Ctrl+R</kbd></strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-restart" role="menuitem"><span>↺</span><strong>完全重启服务 <kbd>Ctrl+Shift+R</kbd></strong></button>' +
       '<button class="dsh-menu-item" data-action="desktop-open-browser" role="menuitem"><span>↗</span><strong>在浏览器打开 Web UI</strong></button>' +
       '</div></div>'
   }
@@ -352,6 +353,10 @@ if (!isSplashDocument) {
       sendMenuAction('clear-recent-workspaces')
       return
     }
+    if (action === 'desktop-reload-ui') {
+      sendMenuAction('reload-ui')
+      return
+    }
     if (action === 'desktop-restart') {
       sendMenuAction('restart')
       return
@@ -420,6 +425,7 @@ if (!isSplashDocument) {
     .dsh-menu-item:hover { color: #1d5ebf; background: #eaf2ff; }
     .dsh-menu-item span { display: inline-grid; place-items: center; width: 17px; color: #5b80b8; font-size: 14px; }
     .dsh-menu-item strong { font-weight: 600; }
+    .dsh-menu-item kbd { margin-left: auto; color: #8191a8; font: 10px ui-monospace, SFMono-Regular, Consolas, monospace; }
     .dsh-menu-item:disabled { color: #9aa8bc; cursor: default; opacity: .78; }
     .dsh-menu-heading { padding: 5px 9px 3px; color: #8191a8; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
     .dsh-menu-separator { height: 1px; margin: 5px 4px; background: rgba(116, 138, 171, .18); }
@@ -508,6 +514,7 @@ if (!isSplashDocument) {
       .dsh-menu-item { color: #dbe7fa; }
       .dsh-menu-item:hover { color: #d5e5ff; background: #253b61; }
       .dsh-menu-item span { color: #9ebdf0; }
+      .dsh-menu-item kbd { color: #8ca3c8; }
       .dsh-menu-item:disabled, .dsh-menu-heading { color: #7185a5; }
       .dsh-menu-separator { background: rgba(170, 192, 228, .16); }
       .dsh-notice, .dsh-notice-pill { border-color: rgba(93, 157, 255, .36); background: rgba(19, 29, 47, .94); box-shadow: 0 16px 40px rgba(0, 0, 0, .36); }
@@ -620,16 +627,59 @@ if (!isSplashDocument) {
     render()
   }, true)
   window.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      if (state.drawerOpen) {
+        event.preventDefault()
+        state.drawerOpen = false
+        render()
+        return
+      }
+      if (state.menuOpen) {
+        event.preventDefault()
+        state.menuOpen = false
+        render()
+      }
+      return
+    }
+    const commandKey = event.ctrlKey || event.metaKey
+    if (commandKey && !event.altKey) {
+      const key = event.key.toLowerCase()
+      if (key === 'r' && event.shiftKey) {
+        event.preventDefault()
+        sendMenuAction('restart')
+        return
+      }
+      if (key === 'r' && !event.shiftKey) {
+        event.preventDefault()
+        sendMenuAction('reload-ui')
+        return
+      }
+      if (key === '0') {
+        event.preventDefault()
+        ipcRenderer.send('desktop:zoom', { type: 'reset' })
+        return
+      }
+      if (key === '=' || key === '+') {
+        event.preventDefault()
+        ipcRenderer.send('desktop:zoom', { type: 'in' })
+        return
+      }
+      if (key === '-' || key === '_') {
+        event.preventDefault()
+        ipcRenderer.send('desktop:zoom', { type: 'out' })
+        return
+      }
+    }
+    if (event.key === 'F5') {
+      event.preventDefault()
+      sendMenuAction('reload-ui')
+      return
+    }
     if (event.key === 'Alt' || event.key === 'F10') {
       event.preventDefault()
       state.menuOpen = !state.menuOpen
       render()
       return
-    }
-    if (event.key === 'Escape' && state.menuOpen) {
-      event.preventDefault()
-      state.menuOpen = false
-      render()
     }
   })
 
