@@ -6,22 +6,20 @@
 // (attachment image processing).
 'use strict'
 
-const { join } = require('node:path')
+const { join, resolve } = require('node:path')
 
-const APP = process.argv[2] || join(__dirname, 'resources', 'app')
+const APP = resolve(process.argv[2] || join(__dirname, 'resources', 'app'))
 const results = []
+const tasks = []
 
 function check(name, fn) {
-  try {
-    const value = fn()
-    if (value && typeof value.then === 'function') {
-      value.then(v => results.push(`PASS ${name}: ${v}`), e => results.push(`FAIL ${name}: ${e.message}`))
-    } else {
-      results.push(`PASS ${name}: ${value}`)
-    }
-  } catch (error) {
-    results.push(`FAIL ${name}: ${error.message}`)
-  }
+  const task = Promise.resolve()
+    .then(() => fn())
+    .then(
+      value => results.push(`PASS ${name}: ${value}`),
+      error => results.push(`FAIL ${name}: ${error instanceof Error ? error.message : String(error)}`),
+    )
+  tasks.push(task)
 }
 
 check('runtime identity', () => `${process.execPath} | node ${process.version} | abi ${process.versions.modules} | electron ${process.versions.electron ?? 'n/a'}`)
@@ -71,9 +69,12 @@ check('sharp resize', () => new Promise((resolve, reject) => {
     .then(buffer => resolve(`1x1 png bytes=${buffer.length}`), reject)
 }))
 
-setTimeout(() => {
+Promise.all(tasks).then(() => {
   for (const line of results) console.log(line)
   const failed = results.some(line => line.startsWith('FAIL'))
   console.log(failed ? 'SMOKE_RESULT: FAIL' : 'SMOKE_RESULT: PASS')
   process.exit(failed ? 1 : 0)
-}, 100)
+}).catch(error => {
+  console.error(`Smoke suite execution failed: ${error instanceof Error ? error.message : String(error)}`)
+  process.exit(1)
+})

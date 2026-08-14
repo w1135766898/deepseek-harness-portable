@@ -165,8 +165,11 @@ async function restartHarness() {
 }
 
 async function chooseWorkspace() {
-  if (window === undefined || window.isDestroyed()) return
-  const result = await dialog.showOpenDialog(window, {
+  if (window !== undefined && !window.isDestroyed() && !window.isVisible()) {
+    showWindow()
+  }
+  const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible() ? window : undefined
+  const result = await dialog.showOpenDialog(parentWindow, {
     title: 'Choose workspace',
     defaultPath: workspace(),
     properties: ['openDirectory'],
@@ -239,6 +242,7 @@ async function createApp() {
   tray = new Tray(nativeImage.createFromPath(iconPath()))
   tray.setToolTip(APP_NAME)
   tray.on('click', () => window !== undefined && window.isVisible() ? window.hide() : showWindow())
+  tray.on('double-click', () => showWindow())
   rebuildMenus()
   await restartHarness()
 }
@@ -250,6 +254,9 @@ if (!gotLock) {
   app.on('second-instance', showWindow)
   app.on('before-quit', () => { quitting = true })
   app.on('will-quit', event => {
+    if (tray !== undefined && !tray.isDestroyed()) {
+      tray.destroy()
+    }
     if (harness !== undefined) {
       event.preventDefault()
       void stopHarness().then(() => app.quit())

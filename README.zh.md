@@ -30,9 +30,18 @@
 
 这种更窄的定位是有意为之：HarnessKit 和 AI Browser 覆盖更广的多 agent 或自动化管理，而这个项目的目标是让 DeepSeek Harness 本身更容易在 Windows 上携带和启动。
 
-## 使用原生桌面外壳
+## 使用方式与启动说明
 
-运行 `DeepSeek Harness.exe`。外壳会启动本地运行时，在自己的窗口中显示 Web 界面，保留托盘入口，记住所选 workspace，并使用 DeepSeek 图标。关闭窗口时会隐藏窗口；请使用托盘菜单退出或重启。
+解压完整的 `DeepSeek Harness-win32-x64` 目录后，提供以下三种启动方式：
+
+1. **方式一：双击 `start-web.cmd`（推荐 ⭐⭐⭐⭐⭐，100% 免疫拦截）**
+   - 通过系统已安装的官方签名 Node.js 运行时启动 Web 引擎，自动在默认浏览器中打开 `http://127.0.0.1:3080`。
+   - 完全绕过 Windows 11 智能应用控制（SAC）与 SmartScreen 拦截，所有功能、预设与插件完全一致。
+2. **方式二：双击 `DeepSeek Harness.exe`（原生独立桌面窗口）**
+   - 启动独立桌面应用窗口与右下角系统托盘。
+   - **若遇到 Windows 11 智能应用控制（SAC）强制拦截**：直接双击运行目录内的 **`一键解除拦截(自签名信任).bat`**（或以管理员身份运行），即可自动在当前电脑生成并信任专属安全签名，之后便可直接双击 exe 启动。
+3. **方式三：双击 `start-desktop.cmd`（官方 Electron 独立窗口）**
+   - 通过官方签名版 Electron 加载应用窗口，兼顾独立窗口体验与防拦截。
 
 可以在启动环境中设置 `DEEPSEEK_API_KEY`，也可以在 Web 界面设置中填写。桌面分发物会为本地渠道关闭 telemetry。
 
@@ -56,8 +65,11 @@ pnpm run desktop:package:win
 
 ## 安全与发布状态
 
-本地 Web 服务默认只监听回环地址。桌面可执行文件当前没有代码签名、安装程序或自动更新通道，首次启动时可能触发 Windows SmartScreen 警告。
+本地 Web 服务默认只监听回环地址。桌面可执行文件当前没有商业 CA 代码签名，首次启动时可能触发 Windows SmartScreen 警告或 Windows 11 智能应用控制（SAC）提示。
 
-部分杀毒软件（实测火绒）会在首次写入或下载时静默隔离未签名的 pkg/Electron 可执行文件。请核对每个 Release 随附的 SHA-256 校验值；若被杀毒软件拦截，请从隔离区恢复或为该目录添加信任，恢复后再次核对校验值再运行。
+- **普通 SmartScreen 警告**：点击“更多信息” -> “仍要运行”即可。
+- **智能应用控制（SAC）拦截**：直接使用 `start-web.cmd`，或运行 `一键解除拦截(自签名信任).bat` 添加本机信任。
+- 部分杀毒软件（实测火绒）会在首次写入或下载时静默隔离未签名的可执行文件。请核对随附的 SHA-256 校验值；若被杀毒软件拦截，请从隔离区恢复或为该目录添加信任。当前 Release 的校验值记录在 [SHA256SUMS.txt](SHA256SUMS.txt) 中。
 
 DeepSeek Harness 使用 [MIT](LICENSE) 许可证。第三方声明位于 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+

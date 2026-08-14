@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Build Windows distributions for the desktop web surface.
  *
  * The default route uses the fixed `@yao-pkg/pkg --sea` single-file
@@ -411,10 +411,10 @@ class DesktopExeBuild {
       return
     }
     if (!existsSync(manifestPath)) {
-      throw new Error(`build-desktop-web-exe: ${manifestPath} missing 鈥?pnpm deploy did not produce a staged package.`)
+      throw new Error(`build-desktop-web-exe: ${manifestPath} missing — pnpm deploy did not produce a staged package.`)
     }
     if (!this.cli.electron && !existsSync(join(this.staging, ENTRY_BIN))) {
-      throw new Error(`build-desktop-web-exe: ${join(this.staging, ENTRY_BIN)} missing 鈥?run without --skip-build so the desktop entry builds.`)
+      throw new Error(`build-desktop-web-exe: ${join(this.staging, ENTRY_BIN)} missing — run without --skip-build so the desktop entry builds.`)
     }
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as Record<string, unknown>
     await writeFile(manifestPath, `${JSON.stringify({ ...manifest, ...patch }, null, 2)}\n`)
@@ -431,9 +431,14 @@ class DesktopExeBuild {
    */
   async pack(): Promise<string> {
     if (this.cli.electron) return this.packElectron()
-   const version = (JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as { version?: string }).version ?? '0.0.0'
-   const product = join(this.outDir, `${OUTPUT_BASENAME}-${version}-win-x64.exe`)
-   if (!this.cli.dryRun) await mkdir(this.outDir, { recursive: true })
+    const packageJsonPath = existsSync(join(root, 'package.json'))
+      ? join(root, 'package.json')
+      : join(root, 'apps', 'desktop', 'package.json')
+    const version = existsSync(packageJsonPath)
+      ? ((JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { version?: string }).version ?? '0.0.0')
+      : '0.0.0'
+    const product = join(this.outDir, `${OUTPUT_BASENAME}-${version}-win-x64.exe`)
+    if (!this.cli.dryRun) await mkdir(this.outDir, { recursive: true })
     const baseReady = this.cli.dryRun ? true : await this.preparePkgBaseIcon()
     await this.runPkg(product)
     if (!this.cli.dryRun && !baseReady) {
@@ -442,11 +447,11 @@ class DesktopExeBuild {
       }
       await this.runPkg(product)
     }
-   if (!this.cli.dryRun && !existsSync(product)) {
-     throw new Error(`build-desktop-web-exe: product ${product} is missing after the pkg run; inspect ${this.outDir}.`)
-   }
-   return product
- }
+    if (!this.cli.dryRun && !existsSync(product)) {
+      throw new Error(`build-desktop-web-exe: product ${product} is missing after the pkg run; inspect ${this.outDir}.`)
+    }
+    return product
+  }
 
   /** Run the single-file SEA packager for the staged runtime. */
   private async runPkg(product: string): Promise<void> {

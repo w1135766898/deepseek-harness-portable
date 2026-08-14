@@ -1,0 +1,18 @@
+{
+  "name": "deepseek-harness-portable-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm --filter dsh-desktop-web-pkg run build",
+    "desktop:dev": "pnpm --filter dsh-desktop-web-pkg start",
+    "desktop:test": "pnpm --filter dsh-desktop-web-pkg test",
+    "desktop:package:win": "pnpm exec tsx scripts/build-desktop-web-exe.ts --electron",
+    "desktop:make:win": "pnpm exec tsx scripts/build-desktop-web-exe.ts --electron",
+    "desktop:package:exe": "pnpm exec tsx scripts/build-desktop-web-exe.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

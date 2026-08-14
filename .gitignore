@@ -1,3 +1,6 @@
-﻿.dsh/
+node_modules/
+dist/
+dist-*/
+release/
+.dsh/
 *.log
-

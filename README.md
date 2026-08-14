@@ -30,9 +30,18 @@ The comparison below uses adjacent public projects as reference points rather th
 
 This narrower focus is intentional: HarnessKit and AI Browser cover broader multi-agent or automation management, while this project aims to make the DeepSeek Harness experience itself easy to carry and launch on Windows.
 
-## Use the native desktop shell
+## Launch and Usage Options
 
-Run `DeepSeek Harness.exe`. The shell starts the local runtime, displays the Web UI in its own window, keeps a tray entry, remembers the selected workspace, and uses the DeepSeek icon. Closing the window hides it; use the tray menu to quit or restart.
+After extracting the complete `DeepSeek Harness-win32-x64` directory, three launch options are available:
+
+1. **Option 1: Double-click `start-web.cmd` (Recommended ⭐⭐⭐⭐⭐, 100% immune to SAC)**
+   - Starts the Web engine via the official, Microsoft-trusted Node.js runtime and opens `http://127.0.0.1:3080` in your default browser.
+   - Completely avoids Windows 11 Smart App Control (SAC) and SmartScreen blocks while maintaining identical features, presets, tools, and plugin capabilities.
+2. **Option 2: Double-click `DeepSeek Harness.exe` (Native Standalone Desktop Window)**
+   - Starts the standalone desktop window and system tray.
+   - **If blocked by Windows 11 Smart App Control (SAC)**: Run **`一键解除拦截(自签名信任).bat`** inside the folder (or run as Administrator) to automatically generate and trust a local Code Signing certificate on your machine, enabling direct launch.
+3. **Option 3: Double-click `start-desktop.cmd` (Official Electron Standalone Window)**
+   - Loads the native application window using the official signed Electron binary.
 
 Set `DEEPSEEK_API_KEY` in the launch environment or enter it in the Web UI settings. The desktop distribution disables telemetry for the local desktop channel.
 
@@ -56,8 +65,11 @@ The native output is written to `dist-desktop/electron/`. The build verifies the
 
 ## Security and release status
 
-The local Web server is loopback-only by default. The desktop executable is not code-signed, does not include an installer or auto-update channel, and may trigger a Windows SmartScreen warning on first launch.
+The local Web server is loopback-only by default. The desktop executable is not code-signed with a commercial CA certificate and may trigger a Windows SmartScreen warning or Windows 11 Smart App Control (SAC) prompt on first launch.
 
-Some antivirus products (observed with Huorong/火绒) silently quarantine unsigned pkg/Electron executables on first write or download. Verify the SHA-256 checksum published with each release; if your antivirus flags the file, restore it from quarantine or add an exclusion for the directory, then re-check the checksum before running.
+- **Standard SmartScreen**: Click "More info" -> "Run anyway".
+- **Smart App Control (SAC)**: Use `start-web.cmd` directly, or run `一键解除拦截(自签名信任).bat` to establish local trust.
+- Some antivirus products (observed with Huorong/火绒) silently quarantine unsigned pkg/Electron executables on first write or download. Verify the SHA-256 checksum published with each release; if your antivirus flags the file, restore it from quarantine or add an exclusion for the directory, then re-check the checksum before running. The current release checksums are recorded in [SHA256SUMS.txt](SHA256SUMS.txt).
 
 DeepSeek Harness is licensed under [MIT](LICENSE). Third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
