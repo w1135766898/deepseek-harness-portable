@@ -1,4 +1,4 @@
-DeepSeek Harness for Win v1.0.5
+DeepSeek Harness for Win v1.0.6
 ================================
 
 Chinese guide: 使用说明.txt
@@ -17,11 +17,18 @@ Chinese guide: 使用说明.txt
 4. Release Notes
    Open the tray menu to read the current release, release history, and component
    versions. The desktop shell uses the GitHub mirror and a bundled local fallback.
+   Update notices are centered below the title bar, slide away and are destroyed
+   after seven seconds or dismissal, and can be suppressed per version.
 
-5. setup-shortcuts.ps1
+5. Native Logo menu
+   When the sidebar is expanded, click the blue native logo to open the desktop
+   menu. When collapsed, left click still expands the sidebar and right click
+   opens the desktop menu.
+
+6. setup-shortcuts.ps1
    Creates a desktop shortcut and adds this portable root to the user PATH.
 
-6. uninstall.cmd or uninstall.ps1
+7. uninstall.cmd or uninstall.ps1
    Removes the portable application, shortcuts, and PATH entry. User data is kept
    unless you explicitly confirm its removal.
 

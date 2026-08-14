@@ -6,10 +6,10 @@ DeepSeek Harness for Win 是 DeepSeek Harness 的社区 Windows x64 分发版，
 
 ## 最新发布
 
-- 发布：DeepSeek Harness for Win v1.0.5
-- 标签：v1.0.5
-- 下载：[GitHub Release](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.0.5)
-- 分发版本：1.0.5
+- 发布：DeepSeek Harness for Win v1.0.6
+- 标签：v1.0.6
+- 下载：[GitHub Release](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.0.6)
+- 分发版本：1.0.6
 - 桌面外壳：0.1.0-shell.2
 - 内核：0.1.0-rc.5
 
@@ -44,7 +44,9 @@ DeepSeek Harness for Win 是 DeepSeek Harness 的社区 Windows x64 分发版，
 - dsh.cmd 提供同样的网页版入口，并支持 dsh update。
 - 桌面托盘菜单提供“检查更新”“更新日志”和“关于”。
 - 检测到新版本时，桌面外壳会在应用内显示下载与校验进度，完成后再询问是否重启。
-- “更新日志”和“关于”会在当前窗口内滑出侧边抽屉；升级后通知会自动收起为小铃铛。
+- 更新通知改为标题栏下方居中的轻量横幅，7 秒或关闭后向上滑出并销毁；可按版本选择“不再提示”。
+- 网页原生侧边栏 Logo 染为品牌蓝；侧边栏展开时左键打开桌面菜单，收起时左键仍展开侧边栏、右键打开菜单。
+- “更新日志”和“关于”会在当前窗口内滑出侧边抽屉，不再保留常驻更新胶囊。
 - Windows 外壳支持 Mica/标题栏覆盖、分阶段启动过渡、系统主题同步，以及适配多显示器的窗口状态记忆。
 
 更新器会再次校验已准备好的便携 ZIP、发布清单和原生依赖，并在确认重启后以一次整体替换的方式更新 runtime。

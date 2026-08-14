@@ -1,4 +1,4 @@
-DeepSeek Harness for Win v1.0.5
+DeepSeek Harness for Win v1.0.6
 ================================
 
 英文说明：使用说明.en.txt
@@ -15,12 +15,17 @@ DeepSeek Harness for Win v1.0.5
 
 4. 更新日志
    打开托盘菜单即可查看当前版本、历史发布记录和组件版本。桌面外壳会
-   使用 GitHub 镜像，并在网络不可用时回退到本地发布清单。
+   使用 GitHub 镜像，并在网络不可用时回退到本地发布清单。更新通知是标题栏
+   下方居中的短横幅，7 秒或关闭后销毁；可选择“不再提示”避免同版本重复打扰。
 
-5. setup-shortcuts.ps1
+5. 原生 Logo 菜单
+   侧边栏展开时，点击蓝色原生 Logo 打开桌面菜单；收起时左键仍展开侧边栏，
+   右键 Logo 打开桌面菜单。
+
+6. setup-shortcuts.ps1
    创建桌面快捷方式，并将当前便携目录加入用户 PATH。
 
-6. uninstall.cmd 或 uninstall.ps1
+7. uninstall.cmd 或 uninstall.ps1
    删除便携应用、快捷方式和 PATH 项。除非明确确认，否则会保留用户数据。
 
 本版本没有可信商业 CA 签名，SmartScreen 或 Smart App Control 可能警告或
