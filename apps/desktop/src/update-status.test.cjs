@@ -77,3 +77,17 @@ test('keeps a recent active status while its updater process is alive', () => {
     processIsAlive: () => true,
   }), active)
 })
+
+test('treats a prepared package as active until the app restarts', () => {
+  const active = normalizeUpdateStatus({
+    state: 'ready',
+    targetVersion: '1.0.1',
+    stage: 'ready',
+    updatedAt: '2026-08-14T12:00:00.000Z',
+    processId: 4321,
+  })
+  assert.deepEqual(reconcileUpdateStatus(active, {
+    now: Date.parse('2026-08-14T12:00:05.000Z'),
+    processIsAlive: () => true,
+  }), active)
+})

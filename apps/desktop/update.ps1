@@ -12,6 +12,8 @@ param(
     [string]$StatusFile,
     [string]$FromVersion,
     [string]$TargetVersion,
+    [string]$PackagePath,
+    [string]$ExpectedSha256,
     [switch]$LaunchAfterUpdate
 )
 
@@ -236,6 +238,25 @@ function Get-RemoteRelease {
     throw 'Unable to obtain a matching portable release and its trusted SHA-256 digest.'
 }
 
+function Verify-LocalPackage {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$ExpectedDigest
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw ('The prepared update package was not found: ' + $Path)
+    }
+    $expected = ($ExpectedDigest -replace '^sha256:', '').Trim().ToUpperInvariant()
+    if ($expected -notmatch '^[0-9A-F]{64}$') {
+        throw 'The prepared update package does not have a valid SHA-256 digest.'
+    }
+    $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToUpperInvariant()
+    if ($actual -ne $expected) {
+        throw ('SHA-256 mismatch: expected ' + $expected + ', got ' + $actual)
+    }
+}
+
 function Download-And-Verify {
     param(
         [Parameter(Mandatory = $true)]$Release,
@@ -432,8 +453,29 @@ try {
     Write-Host ('  Local distribution: ' + $localInfo.distributionVersion) -ForegroundColor White
     Write-Host ('  Local desktop:      ' + $localInfo.desktopVersion) -ForegroundColor Gray
     Write-Host ('  Local kernel:       ' + $localInfo.kernelVersion) -ForegroundColor Gray
-    $release = Get-RemoteRelease
-    $TargetVersion = $release.version
+    $usingPreparedPackage = -not [string]::IsNullOrWhiteSpace($PackagePath)
+    if ($usingPreparedPackage) {
+        if ([string]::IsNullOrWhiteSpace($TargetVersion)) {
+            $packageName = Split-Path -Leaf $PackagePath
+            $packageMatch = [regex]::Match($packageName, '^DeepSeek-Harness-(.+)-win32-x64\.zip$')
+            if ($packageMatch.Success) { $TargetVersion = $packageMatch.Groups[1].Value }
+        }
+        if ([string]::IsNullOrWhiteSpace($TargetVersion)) { throw 'A target version is required for a prepared update package.' }
+        if ([string]::IsNullOrWhiteSpace($ExpectedSha256)) { throw 'A SHA-256 digest is required for a prepared update package.' }
+        $normalizedTarget = Normalize-Version $TargetVersion
+        $release = [PSCustomObject]@{
+            tag_name = 'v' + $normalizedTarget
+            version = $normalizedTarget
+            asset_name = Split-Path -Leaf $PackagePath
+            asset_url = ''
+            sha256 = $ExpectedSha256
+        }
+        Write-UpdateStatus -State 'verifying' -Stage 'verify' -Message 'Verifying the prepared update package.' -From $FromVersion -Target $TargetVersion
+        Verify-LocalPackage -Path $PackagePath -ExpectedDigest $ExpectedSha256
+    } else {
+        $release = Get-RemoteRelease
+        $TargetVersion = $release.version
+    }
     Write-UpdateStatus -State 'checking' -Stage $currentStage -Message ('Latest portable release: ' + $release.tag_name) -From $FromVersion -Target $TargetVersion
     Write-Host ('  Latest distribution: ' + $release.tag_name) -ForegroundColor White
     $versionComparison = Compare-Semver -Left $release.version -Right $localInfo.distributionVersion
@@ -443,12 +485,18 @@ try {
         return
     }
 
-    $zipPath = Join-Path $env:TEMP ('DeepSeek-Harness-' + $release.version + '.zip')
+    $zipPath = if ($usingPreparedPackage) {
+        [System.IO.Path]::GetFullPath($PackagePath)
+    } else {
+        Join-Path $env:TEMP ('DeepSeek-Harness-' + $release.version + '.zip')
+    }
     $extractPath = Join-Path $env:TEMP ('dsh-update-' + [Guid]::NewGuid().ToString('N'))
     try {
-        $currentStage = 'download'
-        Write-UpdateStatus -State 'downloading' -Stage $currentStage -Message 'Downloading the portable release.' -From $FromVersion -Target $TargetVersion
-        Download-And-Verify -Release $release -Destination $zipPath
+        if (-not $usingPreparedPackage) {
+            $currentStage = 'download'
+            Write-UpdateStatus -State 'downloading' -Stage $currentStage -Message 'Downloading the portable release.' -From $FromVersion -Target $TargetVersion
+            Download-And-Verify -Release $release -Destination $zipPath
+        }
         $currentStage = 'extract'
         Write-UpdateStatus -State 'extracting' -Stage $currentStage -Message 'Extracting and validating the portable release.' -From $FromVersion -Target $TargetVersion
         $sourceRoot = Extract-Release -ZipPath $zipPath -Destination $extractPath -ExpectedDistributionVersion $release.version
@@ -456,7 +504,17 @@ try {
         Write-UpdateStatus -State 'replacing' -Stage $currentStage -Message 'Waiting for the desktop shell and replacing runtime.' -From $FromVersion -Target $TargetVersion
         Install-ReleaseRoot -SourceRoot $sourceRoot
     } finally {
-        Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
+        if (-not $usingPreparedPackage) {
+            Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
+        } elseif ($env:TEMP) {
+            try {
+                $tempRoot = ([System.IO.Path]::GetFullPath($env:TEMP)).TrimEnd('\') + '\'
+                $packageFullPath = [System.IO.Path]::GetFullPath($PackagePath)
+                if ($packageFullPath.StartsWith($tempRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    Remove-Item -LiteralPath $packageFullPath -Force -ErrorAction SilentlyContinue
+                }
+            } catch {}
+        }
         Remove-Item -LiteralPath $extractPath -Recurse -Force -ErrorAction SilentlyContinue
     }
     Write-UpdateStatus -State 'completed' -Stage 'completed' -Message ('Updated to ' + $release.tag_name + '.') -From $FromVersion -Target $TargetVersion

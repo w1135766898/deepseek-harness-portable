@@ -1,6 +1,6 @@
 const { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, screen, session, shell, Tray } = require('electron')
 const { spawn } = require('node:child_process')
-const { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } = require('node:fs')
+const { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } = require('node:fs')
 const { homedir } = require('node:os')
 const { basename, join, resolve } = require('node:path')
 const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
@@ -9,8 +9,13 @@ const { findPortableRoot } = require('./update-path.cjs')
 const {
   GITHUB_MIRROR_PREFIXES,
   compareVersions,
+  downloadWithFallback,
   fetchJson,
+  fetchText,
+  hashFile,
   mirrorUrls,
+  normalizeSha256,
+  parseSha256Sums,
 } = require('./update-client.cjs')
 const {
   DEFAULT_WINDOW_BOUNDS,
@@ -67,6 +72,8 @@ let rendererFirstPaintWaiters = []
 let lastStartupLog = ''
 let inAppNotice
 let queuedReleaseNotesContext
+let portableUpdateTask
+let preparedPortableUpdate
 let boundsSaveTimer
 let healthTimer
 let healthProbePromise
@@ -929,6 +936,79 @@ function getLocalVersion() {
   return getLocalReleaseInfo().distributionVersion
 }
 
+function safeHttpsUrl(value) {
+  if (typeof value !== 'string' || value.trim() === '') return ''
+  try {
+    const url = new URL(value.trim())
+    return url.protocol === 'https:' ? url.toString() : ''
+  } catch {
+    return ''
+  }
+}
+
+function normalizePortableRelease(value) {
+  const source = value && typeof value === 'object' ? value : {}
+  const normalized = normalizeReleaseNotes(source)
+  return {
+    ...normalized,
+    assetUrl: safeHttpsUrl(source.assetUrl || source.browser_download_url),
+    assetDigest: typeof source.assetDigest === 'string' ? source.assetDigest.trim() : '',
+    assetSize: Number(source.assetSize) || 0,
+    tagName: typeof source.tagName === 'string' && source.tagName.trim() !== ''
+      ? source.tagName.trim()
+      : `v${normalized.version}`,
+  }
+}
+
+function releaseDownloadUrls(release) {
+  const normalized = normalizePortableRelease(release)
+  const directUrl = normalized.assetUrl || safeHttpsUrl(
+    `https://github.com/${PORTABLE_RELEASE_REPO}/releases/download/${encodeURIComponent(normalized.tagName)}/${encodeURIComponent(normalized.assetName || `DeepSeek-Harness-${normalized.version}-win32-x64.zip`)}`,
+  )
+  return mirrorUrls(directUrl, GITHUB_MIRROR_PREFIXES)
+}
+
+async function resolvePortableChecksum(release) {
+  const normalized = normalizePortableRelease(release)
+  const fromAsset = normalizeSha256(normalized.assetDigest)
+  if (fromAsset) return fromAsset
+  if (!normalized.assetName) throw new Error('更新包缺少可验证的文件名。')
+
+  const tag = encodeURIComponent(normalized.tagName)
+  const checksumUrls = [
+    ...mirrorUrls(`https://raw.githubusercontent.com/${PORTABLE_RELEASE_REPO}/${tag}/SHA256SUMS.txt`, GITHUB_MIRROR_PREFIXES),
+    ...mirrorUrls(`https://raw.githubusercontent.com/${PORTABLE_RELEASE_REPO}/main/SHA256SUMS.txt`, GITHUB_MIRROR_PREFIXES),
+  ]
+  return Promise.any(checksumUrls.map(async url => {
+    const checksum = parseSha256Sums(await fetchText(url), normalized.assetName)
+    if (!checksum) throw new Error(`No SHA-256 entry for ${normalized.assetName}`)
+    return checksum
+  }))
+}
+
+function sendUpdateState(payload = {}) {
+  sendRenderer('desktop:update-state', {
+    state: payload.state || '',
+    stage: payload.stage || '',
+    label: payload.label || '',
+    progress: Number.isFinite(payload.progress) ? payload.progress : undefined,
+    targetVersion: payload.targetVersion || '',
+  })
+}
+
+function writeDesktopUpdateStatus({ state, stage, message, fromVersion, targetVersion }) {
+  const status = writeUpdateStatus(app.getPath('userData'), {
+    state,
+    fromVersion,
+    targetVersion,
+    stage,
+    message,
+    processId: process.pid,
+  })
+  sendUpdateState({ state, stage, label: message, targetVersion })
+  return status
+}
+
 async function queryLatestVersion() {
   const apiUrl = `https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases/latest`
   const channels = GITHUB_MIRROR_PREFIXES.map((prefix, index) => ({
@@ -1039,7 +1119,7 @@ async function buildReleaseNotesData(context = {}, options = {}) {
     }
   }
 
-  const update = context.update === undefined ? undefined : normalizeReleaseNotes(context.update)
+  const update = context.update === undefined ? undefined : normalizePortableRelease(context.update)
   const history = sortReleaseHistory([update, ...remote, ...cached, localRelease])
   const latestRelease = history[0] || localRelease
   const currentRelease = history.find(item => item.version === localInfo.distributionVersion) || localRelease
@@ -1097,26 +1177,187 @@ function updateNoticeKind(status) {
   return 'updated'
 }
 
-async function confirmAndStartPortableUpdate(sender, targetVersion) {
-  const currentStatus = getCurrentUpdateStatus()
-  if (isActiveUpdateStatus(currentStatus)) {
-    sender.send('desktop:update-state', { label: '更新已在进行中…' })
-    return
-  }
+async function promptPortableUpdateRestart(prepared) {
+  if (!prepared || prepared !== preparedPortableUpdate) return
   const result = await dialog.showMessageBox(visibleDialogParent(), {
     type: 'question',
-    buttons: ['立即更新', '取消'],
-    defaultId: 1,
+    buttons: ['立即重启更新', '稍后'],
+    defaultId: 0,
+    cancelId: 1,
+    title: '更新包已准备就绪',
+    message: `DeepSeek Harness v${prepared.targetVersion} 已下载并完成校验。`,
+    detail: '应用现在仍保持打开。确认后应用会退出并快速替换运行时，然后自动重新启动。',
+  })
+  if (prepared !== preparedPortableUpdate) return
+  if (result.response !== 0) {
+    sendUpdateState({
+      state: 'ready',
+      stage: 'ready',
+      label: '更新包已就绪，等待重启。',
+      progress: 100,
+      targetVersion: prepared.targetVersion,
+    })
+    return
+  }
+  sendUpdateState({ state: 'replacing', stage: 'launch', label: '正在安全退出应用并安装更新…', targetVersion: prepared.targetVersion })
+  if (!triggerPortableUpdate(prepared.targetVersion, prepared.packagePath, prepared.sha256)) {
+    sendUpdateState({ state: 'ready', stage: 'ready', label: '无法启动更新器，请稍后重试。', progress: 100, targetVersion: prepared.targetVersion })
+  }
+}
+
+async function preparePortableUpdate(targetVersion, release) {
+  const root = findPortableRoot(__dirname)
+  if (root === undefined) throw new Error('未找到便携版安装目录。')
+
+  const normalizedRelease = normalizePortableRelease(release)
+  const fromVersion = getLocalVersion()
+  const effectiveTarget = normalizedRelease.version || targetVersion || 'latest'
+  let packagePath
+  let completed = false
+  let currentStage = 'check'
+
+  try {
+    writeDesktopUpdateStatus({
+      state: 'checking',
+      stage: 'check',
+      message: '正在准备更新包并读取完整性校验信息…',
+      fromVersion,
+      targetVersion: effectiveTarget,
+    })
+    const sha256 = await resolvePortableChecksum(normalizedRelease)
+    currentStage = 'download'
+    const tempRoot = join(app.getPath('temp'), 'deepseek-harness-updates')
+    mkdirSync(tempRoot, { recursive: true })
+    const safeVersion = effectiveTarget.replace(/[^0-9A-Za-z.-]/g, '_')
+    packagePath = join(tempRoot, `DeepSeek-Harness-${safeVersion}-${Date.now()}.zip`)
+    const downloadUrls = releaseDownloadUrls(normalizedRelease)
+    let lastProgressAt = 0
+    currentStage = 'verify'
+    writeDesktopUpdateStatus({
+      state: 'downloading',
+      stage: 'download',
+      message: '正在下载更新包…',
+      fromVersion,
+      targetVersion: effectiveTarget,
+    })
+    await downloadWithFallback(downloadUrls, packagePath, {
+      timeoutMs: 10_000,
+      onAttempt: url => {
+        let host = url
+        try { host = new URL(url).host } catch {}
+        sendUpdateState({
+          state: 'downloading',
+          stage: 'download',
+          label: `正在从 ${host} 下载更新包…`,
+          targetVersion: effectiveTarget,
+        })
+      },
+      onProgress: ({ receivedBytes, totalBytes }) => {
+        const now = Date.now()
+        if (now - lastProgressAt < 200 && totalBytes > 0 && receivedBytes < totalBytes) return
+        lastProgressAt = now
+        const progress = totalBytes > 0
+          ? Math.min(99, Math.round(receivedBytes / totalBytes * 100))
+          : undefined
+        sendUpdateState({
+          state: 'downloading',
+          stage: 'download',
+          label: progress === undefined ? '正在下载更新包…' : `正在下载更新包… ${progress}%`,
+          progress,
+          targetVersion: effectiveTarget,
+        })
+      },
+    })
+
+    writeDesktopUpdateStatus({
+      state: 'verifying',
+      stage: 'verify',
+      message: '正在校验更新包的 SHA-256…',
+      fromVersion,
+      targetVersion: effectiveTarget,
+    })
+    const actualSha256 = await hashFile(packagePath)
+    if (actualSha256 !== sha256) {
+      throw new Error(`SHA-256 校验失败：期望 ${sha256}，实际 ${actualSha256}。`)
+    }
+
+    preparedPortableUpdate = {
+      packagePath,
+      sha256,
+      targetVersion: effectiveTarget,
+      release: normalizedRelease,
+    }
+    completed = true
+    writeDesktopUpdateStatus({
+      state: 'ready',
+      stage: 'ready',
+      message: '更新包已下载并完成校验，等待确认重启。',
+      fromVersion,
+      targetVersion: effectiveTarget,
+    })
+    sendUpdateState({ state: 'ready', stage: 'ready', label: '更新包已就绪，等待重启。', progress: 100, targetVersion: effectiveTarget })
+    await promptPortableUpdateRestart(preparedPortableUpdate)
+  } catch (error) {
+    if (packagePath && !completed) {
+      try { rmSync(packagePath, { force: true }) } catch {}
+    }
+    const message = errorMessage(error)
+    writeDesktopUpdateStatus({
+      state: 'failed',
+      stage: currentStage,
+      message,
+      fromVersion,
+      targetVersion: effectiveTarget,
+    })
+    showInAppNotice({
+      kind: 'failed',
+      currentVersion: fromVersion,
+      release: normalizedRelease,
+      updateStatus: { state: 'failed', message },
+    })
+  }
+}
+
+async function confirmAndStartPortableUpdate(sender, targetVersion) {
+  const currentStatus = getCurrentUpdateStatus()
+  if (currentStatus?.state === 'ready' && preparedPortableUpdate !== undefined) {
+    await promptPortableUpdateRestart(preparedPortableUpdate)
+    return
+  }
+  if (isActiveUpdateStatus(currentStatus)) {
+    sendUpdateState({ state: currentStatus.state, stage: currentStatus.stage, label: currentStatus.message || '更新已在进行中…', targetVersion: currentStatus.targetVersion })
+    return
+  }
+
+  let release = releaseNotesContext.update
+  if (!release || !release.version || (targetVersion && compareVersions(release.version, targetVersion) !== 0)) {
+    try {
+      release = await queryLatestVersion()
+    } catch (error) {
+      sendUpdateState({ state: 'failed', stage: 'check', label: `无法读取更新信息：${errorMessage(error)}`, targetVersion })
+      return
+    }
+  }
+  release = normalizePortableRelease(release)
+  const effectiveTarget = release.version || targetVersion || 'latest'
+  const result = await dialog.showMessageBox(visibleDialogParent(), {
+    type: 'question',
+    buttons: ['开始下载', '取消'],
+    defaultId: 0,
     cancelId: 1,
     title: '确认更新',
-    message: `即将更新 DeepSeek Harness 到 v${targetVersion || '最新版本'}。`,
-    detail: '应用会在更新前退出，完成后自动重新启动。是否继续？',
+    message: `即将下载 DeepSeek Harness v${effectiveTarget}。`,
+    detail: '应用会保持打开并显示下载与校验进度。更新包准备好后，再由您确认是否重启替换。',
   })
-  if (result.response !== 0) return
-  sender.send('desktop:update-state', { label: '更新器已启动，正在安全退出应用…' })
-  if (!triggerPortableUpdate(targetVersion)) {
-    sender.send('desktop:update-state', { label: '无法启动便携版更新器，已打开发布页' })
+  if (result.response !== 0) {
+    sendUpdateState({ state: 'idle', stage: '', label: '', targetVersion: effectiveTarget })
+    return
   }
+  if (portableUpdateTask !== undefined) return
+  sendUpdateState({ state: 'checking', stage: 'check', label: '正在准备下载…', targetVersion: effectiveTarget })
+  portableUpdateTask = preparePortableUpdate(effectiveTarget, release)
+    .finally(() => { portableUpdateTask = undefined })
+  void portableUpdateTask
 }
 
 function registerReleaseNotesIpc() {
@@ -1300,7 +1541,7 @@ async function showUpdateNoticeIfNeeded() {
   })
 }
 
-function triggerPortableUpdate(targetVersion) {
+function triggerPortableUpdate(targetVersion, packagePath, expectedSha256) {
   const root = findPortableRoot(__dirname)
   if (root !== undefined) {
     const updatePs1 = join(root, 'update.ps1')
@@ -1318,7 +1559,7 @@ function triggerPortableUpdate(targetVersion) {
       processId: 0,
     })
     try {
-      const updater = spawn('powershell.exe', [
+      const updaterArgs = [
         '-NoProfile',
         '-ExecutionPolicy',
         'Bypass',
@@ -1330,8 +1571,13 @@ function triggerPortableUpdate(targetVersion) {
         fromVersion,
         '-TargetVersion',
         targetVersion,
-        '-LaunchAfterUpdate',
-      ], {
+      ]
+      if (packagePath) {
+        updaterArgs.push('-PackagePath', packagePath)
+        if (expectedSha256) updaterArgs.push('-ExpectedSha256', expectedSha256)
+      }
+      updaterArgs.push('-LaunchAfterUpdate')
+      const updater = spawn('powershell.exe', updaterArgs, {
         cwd: root,
         detached: true,
         stdio: 'ignore',
