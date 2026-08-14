@@ -67,6 +67,62 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 Type: filesandordirs; Name: "{app}"
 
 [Code]
+var
+  DeleteUserData: Boolean;
+
+function DshHomePath(): String;
+begin
+  Result := GetEnv('DSH_HOME');
+  if Result = '' then
+    Result := ExpandConstant('{userprofile}\.dsh');
+end;
+
+procedure StopRunningApp;
+var
+  ResultCode: Integer;
+begin
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /T /IM "DeepSeek Harness.exe"', '',
+    SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
+function InitializeUninstall(): Boolean;
+var
+  DataRoot: String;
+begin
+  DeleteUserData := False;
+  Result := True;
+  if UninstallSilent then
+    Exit;
+
+  DataRoot := DshHomePath();
+  if MsgBox(
+    'Do you also want to delete local DeepSeek Harness user data?' + #13#10#13#10 +
+    'This removes conversations, credentials, settings, attachments, and other data under:' + #13#10 +
+    DataRoot + #13#10#13#10 +
+    'Choose No to keep your data for a future reinstall.',
+    mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+    DeleteUserData := True;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  DataRoot, ElectronUserData: String;
+begin
+  if CurUninstallStep <> usUninstall then
+    Exit;
+
+  StopRunningApp;
+  if not DeleteUserData then
+    Exit;
+
+  DataRoot := DshHomePath();
+  ElectronUserData := ExpandConstant('{userappdata}\DeepSeek Harness');
+  if CompareText(DataRoot, ExpandConstant('{app}')) <> 0 then
+    DelTree(DataRoot, True, True, True);
+  if CompareText(DataRoot, ElectronUserData) <> 0 then
+    DelTree(ElectronUserData, True, True, True);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;

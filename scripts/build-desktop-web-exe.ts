@@ -757,6 +757,8 @@ class DesktopExeBuild {
         'apps/desktop/一键解除拦截(自签名信任).bat',
         'apps/desktop/使用说明.txt',
         'apps/desktop/dsh.cmd',
+        'uninstall.cmd',
+        'uninstall.ps1',
         'apps/desktop/update.ps1',
         'apps/desktop/setup-shortcuts.ps1',
       ]

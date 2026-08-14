@@ -95,6 +95,8 @@ async function verifyPortableArchive(zipPath: string, buildRoot: string): Promis
   const entries = await listArchiveEntries(zipPath)
   const required = [
     'dsh.cmd',
+    'uninstall.cmd',
+    'uninstall.ps1',
     'update.ps1',
     'setup-shortcuts.ps1',
     'runtime/DeepSeek Harness.exe',

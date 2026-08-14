@@ -9,6 +9,7 @@ This repository produces a community Windows x64 distribution of DeepSeek Harnes
 - **Setup installer:** download `DeepSeek-Harness-Setup-<version>-win32-x64.exe` from Releases.
 - **Online installer:** run `install.ps1` from this repository. It accepts only a release ZIP whose SHA-256 digest is published with the release.
 - **Portable ZIP:** download `DeepSeek-Harness-<version>-win32-x64.zip`, verify `SHA256SUMS.txt`, and extract it without renaming the `runtime/` directory.
+- **Uninstall:** the Setup uninstaller removes the application and asks whether to delete local user data. Portable installs can run `uninstall.cmd`; user data is kept unless explicitly removed.
 
 The installer and updater verify the ZIP digest and required native modules before installing. They do not create certificates or modify Windows trust stores.
 
@@ -19,6 +20,8 @@ DeepSeek Harness-win32-x64/
 ├── dsh.cmd
 ├── start-web.cmd
 ├── start-desktop.cmd
+├── uninstall.cmd
+├── uninstall.ps1
 ├── update.ps1
 ├── setup-shortcuts.ps1
 └── runtime/                 # Electron executable and application dependencies
@@ -26,6 +29,7 @@ DeepSeek Harness-win32-x64/
 
 - `start-desktop.cmd` launches the bundled Electron shell.
 - `start-web.cmd` runs the web entry through a Node.js installation in `PATH`; `dsh.cmd` provides the same web entry and supports `dsh update`.
+- `uninstall.cmd` removes the portable application, shortcuts, and PATH entry. It asks before deleting the official Harness data root (`%USERPROFILE%\.dsh` by default) and Electron desktop data.
 - `setup-shortcuts.ps1` creates a shortcut and adds the portable root to the user `PATH`.
 
 ## Updates

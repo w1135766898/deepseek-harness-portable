@@ -9,6 +9,8 @@ DeepSeek Harness portable quick guide
    Downloads a complete release, verifies SHA-256, and atomically replaces runtime.
 4. setup-shortcuts.ps1
    Creates a desktop shortcut and adds this portable root to the user PATH.
+5. uninstall.cmd
+   Removes the portable application, shortcuts, and PATH entry. It keeps user data unless you explicitly confirm its removal.
 
 This release is not signed by a trusted commercial CA. Self-signed certificates do
 not bypass Smart App Control or SmartScreen, so no certificate or trust store is

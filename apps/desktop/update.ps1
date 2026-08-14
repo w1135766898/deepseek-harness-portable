@@ -134,6 +134,8 @@ function Test-PortableLayout {
 
     $required = @(
         'dsh.cmd',
+        'uninstall.cmd',
+        'uninstall.ps1',
         'update.ps1',
         'setup-shortcuts.ps1',
         'runtime\DeepSeek Harness.exe',
@@ -205,7 +207,7 @@ function Install-ReleaseRoot {
     try {
         Move-Item -LiteralPath (Join-Path $SourceRoot 'runtime') -Destination $RUNTIME_DIR
         foreach ($name in @(
-            'dsh.cmd', 'update.ps1', 'setup-shortcuts.ps1', 'start-web.cmd', 'start-desktop.cmd',
+            'dsh.cmd', 'uninstall.cmd', 'uninstall.ps1', 'update.ps1', 'setup-shortcuts.ps1', 'start-web.cmd', 'start-desktop.cmd',
             'update.cmd', '启动网页版.bat', '启动桌面窗口.bat', '启动桌面版.bat',
             '在线更新.bat', '创建桌面快捷方式.bat', '一键解除拦截(自签名信任).bat',
             '使用说明.txt', 'smoke-native.cjs'

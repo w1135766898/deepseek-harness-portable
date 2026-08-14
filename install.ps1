@@ -131,6 +131,8 @@ function Test-PortableLayout {
 
     $required = @(
         'dsh.cmd',
+        'uninstall.cmd',
+        'uninstall.ps1',
         'runtime\DeepSeek Harness.exe',
         'runtime\resources\app\package.json',
         'runtime\resources\app\lib\packaged-bin.js',
@@ -239,6 +241,17 @@ function Create-Shortcuts {
         $webShortcut.IconLocation = $iconPath + ',0'
         $webShortcut.WindowStyle = 7
         $webShortcut.Save()
+    }
+
+    $uninstallLauncher = Join-Path $InstallDir 'uninstall.cmd'
+    if (Test-Path -LiteralPath $uninstallLauncher) {
+        $uninstallShortcut = $wshShell.CreateShortcut((Join-Path $startMenuDir ($APP_NAME + ' (uninstall).lnk')))
+        $uninstallShortcut.TargetPath = $uninstallLauncher
+        $uninstallShortcut.WorkingDirectory = $InstallDir
+        $uninstallShortcut.Description = 'Uninstall DeepSeek Harness'
+        $uninstallShortcut.IconLocation = $iconPath + ',0'
+        $uninstallShortcut.WindowStyle = 1
+        $uninstallShortcut.Save()
     }
 
     $userPath = [Environment]::GetEnvironmentVariable('Path', [EnvironmentVariableTarget]::User)

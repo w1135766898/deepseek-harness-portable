@@ -12,9 +12,15 @@ The Electron shell starts the existing dsh web runtime on loopback, embeds the r
 
 ## Runtime behavior
 
-The distribution binds the Web server to 127.0.0.1 and sets DSH_TELEMETRY_DISABLED=1. The Electron shell stores its workspace preference and runtime home below Electron's per-user data directory, hides the window when it is closed, and stops the child runtime when the application quits.
+The distribution binds the Web server to 127.0.0.1 and sets DSH_TELEMETRY_DISABLED=1. The Electron shell stores only its desktop-specific workspace preference below Electron's per-user data directory; the Harness runtime uses the official `DSH_HOME` root (`%USERPROFILE%\.dsh` by default). It hides the window when it is closed and stops the child runtime when the application quits.
 
 Set the DeepSeek API key in the Web UI settings or in the environment used to launch the executable. Workspace selection and other application data are user data, not files inside the read-only packaged application directory.
+
+## Uninstall and user data
+
+The Setup uninstaller removes the application files and asks whether to delete local user data. Choosing **No** keeps conversations, credentials, settings, attachments, and desktop preferences for a future reinstall.
+
+For a portable install, run `uninstall.cmd` or `uninstall.ps1` from the portable root. The same keep-data default applies; explicitly confirm the data-removal prompt to remove the official `DSH_HOME` root and Electron desktop data.
 
 ## Development
 
