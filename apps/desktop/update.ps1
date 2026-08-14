@@ -14,7 +14,7 @@ param(
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$DISTRIBUTION_REPO = 'w1135766898/deepseek-harness-portable'
+$DISTRIBUTION_REPO = 'wsnxxxs/deepseek-harness-portable'
 $SCRIPT_ROOT = $PSScriptRoot
 $APP_ROOT = if ((Split-Path -Leaf $SCRIPT_ROOT) -ieq 'runtime') {
     Split-Path -Parent $SCRIPT_ROOT

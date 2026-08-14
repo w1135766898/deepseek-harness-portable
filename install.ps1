@@ -10,7 +10,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$REPO = 'w1135766898/deepseek-harness-portable'
+$REPO = 'wsnxxxs/deepseek-harness-portable'
 $APP_NAME = 'DeepSeek Harness'
 
 function Write-Header {
