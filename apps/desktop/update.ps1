@@ -1,5 +1,6 @@
 # ==============================================================================
-# DeepSeek Harness Portable - One-Click Fast Updater (With Domestic Mirror Acceleration)
+# DeepSeek Harness Official Upstream Direct Updater (With Domestic Mirror Acceleration)
+# Upstream: https://github.com/deepseek-ai/deepseek-harness / @deepseek-ai/dsh
 # ==============================================================================
 
 [CmdletBinding()]
@@ -10,187 +11,203 @@ param(
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$REPO = 'w1135766898/deepseek-harness-portable'
+$OFFICIAL_REPO = "deepseek-ai/deepseek-harness"
 $SCRIPT_ROOT = $PSScriptRoot
 
 # Determine app root
 $APP_ROOT = $SCRIPT_ROOT
-if ((Split-Path -Leaf $SCRIPT_ROOT) -ieq 'runtime') {
+if ((Split-Path -Leaf $SCRIPT_ROOT) -ieq "runtime") {
     $APP_ROOT = Split-Path -Parent $SCRIPT_ROOT
 }
 
 function Write-Banner {
-    Write-Host ''
-    Write-Host '================================================================' -ForegroundColor Cyan
-    Write-Host '   🔄 DeepSeek Harness 在线检查与快速热更新程序                 ' -ForegroundColor Cyan
-    Write-Host '   （内置中国大陆多节点智能加速与海外直连双通道）               ' -ForegroundColor Gray
-    Write-Host '================================================================' -ForegroundColor Cyan
-    Write-Host ''
+    Write-Host ""
+    Write-Host "================================================================" -ForegroundColor Cyan
+    Write-Host "   DeepSeek Harness Official Upstream Direct Updater            " -ForegroundColor Cyan
+    Write-Host "   (Connecting to deepseek-ai upstream with domestic CDN mirror)" -ForegroundColor Gray
+    Write-Host "================================================================" -ForegroundColor Cyan
+    Write-Host ""
 }
 
 function Get-LocalVersion {
     $paths = @(
-        (Join-Path $APP_ROOT 'runtime\resources\app\package.json'),
-        (Join-Path $APP_ROOT 'resources\app\package.json')
+        (Join-Path $APP_ROOT "runtime\resources\app\package.json"),
+        (Join-Path $APP_ROOT "resources\app\package.json")
     )
     foreach ($p in $paths) {
         if (Test-Path $p) {
             try {
                 $json = Get-Content $p -Raw | ConvertFrom-Json
-                if ($json.version) { return ('v' + $json.version) }
+                if ($json.version) { return ("v" + $json.version) }
             } catch {}
         }
     }
-    return '未知'
+    return "unknown"
 }
 
 function Get-RemoteRelease {
-    Write-Host '[1/4] 正在连接多节点查询官方最新发布版本 (含国内极速镜像)...' -ForegroundColor Yellow
+    Write-Host "[1/4] Connecting to DeepSeek official upstream to check latest release..." -ForegroundColor Yellow
     
     $endpoints = @(
-        'https://registry.npmmirror.com/@deepseek-ai/dsh',
-        ('https://api.github.com/repos/' + $REPO + '/releases/latest'),
-        ('https://raw.gitmirror.com/' + $REPO + '/main/apps/desktop/package.json'),
-        ('https://ghfast.top/https://raw.githubusercontent.com/' + $REPO + '/main/apps/desktop/package.json'),
-        'https://registry.npmjs.org/@deepseek-ai/dsh'
+        "https://registry.npmmirror.com/@deepseek-ai/dsh",
+        ("https://api.github.com/repos/" + $OFFICIAL_REPO + "/releases/latest"),
+        "https://registry.npmjs.org/@deepseek-ai/dsh",
+        ("https://ghfast.top/https://api.github.com/repos/" + $OFFICIAL_REPO + "/releases/latest")
     )
 
     foreach ($ep in $endpoints) {
         try {
-            $headers = @{ 'User-Agent' = 'DeepSeek-Harness-Updater' }
+            $headers = @{ "User-Agent" = "DeepSeek-Harness-Updater" }
             $res = Invoke-RestMethod -Uri $ep -Headers $headers -TimeoutSec 5
-            if ($res.'dist-tags'.latest) {
-                Write-Host ('  -> [连接成功] 来自官方国内镜像源 (Alibaba Cloud CDN): v' + $res.'dist-tags'.latest) -ForegroundColor Green
+            if ($res."dist-tags".latest) {
+                Write-Host ("  -> [Connected] DeepSeek Official Domestic Mirror (Alibaba Cloud CDN): v" + $res."dist-tags".latest) -ForegroundColor Green
                 return [PSCustomObject]@{
-                    tag_name = ('v' + $res.'dist-tags'.latest)
-                    assets = @()
+                    tag_name = ("v" + $res."dist-tags".latest)
+                    source = "npm"
+                    version = $res."dist-tags".latest
                 }
             }
             if ($res.tag_name) {
-                Write-Host ('  -> [连接成功] 来自 GitHub 官方发布节点: ' + $res.tag_name) -ForegroundColor Green
-                return $res
-            }
-            if ($res.version) {
-                Write-Host ('  -> [连接成功] 来自 Git 国内加速镜像: v' + $res.version) -ForegroundColor Green
+                Write-Host ("  -> [Connected] DeepSeek Official GitHub: " + $res.tag_name) -ForegroundColor Green
                 return [PSCustomObject]@{
-                    tag_name = ('v' + $res.version)
-                    assets = @()
+                    tag_name = $res.tag_name
+                    source = "github"
+                    version = ($res.tag_name -replace '^v', '')
+                    assets = $res.assets
                 }
             }
         } catch {}
     }
     
     return [PSCustomObject]@{
-        tag_name = 'v0.1.0-rc.5'
-        assets = @()
+        tag_name = "v0.1.0-rc.6"
+        source = "npm"
+        version = "0.1.0-rc.6"
     }
 }
 
 function Stop-RunningProcesses {
-    Write-Host '[2/4] 检查并暂停正在运行的 DeepSeek Harness 实例...' -ForegroundColor Yellow
-    $procs = Get-Process | Where-Object { $_.ProcessName -like '*DeepSeek Harness*' }
+    Write-Host "[2/4] Checking and stopping running DeepSeek Harness instances..." -ForegroundColor Yellow
+    $procs = Get-Process | Where-Object { $_.ProcessName -like "*DeepSeek Harness*" }
     if ($procs) {
-        Write-Host '  -> 正在关闭后台运行中的实例...' -ForegroundColor Gray
+        Write-Host "  -> Stopping background processes..." -ForegroundColor Gray
         $procs | Stop-Process -Force -ErrorAction SilentlyContinue
         Start-Sleep -Seconds 1
     }
 }
 
 function Apply-Update {
-    param($RemoteVer)
-    Write-Host ('[3/4] 正在下载最新版本 (' + $RemoteVer + ')...') -ForegroundColor Yellow
+    param($RemoteVer, $ReleaseInfo)
+    Write-Host ("[3/4] Downloading official upstream core package (" + $RemoteVer + ")...") -ForegroundColor Yellow
     
-    $fileName = 'DeepSeek-Harness-0.1.0-rc.5-win32-x64.zip'
-    $directUrl = 'https://github.com/' + $REPO + '/releases/download/' + $RemoteVer + '/' + $fileName
+    $cleanVer = $RemoteVer -replace '^v', ''
+    $tempFile = Join-Path $env:TEMP ("dsh-official-" + $cleanVer + ".tgz")
     
-    $mirrors = @(
-        $directUrl,
-        ('https://ghfast.top/' + $directUrl),
-        ('https://mirror.ghproxy.com/' + $directUrl),
-        ('https://gh-proxy.com/' + $directUrl),
-        ('https://gh.ddlc.top/' + $directUrl)
+    $downloadUrls = @(
+        ("https://registry.npmmirror.com/@deepseek-ai/dsh/-/dsh-" + $cleanVer + ".tgz"),
+        ("https://cdn.npmmirror.com/packages/%40deepseek-ai/dsh/" + $cleanVer + "/dsh-" + $cleanVer + ".tgz"),
+        ("https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-" + $cleanVer + ".tgz")
     )
 
-    $tempZip = Join-Path $env:TEMP $fileName
     $downloadSuccess = $false
-    foreach ($url in $mirrors) {
+    foreach ($url in $downloadUrls) {
         try {
             $hostName = ([System.Uri]$url).Host
-            Write-Host ('  -> 尝试连接更新节点: ' + $hostName + ' ...') -ForegroundColor Cyan
-            Invoke-WebRequest -Uri $url -OutFile $tempZip -UseBasicParsing -TimeoutSec 120
-            if ((Test-Path $tempZip) -and (Get-Item $tempZip).Length -gt 10000000) {
-                $sizeMb = [Math]::Round(((Get-Item $tempZip).Length / 1MB), 2)
-                Write-Host ('  -> [成功] 更新包下载完成 (' + $sizeMb + ' MB)！') -ForegroundColor Green
+            Write-Host ("  -> Trying official node: " + $hostName + " ...") -ForegroundColor Cyan
+            
+            $wc = New-Object System.Net.WebClient
+            $wc.Headers.Add("User-Agent", "DeepSeek-Harness-Updater")
+            $wc.DownloadFile($url, $tempFile)
+            
+            if ((Test-Path $tempFile) -and (Get-Item $tempFile).Length -gt 1000) {
+                $firstBytes = [System.IO.File]::ReadAllBytes($tempFile)
+                $firstText = [System.Text.Encoding]::UTF8.GetString($firstBytes[0..[Math]::Min(100, $firstBytes.Length-1)])
+                if ($firstText -match "Redirecting to (https?://[^\s]+)") {
+                    $redirUrl = $matches[1]
+                    Write-Host ("  -> Following CDN redirect: " + ([System.Uri]$redirUrl).Host) -ForegroundColor Gray
+                    $wc.DownloadFile($redirUrl, $tempFile)
+                }
+                
+                $sizeKb = [Math]::Round(((Get-Item $tempFile).Length / 1KB), 1)
+                Write-Host ("  -> [Success] Official package downloaded (" + $sizeKb + " KB)!") -ForegroundColor Green
                 $downloadSuccess = $true
                 break
             }
         } catch {
-            Write-Host ('  -> 节点连接超时，自动切换下一镜像...') -ForegroundColor Yellow
+            Write-Host "  -> Node timeout, trying next mirror..." -ForegroundColor Yellow
         }
     }
 
     if (-not $downloadSuccess) {
-        throw '所有更新节点均连接失败，请检查网络或代理。'
+        throw "Failed to download update package from all official mirror endpoints."
     }
 
-    Write-Host '[4/4] 正在热替换程序核心 (保留用户配置与会话)...' -ForegroundColor Yellow
-    $guid = [Guid]::NewGuid().ToString('N')
-    $tempExtract = Join-Path $env:TEMP ('dsh-update-' + $guid)
+    Write-Host "[4/4] Hot-replacing runtime core (Preserving all user sessions and configs)..." -ForegroundColor Yellow
+    $guid = [Guid]::NewGuid().ToString("N")
+    $tempExtract = Join-Path $env:TEMP ("dsh-update-" + $guid)
     New-Item -ItemType Directory -Path $tempExtract -Force | Out-Null
     
     $tar = Get-Command tar.exe -ErrorAction SilentlyContinue
     if ($tar) {
-        & tar.exe -xf $tempZip -C $tempExtract
+        & tar.exe -xf $tempFile -C $tempExtract
     } else {
-        Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
+        Expand-Archive -Path $tempFile -DestinationPath $tempExtract -Force
     }
 
-    $innerDir = Get-ChildItem -Path $tempExtract -Directory | Where-Object { $_.Name -like 'DeepSeek Harness*' } | Select-Object -First 1
-    $sourceRoot = if ($innerDir) { $innerDir.FullName } else { $tempExtract }
-
-    Write-Host '  -> 同步运行时与最新功能组件...' -ForegroundColor Cyan
-    & robocopy.exe $sourceRoot $APP_ROOT /E /R:2 /W:1 /NP /NDL /NFL /NJH /NJS | Out-Null
-    $code = $LASTEXITCODE
-    if ($code -ge 8) {
-        throw ('文件同步失败，Robocopy 退出码: ' + $code)
+    $packageDir = Join-Path $tempExtract "package"
+    if (-not (Test-Path $packageDir)) {
+        $packageDir = $tempExtract
     }
 
-    Remove-Item -Path $tempZip -Force -ErrorAction SilentlyContinue
+    $destAppDir = Join-Path $APP_ROOT "runtime\resources\app"
+    if (-not (Test-Path $destAppDir)) {
+        $destAppDir = Join-Path $APP_ROOT "resources\app"
+    }
+
+    if (Test-Path $destAppDir) {
+        Write-Host ("  -> Syncing official latest files to: " + $destAppDir) -ForegroundColor Cyan
+        & robocopy.exe $packageDir $destAppDir /E /XD node_modules /R:2 /W:1 /NP /NDL /NFL /NJH /NJS | Out-Null
+        $code = $LASTEXITCODE
+        if ($code -ge 8) {
+            throw ("File sync failed, robocopy code: " + $code)
+        }
+    }
+
+    Remove-Item -Path $tempFile -Force -ErrorAction SilentlyContinue
     Remove-Item -Path $tempExtract -Recurse -Force -ErrorAction SilentlyContinue
 
-    Write-Host ''
-    Write-Host '================================================================' -ForegroundColor Green
-    Write-Host ('  🎉 更新成功！已升级至最新版本 ' + $RemoteVer) -ForegroundColor Green
-    Write-Host '  您的工作区、偏好配置与历史会话均已完整保留。' -ForegroundColor White
-    Write-Host '================================================================' -ForegroundColor Green
-    Write-Host ''
+    Write-Host ""
+    Write-Host "================================================================" -ForegroundColor Green
+    Write-Host ("  🎉 Update Successful! Synchronized with official upstream " + $RemoteVer) -ForegroundColor Green
+    Write-Host "  All user sessions, settings and workspaces are safely preserved." -ForegroundColor White
+    Write-Host "================================================================" -ForegroundColor Green
+    Write-Host ""
 }
 
 try {
     Write-Banner
     $localVer = Get-LocalVersion
-    Write-Host ('  本地当前版本: ' + $localVer) -ForegroundColor White
+    Write-Host ("  Local version:  " + $localVer) -ForegroundColor White
     
     $release = Get-RemoteRelease
     $remoteVer = $release.tag_name
-    Write-Host ('  远程最新版本: ' + $remoteVer) -ForegroundColor White
-    Write-Host ''
+    Write-Host ("  Latest version: " + $remoteVer) -ForegroundColor White
+    Write-Host ""
 
     if ($localVer -eq $remoteVer -and -not $Force) {
-        Write-Host '================================================================' -ForegroundColor Green
-        Write-Host ('  [提示] 当前已经是最新版本 (' + $localVer + ')，无需更新！') -ForegroundColor Green
-        Write-Host '  如果需要强制覆盖重新同步，请运行: update.cmd -Force' -ForegroundColor Gray
-        Write-Host '================================================================' -ForegroundColor Green
-        Write-Host ''
+        Write-Host "================================================================" -ForegroundColor Green
+        Write-Host ("  [Notice] Already up to date with official release (" + $localVer + ")!") -ForegroundColor Green
+        Write-Host "================================================================" -ForegroundColor Green
+        Write-Host ""
         return
     }
 
     Stop-RunningProcesses
-    Apply-Update -RemoteVer $remoteVer
+    Apply-Update -RemoteVer $remoteVer -ReleaseInfo $release
 } catch {
-    Write-Host ''
-    Write-Host '================================================================' -ForegroundColor Red
-    Write-Host ('  [更新失败] ' + $_.Exception.Message) -ForegroundColor Red
-    Write-Host '================================================================' -ForegroundColor Red
-    Write-Host ''
+    Write-Host ""
+    Write-Host "================================================================" -ForegroundColor Red
+    Write-Host ("  [Update Error] " + $_.Exception.Message) -ForegroundColor Red
+    Write-Host "================================================================" -ForegroundColor Red
+    Write-Host ""
 }

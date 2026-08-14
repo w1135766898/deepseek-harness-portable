@@ -258,30 +258,30 @@ function compareVersions(v1, v2) {
 }
 
 async function queryLatestVersion() {
-  // Multi-source concurrent racing: Alibaba Cloud domestic NPM mirror, Official GitHub API, Git mirror
+  // Multi-source concurrent racing against official upstream deepseek-ai/deepseek-harness
   const channels = [
     {
-      name: '官方国内镜像 (Alibaba Cloud NPM)',
+      name: 'DeepSeek 官方国内镜像 (Alibaba Cloud NPM CDN)',
       url: 'https://registry.npmmirror.com/@deepseek-ai/dsh',
       parser: data => data['dist-tags']?.latest || data['dist-tags']?.next,
       releaseUrl: 'https://github.com/deepseek-ai/deepseek-harness/releases',
     },
     {
-      name: 'GitHub 官方源 (Direct API)',
-      url: 'https://api.github.com/repos/w1135766898/deepseek-harness-portable/releases/latest',
-      parser: data => (data.tag_name || '').replace(/^v/, ''),
-      releaseUrl: data => data.html_url || 'https://github.com/w1135766898/deepseek-harness-portable/releases',
-    },
-    {
-      name: 'FastGit 国内加速节点',
-      url: 'https://raw.gitmirror.com/w1135766898/deepseek-harness-portable/main/apps/desktop/package.json',
-      parser: data => data.version,
-      releaseUrl: 'https://github.com/w1135766898/deepseek-harness-portable/releases',
-    },
-    {
-      name: '官方 NPM 全球源',
+      name: 'DeepSeek 官方 NPM 全球源',
       url: 'https://registry.npmjs.org/@deepseek-ai/dsh',
-      parser: data => data['dist-tags']?.latest,
+      parser: data => data['dist-tags']?.latest || data['dist-tags']?.next,
+      releaseUrl: 'https://github.com/deepseek-ai/deepseek-harness/releases',
+    },
+    {
+      name: 'DeepSeek 官方 GitHub (Direct API)',
+      url: 'https://api.github.com/repos/deepseek-ai/deepseek-harness/releases/latest',
+      parser: data => (data.tag_name || '').replace(/^v/, ''),
+      releaseUrl: data => data.html_url || 'https://github.com/deepseek-ai/deepseek-harness/releases',
+    },
+    {
+      name: 'DeepSeek 官方 GitHub 国内加速源',
+      url: 'https://ghfast.top/https://api.github.com/repos/deepseek-ai/deepseek-harness/releases/latest',
+      parser: data => (data.tag_name || '').replace(/^v/, ''),
       releaseUrl: 'https://github.com/deepseek-ai/deepseek-harness/releases',
     }
   ]
@@ -299,7 +299,7 @@ async function queryLatestVersion() {
     .map(r => r.value)
 
   if (successful.length === 0) {
-    throw new Error('所有更新节点连接超时，请检查网络。')
+    throw new Error('所有官方更新节点连接超时，请检查网络。')
   }
 
   successful.sort((a, b) => compareVersions(b.version, a.version))
@@ -319,7 +319,7 @@ function triggerInPlaceUpdate() {
       stdio: 'ignore',
     }).unref()
   } else {
-    void shell.openExternal('https://github.com/w1135766898/deepseek-harness-portable/releases')
+    void shell.openExternal('https://github.com/deepseek-ai/deepseek-harness/releases')
   }
 }
 
