@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeepSeek Harness</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background: #0c1220; color: #f8fbff; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, #142849 0, #0c1220 56%); }
+    .splash { display: grid; justify-items: center; gap: 12px; margin-top: -4vh; }
+    .mark { width: 68px; height: 68px; display: grid; place-items: center; border-radius: 22px; color: #fff; background: linear-gradient(145deg, #3d92ff, #1859ca); box-shadow: 0 16px 50px rgba(36, 126, 255, .36); font-size: 31px; animation: breathe 1.8s ease-in-out infinite; }
+    h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: .01em; }
+    .status { min-height: 22px; color: rgba(224, 235, 252, .7); font-size: 13px; }
+    .progress { width: 168px; height: 3px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.12); }
+    .progress i { display: block; width: 40%; height: 100%; border-radius: inherit; background: #5ba8ff; animation: progress 1.35s ease-in-out infinite; }
+    @keyframes breathe { 50% { transform: scale(1.07); box-shadow: 0 18px 58px rgba(36, 126, 255, .56); } }
+    @keyframes progress { from { transform: translateX(-150%); } to { transform: translateX(400%); } }
+  </style>
+</head>
+<body>
+  <main class="splash" aria-live="polite">
+    <div class="mark">◈</div>
+    <h1>DeepSeek Harness</h1>
+    <div class="status" id="status">正在拉起后台引擎…</div>
+    <div class="progress"><i></i></div>
+  </main>
+  <script>
+    (() => {
+      const labels = {
+        engine: '正在拉起后台引擎…',
+        workspace: '正在准备工作区…',
+        interface: '正在加载界面…',
+      }
+      const status = document.getElementById('status')
+      const setStatus = value => { if (labels[value]) status.textContent = labels[value] }
+      if (window.deepSeekSplash) window.deepSeekSplash.onStatus(setStatus)
+      const fallback = ['engine', 'workspace', 'interface']
+      fallback.forEach((value, index) => setTimeout(() => setStatus(value), (index + 1) * 1500))
+    })()
+  </script>
+</body>
+</html>

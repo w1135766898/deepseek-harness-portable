@@ -16,7 +16,7 @@
   "scripts": {
     "build": "tsc -b",
     "start": "electron .",
-    "test": "node --test src/ready-url.test.cjs src/update-path.test.cjs src/release-notes.test.cjs src/update-status.test.cjs && node --check src/main.cjs && node --check src/ready-url.cjs && node --check src/update-path.cjs && node --check src/release-notes.cjs && node --check src/release-notes-preload.cjs && node --check src/update-status.cjs",
+    "test": "node --test src/ready-url.test.cjs src/update-path.test.cjs src/release-notes.test.cjs src/update-status.test.cjs src/window-state.test.cjs && node --check src/main.cjs && node --check src/desktop-preload.cjs && node --check src/ready-url.cjs && node --check src/update-path.cjs && node --check src/release-notes.cjs && node --check src/update-status.cjs",
     "package:win": "pnpm exec tsx ../../scripts/build-desktop-web-exe.ts --electron",
     "make:win": "pnpm run package:win"
   },
