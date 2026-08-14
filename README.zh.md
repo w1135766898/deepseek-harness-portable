@@ -66,4 +66,6 @@ pnpm exec tsx scripts/build-desktop-web-exe.ts
 
 部分杀毒软件（实测火绒）会在首次写入或下载时静默隔离未签名的 pkg/Electron 可执行文件。请核对每个 Release 随附的 SHA-256 校验值；若被杀毒软件拦截，请从隔离区恢复或为该目录添加信任，恢复后再次核对校验值再运行。
 
+当前 Release 的校验值也记录在 [SHA256SUMS.txt](SHA256SUMS.txt) 中。
+
 DeepSeek Harness 使用 [MIT](LICENSE) 许可证。第三方声明位于 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
