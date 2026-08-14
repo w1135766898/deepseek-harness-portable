@@ -40,6 +40,9 @@ const DEFAULT_ZOOM_FACTOR = 1
 const MIN_ZOOM_FACTOR = 0.8
 const MAX_ZOOM_FACTOR = 1.5
 const ZOOM_STEP = 0.1
+const HARNESS_HEALTH_INTERVAL_MS = 10_000
+const HARNESS_HEALTH_TIMEOUT_MS = 3_000
+const HARNESS_HEALTH_FAILURE_THRESHOLD = 3
 
 let window
 let splashWindow
@@ -59,6 +62,14 @@ let lastStartupLog = ''
 let inAppNotice
 let queuedReleaseNotesContext
 let boundsSaveTimer
+let healthTimer
+let healthProbePromise
+let healthGeneration = 0
+let harnessHealth = {
+  state: 'starting',
+  consecutiveFailures: 0,
+  message: '正在启动后台引擎…',
+}
 
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error)
@@ -124,6 +135,15 @@ function recentWorkspacePayload() {
 
 function sendRecentWorkspaceState() {
   sendRenderer('desktop:workspace:recents', recentWorkspacePayload())
+}
+
+function sendHarnessHealthState() {
+  sendRenderer('desktop:harness-status', harnessHealth)
+}
+
+function setHarnessHealth(patch) {
+  harnessHealth = { ...harnessHealth, ...patch }
+  sendHarnessHealthState()
 }
 
 function queueOrSendReleaseNotes(context) {
@@ -405,6 +425,7 @@ function appendOutput(current, chunk) {
 
 function stopHarness() {
   return new Promise(resolve => {
+    stopHarnessHealthMonitor()
     harnessUrl = undefined
     if (harness === undefined) {
       resolve()
@@ -555,6 +576,7 @@ function startHarness(cwd, signal) {
     child.once('error', error => fail(`Harness failed to start: ${error.message}`, error.code || 'SPAWN_ERROR'))
     child.once('exit', code => {
       if (harness === child) {
+        stopHarnessHealthMonitor('disconnected', `后台引擎已退出（code ${code ?? 'unknown'}）`)
         harness = undefined
         harnessUrl = undefined
         if (!quitting && !restarting && ready) {
@@ -585,6 +607,7 @@ async function restartHarness() {
       const url = await startHarness(workspace(), controller.signal)
       if (controller.signal.aborted) throw makeStartupError('Harness startup was cancelled.', lastStartupLog, 'ABORTED')
       harnessUrl = url
+      startHarnessHealthMonitor()
       sendSplashStatus('interface')
       if (window !== undefined && !window.isDestroyed()) {
         await window.loadURL(url)
@@ -599,6 +622,7 @@ async function restartHarness() {
       return true
     } catch (error) {
       harnessUrl = undefined
+      if (!controller.signal.aborted) stopHarnessHealthMonitor('disconnected', errorMessage(error))
       if (!controller.signal.aborted && !quitting) sendSplashState(startupStateForError(error))
       return false
     } finally {
@@ -664,6 +688,63 @@ function reloadRenderer() {
   rendererReady = false
   rendererFirstPaint = false
   window.webContents.reload()
+}
+
+async function probeHarnessHealth(url) {
+  const response = await fetch(`${url}/api/settings.describe`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'client-request',
+      rpcId: `desktop-health-${Date.now()}`,
+      method: 'settings.describe',
+      payload: {},
+    }),
+    signal: AbortSignal.timeout(HARNESS_HEALTH_TIMEOUT_MS),
+  })
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  const body = await response.json()
+  if (!body?.result?.ok) throw new Error(body?.result?.error?.message || '后台引擎未响应 settings.describe')
+}
+
+function runHarnessHealthProbe() {
+  if (harnessUrl === undefined || healthProbePromise !== undefined) return
+  const generation = healthGeneration
+  const url = harnessUrl
+  healthProbePromise = (async () => {
+    try {
+      await probeHarnessHealth(url)
+      if (generation !== healthGeneration) return
+      setHarnessHealth({ state: 'connected', consecutiveFailures: 0, message: '' })
+    } catch (error) {
+      if (generation !== healthGeneration) return
+      const failures = harnessHealth.consecutiveFailures + 1
+      setHarnessHealth({
+        state: failures >= HARNESS_HEALTH_FAILURE_THRESHOLD ? 'disconnected' : 'checking',
+        consecutiveFailures: failures,
+        message: errorMessage(error),
+      })
+    } finally {
+      if (generation === healthGeneration) healthProbePromise = undefined
+    }
+  })()
+}
+
+function stopHarnessHealthMonitor(state = 'starting', message = '正在启动后台引擎…') {
+  healthGeneration += 1
+  if (healthTimer !== undefined) clearInterval(healthTimer)
+  healthTimer = undefined
+  healthProbePromise = undefined
+  harnessHealth = { state, consecutiveFailures: 0, message }
+  sendHarnessHealthState()
+}
+
+function startHarnessHealthMonitor() {
+  if (harnessUrl === undefined) return
+  stopHarnessHealthMonitor('checking', '正在检查后台引擎连接…')
+  healthTimer = setInterval(runHarnessHealthProbe, HARNESS_HEALTH_INTERVAL_MS)
+  healthTimer.unref()
+  runHarnessHealthProbe()
 }
 
 async function openWebUiInBrowser() {
@@ -1018,6 +1099,28 @@ function updateNoticeKind(status) {
   return 'updated'
 }
 
+async function confirmAndStartPortableUpdate(sender, targetVersion) {
+  const currentStatus = getCurrentUpdateStatus()
+  if (isActiveUpdateStatus(currentStatus)) {
+    sender.send('desktop:update-state', { label: '更新已在进行中…' })
+    return
+  }
+  const result = await dialog.showMessageBox(visibleDialogParent(), {
+    type: 'question',
+    buttons: ['立即更新', '取消'],
+    defaultId: 1,
+    cancelId: 1,
+    title: '确认更新',
+    message: `即将更新 DeepSeek Harness 到 v${targetVersion || '最新版本'}。`,
+    detail: '应用会在更新前退出，完成后自动重新启动。是否继续？',
+  })
+  if (result.response !== 0) return
+  sender.send('desktop:update-state', { label: '更新器已启动，正在安全退出应用…' })
+  if (!triggerPortableUpdate(targetVersion)) {
+    sender.send('desktop:update-state', { label: '无法启动便携版更新器，已打开发布页' })
+  }
+}
+
 function registerReleaseNotesIpc() {
   ipcMain.on('desktop:renderer-ready', event => {
     if (!isMainRenderer(event.sender)) return
@@ -1025,6 +1128,7 @@ function registerReleaseNotesIpc() {
     event.sender.send('desktop:theme-changed', themePayload())
     event.sender.send('desktop:workspace:recents', recentWorkspacePayload())
     restoreRendererZoom()
+    event.sender.send('desktop:harness-status', harnessHealth)
     if (inAppNotice !== undefined) event.sender.send('desktop:notice', inAppNotice)
     if (queuedReleaseNotesContext !== undefined) {
       event.sender.send('desktop:release-notes:open', queuedReleaseNotesContext)
@@ -1109,6 +1213,15 @@ function registerReleaseNotesIpc() {
     if (action.type === 'reset' || action.type === 'in' || action.type === 'out') adjustRendererZoom(action.type)
   })
 
+  ipcMain.on('desktop:health:action', (event, action = {}) => {
+    if (!isMainRenderer(event.sender) || !action || typeof action.type !== 'string') return
+    if (action.type === 'reconnect') {
+      runHarnessHealthProbe()
+      return
+    }
+    if (action.type === 'restart-engine') void requestHarnessRestart()
+  })
+
   ipcMain.on('desktop:notice:show', event => {
     if (!isMainRenderer(event.sender) || inAppNotice === undefined) return
     event.sender.send('desktop:notice', inAppNotice)
@@ -1123,18 +1236,10 @@ function registerReleaseNotesIpc() {
     }
 
     if (action.type === 'update') {
-      const currentStatus = getCurrentUpdateStatus()
-      if (isActiveUpdateStatus(currentStatus)) {
-        event.sender.send('desktop:update-state', { label: '更新已在进行中…' })
-        return
-      }
       const targetVersion = typeof action.targetVersion === 'string' && action.targetVersion.trim() !== ''
         ? action.targetVersion.trim()
         : (releaseNotesContext.update?.version || inAppNotice?.release?.version || '')
-      event.sender.send('desktop:update-state', { label: '更新器已启动，正在安全退出应用…' })
-      if (!triggerPortableUpdate(targetVersion)) {
-        event.sender.send('desktop:update-state', { label: '无法启动便携版更新器，已打开发布页' })
-      }
+      void confirmAndStartPortableUpdate(event.sender, targetVersion)
       return
     }
 

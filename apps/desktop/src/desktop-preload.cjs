@@ -54,6 +54,7 @@ if (!isSplashDocument) {
     menuOpen: false,
     recentWorkspaces: [],
     currentWorkspace: '',
+    harnessStatus: { state: 'starting', consecutiveFailures: 0, message: '' },
     notice: undefined,
     noticeExpanded: true,
     noticeTimer: undefined,
@@ -65,6 +66,7 @@ if (!isSplashDocument) {
   let chromeRefs
   let menuMarkup
   let noticeMarkup
+  let healthMarkup
   let drawerContentMarkup
 
   function escapeHtml(value) {
@@ -226,6 +228,12 @@ if (!isSplashDocument) {
     return '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">' + logoMarkup('dsh-notice-logo') + '</div><div class="dsh-notice-copy"><strong>' + title + '</strong><span>' + desc + '</span></div><button class="dsh-button primary" data-action="' + action + '">' + actionLabel + '</button><button class="dsh-notice-dismiss" data-action="notice-collapse" aria-label="稍后查看">×</button></section>'
   }
 
+  function renderHealthBanner() {
+    const status = state.harnessStatus || {}
+    if (status.state !== 'disconnected') return ''
+    return '<section class="dsh-disconnect-banner" role="alert"><div class="dsh-disconnect-copy"><strong>与后台引擎连接中断</strong><span>' + escapeHtml(status.message || '暂时无法访问后台引擎。') + '</span></div><button class="dsh-button" data-action="health-reconnect">重新连接</button><button class="dsh-button primary" data-action="health-restart">重启引擎</button></section>'
+  }
+
   function renderRecentWorkspaceItems() {
     const entries = Array.isArray(state.recentWorkspaces) ? state.recentWorkspaces : []
     const items = entries.length === 0
@@ -265,6 +273,11 @@ if (!isSplashDocument) {
     if (nextNoticeMarkup !== noticeMarkup) {
       chromeRefs.noticeHost.innerHTML = nextNoticeMarkup
       noticeMarkup = nextNoticeMarkup
+    }
+    const nextHealthMarkup = renderHealthBanner()
+    if (nextHealthMarkup !== healthMarkup) {
+      chromeRefs.healthHost.innerHTML = nextHealthMarkup
+      healthMarkup = nextHealthMarkup
     }
     syncDrawer()
   }
@@ -365,6 +378,14 @@ if (!isSplashDocument) {
       sendMenuAction('open-browser')
       return
     }
+    if (action === 'health-reconnect') {
+      ipcRenderer.send('desktop:health:action', { type: 'reconnect' })
+      return
+    }
+    if (action === 'health-restart') {
+      ipcRenderer.send('desktop:health:action', { type: 'restart-engine' })
+      return
+    }
     if (action === 'notice-collapse') {
       collapseNotice()
       return
@@ -429,7 +450,11 @@ if (!isSplashDocument) {
     .dsh-menu-item:disabled { color: #9aa8bc; cursor: default; opacity: .78; }
     .dsh-menu-heading { padding: 5px 9px 3px; color: #8191a8; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
     .dsh-menu-separator { height: 1px; margin: 5px 4px; background: rgba(116, 138, 171, .18); }
-    .dsh-notice { position: fixed; top: 46px; left: 50%; width: min(760px, calc(100vw - 32px)); transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid rgba(87, 151, 255, .32); border-radius: 14px; background: rgba(247, 250, 255, .94); box-shadow: 0 14px 40px rgba(31, 50, 83, .18), 0 1px 2px rgba(15, 23, 42, .08); backdrop-filter: blur(22px) saturate(160%); animation: dsh-slide-in .28s cubic-bezier(.16,1,.3,1); }
+    .dsh-notice { position: fixed; right: 24px; bottom: 24px; width: min(520px, calc(100vw - 32px)); display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid rgba(87, 151, 255, .32); border-radius: 14px; background: rgba(247, 250, 255, .94); box-shadow: 0 14px 40px rgba(31, 50, 83, .18), 0 1px 2px rgba(15, 23, 42, .08); backdrop-filter: blur(22px) saturate(160%); animation: dsh-slide-in .28s cubic-bezier(.16,1,.3,1); z-index: 3; }
+    .dsh-disconnect-banner { position: fixed; top: calc(var(--dsh-titlebar-height) + 12px); right: 16px; width: min(560px, calc(100vw - 32px)); display: flex; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid rgba(221, 143, 33, .34); border-radius: 12px; background: rgba(255, 248, 235, .96); box-shadow: 0 12px 32px rgba(31, 50, 83, .18); backdrop-filter: blur(18px) saturate(150%); animation: dsh-slide-in .28s cubic-bezier(.16,1,.3,1); z-index: 4; }
+    .dsh-disconnect-copy { min-width: 0; flex: 1; display: grid; gap: 2px; }
+    .dsh-disconnect-copy strong { color: #8c5710; font-weight: 700; }
+    .dsh-disconnect-copy span { overflow: hidden; color: #806f55; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
     .dsh-notice-icon { display: grid; flex: 0 0 32px; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: rgba(255, 255, 255, .94); box-shadow: 0 5px 16px rgba(47, 117, 238, .3); }
     .dsh-notice-logo { width: 25px; height: 25px; object-fit: contain; pointer-events: none; }
     .dsh-notice-copy { min-width: 0; flex: 1; display: grid; gap: 1px; }
@@ -437,7 +462,7 @@ if (!isSplashDocument) {
     .dsh-notice-copy span { overflow: hidden; color: #60708a; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
     .dsh-notice-dismiss, .dsh-close { border: 0; background: transparent; color: #7b8aa3; cursor: pointer; font-size: 18px; line-height: 1; }
     .dsh-notice-dismiss { padding: 5px; }
-    .dsh-notice-pill { position: fixed; top: 46px; right: 16px; display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid rgba(87, 151, 255, .28); border-radius: 999px; color: #2f6fda; background: rgba(247, 250, 255, .92); box-shadow: 0 8px 24px rgba(31, 50, 83, .14); cursor: pointer; backdrop-filter: blur(18px); }
+    .dsh-notice-pill { position: fixed; right: 24px; bottom: 24px; display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid rgba(87, 151, 255, .28); border-radius: 999px; color: #2f6fda; background: rgba(247, 250, 255, .92); box-shadow: 0 8px 24px rgba(31, 50, 83, .14); cursor: pointer; backdrop-filter: blur(18px); z-index: 3; }
     .dsh-notice-pill i { width: 6px; height: 6px; border-radius: 50%; background: #3a8bff; box-shadow: 0 0 0 4px rgba(58, 139, 255, .15); }
     .dsh-bell-logo { width: 16px; height: 16px; object-fit: contain; pointer-events: none; }
     .dsh-button { display: inline-flex; align-items: center; justify-content: center; min-height: 30px; padding: 5px 11px; border: 1px solid rgba(28, 48, 78, .11); border-radius: 8px; color: #1d2b42; background: rgba(241, 245, 251, .92); cursor: pointer; font: 600 12px/1.2 inherit; white-space: nowrap; }
@@ -502,7 +527,7 @@ if (!isSplashDocument) {
     .dsh-about h3 { margin: 0 0 8px; color: #1e2d44; font-size: 18px; }
     .dsh-about p { margin: 5px 0; color: #657793; }
     .dsh-muted { color: #9aa7ba !important; font-size: 11px; }
-    @keyframes dsh-slide-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    @keyframes dsh-slide-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes dsh-drawer-in { from { opacity: .75; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
     @keyframes dsh-fade-in { from { opacity: 0; } to { opacity: 1; } }
     @media (prefers-color-scheme: dark) {
@@ -518,6 +543,9 @@ if (!isSplashDocument) {
       .dsh-menu-item:disabled, .dsh-menu-heading { color: #7185a5; }
       .dsh-menu-separator { background: rgba(170, 192, 228, .16); }
       .dsh-notice, .dsh-notice-pill { border-color: rgba(93, 157, 255, .36); background: rgba(19, 29, 47, .94); box-shadow: 0 16px 40px rgba(0, 0, 0, .36); }
+      .dsh-disconnect-banner { border-color: rgba(245, 174, 68, .36); background: rgba(55, 42, 22, .96); box-shadow: 0 16px 40px rgba(0, 0, 0, .36); }
+      .dsh-disconnect-copy strong { color: #f5c46e; }
+      .dsh-disconnect-copy span { color: #c9b38e; }
       .dsh-notice-copy strong { color: #edf4ff; }
       .dsh-notice-copy span { color: #9aabc4; }
       .dsh-notice-dismiss, .dsh-close { color: #92a4c0; }
@@ -547,7 +575,7 @@ if (!isSplashDocument) {
       .dsh-about p { color: #a2b2c9; }
     }
     @media (max-width: 620px) {
-      .dsh-notice { width: calc(100vw - 20px); }
+      .dsh-notice, .dsh-disconnect-banner { right: 16px; width: calc(100vw - 32px); }
       .dsh-notice-copy span { white-space: normal; }
       .dsh-notice .dsh-button { padding-inline: 8px; }
       .dsh-drawer-header, .dsh-drawer-scroll { padding-left: 20px; padding-right: 20px; }
@@ -569,6 +597,12 @@ if (!isSplashDocument) {
   ipcRenderer.on('desktop:workspace:recents', (_event, payload) => {
     state.currentWorkspace = typeof payload?.current === 'string' ? payload.current : ''
     state.recentWorkspaces = Array.isArray(payload?.workspaces) ? payload.workspaces.filter(value => typeof value === 'string') : []
+    render()
+  })
+  ipcRenderer.on('desktop:harness-status', (_event, status) => {
+    state.harnessStatus = status && typeof status === 'object'
+      ? { state: status.state || 'starting', consecutiveFailures: Number(status.consecutiveFailures) || 0, message: status.message || '' }
+      : { state: 'starting', consecutiveFailures: 0, message: '' }
     render()
   })
   ipcRenderer.on('desktop:notice', (_event, notice) => {
@@ -596,10 +630,11 @@ if (!isSplashDocument) {
   function mount() {
     mountGlobalStyles()
     document.documentElement.appendChild(host)
-    shadow.innerHTML = '<style>' + SHADOW_CSS + '</style><div class="dsh-chrome"><div class="dsh-drag-region" aria-hidden="true"></div><div class="dsh-menu-host"></div><div class="dsh-notice-host"></div><div class="dsh-drawer-host">' + renderDrawerShell() + '</div></div>'
+    shadow.innerHTML = '<style>' + SHADOW_CSS + '</style><div class="dsh-chrome"><div class="dsh-drag-region" aria-hidden="true"></div><div class="dsh-menu-host"></div><div class="dsh-health-host"></div><div class="dsh-notice-host"></div><div class="dsh-drawer-host">' + renderDrawerShell() + '</div></div>'
     const drawerLayer = shadow.querySelector('.dsh-drawer-layer')
     chromeRefs = {
       menuHost: shadow.querySelector('.dsh-menu-host'),
+      healthHost: shadow.querySelector('.dsh-health-host'),
       noticeHost: shadow.querySelector('.dsh-notice-host'),
       drawerLayer,
       drawer: drawerLayer.querySelector('.dsh-drawer'),
