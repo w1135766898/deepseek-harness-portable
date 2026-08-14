@@ -22,6 +22,13 @@ $ErrorActionPreference = 'Stop'
 
 $DISTRIBUTION_REPO = 'wsnxxxs/deepseek-harness-portable'
 $RELEASE_MANIFEST_NAME = 'release-manifest.json'
+$GITHUB_MIRROR_PREFIXES = @(
+    '',
+    'https://ghfast.top/',
+    'https://mirror.ghproxy.com/',
+    'https://gh-proxy.com/',
+    'https://gh.ddlc.top/'
+)
 $SCRIPT_ROOT = $PSScriptRoot
 $APP_ROOT = if ((Split-Path -Leaf $SCRIPT_ROOT) -ieq 'runtime') {
     Split-Path -Parent $SCRIPT_ROOT
@@ -46,6 +53,18 @@ function Read-JsonIfPresent {
     param([Parameter(Mandatory = $true)][string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) { return $null }
     try { return (Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return $null }
+}
+
+function Get-MirrorUrls {
+    param([Parameter(Mandatory = $true)][string]$Url)
+
+    foreach ($prefix in $GITHUB_MIRROR_PREFIXES) {
+        if ([string]::IsNullOrEmpty($prefix)) {
+            $Url
+        } else {
+            $prefix + $Url
+        }
+    }
 }
 
 function Write-UpdateStatus {
@@ -195,14 +214,16 @@ function Get-ChecksumFromSource {
     }
 
     $tag = [string]$Release.tag_name
-    $rawUrls = @(
+    $rawUrls = @()
+    foreach ($baseUrl in @(
         ('https://raw.githubusercontent.com/' + $DISTRIBUTION_REPO + '/' + $tag + '/SHA256SUMS.txt'),
-        ('https://raw.githubusercontent.com/' + $DISTRIBUTION_REPO + '/main/SHA256SUMS.txt'),
-        ('https://ghfast.top/https://raw.githubusercontent.com/' + $DISTRIBUTION_REPO + '/' + $tag + '/SHA256SUMS.txt')
-    )
+        ('https://raw.githubusercontent.com/' + $DISTRIBUTION_REPO + '/main/SHA256SUMS.txt')
+    )) {
+        $rawUrls += @(Get-MirrorUrls $baseUrl)
+    }
     foreach ($url in $rawUrls) {
         try {
-            $text = (Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 15).Content
+            $text = (Invoke-WebRequest -Uri $url -UseBasicParsing -MaximumRedirection 5 -TimeoutSec 8).Content
             $escapedName = [regex]::Escape([string]$ZipAsset.name)
             $match = [regex]::Match($text, '(?im)^\s*([0-9a-f]{64})\s+\*?' + $escapedName + '\s*$')
             if ($match.Success) { return $match.Groups[1].Value.ToUpperInvariant() }
@@ -212,14 +233,11 @@ function Get-ChecksumFromSource {
 }
 
 function Get-RemoteRelease {
-    $apiUrls = @(
-        ('https://api.github.com/repos/' + $DISTRIBUTION_REPO + '/releases/latest'),
-        ('https://ghfast.top/https://api.github.com/repos/' + $DISTRIBUTION_REPO + '/releases/latest')
-    )
+    $apiUrls = @(Get-MirrorUrls ('https://api.github.com/repos/' + $DISTRIBUTION_REPO + '/releases/latest'))
     foreach ($url in $apiUrls) {
         try {
             $headers = @{ 'User-Agent' = 'DeepSeek-Harness-Portable-Updater' }
-            $release = Invoke-RestMethod -Uri $url -Headers $headers -TimeoutSec 15
+            $release = Invoke-RestMethod -Uri $url -Headers $headers -MaximumRedirection 5 -TimeoutSec 8
             $version = ([string]$release.tag_name -replace '^v', '')
             $zipAsset = @($release.assets | Where-Object {
                 $_.name -match ('^DeepSeek-Harness-' + [regex]::Escape($version) + '-win32-x64\.zip$')
@@ -236,6 +254,29 @@ function Get-RemoteRelease {
         } catch {}
     }
     throw 'Unable to obtain a matching portable release and its trusted SHA-256 digest.'
+}
+
+function Get-RemoteReleaseByVersion {
+    param([Parameter(Mandatory = $true)][string]$Version)
+
+    $normalizedVersion = Normalize-Version $Version
+    $tag = 'v' + $normalizedVersion
+    $assetName = 'DeepSeek-Harness-' + $normalizedVersion + '-win32-x64.zip'
+    $zipAsset = [PSCustomObject]@{
+        name = $assetName
+        digest = ''
+    }
+    $release = [PSCustomObject]@{
+        tag_name = $tag
+    }
+    $digest = Get-ChecksumFromSource -Release $release -ZipAsset $zipAsset
+    return [PSCustomObject]@{
+        tag_name = $tag
+        version = $normalizedVersion
+        asset_name = $assetName
+        asset_url = 'https://github.com/' + $DISTRIBUTION_REPO + '/releases/download/' + $tag + '/' + $assetName
+        sha256 = $digest
+    }
 }
 
 function Verify-LocalPackage {
@@ -264,20 +305,14 @@ function Download-And-Verify {
     )
 
     $directUrl = $Release.asset_url
-    $urls = @(
-        $directUrl,
-        ('https://ghfast.top/' + $directUrl),
-        ('https://mirror.ghproxy.com/' + $directUrl),
-        ('https://gh-proxy.com/' + $directUrl),
-        ('https://gh.ddlc.top/' + $directUrl)
-    )
+    $urls = @(Get-MirrorUrls $directUrl)
     $errors = @()
     foreach ($url in $urls) {
         try {
             Remove-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
             Write-UpdateStatus -State 'downloading' -Stage 'download' -Message ('Downloading from ' + ([System.Uri]$url).Host) -From $FromVersion -Target $TargetVersion
             Write-Host ('  -> Downloading from ' + ([System.Uri]$url).Host + ' ...') -ForegroundColor Cyan
-            Invoke-WebRequest -Uri $url -OutFile $Destination -UseBasicParsing -TimeoutSec 120
+            Invoke-WebRequest -Uri $url -OutFile $Destination -UseBasicParsing -MaximumRedirection 5 -TimeoutSec 30
             if (-not (Test-Path -LiteralPath $Destination)) { throw 'download did not create a file' }
             Write-UpdateStatus -State 'verifying' -Stage 'verify' -Message 'Verifying the downloaded ZIP with SHA-256.' -From $FromVersion -Target $TargetVersion
             $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $Destination).Hash.ToUpperInvariant()
@@ -473,8 +508,13 @@ try {
         Write-UpdateStatus -State 'verifying' -Stage 'verify' -Message 'Verifying the prepared update package.' -From $FromVersion -Target $TargetVersion
         Verify-LocalPackage -Path $PackagePath -ExpectedDigest $ExpectedSha256
     } else {
-        $release = Get-RemoteRelease
-        $TargetVersion = $release.version
+        if (-not [string]::IsNullOrWhiteSpace($TargetVersion)) {
+            $release = Get-RemoteReleaseByVersion -Version $TargetVersion
+            $TargetVersion = $release.version
+        } else {
+            $release = Get-RemoteRelease
+            $TargetVersion = $release.version
+        }
     }
     Write-UpdateStatus -State 'checking' -Stage $currentStage -Message ('Latest portable release: ' + $release.tag_name) -From $FromVersion -Target $TargetVersion
     Write-Host ('  Latest distribution: ' + $release.tag_name) -ForegroundColor White
