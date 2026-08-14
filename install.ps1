@@ -70,9 +70,9 @@ function Get-LatestReleaseInfo {
         } catch {}
     }
 
-    Write-Host '  -> 自动采用主分支最新候选版本: v0.1.0-rc.5' -ForegroundColor Gray
+    Write-Host '  -> 自动采用官方最新候选版本: v0.1.0-rc.6' -ForegroundColor Gray
     return [PSCustomObject]@{
-        tag_name = 'v0.1.0-rc.5'
+        tag_name = 'v0.1.0-rc.6'
         assets = @()
     }
 }
@@ -83,7 +83,7 @@ function Download-WithMirrorFailover {
         [string]$DestinationZip
     )
 
-    $fileName = 'DeepSeek-Harness-0.1.0-rc.5-win32-x64.zip'
+    $fileName = 'DeepSeek-Harness-0.1.0-rc.6-win32-x64.zip'
     $directUrl = 'https://github.com/' + $REPO + '/releases/download/' + $Version + '/' + $fileName
     
     $mirrors = @(

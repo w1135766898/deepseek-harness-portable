@@ -7,7 +7,7 @@ This directory documents the personal Windows distribution channel for DeepSeek 
 ## Quick Installation (3 Options)
 
 ### Option 1: Standard Windows Setup Installer (Setup.exe - Recommended)
-Download **`DeepSeek-Harness-Setup-0.1.0-rc.5-win32-x64.exe`** from the Releases page:
+Download **`DeepSeek-Harness-Setup-0.1.0-rc.6-win32-x64.exe`** from the Releases page:
 - **Zero Configuration**: Double-click to install in seconds. No archive extraction needed.
 - **Standard Program Directory**: Automatically installed into `%LOCALAPPDATA%\Programs\DeepSeek Harness` (zero admin/UAC elevation required).
 - **Full OS Integration**: Automatically creates Desktop & Start Menu shortcuts, and registers under Windows "Installed Apps" / "Add or Remove Programs" for 1-click clean uninstallation.
@@ -15,7 +15,7 @@ Download **`DeepSeek-Harness-Setup-0.1.0-rc.5-win32-x64.exe`** from the Releases
 
 ---
 
-### Option 2: One-Line Online Installation (PowerShell)
+### Option 2: OneLine Online Installation (PowerShell)
 Paste and run in PowerShell to automatically download, unpack, configure shortcuts, and set up PATH:
 
 - **🇨🇳 Mainland China (Built-in High-Speed Mirror)**:
@@ -30,7 +30,7 @@ Paste and run in PowerShell to automatically download, unpack, configure shortcu
 ---
 
 ### Option 3: Portable ZIP Archive
-Download **`DeepSeek-Harness-0.1.0-rc.5-win32-x64.zip`**, extract to any directory, and double-click **`启动网页版.bat`** to run instantly without altering system settings.
+Download **`DeepSeek-Harness-0.1.0-rc.6-win32-x64.zip`**, extract to any directory, and double-click **`启动网页版.bat`** to run instantly without altering system settings.
 
 ---
 

@@ -3,11 +3,11 @@
 ; ==============================================================================
 
 #define MyAppName "DeepSeek Harness"
-#define MyAppVersion "0.1.0-rc.5"
+#define MyAppVersion "0.1.0-rc.6"
 #define MyAppPublisher "DeepSeek Harness Contributors"
-#define MyAppURL "https://github.com/w1135766898/deepseek-harness-portable"
+#define MyAppURL "https://github.com/deepseek-ai/deepseek-harness"
 #define MyAppExeName "runtime\DeepSeek Harness.exe"
-#define MyZipName "DeepSeek-Harness-0.1.0-rc.5-win32-x64.zip"
+#define MyZipName "DeepSeek-Harness-0.1.0-rc.6-win32-x64.zip"
 
 [Setup]
 AppId={{D5E8E89B-4C08-4EA4-8A89-E654C115F05A}
@@ -28,7 +28,6 @@ Compression=none
 SolidCompression=no
 WizardStyle=modern
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesInstallIn64BitMode=x64compatible
 ArchitecturesAllowed=x64compatible
 
@@ -50,7 +49,7 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}\runtime"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; WorkingDir: "{app}\runtime"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"

@@ -77,11 +77,20 @@ function stopHarness() {
 }
 
 function resolveUnifiedDshHome() {
+  let targetHome
   if (process.env.DSH_HOME && process.env.DSH_HOME.trim() !== '') {
-    return process.env.DSH_HOME.trim()
+    targetHome = process.env.DSH_HOME.trim()
+  } else {
+    const userHome = process.env.USERPROFILE || homedir()
+    targetHome = join(userHome, '.dsh')
   }
-  const userHome = process.env.USERPROFILE || homedir()
-  const targetHome = join(userHome, '.dsh')
+
+  // Ensure target directories exist before spawning engine child process
+  try {
+    mkdirSync(targetHome, { recursive: true })
+    mkdirSync(join(targetHome, 'sessions'), { recursive: true })
+    mkdirSync(app.getPath('userData'), { recursive: true })
+  } catch {}
 
   // Seamless legacy data migration: if AppData\Roaming\DeepSeek Harness\dsh has sessions, migrate to ~/.dsh
   try {
@@ -91,7 +100,6 @@ function resolveUnifiedDshHome() {
       const legacySessions = join(legacyDsh, 'sessions')
       const targetSessions = join(targetHome, 'sessions')
       if (existsSync(legacySessions) && !existsSync(targetSessions)) {
-        mkdirSync(targetHome, { recursive: true })
         if (typeof cpSync === 'function') {
           cpSync(legacySessions, targetSessions, { recursive: true })
         }
@@ -238,10 +246,11 @@ function getLocalVersion() {
   try {
     const pkgPath = join(__dirname, '..', 'package.json')
     if (existsSync(pkgPath)) {
-      return JSON.parse(readFileSync(pkgPath, 'utf8')).version || '0.1.0-rc.5'
+      const ver = JSON.parse(readFileSync(pkgPath, 'utf8')).version
+      if (ver && ver !== '0.0.1') return ver
     }
   } catch {}
-  return '0.1.0-rc.5'
+  return '0.1.0-rc.6'
 }
 
 function compareVersions(v1, v2) {

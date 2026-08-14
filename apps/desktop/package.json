@@ -2,7 +2,7 @@
   "name": "dsh-desktop-web-pkg",
   "productName": "DeepSeek Harness",
   "description": "Windows desktop shell and portable Web runtime for DeepSeek Harness.",
-  "version": "0.0.1",
+  "version": "0.1.0-rc.6",
   "private": true,
   "type": "module",
   "main": "src/main.cjs",
