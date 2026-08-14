@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld('deepSeekDesktop', {
 })
 
 if (!isSplashDocument) {
+  const NATIVE_BRAND_LOGO_SELECTOR = 'svg[viewBox="0 0 182 24"]'
+  const NATIVE_FISH_LOGO_SELECTOR = 'svg[viewBox="0 0 23.16 17.04"]'
+  const DESKTOP_MENU_WIDTH = 248
+
   const state = {
     data: undefined,
     drawerContext: { mode: 'history' },
@@ -53,6 +57,7 @@ if (!isSplashDocument) {
     drawerLoading: false,
     menuOpen: false,
     menuFocusIndex: -1,
+    menuPosition: { left: 8, top: 42 },
     recentWorkspaces: [],
     currentWorkspace: '',
     harnessStatus: { state: 'starting', consecutiveFailures: 0, message: '' },
@@ -147,6 +152,20 @@ if (!isSplashDocument) {
         user-select: none;
         -webkit-app-region: no-drag !important;
         pointer-events: auto !important;
+      }
+      button:has(${NATIVE_BRAND_LOGO_SELECTOR}) {
+        color: #307bf0 !important;
+      }
+      button:has(${NATIVE_BRAND_LOGO_SELECTOR}) ${NATIVE_BRAND_LOGO_SELECTOR},
+      button:has(${NATIVE_FISH_LOGO_SELECTOR}) ${NATIVE_FISH_LOGO_SELECTOR} {
+        color: #307bf0 !important;
+      }
+      button:has(${NATIVE_BRAND_LOGO_SELECTOR}):hover {
+        color: #3a8bff !important;
+      }
+      button:has(${NATIVE_BRAND_LOGO_SELECTOR}):hover ${NATIVE_BRAND_LOGO_SELECTOR},
+      button:has(${NATIVE_FISH_LOGO_SELECTOR}):hover ${NATIVE_FISH_LOGO_SELECTOR} {
+        color: #3a8bff !important;
       }
     `
     document.head.appendChild(style)
@@ -273,10 +292,79 @@ if (!isSplashDocument) {
     return items + '<button class="dsh-menu-item" type="button" data-action="desktop-clear-recent-workspaces" role="menuitem"' + (entries.length === 0 ? ' disabled' : '') + '><span>×</span><strong>清空最近工作区</strong></button>'
   }
 
+  function isNativeBrandButton(button) {
+    return button instanceof Element && button.querySelector(NATIVE_BRAND_LOGO_SELECTOR) !== null
+  }
+
+  function isNativeFishButton(button) {
+    return button instanceof Element && button.querySelector(NATIVE_FISH_LOGO_SELECTOR) !== null
+  }
+
+  function nativeButtonFromTarget(target) {
+    if (!(target instanceof Element)) return undefined
+    const button = target.closest('button')
+    if (isNativeBrandButton(button) || isNativeFishButton(button)) return button
+    return undefined
+  }
+
+  function findNativeBrandButton() {
+    return Array.from(document.querySelectorAll('button')).find(isNativeBrandButton)
+  }
+
+  function findNativeFishButton() {
+    return Array.from(document.querySelectorAll('button')).find(isNativeFishButton)
+  }
+
+  function findNativeMenuAnchor() {
+    return findNativeBrandButton() || findNativeFishButton()
+  }
+
+  function defaultMenuPosition() {
+    const titlebarHeight = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dsh-titlebar-height'))
+    return { left: 8, top: Math.round((Number.isFinite(titlebarHeight) ? titlebarHeight : 36) + 6) }
+  }
+
+  function menuPositionForButton(button) {
+    if (!(button instanceof Element) || !button.isConnected) return defaultMenuPosition()
+    const rect = button.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return defaultMenuPosition()
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0
+    const left = Math.max(8, Math.min(Math.round(rect.left), Math.max(8, viewportWidth - DESKTOP_MENU_WIDTH)))
+    return { left, top: Math.max(8, Math.round(rect.bottom + 6)) }
+  }
+
+  function syncNativeMenuTrigger() {
+    const brandButton = findNativeBrandButton()
+    if (!brandButton) return
+    brandButton.setAttribute('aria-haspopup', 'menu')
+    brandButton.setAttribute('aria-expanded', state.menuOpen ? 'true' : 'false')
+    brandButton.setAttribute('aria-label', '桌面菜单')
+    brandButton.title = '桌面菜单'
+  }
+
+  function openMenuAt(anchor) {
+    state.menuOpen = true
+    state.menuFocusIndex = 0
+    state.menuPosition = menuPositionForButton(anchor || findNativeMenuAnchor())
+    render()
+  }
+
+  function closeMenu() {
+    state.menuOpen = false
+    state.menuFocusIndex = -1
+    render()
+  }
+
+  function toggleMenu(anchor) {
+    if (state.menuOpen) closeMenu()
+    else openMenuAt(anchor || findNativeMenuAnchor())
+  }
+
   function renderMenu() {
-    const trigger = '<button class="dsh-menu-trigger" data-action="toggle-menu" aria-haspopup="menu" aria-expanded="' + (state.menuOpen ? 'true' : 'false') + '" title="桌面菜单">' + logoMarkup('dsh-menu-logo') + '</button>'
-    if (!state.menuOpen) return '<div class="dsh-app-menu">' + trigger + '</div>'
-    return '<div class="dsh-app-menu">' + trigger + '<div class="dsh-menu-popover" role="menu" aria-label="桌面菜单">' +
+    if (!state.menuOpen) return ''
+    const position = state.menuPosition || defaultMenuPosition()
+    const positionMarkup = ' style="--dsh-menu-left:' + escapeHtml(position.left) + 'px;--dsh-menu-top:' + escapeHtml(position.top) + 'px"'
+    return '<div class="dsh-menu-popover" role="menu" aria-label="桌面菜单"' + positionMarkup + '>' +
       '<button class="dsh-menu-item" data-action="desktop-check-updates" role="menuitem"><span>↻</span><strong>检查更新</strong></button>' +
       '<button class="dsh-menu-item" data-action="desktop-release-notes" role="menuitem"><span>☷</span><strong>更新日志</strong></button>' +
       '<button class="dsh-menu-item" data-action="desktop-about" role="menuitem"><span>ⓘ</span><strong>关于 DeepSeek Harness</strong></button>' +
@@ -291,7 +379,7 @@ if (!isSplashDocument) {
       '<div class="dsh-menu-separator"></div>' +
       '<button class="dsh-menu-item" data-action="desktop-export-diagnostics" role="menuitem"><span>⇩</span><strong>复制排障信息</strong></button>' +
       '<button class="dsh-menu-item" data-action="desktop-clear-storage" role="menuitem"><span>⌫</span><strong>清理本地缓存与存储</strong></button>' +
-      '</div></div>'
+      '</div>'
   }
 
   function focusableMenuItems() {
@@ -344,6 +432,7 @@ if (!isSplashDocument) {
     }
     syncDrawer()
     syncMenuFocus()
+    syncNativeMenuTrigger()
   }
 
   function clearNoticeTimer() {
@@ -451,12 +540,6 @@ if (!isSplashDocument) {
   function handleAction(target) {
     const action = target?.dataset?.action
     if (!action) return
-    if (action === 'toggle-menu') {
-      state.menuOpen = !state.menuOpen
-      state.menuFocusIndex = state.menuOpen ? 0 : -1
-      render()
-      return
-    }
     if (action === 'desktop-check-updates') {
       sendMenuAction('check-for-updates')
       return
@@ -564,13 +647,9 @@ if (!isSplashDocument) {
     :host { all: initial; color-scheme: light dark; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
     .dsh-chrome, .dsh-chrome * { box-sizing: border-box; }
     .dsh-chrome { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; color: #182235; font: 13px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif; }
-    .dsh-drag-region { position: fixed; inset: 0 140px auto 44px; height: var(--dsh-titlebar-height); pointer-events: none; -webkit-app-region: drag; }
-    .dsh-app-menu, .dsh-notice, .dsh-drawer-layer { pointer-events: auto; }
-    .dsh-app-menu { position: fixed; top: 5px; left: 10px; z-index: 2; -webkit-app-region: no-drag; }
-    .dsh-menu-trigger { display: grid; place-items: center; width: 28px; height: 26px; padding: 0; border: 1px solid rgba(93, 126, 177, .2); border-radius: 8px; color: #4775b8; background: rgba(247, 250, 255, .72); box-shadow: 0 4px 12px rgba(31, 50, 83, .1); cursor: pointer; font-size: 15px; -webkit-app-region: no-drag; }
-    .dsh-menu-logo { width: 18px; height: 18px; object-fit: contain; pointer-events: none; }
-    .dsh-menu-trigger:hover, .dsh-menu-trigger[aria-expanded="true"] { border-color: rgba(52, 127, 242, .5); color: #2366ca; background: rgba(231, 240, 255, .96); }
-    .dsh-menu-popover { display: grid; min-width: 236px; margin-top: 6px; padding: 6px; border: 1px solid rgba(116, 138, 171, .24); border-radius: 12px; background: rgba(250, 252, 255, .98); box-shadow: 0 16px 40px rgba(23, 43, 72, .2); -webkit-app-region: no-drag; }
+    .dsh-drag-region { position: fixed; inset: 0 140px auto 0; height: var(--dsh-titlebar-height); pointer-events: none; -webkit-app-region: drag; }
+    .dsh-notice, .dsh-drawer-layer { pointer-events: auto; }
+    .dsh-menu-popover { position: fixed; top: var(--dsh-menu-top, 42px); left: var(--dsh-menu-left, 8px); z-index: 6; display: grid; min-width: 236px; max-height: calc(100vh - 16px); overflow-y: auto; padding: 6px; border: 1px solid rgba(116, 138, 171, .24); border-radius: 12px; background: rgba(250, 252, 255, .98); box-shadow: 0 16px 40px rgba(23, 43, 72, .2); pointer-events: auto; -webkit-app-region: no-drag; }
     .dsh-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 7px 9px; border: 0; border-radius: 7px; color: #263a5a; background: transparent; cursor: pointer; text-align: left; font: 12px/1.2 inherit; -webkit-app-region: no-drag; }
     .dsh-menu-item:hover { color: #1d5ebf; background: #eaf2ff; }
     .dsh-menu-item.is-focused { color: #1d5ebf; background: #eaf2ff; outline: 2px solid rgba(52, 127, 242, .24); outline-offset: -2px; }
@@ -676,8 +755,6 @@ if (!isSplashDocument) {
     @media (prefers-color-scheme: dark) {
       .dsh-chrome { color: #e8eef9; }
       .dsh-notice-icon, .dsh-about-logo { border-color: rgba(93, 157, 255, .36); background: #edf4ff; }
-      .dsh-menu-trigger { border-color: rgba(93, 157, 255, .36); color: #a8c7fa; background: rgba(19, 29, 47, .86); }
-      .dsh-menu-trigger:hover, .dsh-menu-trigger[aria-expanded="true"] { color: #d5e5ff; background: rgba(44, 72, 119, .96); }
       .dsh-menu-popover { border-color: rgba(170, 192, 228, .16); background: rgba(17, 26, 42, .98); box-shadow: 0 16px 40px rgba(0, 0, 0, .4); }
       .dsh-menu-item { color: #dbe7fa; }
       .dsh-menu-item:hover { color: #d5e5ff; background: #253b61; }
@@ -817,12 +894,32 @@ if (!isSplashDocument) {
     reportFirstPaint()
   }
 
-  document.addEventListener('pointerdown', event => {
-    if (!state.menuOpen || event.composedPath().includes(host)) return
-    state.menuOpen = false
-    state.menuFocusIndex = -1
-    render()
+  document.addEventListener('click', event => {
+    const button = nativeButtonFromTarget(event.target)
+    if (isNativeBrandButton(button)) {
+      event.preventDefault()
+      event.stopPropagation()
+      toggleMenu(button)
+      return
+    }
+    if (isNativeFishButton(button) && state.menuOpen) closeMenu()
   }, true)
+  document.addEventListener('contextmenu', event => {
+    const button = nativeButtonFromTarget(event.target)
+    if (!isNativeFishButton(button)) return
+    event.preventDefault()
+    event.stopPropagation()
+    openMenuAt(button)
+  }, true)
+  document.addEventListener('pointerdown', event => {
+    if (!state.menuOpen || event.composedPath().includes(host) || nativeButtonFromTarget(event.target)) return
+    closeMenu()
+  }, true)
+  window.addEventListener('resize', () => {
+    if (!state.menuOpen) return
+    state.menuPosition = menuPositionForButton(findNativeMenuAnchor())
+    render()
+  })
   window.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
       if (state.drawerOpen) {
@@ -833,9 +930,7 @@ if (!isSplashDocument) {
       }
       if (state.menuOpen) {
         event.preventDefault()
-        state.menuOpen = false
-        state.menuFocusIndex = -1
-        render()
+        closeMenu()
       }
       return
     }
@@ -890,9 +985,7 @@ if (!isSplashDocument) {
     }
     if (event.key === 'Alt' || event.key === 'F10') {
       event.preventDefault()
-      state.menuOpen = !state.menuOpen
-      state.menuFocusIndex = state.menuOpen ? 0 : -1
-      render()
+      toggleMenu()
       return
     }
   })
