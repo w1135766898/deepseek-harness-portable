@@ -9,14 +9,14 @@ Community distribution, not an official Microsoft-signed build.
 ## Features
 
 - Raycast- and Linear-style timeline for release history.
-- A compact HUD toast after a successful upgrade.
+- A lightweight in-app update banner that collapses to an update bell after a successful upgrade.
 - DeepSeek whale branding with adaptive light and dark glass styling.
 - Persistent updater progress and terminal status in the user data directory.
 
 ## Improvements
 
 - Atomic rows make features, improvements, and fixes easier to scan.
-- Smaller update window and non-intrusive post-update notification.
+- Same-window release history drawer with no separate update window or floating HUD.
 - Graceful handoff waits for the desktop shell before replacing the portable runtime.
 - Failed or interrupted updates remain visible and can be retried.
 

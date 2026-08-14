@@ -43,8 +43,9 @@ Do not delete or rename the runtime directory.
 - start-web.cmd starts the web surface through Node.js from PATH.
 - dsh.cmd provides the same web entry and supports dsh update.
 - The desktop tray menu provides Check for Updates, Release Notes, and About.
-- When a new release is found, the desktop shell shows the release summary before starting the portable updater.
-- After an upgrade, the first startup shows a What's New card. Sessions, credentials, settings, and attachments remain in user data outside the release directory.
+- When a new release is found, the desktop shell shows a lightweight in-app banner before starting the portable updater.
+- Release Notes and About open in a same-window slide-over drawer; after an upgrade, the banner collapses to a small update bell.
+- The Windows shell uses Mica/title-bar overlay styling, a staged startup splash, system theme synchronization, and persisted multi-monitor-safe window bounds.
 
 The updater downloads a complete portable ZIP, verifies SHA-256, validates the release manifest and native dependencies, then replaces runtime as one operation.
 

@@ -11,7 +11,8 @@ This workspace package builds the native Electron desktop shell for DeepSeek Har
 - Keeps user data under the official DSH_HOME root, %USERPROFILE%\.dsh by default.
 - Provides tray and application menu actions for workspace, browser mode, updates, release notes, and About.
 - Fetches release notes from GitHub or the configured mirror, with cached and bundled offline fallback.
-- Shows an in-app update summary before the portable updater and a What's New card after the version changes.
+- Shows update availability and post-update status as an in-app banner in the main window; the full release history opens in a same-window slide-over drawer.
+- Uses a Windows 11 Mica title-bar overlay, system theme synchronization, startup splash, and persisted multi-monitor-safe window bounds.
 
 ## Build and test
 
