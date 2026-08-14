@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # DeepSeek Harness Portable - One-Click Online Installer for Windows (x64)
 # 支持中国大陆镜像多节点容灾加速与全球官方直连
 # Usage:
@@ -177,14 +177,11 @@ function Setup-SecurityTrust {
 function Create-Shortcuts {
     Write-Host '[5/6] 创建快捷方式与环境命令...' -ForegroundColor Yellow
     $wshShell = New-Object -ComObject WScript.Shell
-    $iconPath = Join-Path $InstallDir 'runtime\resources\app\assets\deepseek.ico'
-    if (-not (Test-Path $iconPath)) {
-        $iconPath = Join-Path $InstallDir 'resources\app\assets\deepseek.ico'
-    }
-
-    $targetLauncher = Join-Path $InstallDir '启动-网页版(推荐).bat'
-    if (-not (Test-Path $targetLauncher)) {
-        $targetLauncher = Join-Path $InstallDir 'start-web.cmd'
+    $targetExe = Join-Path $InstallDir 'runtime\DeepSeek Harness.exe'
+    $workDir = Join-Path $InstallDir 'runtime'
+    if (-not (Test-Path $targetExe)) {
+        $targetExe = Join-Path $InstallDir 'DeepSeek Harness.exe'
+        $workDir = $InstallDir
     }
 
     # 1. Desktop Shortcut
@@ -192,13 +189,13 @@ function Create-Shortcuts {
         $desktopPath = [Environment]::GetFolderPath('Desktop')
         $shortcutFile = Join-Path $desktopPath ($APP_NAME + '.lnk')
         $shortcut = $wshShell.CreateShortcut($shortcutFile)
-        $shortcut.TargetPath = $targetLauncher
-        $shortcut.WorkingDirectory = $InstallDir
-        $shortcut.Description = 'DeepSeek Harness 智能编程与 Agent 运行时'
+        $shortcut.TargetPath = $targetExe
+        $shortcut.WorkingDirectory = $workDir
+        $shortcut.Description = 'DeepSeek Harness 原生桌面客户端'
         $shortcut.IconLocation = $iconPath + ',0'
-        $shortcut.WindowStyle = 7
+        $shortcut.WindowStyle = 1
         $shortcut.Save()
-        Write-Host ('  -> 桌面快捷方式已创建: ' + $shortcutFile) -ForegroundColor Green
+        Write-Host ('  -> 桌面原生应用快捷方式已创建: ' + $shortcutFile) -ForegroundColor Green
     }
 
     # 2. Start Menu Shortcut
@@ -207,12 +204,19 @@ function Create-Shortcuts {
     New-Item -ItemType Directory -Path $appStartMenuDir -Force | Out-Null
     
     $startShortcut = $wshShell.CreateShortcut((Join-Path $appStartMenuDir ($APP_NAME + '.lnk')))
-    $startShortcut.TargetPath = $targetLauncher
-    $startShortcut.WorkingDirectory = $InstallDir
-    $startShortcut.Description = 'DeepSeek Harness 智能编程与 Agent 运行时'
+    $startShortcut.TargetPath = $targetExe
+    $startShortcut.WorkingDirectory = $workDir
+    $startShortcut.Description = 'DeepSeek Harness 原生桌面客户端'
     $startShortcut.IconLocation = $iconPath + ',0'
-    $startShortcut.WindowStyle = 7
+    $startShortcut.WindowStyle = 1
     $startShortcut.Save()
+
+    $webShortcut = $wshShell.CreateShortcut((Join-Path $appStartMenuDir 'DeepSeek Harness (网页服务模式).lnk'))
+    $webShortcut.TargetPath = (Join-Path $InstallDir '启动网页版.bat')
+    $webShortcut.WorkingDirectory = $InstallDir
+    $webShortcut.IconLocation = $iconPath + ',0'
+    $webShortcut.WindowStyle = 7
+    $webShortcut.Save()
 
     # 3. Add to PATH
     $userPath = [Environment]::GetEnvironmentVariable('Path', [EnvironmentVariableTarget]::User)

@@ -6,7 +6,7 @@
 #define MyAppVersion "0.1.0-rc.5"
 #define MyAppPublisher "DeepSeek Harness Contributors"
 #define MyAppURL "https://github.com/w1135766898/deepseek-harness-portable"
-#define MyAppExeName "启动网页版.bat"
+#define MyAppExeName "runtime\DeepSeek Harness.exe"
 #define MyZipName "DeepSeek-Harness-0.1.0-rc.5-win32-x64.zip"
 
 [Setup]
@@ -43,14 +43,14 @@ Source: "..\release\{#MyZipName}"; DestDir: "{tmp}"; Flags: deleteafterinstall n
 Source: "C:\Users\Ryan\Desktop\deepseek-harness-portable\apps\desktop\assets\deepseek.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\deepseek.ico"
-Name: "{group}\DeepSeek Harness (原生独立窗口)"; Filename: "{app}\启动桌面窗口.bat"; IconFilename: "{app}\assets\deepseek.ico"
-Name: "{group}\在线更新"; Filename: "{app}\在线更新.bat"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}\runtime"
+Name: "{group}\DeepSeek Harness (网页服务模式)"; Filename: "{app}\启动网页版.bat"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}"
+Name: "{group}\在线更新"; Filename: "{app}\在线更新.bat"; WorkingDir: "{app}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\deepseek.ico"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}\runtime"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: shellexec postinstall skipifsilent nowait
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"

@@ -31,16 +31,16 @@ try {
         }
     }
 
-    Write-Host '[2/3] 创建桌面快捷方式...' -ForegroundColor Yellow
+    Write-Host '[2/3] 创建桌面原生应用快捷方式...' -ForegroundColor Yellow
     $wsh = New-Object -ComObject WScript.Shell
     $desktop = [Environment]::GetFolderPath('Desktop')
     $shortcut = $wsh.CreateShortcut((Join-Path $desktop 'DeepSeek Harness.lnk'))
-    $shortcut.TargetPath = (Join-Path $appRoot '启动网页版.bat')
-    $shortcut.WorkingDirectory = $appRoot
+    $shortcut.TargetPath = $exe
+    $shortcut.WorkingDirectory = $runtimeDir
     $shortcut.IconLocation = ($ico + ',0')
-    $shortcut.WindowStyle = 7
+    $shortcut.WindowStyle = 1
     $shortcut.Save()
-    Write-Host '  -> [成功] 桌面快捷方式已创建！' -ForegroundColor Green
+    Write-Host '  -> [成功] 原生桌面应用快捷方式已创建！' -ForegroundColor Green
 
     Write-Host '[3/3] 写入当前用户 PATH 环境变量...' -ForegroundColor Yellow
     $userPath = [Environment]::GetEnvironmentVariable('Path', [EnvironmentVariableTarget]::User)
