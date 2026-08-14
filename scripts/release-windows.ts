@@ -84,6 +84,7 @@ function hashFile(path: string): Promise<string> {
 async function findIscc(): Promise<string | undefined> {
   const candidates = [
     process.env.ISCC_PATH,
+    process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, 'Programs', 'Inno Setup 6', 'ISCC.exe') : undefined,
     'C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe',
     'C:\\Program Files\\Inno Setup 6\\ISCC.exe',
   ].filter((candidate): candidate is string => Boolean(candidate))
