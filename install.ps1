@@ -12,6 +12,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $REPO = 'wsnxxxs/deepseek-harness-portable'
 $APP_NAME = 'DeepSeek Harness'
+$RELEASE_MANIFEST_NAME = 'release-manifest.json'
 
 function Write-Header {
     Write-Host ''
@@ -45,8 +46,9 @@ function Get-LatestReleaseInfo {
         try {
             $headers = @{ 'User-Agent' = 'DeepSeek-Harness-Installer' }
             $release = Invoke-RestMethod -Uri $endpoint -Headers $headers -TimeoutSec 15
+            $version = ([string]$release.tag_name -replace '^v', '')
             $zipAsset = @($release.assets | Where-Object {
-                $_.name -match '^DeepSeek-Harness-.*-win32-x64\.zip$'
+                $_.name -match ('^DeepSeek-Harness-' + [regex]::Escape($version) + '-win32-x64\.zip$')
             } | Select-Object -First 1)
             if ($zipAsset.Count -eq 0) { continue }
 
@@ -77,14 +79,14 @@ function Get-LatestReleaseInfo {
             Write-Host ('  Release found: ' + $release.tag_name) -ForegroundColor Green
             return [PSCustomObject]@{
                 tag_name = [string]$release.tag_name
-                version = ([string]$release.tag_name -replace '^v', '')
+                version = $version
                 asset_name = [string]$zipAsset[0].name
                 asset_url = [string]$zipAsset[0].browser_download_url
                 sha256 = $digest
             }
         } catch {}
     }
-    throw 'No release with a published SHA-256 digest could be found; installation stopped.'
+    throw 'No release with a matching portable ZIP and published SHA-256 digest could be found; installation stopped.'
 }
 
 function Download-WithMirrorFailover {
@@ -127,9 +129,13 @@ function Download-WithMirrorFailover {
 }
 
 function Test-PortableLayout {
-    param([Parameter(Mandatory = $true)][string]$Root)
+    param(
+        [Parameter(Mandatory = $true)][string]$Root,
+        [string]$ExpectedDistributionVersion
+    )
 
     $required = @(
+        $RELEASE_MANIFEST_NAME,
         'dsh.cmd',
         'uninstall.cmd',
         'uninstall.ps1',
@@ -148,6 +154,16 @@ function Test-PortableLayout {
     if (@(Get-ChildItem -LiteralPath $sharpDir -Filter 'sharp-win32-x64-*.node' -File -ErrorAction SilentlyContinue).Count -eq 0) {
         throw 'The release is missing the sharp Windows native module.'
     }
+    $releaseManifest = Get-Content -LiteralPath (Join-Path $Root $RELEASE_MANIFEST_NAME) -Raw | ConvertFrom-Json
+    foreach ($field in @('distributionVersion', 'desktopVersion', 'kernelVersion')) {
+        if (-not $releaseManifest.$field) {
+            throw ('The release manifest is missing: ' + $field)
+        }
+    }
+    if ($ExpectedDistributionVersion -and
+        (([string]$releaseManifest.distributionVersion -replace '^v', '') -ne ($ExpectedDistributionVersion -replace '^v', ''))) {
+        throw ('The release manifest version does not match the release tag: ' + $releaseManifest.distributionVersion)
+    }
     $manifest = Get-Content -LiteralPath (Join-Path $Root 'runtime\resources\app\package.json') -Raw | ConvertFrom-Json
     $nodeModules = Join-Path $Root 'runtime\resources\app\node_modules'
     foreach ($dependency in @($manifest.dependencies.PSObject.Properties.Name)) {
@@ -159,7 +175,10 @@ function Test-PortableLayout {
 }
 
 function Extract-And-Install {
-    param([Parameter(Mandatory = $true)][string]$ZipPath)
+    param(
+        [Parameter(Mandatory = $true)][string]$ZipPath,
+        [Parameter(Mandatory = $true)][string]$ExpectedDistributionVersion
+    )
     Write-Host ('[3/6] Extracting and installing to ' + $InstallDir + ' ...') -ForegroundColor Yellow
 
     $guid = [Guid]::NewGuid().ToString('N')
@@ -175,14 +194,14 @@ function Extract-And-Install {
 
         $innerDir = Get-ChildItem -Path $extractTemp -Directory | Where-Object { $_.Name -like 'DeepSeek Harness*' } | Select-Object -First 1
         $sourceRoot = if ($innerDir) { $innerDir.FullName } else { $extractTemp }
-        Test-PortableLayout -Root $sourceRoot
+        Test-PortableLayout -Root $sourceRoot -ExpectedDistributionVersion $ExpectedDistributionVersion
 
         New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
         & robocopy.exe $sourceRoot $InstallDir /E /R:2 /W:1 /NP /NDL /NFL /NJH /NJS | Out-Null
         if ($LASTEXITCODE -ge 8) {
             throw ('File synchronization failed with Robocopy exit code ' + $LASTEXITCODE + '.')
         }
-        Test-PortableLayout -Root $InstallDir
+        Test-PortableLayout -Root $InstallDir -ExpectedDistributionVersion $ExpectedDistributionVersion
     } finally {
         Remove-Item -LiteralPath $ZipPath -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $extractTemp -Recurse -Force -ErrorAction SilentlyContinue
@@ -273,7 +292,7 @@ try {
     $releaseInfo = Get-LatestReleaseInfo
     $tempZip = Join-Path $env:TEMP ('DeepSeek-Harness-' + $releaseInfo.version + '.zip')
     Download-WithMirrorFailover -ReleaseInfo $releaseInfo -DestinationZip $tempZip
-    Extract-And-Install -ZipPath $tempZip
+    Extract-And-Install -ZipPath $tempZip -ExpectedDistributionVersion $releaseInfo.version
     Show-SigningNotice
     Create-Shortcuts
     Write-Success

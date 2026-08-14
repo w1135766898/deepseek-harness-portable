@@ -31,10 +31,11 @@ DeepSeek Harness-win32-x64/
 - `start-web.cmd` runs the web entry through a Node.js installation in `PATH`; `dsh.cmd` provides the same web entry and supports `dsh update`.
 - `uninstall.cmd` removes the portable application, shortcuts, and PATH entry. It asks before deleting the official Harness data root (`%USERPROFILE%\.dsh` by default) and Electron desktop data.
 - `setup-shortcuts.ps1` creates a shortcut and adds the portable root to the user `PATH`.
+- `release-manifest.json` records the independent distribution, desktop-shell, and kernel versions.
 
 ## Updates
 
-Run `dsh update` or `update.ps1`. The updater downloads the complete portable ZIP, verifies its SHA-256 digest, validates the application manifest and native modules, and swaps the `runtime/` directory as one operation. User data is kept outside the release tree.
+Run `dsh update` or `update.ps1`. The updater compares the distribution version, downloads the complete portable ZIP, verifies its SHA-256 digest, validates the release manifest, application manifest, and native modules, and swaps the `runtime/` directory as one operation. User data is kept outside the release tree.
 
 ## Build and release
 
@@ -46,7 +47,7 @@ pnpm run build
 pnpm run desktop:release:win
 ```
 
-The release command takes the version from `apps/desktop/package.json`, builds the portable tree, emits the ZIP and (when Inno Setup is installed) Setup.exe, then writes `SHA256SUMS.txt` last.
+The desktop manifest carries an independent shell `version` and `distributionVersion`. The release command uses `distributionVersion` for the GitHub tag, ZIP, and Setup.exe, detects the packaged kernel version from `@deepseek-ai/dsh-web-app`, writes `release-manifest.json`, and then writes `SHA256SUMS.txt` last.
 
 ## Security and release status
 

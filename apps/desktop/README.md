@@ -28,4 +28,4 @@ Use Node.js ^22.19.0 || >=24 and pnpm. From the repository root, run pnpm instal
 
 ## Limitations
 
-The native output is an unpacked portable directory, not an installer. It is not code-signed and has no auto-update channel, so Windows SmartScreen may warn when the executable is first run. The checked-in icon is derived from the existing Web favicon; release signing and installer branding remain separate work.
+The native output is an unpacked portable directory, not an installer. It is not code-signed, so Windows SmartScreen may warn when the executable is first run. Release builds carry an independent desktop-shell version and distribution version in addition to the packaged kernel version. The checked-in icon is derived from the existing Web favicon; release signing and installer branding remain separate work.

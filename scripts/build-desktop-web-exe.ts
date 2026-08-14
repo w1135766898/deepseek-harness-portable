@@ -45,7 +45,7 @@ const STAGING_DIR = 'dist-desktop/node'
 /** Legacy deploy may hoist direct workspace packages into the deploy source's own node_modules. */
 const DEPLOY_SOURCE_NODE_MODULES = 'apps/desktop/node_modules'
 
-/** The desktop app owns the version used by every Windows artifact. */
+/** The desktop app owns the shell version embedded in the Electron package. */
 const DESKTOP_PACKAGE_JSON = resolve(root, 'apps/desktop/package.json')
 
 function desktopVersion(): string {

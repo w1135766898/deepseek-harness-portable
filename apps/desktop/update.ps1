@@ -15,6 +15,7 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $DISTRIBUTION_REPO = 'wsnxxxs/deepseek-harness-portable'
+$RELEASE_MANIFEST_NAME = 'release-manifest.json'
 $SCRIPT_ROOT = $PSScriptRoot
 $APP_ROOT = if ((Split-Path -Leaf $SCRIPT_ROOT) -ieq 'runtime') {
     Split-Path -Parent $SCRIPT_ROOT
@@ -32,14 +33,77 @@ function Write-Banner {
     Write-Host ''
 }
 
-function Get-LocalVersion {
-    $manifest = Join-Path $RUNTIME_DIR 'resources\app\package.json'
-    if (-not (Test-Path -LiteralPath $manifest)) { return 'unknown' }
-    try {
-        $json = Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json
-        if ($json.version) { return ('v' + $json.version) }
-    } catch {}
-    return 'unknown'
+function Read-JsonIfPresent {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) { return $null }
+    try { return (Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json) } catch { return $null }
+}
+
+function Get-LocalReleaseInfo {
+    $releaseManifest = Read-JsonIfPresent (Join-Path $APP_ROOT $RELEASE_MANIFEST_NAME)
+    $packageManifest = Read-JsonIfPresent (Join-Path $RUNTIME_DIR 'resources\app\package.json')
+    $distributionVersion = $null
+    $desktopVersion = $null
+    $kernelVersion = $null
+    if ($releaseManifest -and $releaseManifest.distributionVersion) {
+        $distributionVersion = [string]$releaseManifest.distributionVersion
+    } elseif ($packageManifest -and $packageManifest.distributionVersion) {
+        $distributionVersion = [string]$packageManifest.distributionVersion
+    } elseif ($packageManifest -and $packageManifest.version) {
+        $distributionVersion = [string]$packageManifest.version
+    }
+    if ($releaseManifest -and $releaseManifest.desktopVersion) {
+        $desktopVersion = [string]$releaseManifest.desktopVersion
+    } elseif ($packageManifest -and $packageManifest.version) {
+        $desktopVersion = [string]$packageManifest.version
+    }
+    if ($releaseManifest -and $releaseManifest.kernelVersion) {
+        $kernelVersion = [string]$releaseManifest.kernelVersion
+    }
+    return [PSCustomObject]@{
+        distributionVersion = if ($distributionVersion) { $distributionVersion } else { '0.0.0' }
+        desktopVersion = if ($desktopVersion) { $desktopVersion } else { 'unknown' }
+        kernelVersion = if ($kernelVersion) { $kernelVersion } else { 'unknown' }
+    }
+}
+
+function Normalize-Version {
+    param([Parameter(Mandatory = $true)][string]$Version)
+    return ($Version -replace '^v', '').Trim()
+}
+
+function Compare-Semver {
+    param(
+        [Parameter(Mandatory = $true)][string]$Left,
+        [Parameter(Mandatory = $true)][string]$Right
+    )
+    $leftMatch = [regex]::Match((Normalize-Version $Left), '^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$')
+    $rightMatch = [regex]::Match((Normalize-Version $Right), '^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$')
+    if (-not $leftMatch.Success -or -not $rightMatch.Success) {
+        return [string]::CompareOrdinal((Normalize-Version $Left), (Normalize-Version $Right))
+    }
+    for ($index = 1; $index -le 3; $index++) {
+        $comparison = [int]$leftMatch.Groups[$index].Value - [int]$rightMatch.Groups[$index].Value
+        if ($comparison -ne 0) { return $comparison }
+    }
+    $leftPre = $leftMatch.Groups[4].Value
+    $rightPre = $rightMatch.Groups[4].Value
+    if ($leftPre -eq $rightPre) { return 0 }
+    if ([string]::IsNullOrEmpty($leftPre)) { return 1 }
+    if ([string]::IsNullOrEmpty($rightPre)) { return -1 }
+    $leftFields = $leftPre.Split('.')
+    $rightFields = $rightPre.Split('.')
+    for ($index = 0; $index -lt [Math]::Max($leftFields.Count, $rightFields.Count); $index++) {
+        if ($index -ge $leftFields.Count) { return -1 }
+        if ($index -ge $rightFields.Count) { return 1 }
+        if ($leftFields[$index] -eq $rightFields[$index]) { continue }
+        $leftNumeric = $leftFields[$index] -match '^\d+$'
+        $rightNumeric = $rightFields[$index] -match '^\d+$'
+        if ($leftNumeric -and $rightNumeric) { return ([int]$leftFields[$index] - [int]$rightFields[$index]) }
+        if ($leftNumeric -ne $rightNumeric) { return $(if ($leftNumeric) { -1 } else { 1 }) }
+        return [string]::CompareOrdinal($leftFields[$index], $rightFields[$index])
+    }
+    return 0
 }
 
 function Get-ChecksumFromSource {
@@ -78,21 +142,22 @@ function Get-RemoteRelease {
         try {
             $headers = @{ 'User-Agent' = 'DeepSeek-Harness-Portable-Updater' }
             $release = Invoke-RestMethod -Uri $url -Headers $headers -TimeoutSec 15
+            $version = ([string]$release.tag_name -replace '^v', '')
             $zipAsset = @($release.assets | Where-Object {
-                $_.name -match '^DeepSeek-Harness-.*-win32-x64\.zip$'
+                $_.name -match ('^DeepSeek-Harness-' + [regex]::Escape($version) + '-win32-x64\.zip$')
             } | Select-Object -First 1)
             if ($zipAsset.Count -eq 0) { continue }
             $digest = Get-ChecksumFromSource -Release $release -ZipAsset $zipAsset[0]
             return [PSCustomObject]@{
                 tag_name = [string]$release.tag_name
-                version = ([string]$release.tag_name -replace '^v', '')
+                version = $version
                 asset_name = [string]$zipAsset[0].name
                 asset_url = [string]$zipAsset[0].browser_download_url
                 sha256 = $digest
             }
         } catch {}
     }
-    throw 'Unable to obtain a portable release and its trusted SHA-256 digest.'
+    throw 'Unable to obtain a matching portable release and its trusted SHA-256 digest.'
 }
 
 function Download-And-Verify {
@@ -130,9 +195,13 @@ function Download-And-Verify {
 }
 
 function Test-PortableLayout {
-    param([Parameter(Mandatory = $true)][string]$Root)
+    param(
+        [Parameter(Mandatory = $true)][string]$Root,
+        [string]$ExpectedDistributionVersion
+    )
 
     $required = @(
+        $RELEASE_MANIFEST_NAME,
         'dsh.cmd',
         'uninstall.cmd',
         'uninstall.ps1',
@@ -152,6 +221,17 @@ function Test-PortableLayout {
     $sharpDir = Join-Path $Root 'runtime\resources\app\node_modules\@img\sharp-win32-x64\lib'
     if (@(Get-ChildItem -LiteralPath $sharpDir -Filter 'sharp-win32-x64-*.node' -File -ErrorAction SilentlyContinue).Count -eq 0) {
         throw 'Portable release is missing the sharp Windows native addon.'
+    }
+
+    $releaseManifest = Get-Content -LiteralPath (Join-Path $Root $RELEASE_MANIFEST_NAME) -Raw | ConvertFrom-Json
+    foreach ($field in @('distributionVersion', 'desktopVersion', 'kernelVersion')) {
+        if (-not $releaseManifest.$field) {
+            throw ('The release manifest is missing: ' + $field)
+        }
+    }
+    if ($ExpectedDistributionVersion -and
+        (Normalize-Version ([string]$releaseManifest.distributionVersion) -ne (Normalize-Version $ExpectedDistributionVersion))) {
+        throw ('The release manifest version does not match the release tag: ' + $releaseManifest.distributionVersion)
     }
 
     $manifestPath = Join-Path $Root 'runtime\resources\app\package.json'
@@ -177,7 +257,8 @@ function Stop-RunningProcesses {
 function Extract-Release {
     param(
         [Parameter(Mandatory = $true)][string]$ZipPath,
-        [Parameter(Mandatory = $true)][string]$Destination
+        [Parameter(Mandatory = $true)][string]$Destination,
+        [Parameter(Mandatory = $true)][string]$ExpectedDistributionVersion
     )
 
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
@@ -190,7 +271,7 @@ function Extract-Release {
     }
     $inner = @(Get-ChildItem -LiteralPath $Destination -Directory | Where-Object { $_.Name -like 'DeepSeek Harness*' })
     $root = if ($inner.Count -eq 1) { $inner[0].FullName } else { $Destination }
-    Test-PortableLayout -Root $root
+    Test-PortableLayout -Root $root -ExpectedDistributionVersion $ExpectedDistributionVersion
     return $root
 }
 
@@ -207,7 +288,7 @@ function Install-ReleaseRoot {
     try {
         Move-Item -LiteralPath (Join-Path $SourceRoot 'runtime') -Destination $RUNTIME_DIR
         foreach ($name in @(
-            'dsh.cmd', 'uninstall.cmd', 'uninstall.ps1', 'update.ps1', 'setup-shortcuts.ps1', 'start-web.cmd', 'start-desktop.cmd',
+            'release-manifest.json', 'dsh.cmd', 'uninstall.cmd', 'uninstall.ps1', 'update.ps1', 'setup-shortcuts.ps1', 'start-web.cmd', 'start-desktop.cmd',
             'update.cmd', '启动网页版.bat', '启动桌面窗口.bat', '启动桌面版.bat',
             '在线更新.bat', '创建桌面快捷方式.bat', '一键解除拦截(自签名信任).bat',
             '使用说明.txt', 'smoke-native.cjs'
@@ -226,11 +307,14 @@ function Install-ReleaseRoot {
 
 try {
     Write-Banner
-    $localVersion = Get-LocalVersion
-    Write-Host ('  Local version:  ' + $localVersion) -ForegroundColor White
+    $localInfo = Get-LocalReleaseInfo
+    Write-Host ('  Local distribution: ' + $localInfo.distributionVersion) -ForegroundColor White
+    Write-Host ('  Local desktop:      ' + $localInfo.desktopVersion) -ForegroundColor Gray
+    Write-Host ('  Local kernel:       ' + $localInfo.kernelVersion) -ForegroundColor Gray
     $release = Get-RemoteRelease
-    Write-Host ('  Latest version: ' + $release.tag_name) -ForegroundColor White
-    if (-not $Force -and $localVersion -eq $release.tag_name) {
+    Write-Host ('  Latest distribution: ' + $release.tag_name) -ForegroundColor White
+    $versionComparison = Compare-Semver -Left $release.version -Right $localInfo.distributionVersion
+    if (-not $Force -and $versionComparison -le 0) {
         Write-Host '  Already up to date.' -ForegroundColor Green
         return
     }
@@ -239,7 +323,7 @@ try {
     $extractPath = Join-Path $env:TEMP ('dsh-update-' + [Guid]::NewGuid().ToString('N'))
     try {
         Download-And-Verify -Release $release -Destination $zipPath
-        $sourceRoot = Extract-Release -ZipPath $zipPath -Destination $extractPath
+        $sourceRoot = Extract-Release -ZipPath $zipPath -Destination $extractPath -ExpectedDistributionVersion $release.version
         Install-ReleaseRoot -SourceRoot $sourceRoot
     } finally {
         Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue

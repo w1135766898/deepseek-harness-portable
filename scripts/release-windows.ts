@@ -11,6 +11,8 @@ const root = resolve(import.meta.dirname, '..')
 const releaseDir = join(root, 'release')
 const desktopManifest = join(root, 'apps', 'desktop', 'package.json')
 const defaultBuildRoot = join(root, 'dist-desktop', 'electron', 'DeepSeek Harness-win32-x64')
+const KERNEL_PACKAGE = '@deepseek-ai/dsh-web-app'
+const RELEASE_MANIFEST_NAME = 'release-manifest.json'
 
 type Options = {
   input?: string
@@ -47,12 +49,45 @@ function parseArgs(argv: string[]): Options {
   return options
 }
 
-function versionFromManifest(): string {
-  const manifest = JSON.parse(readFileSync(desktopManifest, 'utf8')) as { version?: unknown }
-  if (typeof manifest.version !== 'string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(manifest.version)) {
-    throw new Error(`Invalid desktop package version in ${desktopManifest}`)
+function readDesktopManifest(): { version?: unknown; distributionVersion?: unknown } {
+  return JSON.parse(readFileSync(desktopManifest, 'utf8')) as { version?: unknown; distributionVersion?: unknown }
+}
+
+function validateVersion(value: unknown, label: string): string {
+  if (typeof value !== 'string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value)) {
+    throw new Error(`Invalid ${label}: ${String(value)}`)
   }
-  return manifest.version
+  return value
+}
+
+function desktopVersion(): string {
+  return validateVersion(readDesktopManifest().version, `desktop package version in ${desktopManifest}`)
+}
+
+function distributionVersion(): string {
+  return validateVersion(readDesktopManifest().distributionVersion, `distribution version in ${desktopManifest}`)
+}
+
+function kernelVersion(buildRoot: string): string {
+  const packagePath = join(buildRoot, 'runtime', 'resources', 'app', 'node_modules', ...KERNEL_PACKAGE.split('/'), 'package.json')
+  if (!existsSync(packagePath)) {
+    throw new Error(`Kernel package manifest is missing from the portable build: ${packagePath}`)
+  }
+  const manifest = JSON.parse(readFileSync(packagePath, 'utf8')) as { version?: unknown }
+  return validateVersion(manifest.version, `${KERNEL_PACKAGE} version in ${packagePath}`)
+}
+
+async function writeReleaseManifest(buildRoot: string, version: string, shellVersion: string): Promise<void> {
+  const manifest = {
+    schemaVersion: 1,
+    distributionVersion: version,
+    desktopVersion: shellVersion,
+    kernelVersion: kernelVersion(buildRoot),
+    kernelPackage: KERNEL_PACKAGE,
+    kernelRepository: 'https://github.com/deepseek-ai/deepseek-harness',
+  }
+  await writeFile(join(buildRoot, RELEASE_MANIFEST_NAME), `${JSON.stringify(manifest, null, 2)}\n`)
+  console.log(`Release manifest written: ${join(buildRoot, RELEASE_MANIFEST_NAME)}`)
 }
 
 async function run(command: string, args: string[]): Promise<void> {
@@ -94,6 +129,7 @@ async function verifyPortableArchive(zipPath: string, buildRoot: string): Promis
   const prefix = `${basename(buildRoot).replaceAll('\\', '/')}/`
   const entries = await listArchiveEntries(zipPath)
   const required = [
+    RELEASE_MANIFEST_NAME,
     'dsh.cmd',
     'uninstall.cmd',
     'uninstall.ps1',
@@ -156,7 +192,8 @@ async function writeChecksums(zipPath: string, setupPath?: string): Promise<void
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2))
-  const version = versionFromManifest()
+  const version = distributionVersion()
+  const shellVersion = desktopVersion()
   const zipName = `DeepSeek-Harness-${version}-win32-x64.zip`
   const zipPath = join(releaseDir, zipName)
   await rm(zipPath, { force: true })
@@ -171,6 +208,7 @@ async function main(): Promise<void> {
   if (!existsSync(join(buildRoot, 'runtime', 'DeepSeek Harness.exe'))) {
     throw new Error(`Portable build root is missing runtime/DeepSeek Harness.exe: ${buildRoot}`)
   }
+  await writeReleaseManifest(buildRoot, version, shellVersion)
   await run('tar.exe', ['-a', '-c', '-f', zipPath, '-C', dirname(buildRoot), basename(buildRoot)])
   await verifyPortableArchive(zipPath, buildRoot)
 

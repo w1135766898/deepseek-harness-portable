@@ -4,7 +4,7 @@
 
 #define MyAppName "DeepSeek Harness"
 #define MyAppPublisher "DeepSeek Harness Contributors"
-#define MyAppURL "https://github.com/deepseek-ai/deepseek-harness"
+#define MyAppURL "https://github.com/wsnxxxs/deepseek-harness-portable"
 #define MyAppExeName "runtime\DeepSeek Harness.exe"
 #ifndef MyAppVersion
   #define MyAppVersion "0.0.0"
@@ -126,7 +126,7 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
-  ZipPath, AppDir, TarExe, TaskKillExe, MainExe, PickerWorker: String;
+  ZipPath, AppDir, TarExe, TaskKillExe, MainExe, PickerWorker, ReleaseManifest: String;
 begin
   if CurStep = ssPostInstall then
   begin
@@ -156,8 +156,11 @@ begin
       RaiseException(Format('Runtime extraction failed (tar exit code %d).', [ResultCode]));
 
     MainExe := AddBackslash(AppDir) + '{#MyAppExeName}';
+    ReleaseManifest := AddBackslash(AppDir) + 'release-manifest.json';
     PickerWorker := AddBackslash(AppDir) +
       'runtime\resources\app\node_modules\@deepseek-ai\dsh-host-directory-picker-native\lib\worker.cjs';
+    if not FileExists(ReleaseManifest) then
+      RaiseException('Runtime extraction completed without the release manifest.');
     if not FileExists(MainExe) then
       RaiseException('Runtime extraction completed without the main executable.');
     if not FileExists(PickerWorker) then

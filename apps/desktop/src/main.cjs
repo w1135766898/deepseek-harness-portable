@@ -8,6 +8,7 @@ const { findPortableRoot } = require('./update-path.cjs')
 
 const APP_NAME = 'DeepSeek Harness'
 const PORTABLE_RELEASE_REPO = 'wsnxxxs/deepseek-harness-portable'
+const RELEASE_MANIFEST_NAME = 'release-manifest.json'
 const STARTUP_TIMEOUT_MS = 60_000
 const STOP_TIMEOUT_MS = 5_000
 
@@ -278,19 +279,45 @@ function fetchJson(url, timeoutMs = 5000) {
   })
 }
 
+function readJsonIfPresent(path) {
+  try {
+    if (existsSync(path)) return JSON.parse(readFileSync(path, 'utf8'))
+  } catch {}
+  return undefined
+}
+
+function firstVersion(...values) {
+  return values.find(value => typeof value === 'string' && value.length > 0) || '0.0.0'
+}
+
+function getLocalReleaseInfo() {
+  const packageManifest = readJsonIfPresent(join(__dirname, '..', 'package.json')) || {}
+  const portableRoot = findPortableRoot(__dirname)
+  const releaseManifest = portableRoot === undefined
+    ? undefined
+    : readJsonIfPresent(join(portableRoot, RELEASE_MANIFEST_NAME))
+  let appVersion
+  try {
+    appVersion = app.getVersion()
+  } catch {}
+  return {
+    distributionVersion: firstVersion(
+      releaseManifest?.distributionVersion,
+      packageManifest.distributionVersion,
+      packageManifest.version,
+      appVersion,
+    ),
+    desktopVersion: firstVersion(
+      releaseManifest?.desktopVersion,
+      packageManifest.version,
+      appVersion,
+    ),
+    kernelVersion: firstVersion(releaseManifest?.kernelVersion, 'unknown'),
+  }
+}
+
 function getLocalVersion() {
-  try {
-    const pkgPath = join(__dirname, '..', 'package.json')
-    if (existsSync(pkgPath)) {
-      const ver = JSON.parse(readFileSync(pkgPath, 'utf8')).version
-      if (ver && ver !== '0.0.1') return ver
-    }
-  } catch {}
-  try {
-    const appVersion = app.getVersion()
-    if (typeof appVersion === 'string' && appVersion.length > 0) return appVersion
-  } catch {}
-  return '0.0.0'
+  return getLocalReleaseInfo().distributionVersion
 }
 
 function compareVersions(v1, v2) {
@@ -328,8 +355,12 @@ async function queryLatestVersion() {
     const data = await fetchJson(c.url)
     const version = c.parser(data)
     if (!version) throw new Error('No version tag found')
+    const zipAsset = Array.isArray(data.assets)
+      ? data.assets.find(asset => asset?.name === `DeepSeek-Harness-${version}-win32-x64.zip`)
+      : undefined
+    if (zipAsset === undefined) throw new Error('No portable ZIP asset found')
     const relUrl = typeof c.releaseUrl === 'function' ? c.releaseUrl(data) : c.releaseUrl
-    return { channel: c.name, version, releaseUrl: relUrl }
+    return { channel: c.name, version, releaseUrl: relUrl, assetName: zipAsset.name }
   }))
 
   const successful = results
