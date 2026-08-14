@@ -7,6 +7,7 @@ const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
 
 const APP_NAME = 'DeepSeek Harness'
+const PORTABLE_RELEASE_REPO = 'wsnxxxs/deepseek-harness-portable'
 const STARTUP_TIMEOUT_MS = 60_000
 const STOP_TIMEOUT_MS = 5_000
 
@@ -308,31 +309,20 @@ function compareVersions(v1, v2) {
 }
 
 async function queryLatestVersion() {
-  // Multi-source concurrent racing against official upstream deepseek-ai/deepseek-harness
+  // Race direct GitHub and the mirror, but keep both channels on the same
+  // Windows portable release source that the updater actually downloads.
   const channels = [
     {
-      name: 'DeepSeek 官方国内镜像 (Alibaba Cloud NPM CDN)',
-      url: 'https://registry.npmmirror.com/@deepseek-ai/dsh',
-      parser: data => data['dist-tags']?.latest || data['dist-tags']?.next,
-      releaseUrl: 'https://github.com/deepseek-ai/deepseek-harness/releases',
-    },
-    {
-      name: 'DeepSeek 官方 NPM 全球源',
-      url: 'https://registry.npmjs.org/@deepseek-ai/dsh',
-      parser: data => data['dist-tags']?.latest || data['dist-tags']?.next,
-      releaseUrl: 'https://github.com/deepseek-ai/deepseek-harness/releases',
-    },
-    {
-      name: 'DeepSeek 官方 GitHub (Direct API)',
-      url: 'https://api.github.com/repos/deepseek-ai/deepseek-harness/releases/latest',
+      name: 'Portable Windows GitHub',
+      url: `https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases/latest`,
       parser: data => (data.tag_name || '').replace(/^v/, ''),
-      releaseUrl: data => data.html_url || 'https://github.com/deepseek-ai/deepseek-harness/releases',
+      releaseUrl: data => data.html_url || `https://github.com/${PORTABLE_RELEASE_REPO}/releases`,
     },
     {
-      name: 'DeepSeek 官方 GitHub 国内加速源',
-      url: 'https://ghfast.top/https://api.github.com/repos/deepseek-ai/deepseek-harness/releases/latest',
+      name: 'Portable Windows GitHub mirror',
+      url: `https://ghfast.top/https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases/latest`,
       parser: data => (data.tag_name || '').replace(/^v/, ''),
-      releaseUrl: 'https://github.com/deepseek-ai/deepseek-harness/releases',
+      releaseUrl: `https://github.com/${PORTABLE_RELEASE_REPO}/releases`,
     }
   ]
 
