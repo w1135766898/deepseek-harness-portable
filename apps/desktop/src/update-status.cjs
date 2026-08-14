@@ -46,6 +46,15 @@ function readUpdateStatus(userDataPath) {
   }
 }
 
+function clearUpdateStatus(userDataPath) {
+  try {
+    rmSync(statusPath(userDataPath), { force: true })
+    return true
+  } catch {
+    return false
+  }
+}
+
 function writeUpdateStatus(userDataPath, status) {
   const normalized = normalizeUpdateStatus({
     ...status,
@@ -76,6 +85,14 @@ function writeUpdateStatus(userDataPath, status) {
   } finally {
     try { rmSync(temporaryPath, { force: true }) } catch {}
   }
+}
+
+function isSupersededByCurrentVersion(status, currentVersion, compareVersions) {
+  const normalized = normalizeUpdateStatus(status)
+  if (!normalized || normalized.state === 'completed') return false
+  if (normalized.targetVersion === '' || typeof currentVersion !== 'string' || currentVersion.trim() === '') return false
+  if (typeof compareVersions !== 'function') return false
+  return compareVersions(currentVersion.trim(), normalized.targetVersion) >= 0
 }
 
 function updateStatusKey(status) {
@@ -125,13 +142,19 @@ function reconcileUpdateStatus(status, options = {}) {
   const updatedAt = Date.parse(normalized.updatedAt)
   const age = Number.isFinite(updatedAt) ? Math.max(0, now - updatedAt) : Number.POSITIVE_INFINITY
   const processStopped = normalized.processId > 0 && !processIsAlive(normalized.processId)
+  const launchGraceMs = options.launchGraceMs === undefined ? 30 * 1000 : options.launchGraceMs
+  const launchExpired = normalized.state === 'starting'
+    && normalized.processId === 0
+    && age > launchGraceMs
 
-  if (!processStopped && age <= staleAfterMs) return normalized
+  if (!processStopped && !launchExpired && age <= staleAfterMs) return normalized
   return {
     ...normalized,
     state: 'interrupted',
     stage: 'interrupted',
-    message: normalized.message || 'The update stopped during ' + normalized.stage + '. The current installation was kept.',
+    message: normalized.state === 'starting'
+      ? 'The updater stopped before it could start. The current installation was kept.'
+      : normalized.message || 'The update stopped during ' + normalized.stage + '. The current installation was kept.',
     updatedAt: new Date(now).toISOString(),
     processId: 0,
   }
@@ -142,8 +165,10 @@ module.exports = {
   DEFAULT_STALE_AFTER_MS,
   STATUS_FILE_NAME,
   TERMINAL_STATES,
+  clearUpdateStatus,
   isActiveUpdateStatus,
   isTerminalUpdateStatus,
+  isSupersededByCurrentVersion,
   normalizeUpdateStatus,
   readUpdateStatus,
   reconcileUpdateStatus,

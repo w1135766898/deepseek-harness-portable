@@ -22,7 +22,9 @@ const {
   restoreWindowBounds,
 } = require('./window-state.cjs')
 const {
+  clearUpdateStatus,
   isActiveUpdateStatus,
+  isSupersededByCurrentVersion,
   readUpdateStatus,
   reconcileUpdateStatus,
   statusNeedsNotice,
@@ -1094,6 +1096,10 @@ function getCurrentUpdateStatus() {
   const userDataPath = app.getPath('userData')
   const current = readUpdateStatus(userDataPath)
   if (current === undefined) return undefined
+  if (isSupersededByCurrentVersion(current, getLocalVersion(), compareVersions)) {
+    clearUpdateStatus(userDataPath)
+    return undefined
+  }
   const reconciled = reconcileUpdateStatus(current)
   if (updateStatusKey(reconciled) !== updateStatusKey(current)) {
     return writeUpdateStatus(userDataPath, reconciled)
