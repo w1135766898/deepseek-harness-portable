@@ -431,12 +431,19 @@ class DesktopExeBuild {
     }
     await copyFile(indexSource, indexTarget)
     const worker = await readFile(workerTarget, 'utf8')
+    const oldReadUtf16Comment = `* Read a NUL-terminated UTF-16 string at a native address. koffi's\n* \`_Out_ void **\` out-params surface a raw address, and\n* \`koffi.decode(addr, 'str16')\` would dereference it as a pointer — crash\n* on real Windows — so view the memory directly instead.`
+    const newReadUtf16Comment = `* Read a NUL-terminated UTF-16 string at a native address. The specialized\n* helper decodes from the raw string base without creating a fixed-size view\n* that can cross the COM allocation boundary and crash the worker.`
+    const oldReadUtf16 = `function readUtf16(koffi, address) {\n\tconst bytes = Buffer.from(koffi.view(address, 32768));\n\tlet end = 0;\n\twhile (end + 1 < bytes.length && bytes[end] !== 0) end += 2;\n\treturn bytes.toString("utf16le", 0, end);\n}`
+    const newReadUtf16 = `function readUtf16(koffi, address) {\n\treturn koffi.decode.string16(address);\n}`
     const oldPost = `const post = (message) => {\n\t/* v8 ignore next 3 -- disconnect needs a live IPC channel the unit lane must not sever (built-worker.e2e.ts owns the real close path). */\n\tsend(message, () => {\n\t\tif (process.connected) process.disconnect();\n\t});\n};`
     const newPost = `const post = (message) => {\n\tsend(message);\n};`
-    if (!worker.includes(oldPost)) {
+    if (!worker.includes(oldReadUtf16Comment) || !worker.includes(oldReadUtf16) || !worker.includes(oldPost)) {
       throw new Error('build-desktop-web-exe: directory-picker worker no longer matches the expected upstream IPC code.')
     }
-    const patchedWorker = worker.replace(oldPost, newPost)
+    const patchedWorker = worker
+      .replace(oldReadUtf16Comment, newReadUtf16Comment)
+      .replace(oldReadUtf16, newReadUtf16)
+      .replace(oldPost, newPost)
     await writeFile(workerTarget, patchedWorker)
     console.log('build-desktop-web-exe: applied Windows directory-picker runtime patches')
   }

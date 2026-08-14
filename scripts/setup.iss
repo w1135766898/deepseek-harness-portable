@@ -30,6 +30,8 @@ WizardStyle=modern
 PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64compatible
 ArchitecturesAllowed=x64compatible
+CloseApplications=force
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -58,10 +60,21 @@ Type: filesandordirs; Name: "{app}"
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
-  ZipPath, AppDir, TarExe: String;
+  ZipPath, AppDir, TarExe, TaskKillExe, MainExe, PickerWorker: String;
 begin
   if CurStep = ssPostInstall then
   begin
+    { The payload is extracted by tar rather than [Files], so Restart Manager
+      cannot discover its locked executables. Stop any prior app tree before
+      replacing the runtime to prevent a mixed-version installation. }
+    TaskKillExe := ExpandConstant('{sys}\taskkill.exe');
+    if FileExists(TaskKillExe) then
+    begin
+      Exec(TaskKillExe, '/F /T /IM "DeepSeek Harness.exe"', '', SW_HIDE,
+        ewWaitUntilTerminated, ResultCode);
+      Sleep(500);
+    end;
+
     ZipPath := ExpandConstant('{tmp}\{#MyZipName}');
     AppDir := ExpandConstant('{app}');
     TarExe := ExpandConstant('{sys}\tar.exe');
@@ -69,6 +82,19 @@ begin
       TarExe := ExpandConstant('{sysnative}\tar.exe');
     if not FileExists(TarExe) then
       TarExe := 'tar.exe';
-    Exec(TarExe, '-xf "' + ZipPath + '" -C "' + AppDir + '" --strip-components 1', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    if not Exec(TarExe,
+      '-xf "' + ZipPath + '" -C "' + AppDir + '" --strip-components 1',
+      '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+      RaiseException('Unable to start the Windows archive extractor.');
+    if ResultCode <> 0 then
+      RaiseException(Format('Runtime extraction failed (tar exit code %d).', [ResultCode]));
+
+    MainExe := AddBackslash(AppDir) + '{#MyAppExeName}';
+    PickerWorker := AddBackslash(AppDir) +
+      'runtime\resources\app\node_modules\@deepseek-ai\dsh-host-directory-picker-native\lib\worker.cjs';
+    if not FileExists(MainExe) then
+      RaiseException('Runtime extraction completed without the main executable.');
+    if not FileExists(PickerWorker) then
+      RaiseException('Runtime extraction completed without the directory picker worker.');
   end;
 end;
