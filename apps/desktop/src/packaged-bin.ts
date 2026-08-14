@@ -175,19 +175,41 @@ async function openBrowserWhenReady(ctx: Context): Promise<void> {
   const port = startup?.port ?? 3080
   const url = `http://${host}:${port}/`
   const deadline = Date.now() + 20_000
+  let lastReason = 'settings.describe has not completed'
   while (Date.now() < deadline) {
     try {
       const response = await fetch(url)
       if (response.ok) {
-        spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' }).unref()
-        return
+        const apiResponse = await fetch(`${url}api/settings.describe`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            type: 'client-request',
+            rpcId: `web-readiness-${Date.now()}`,
+            method: 'settings.describe',
+            payload: {},
+          }),
+          signal: AbortSignal.timeout(Math.min(1500, Math.max(1, deadline - Date.now()))),
+        })
+        if (!apiResponse.ok) {
+          lastReason = `settings.describe HTTP ${apiResponse.status}`
+        } else {
+          const body = await apiResponse.json() as {
+            result?: { ok?: boolean; error?: { message?: string }; value?: { namespaces?: Array<{ ns?: string }> } }
+          }
+          if (body.result?.ok && body.result.value?.namespaces?.some(namespace => namespace.ns === 'ui-onboarding')) {
+            spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' }).unref()
+            return
+          }
+          lastReason = body.result?.error?.message ?? 'ui-onboarding namespace is not registered'
+        }
       }
     } catch {
-      // Server not up yet; keep polling.
+      // Server or api-gateway not up yet; keep polling.
     }
     await new Promise(resolve => setTimeout(resolve, 400))
   }
-  console.error(`${NAME}: server did not answer at ${url}; open the URL manually.`)
+  console.error(`${NAME}: host onboarding readiness timed out at ${url}: ${lastReason}; open the URL manually.`)
 }
 
 /**

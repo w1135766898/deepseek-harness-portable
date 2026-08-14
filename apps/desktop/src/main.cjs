@@ -3,7 +3,7 @@ const { spawn } = require('node:child_process')
 const { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } = require('node:fs')
 const { homedir } = require('node:os')
 const { join } = require('node:path')
-const { readyUrl } = require('./ready-url.cjs')
+const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 
 const APP_NAME = 'DeepSeek Harness'
 const STARTUP_TIMEOUT_MS = 60_000
@@ -142,6 +142,7 @@ function startHarness(cwd) {
   return new Promise((resolve, reject) => {
     let output = ''
     let ready = false
+    let readyUrlSeen = false
     let settled = false
     const timeout = setTimeout(() => {
       child.kill()
@@ -158,9 +159,18 @@ function startHarness(cwd) {
     const onOutput = chunk => {
       output = appendOutput(output, chunk)
       const url = readyUrl(output)
-      if (url !== undefined && !ready) {
-        ready = true
-        finish(() => resolve(url))
+      if (url !== undefined && !readyUrlSeen) {
+        readyUrlSeen = true
+        void waitForOnboardingReady(url).then(
+          () => {
+            ready = true
+            finish(() => resolve(url))
+          },
+          error => {
+            child.kill()
+            fail(`Harness host was not ready: ${error instanceof Error ? error.message : String(error)}`)
+          },
+        )
       }
     }
     child.stdout.on('data', onOutput)
