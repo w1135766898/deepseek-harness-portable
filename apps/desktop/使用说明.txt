@@ -1,38 +1,7 @@
 DeepSeek Harness for Win v1.0.1
 ================================
 
-English
--------
-
-1. start-desktop.cmd
-   Launches the bundled Electron desktop shell.
-
-2. start-web.cmd
-   Uses Node.js from PATH to launch the Web surface in a browser.
-
-3. dsh.cmd or update.ps1
-   Checks the latest distribution, downloads a complete release, verifies SHA-256,
-   validates the release manifest and atomically replaces runtime.
-
-4. Release Notes / 更新日志
-   Open the tray menu to read the current release, release history, and component
-   versions. The desktop shell uses the GitHub mirror and a bundled local fallback.
-
-5. setup-shortcuts.ps1
-   Creates a desktop shortcut and adds this portable root to the user PATH.
-
-6. uninstall.cmd or uninstall.ps1
-   Removes the portable application, shortcuts, and PATH entry. User data is kept
-   unless you explicitly confirm its removal.
-
-This release is not signed by a trusted commercial CA. SmartScreen or Smart App
-Control may warn or block it. No certificate or trust-store change is performed
-automatically. Verify SHA256SUMS.txt before running downloaded files.
-
-All application files are under runtime/. Do not delete or rename that directory.
-
-中文
-----
+英文说明：使用说明.en.txt
 
 1. start-desktop.cmd
    启动内置 Electron 桌面端。
@@ -42,9 +11,9 @@ All application files are under runtime/. Do not delete or rename that directory
 
 3. dsh.cmd 或 update.ps1
    检查最新分发版本，下载完整发布包，校验 SHA-256，验证发布清单，
-   并以原子方式替换 runtime。
+   并以整体替换方式更新 runtime。
 
-4. Release Notes / 更新日志
+4. 更新日志
    打开托盘菜单即可查看当前版本、历史发布记录和组件版本。桌面外壳会
    使用 GitHub 镜像，并在网络不可用时回退到本地发布清单。
 

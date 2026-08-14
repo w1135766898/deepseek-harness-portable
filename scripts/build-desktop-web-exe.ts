@@ -756,6 +756,7 @@ class DesktopExeBuild {
         'apps/desktop/创建桌面快捷方式.bat',
         'apps/desktop/一键解除拦截(自签名信任).bat',
         'apps/desktop/使用说明.txt',
+        'apps/desktop/使用说明.en.txt',
         'apps/desktop/dsh.cmd',
         'uninstall.cmd',
         'uninstall.ps1',
