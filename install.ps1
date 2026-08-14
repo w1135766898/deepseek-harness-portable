@@ -218,6 +218,10 @@ function Create-Shortcuts {
         $targetExe = Join-Path $InstallDir 'DeepSeek Harness.exe'
         $workDir = $InstallDir
     }
+    $iconPath = Join-Path $InstallDir 'runtime\resources\app\assets\deepseek.ico'
+    if (-not (Test-Path -LiteralPath $iconPath)) {
+        $iconPath = $targetExe
+    }
 
     if (-not $NoDesktopShortcut) {
         $desktopPath = [Environment]::GetFolderPath('Desktop')
