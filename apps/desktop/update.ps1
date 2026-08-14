@@ -234,26 +234,35 @@ function Get-ChecksumFromSource {
 
 function Get-RemoteRelease {
     $apiUrls = @(Get-MirrorUrls ('https://api.github.com/repos/' + $DISTRIBUTION_REPO + '/releases/latest'))
+    $release = $null
+    $zipAsset = $null
     foreach ($url in $apiUrls) {
         try {
             $headers = @{ 'User-Agent' = 'DeepSeek-Harness-Portable-Updater' }
-            $release = Invoke-RestMethod -Uri $url -Headers $headers -MaximumRedirection 5 -TimeoutSec 8
-            $version = ([string]$release.tag_name -replace '^v', '')
-            $zipAsset = @($release.assets | Where-Object {
+            $candidate = Invoke-RestMethod -Uri $url -Headers $headers -MaximumRedirection 5 -TimeoutSec 8
+            $version = ([string]$candidate.tag_name -replace '^v', '')
+            $candidateAsset = @($candidate.assets | Where-Object {
                 $_.name -match ('^DeepSeek-Harness-' + [regex]::Escape($version) + '-win32-x64\.zip$')
             } | Select-Object -First 1)
-            if ($zipAsset.Count -eq 0) { continue }
-            $digest = Get-ChecksumFromSource -Release $release -ZipAsset $zipAsset[0]
-            return [PSCustomObject]@{
-                tag_name = [string]$release.tag_name
-                version = $version
-                asset_name = [string]$zipAsset[0].name
-                asset_url = [string]$zipAsset[0].browser_download_url
-                sha256 = $digest
-            }
+            if ($candidateAsset.Count -eq 0) { continue }
+            $release = $candidate
+            $zipAsset = $candidateAsset[0]
+            break
         } catch {}
     }
-    throw 'Unable to obtain a matching portable release and its trusted SHA-256 digest.'
+    if (-not $release -or -not $zipAsset) {
+        throw 'Unable to obtain a matching portable release from the configured API sources.'
+    }
+
+    $version = ([string]$release.tag_name -replace '^v', '')
+    $digest = Get-ChecksumFromSource -Release $release -ZipAsset $zipAsset
+    return [PSCustomObject]@{
+        tag_name = [string]$release.tag_name
+        version = $version
+        asset_name = [string]$zipAsset.name
+        asset_url = [string]$zipAsset.browser_download_url
+        sha256 = $digest
+    }
 }
 
 function Get-RemoteReleaseByVersion {
