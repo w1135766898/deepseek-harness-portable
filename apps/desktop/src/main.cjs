@@ -27,6 +27,9 @@ const RELEASE_NOTES_FILE_NAME = 'release-notes.json'
 const DESKTOP_PRELOAD_NAME = 'desktop-preload.cjs'
 const SPLASH_PAGE_NAME = 'splash.html'
 const RELEASE_HISTORY_LIMIT = 20
+const DESKTOP_TITLEBAR_HEIGHT = 36
+const LIGHT_WINDOW_SURFACE = '#f4f7fb'
+const DARK_WINDOW_SURFACE = '#0c1220'
 const SLOW_STARTUP_MS = 10_000
 const STARTUP_TIMEOUT_MS = 60_000
 const RENDERER_FIRST_PAINT_TIMEOUT_MS = 5_000
@@ -76,13 +79,15 @@ function updateConfig(patch) {
 
 function themePayload() {
   const isDark = nativeTheme.shouldUseDarkColors
+  const surface = isDark ? DARK_WINDOW_SURFACE : LIGHT_WINDOW_SURFACE
   return {
     theme: isDark ? 'dark' : 'light',
     isDark,
+    surface,
     titleBar: {
-      color: '#00000000',
+      color: surface,
       symbolColor: isDark ? '#f4f7fb' : '#1f2937',
-      height: 36,
+      height: DESKTOP_TITLEBAR_HEIGHT,
     },
   }
 }
@@ -92,6 +97,9 @@ function syncNativeTheme() {
   const theme = themePayload()
   if (process.platform === 'win32' && typeof window.setTitleBarOverlay === 'function') {
     try { window.setTitleBarOverlay(theme.titleBar) } catch {}
+  }
+  if (process.platform === 'win32' && typeof window.setBackgroundColor === 'function') {
+    try { window.setBackgroundColor(theme.surface) } catch {}
   }
   if (rendererReady) window.webContents.send('desktop:theme-changed', theme)
 }
@@ -1173,9 +1181,7 @@ async function createApp() {
     show: false,
     title: APP_NAME,
     icon: iconPath(),
-    backgroundColor: process.platform === 'win32'
-      ? '#00000000'
-      : (nativeTheme.shouldUseDarkColors ? '#0c1220' : '#f4f7fb'),
+    backgroundColor: themePayload().surface,
     autoHideMenuBar: true,
     ...nativeWindowOptions,
     webPreferences: {

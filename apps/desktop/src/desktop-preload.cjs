@@ -108,7 +108,8 @@ if (!isSplashDocument) {
     const style = document.createElement('style')
     style.id = 'dsh-desktop-layout-style'
     style.textContent = `
-      html, body { height: 100%; min-height: 0 !important; }
+      :root { --dsh-titlebar-height: 36px; --dsh-window-surface: #f4f7fb; }
+      html, body { height: 100%; min-height: 0 !important; background: var(--dsh-window-surface) !important; }
       body { overflow: hidden !important; overscroll-behavior: none; }
       body > * { min-height: 0; }
       #root, #app, #__next, [data-reactroot] { min-height: 0 !important; height: 100%; }
@@ -132,7 +133,12 @@ if (!isSplashDocument) {
       *::-webkit-scrollbar-track { background: transparent; }
       *::-webkit-scrollbar-thumb { background: rgba(128, 138, 156, .42); border: 2px solid transparent; border-radius: 999px; background-clip: padding-box; }
       *::-webkit-scrollbar-thumb:hover { background: rgba(128, 138, 156, .7); border: 1px solid transparent; background-clip: padding-box; }
-      button, a, input, textarea, select, [role="button"] { -webkit-user-select: none; user-select: none; }
+      button, a, input, textarea, select, [role="button"] {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-app-region: no-drag !important;
+        pointer-events: auto !important;
+      }
     `
     document.head.appendChild(style)
   }
@@ -380,7 +386,7 @@ if (!isSplashDocument) {
     :host { all: initial; color-scheme: light dark; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
     .dsh-chrome, .dsh-chrome * { box-sizing: border-box; }
     .dsh-chrome { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; color: #182235; font: 13px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif; }
-    .dsh-drag-region { position: fixed; inset: 0 0 auto; height: 36px; pointer-events: auto; -webkit-app-region: drag; }
+    .dsh-drag-region { position: fixed; inset: 0 140px auto 44px; height: var(--dsh-titlebar-height); pointer-events: none; -webkit-app-region: drag; }
     .dsh-app-menu, .dsh-notice, .dsh-notice-pill, .dsh-drawer-layer { pointer-events: auto; }
     .dsh-app-menu { position: fixed; top: 5px; left: 10px; z-index: 2; -webkit-app-region: no-drag; }
     .dsh-menu-trigger { display: grid; place-items: center; width: 28px; height: 26px; padding: 0; border: 1px solid rgba(93, 126, 177, .2); border-radius: 8px; color: #4775b8; background: rgba(247, 250, 255, .72); box-shadow: 0 4px 12px rgba(31, 50, 83, .1); cursor: pointer; font-size: 15px; -webkit-app-region: no-drag; }
@@ -409,13 +415,13 @@ if (!isSplashDocument) {
     .dsh-button.primary:hover { background: #2567ce; }
     .dsh-button.ghost { color: #5d6d85; background: transparent; }
     .dsh-button:disabled { opacity: .6; cursor: default; }
-    .dsh-drawer-layer { position: fixed; inset: 36px 0 0; display: flex; justify-content: flex-end; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s ease, visibility 0s linear .3s; }
+    .dsh-drawer-layer { position: fixed; inset: 0; display: flex; justify-content: flex-end; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s ease, visibility 0s linear .3s; }
     .dsh-drawer-layer.is-open { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
     .dsh-drawer-backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: rgba(12, 22, 38, .24); cursor: default; opacity: 0; transition: opacity .2s ease; }
     .dsh-drawer-layer.is-open .dsh-drawer-backdrop { opacity: 1; }
     .dsh-drawer { position: relative; display: flex; flex-direction: column; width: min(540px, calc(100vw - 12px)); height: 100%; overflow: hidden; border-left: 1px solid rgba(116, 138, 171, .22); background: rgba(250, 252, 255, .97); box-shadow: -20px 0 50px rgba(23, 43, 72, .2); opacity: .75; transform: translateX(100%); transition: transform .3s cubic-bezier(.16,1,.3,1), opacity .3s ease; will-change: transform, opacity; }
     .dsh-drawer-layer.is-open .dsh-drawer { opacity: 1; transform: translateX(0); }
-    .dsh-drawer-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 28px 28px 18px; border-bottom: 1px solid rgba(42, 61, 92, .1); }
+    .dsh-drawer-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: calc(var(--dsh-titlebar-height) + 14px) 28px 18px; border-bottom: 1px solid rgba(42, 61, 92, .1); }
     .dsh-eyebrow { margin-bottom: 4px; color: #6e85a8; font: 700 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .12em; }
     .dsh-drawer h2 { margin: 0; color: #18263d; font-size: 21px; letter-spacing: -.02em; }
     .dsh-subtitle { display: block; margin-top: 4px; color: #7e8da4; font-size: 12px; }
@@ -524,6 +530,8 @@ if (!isSplashDocument) {
     const dark = theme?.theme === 'dark'
     document.documentElement.dataset.dshTheme = dark ? 'dark' : 'light'
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+    document.documentElement.style.setProperty('--dsh-titlebar-height', `${Number(theme?.titleBar?.height) || 36}px`)
+    document.documentElement.style.setProperty('--dsh-window-surface', theme?.surface || (dark ? '#0c1220' : '#f4f7fb'))
   })
   ipcRenderer.on('desktop:notice', (_event, notice) => {
     state.notice = notice && typeof notice === 'object' ? notice : undefined
