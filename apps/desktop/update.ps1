@@ -1,7 +1,10 @@
-# ==============================================================================
-# DeepSeek Harness Official Upstream Direct Updater (With Domestic Mirror Acceleration)
-# Upstream: https://github.com/deepseek-ai/deepseek-harness / @deepseek-ai/dsh
-# ==============================================================================
+# ============================================================================
+# DeepSeek Harness portable distribution updater
+#
+# Updates the complete portable runtime from this distribution's GitHub
+# release. User data lives in %USERPROFILE%\.dsh and is never part of the
+# runtime swap.
+# ============================================================================
 
 [CmdletBinding()]
 param(
@@ -11,203 +14,230 @@ param(
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$OFFICIAL_REPO = "deepseek-ai/deepseek-harness"
+$DISTRIBUTION_REPO = 'w1135766898/deepseek-harness-portable'
 $SCRIPT_ROOT = $PSScriptRoot
-
-# Determine app root
-$APP_ROOT = $SCRIPT_ROOT
-if ((Split-Path -Leaf $SCRIPT_ROOT) -ieq "runtime") {
-    $APP_ROOT = Split-Path -Parent $SCRIPT_ROOT
+$APP_ROOT = if ((Split-Path -Leaf $SCRIPT_ROOT) -ieq 'runtime') {
+    Split-Path -Parent $SCRIPT_ROOT
+} else {
+    $SCRIPT_ROOT
 }
+$RUNTIME_DIR = Join-Path $APP_ROOT 'runtime'
 
 function Write-Banner {
-    Write-Host ""
-    Write-Host "================================================================" -ForegroundColor Cyan
-    Write-Host "   DeepSeek Harness Official Upstream Direct Updater            " -ForegroundColor Cyan
-    Write-Host "   (Connecting to deepseek-ai upstream with domestic CDN mirror)" -ForegroundColor Gray
-    Write-Host "================================================================" -ForegroundColor Cyan
-    Write-Host ""
+    Write-Host ''
+    Write-Host '================================================================' -ForegroundColor Cyan
+    Write-Host '   DeepSeek Harness portable runtime updater                    ' -ForegroundColor Cyan
+    Write-Host '   Full release replacement with SHA-256 verification           ' -ForegroundColor Gray
+    Write-Host '================================================================' -ForegroundColor Cyan
+    Write-Host ''
 }
 
 function Get-LocalVersion {
-    $paths = @(
-        (Join-Path $APP_ROOT "runtime\resources\app\package.json"),
-        (Join-Path $APP_ROOT "resources\app\package.json")
+    $manifest = Join-Path $RUNTIME_DIR 'resources\app\package.json'
+    if (-not (Test-Path -LiteralPath $manifest)) { return 'unknown' }
+    try {
+        $json = Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json
+        if ($json.version) { return ('v' + $json.version) }
+    } catch {}
+    return 'unknown'
+}
+
+function Get-ChecksumFromSource {
+    param(
+        [Parameter(Mandatory = $true)]$Release,
+        [Parameter(Mandatory = $true)]$ZipAsset
     )
-    foreach ($p in $paths) {
-        if (Test-Path $p) {
-            try {
-                $json = Get-Content $p -Raw | ConvertFrom-Json
-                if ($json.version) { return ("v" + $json.version) }
-            } catch {}
-        }
+
+    if ($ZipAsset.digest -match '^sha256:([0-9a-fA-F]{64})$') {
+        return $matches[1].ToUpperInvariant()
     }
-    return "unknown"
+
+    $tag = [string]$Release.tag_name
+    $rawUrls = @(
+        ('https://raw.githubusercontent.com/' + $DISTRIBUTION_REPO + '/' + $tag + '/SHA256SUMS.txt'),
+        ('https://raw.githubusercontent.com/' + $DISTRIBUTION_REPO + '/main/SHA256SUMS.txt'),
+        ('https://ghfast.top/https://raw.githubusercontent.com/' + $DISTRIBUTION_REPO + '/' + $tag + '/SHA256SUMS.txt')
+    )
+    foreach ($url in $rawUrls) {
+        try {
+            $text = (Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 15).Content
+            $escapedName = [regex]::Escape([string]$ZipAsset.name)
+            $match = [regex]::Match($text, '(?im)^\s*([0-9a-f]{64})\s+\*?' + $escapedName + '\s*$')
+            if ($match.Success) { return $match.Groups[1].Value.ToUpperInvariant() }
+        } catch {}
+    }
+    throw ('No trusted SHA-256 digest was published for ' + $ZipAsset.name + '.')
 }
 
 function Get-RemoteRelease {
-    Write-Host "[1/4] Connecting to DeepSeek official upstream to check latest release..." -ForegroundColor Yellow
-    
-    $endpoints = @(
-        "https://registry.npmmirror.com/@deepseek-ai/dsh",
-        ("https://api.github.com/repos/" + $OFFICIAL_REPO + "/releases/latest"),
-        "https://registry.npmjs.org/@deepseek-ai/dsh",
-        ("https://ghfast.top/https://api.github.com/repos/" + $OFFICIAL_REPO + "/releases/latest")
+    $apiUrls = @(
+        ('https://api.github.com/repos/' + $DISTRIBUTION_REPO + '/releases/latest'),
+        ('https://ghfast.top/https://api.github.com/repos/' + $DISTRIBUTION_REPO + '/releases/latest')
     )
-
-    foreach ($ep in $endpoints) {
+    foreach ($url in $apiUrls) {
         try {
-            $headers = @{ "User-Agent" = "DeepSeek-Harness-Updater" }
-            $res = Invoke-RestMethod -Uri $ep -Headers $headers -TimeoutSec 5
-            if ($res."dist-tags".latest) {
-                Write-Host ("  -> [Connected] DeepSeek Official Domestic Mirror (Alibaba Cloud CDN): v" + $res."dist-tags".latest) -ForegroundColor Green
-                return [PSCustomObject]@{
-                    tag_name = ("v" + $res."dist-tags".latest)
-                    source = "npm"
-                    version = $res."dist-tags".latest
-                }
-            }
-            if ($res.tag_name) {
-                Write-Host ("  -> [Connected] DeepSeek Official GitHub: " + $res.tag_name) -ForegroundColor Green
-                return [PSCustomObject]@{
-                    tag_name = $res.tag_name
-                    source = "github"
-                    version = ($res.tag_name -replace '^v', '')
-                    assets = $res.assets
-                }
+            $headers = @{ 'User-Agent' = 'DeepSeek-Harness-Portable-Updater' }
+            $release = Invoke-RestMethod -Uri $url -Headers $headers -TimeoutSec 15
+            $zipAsset = @($release.assets | Where-Object {
+                $_.name -match '^DeepSeek-Harness-.*-win32-x64\.zip$'
+            } | Select-Object -First 1)
+            if ($zipAsset.Count -eq 0) { continue }
+            $digest = Get-ChecksumFromSource -Release $release -ZipAsset $zipAsset[0]
+            return [PSCustomObject]@{
+                tag_name = [string]$release.tag_name
+                version = ([string]$release.tag_name -replace '^v', '')
+                asset_name = [string]$zipAsset[0].name
+                asset_url = [string]$zipAsset[0].browser_download_url
+                sha256 = $digest
             }
         } catch {}
     }
-    
-    return [PSCustomObject]@{
-        tag_name = "v0.1.0-rc.6"
-        source = "npm"
-        version = "0.1.0-rc.6"
+    throw 'Unable to obtain a portable release and its trusted SHA-256 digest.'
+}
+
+function Download-And-Verify {
+    param(
+        [Parameter(Mandatory = $true)]$Release,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+
+    $directUrl = $Release.asset_url
+    $urls = @(
+        $directUrl,
+        ('https://ghfast.top/' + $directUrl),
+        ('https://mirror.ghproxy.com/' + $directUrl),
+        ('https://gh-proxy.com/' + $directUrl),
+        ('https://gh.ddlc.top/' + $directUrl)
+    )
+    $errors = @()
+    foreach ($url in $urls) {
+        try {
+            Remove-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
+            Write-Host ('  -> Downloading from ' + ([System.Uri]$url).Host + ' ...') -ForegroundColor Cyan
+            Invoke-WebRequest -Uri $url -OutFile $Destination -UseBasicParsing -TimeoutSec 120
+            if (-not (Test-Path -LiteralPath $Destination)) { throw 'download did not create a file' }
+            $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $Destination).Hash.ToUpperInvariant()
+            if ($actual -ne $Release.sha256) {
+                throw ('SHA-256 mismatch: expected ' + $Release.sha256 + ', got ' + $actual)
+            }
+            Write-Host '  -> Download verified with SHA-256.' -ForegroundColor Green
+            return
+        } catch {
+            $errors += ([System.Uri]$url).Host + ': ' + $_.Exception.Message
+        }
+    }
+    throw ('All release mirrors failed verification. ' + ($errors -join ' | '))
+}
+
+function Test-PortableLayout {
+    param([Parameter(Mandatory = $true)][string]$Root)
+
+    $required = @(
+        'dsh.cmd',
+        'update.ps1',
+        'setup-shortcuts.ps1',
+        'runtime\DeepSeek Harness.exe',
+        'runtime\resources\app\package.json',
+        'runtime\resources\app\lib\packaged-bin.js',
+        'runtime\resources\app\node_modules\node-pty\prebuilds\win32-x64\pty.node',
+        'runtime\resources\app\node_modules\@koromix\koffi-win32-x64\win32_x64\koffi.node'
+    )
+    foreach ($relative in $required) {
+        if (-not (Test-Path -LiteralPath (Join-Path $Root $relative))) {
+            throw ('Portable release is missing required file: ' + $relative)
+        }
+    }
+    $sharpDir = Join-Path $Root 'runtime\resources\app\node_modules\@img\sharp-win32-x64\lib'
+    if (@(Get-ChildItem -LiteralPath $sharpDir -Filter 'sharp-win32-x64-*.node' -File -ErrorAction SilentlyContinue).Count -eq 0) {
+        throw 'Portable release is missing the sharp Windows native addon.'
+    }
+
+    $manifestPath = Join-Path $Root 'runtime\resources\app\package.json'
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+    $nodeModules = Join-Path $Root 'runtime\resources\app\node_modules'
+    foreach ($dependency in @($manifest.dependencies.PSObject.Properties.Name)) {
+        $dependencyPath = Join-Path $nodeModules ($dependency -replace '/', '\')
+        if (-not (Test-Path -LiteralPath $dependencyPath)) {
+            throw ('Portable release dependency is missing: ' + $dependency)
+        }
     }
 }
 
 function Stop-RunningProcesses {
-    Write-Host "[2/4] Checking and stopping running DeepSeek Harness instances..." -ForegroundColor Yellow
-    $procs = Get-Process | Where-Object { $_.ProcessName -like "*DeepSeek Harness*" }
-    if ($procs) {
-        Write-Host "  -> Stopping background processes..." -ForegroundColor Gray
-        $procs | Stop-Process -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 1
+    $processes = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like '*DeepSeek Harness*' }
+    if ($processes) {
+        Write-Host '  -> Stopping running DeepSeek Harness processes ...' -ForegroundColor Yellow
+        $processes | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Milliseconds 750
     }
 }
 
-function Apply-Update {
-    param($RemoteVer, $ReleaseInfo)
-    Write-Host ("[3/4] Downloading official upstream core package (" + $RemoteVer + ")...") -ForegroundColor Yellow
-    
-    $cleanVer = $RemoteVer -replace '^v', ''
-    $tempFile = Join-Path $env:TEMP ("dsh-official-" + $cleanVer + ".tgz")
-    
-    $downloadUrls = @(
-        ("https://registry.npmmirror.com/@deepseek-ai/dsh/-/dsh-" + $cleanVer + ".tgz"),
-        ("https://cdn.npmmirror.com/packages/%40deepseek-ai/dsh/" + $cleanVer + "/dsh-" + $cleanVer + ".tgz"),
-        ("https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-" + $cleanVer + ".tgz")
+function Extract-Release {
+    param(
+        [Parameter(Mandatory = $true)][string]$ZipPath,
+        [Parameter(Mandatory = $true)][string]$Destination
     )
 
-    $downloadSuccess = $false
-    foreach ($url in $downloadUrls) {
-        try {
-            $hostName = ([System.Uri]$url).Host
-            Write-Host ("  -> Trying official node: " + $hostName + " ...") -ForegroundColor Cyan
-            
-            $wc = New-Object System.Net.WebClient
-            $wc.Headers.Add("User-Agent", "DeepSeek-Harness-Updater")
-            $wc.DownloadFile($url, $tempFile)
-            
-            if ((Test-Path $tempFile) -and (Get-Item $tempFile).Length -gt 1000) {
-                $firstBytes = [System.IO.File]::ReadAllBytes($tempFile)
-                $firstText = [System.Text.Encoding]::UTF8.GetString($firstBytes[0..[Math]::Min(100, $firstBytes.Length-1)])
-                if ($firstText -match "Redirecting to (https?://[^\s]+)") {
-                    $redirUrl = $matches[1]
-                    Write-Host ("  -> Following CDN redirect: " + ([System.Uri]$redirUrl).Host) -ForegroundColor Gray
-                    $wc.DownloadFile($redirUrl, $tempFile)
-                }
-                
-                $sizeKb = [Math]::Round(((Get-Item $tempFile).Length / 1KB), 1)
-                Write-Host ("  -> [Success] Official package downloaded (" + $sizeKb + " KB)!") -ForegroundColor Green
-                $downloadSuccess = $true
-                break
-            }
-        } catch {
-            Write-Host "  -> Node timeout, trying next mirror..." -ForegroundColor Yellow
-        }
-    }
-
-    if (-not $downloadSuccess) {
-        throw "Failed to download update package from all official mirror endpoints."
-    }
-
-    Write-Host "[4/4] Hot-replacing runtime core (Preserving all user sessions and configs)..." -ForegroundColor Yellow
-    $guid = [Guid]::NewGuid().ToString("N")
-    $tempExtract = Join-Path $env:TEMP ("dsh-update-" + $guid)
-    New-Item -ItemType Directory -Path $tempExtract -Force | Out-Null
-    
+    New-Item -ItemType Directory -Path $Destination -Force | Out-Null
     $tar = Get-Command tar.exe -ErrorAction SilentlyContinue
     if ($tar) {
-        & tar.exe -xf $tempFile -C $tempExtract
+        & tar.exe -xf $ZipPath -C $Destination | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw ('archive extraction failed with tar exit code ' + $LASTEXITCODE) }
     } else {
-        Expand-Archive -Path $tempFile -DestinationPath $tempExtract -Force
+        Expand-Archive -LiteralPath $ZipPath -DestinationPath $Destination -Force
     }
+    $inner = @(Get-ChildItem -LiteralPath $Destination -Directory | Where-Object { $_.Name -like 'DeepSeek Harness*' })
+    $root = if ($inner.Count -eq 1) { $inner[0].FullName } else { $Destination }
+    Test-PortableLayout -Root $root
+    return $root
+}
 
-    $packageDir = Join-Path $tempExtract "package"
-    if (-not (Test-Path $packageDir)) {
-        $packageDir = $tempExtract
+function Install-ReleaseRoot {
+    param([Parameter(Mandatory = $true)][string]$SourceRoot)
+
+    $backup = Join-Path $env:TEMP ('dsh-runtime-backup-' + [Guid]::NewGuid().ToString('N'))
+    Stop-RunningProcesses
+    if (Test-Path -LiteralPath $RUNTIME_DIR) {
+        Move-Item -LiteralPath $RUNTIME_DIR -Destination $backup
     }
-
-    $destAppDir = Join-Path $APP_ROOT "runtime\resources\app"
-    if (-not (Test-Path $destAppDir)) {
-        $destAppDir = Join-Path $APP_ROOT "resources\app"
-    }
-
-    if (Test-Path $destAppDir) {
-        Write-Host ("  -> Syncing official latest files to: " + $destAppDir) -ForegroundColor Cyan
-        & robocopy.exe $packageDir $destAppDir /E /XD node_modules /R:2 /W:1 /NP /NDL /NFL /NJH /NJS | Out-Null
-        $code = $LASTEXITCODE
-        if ($code -ge 8) {
-            throw ("File sync failed, robocopy code: " + $code)
+    try {
+        Move-Item -LiteralPath (Join-Path $SourceRoot 'runtime') -Destination $RUNTIME_DIR
+        foreach ($name in @('dsh.cmd', 'update.ps1', 'setup-shortcuts.ps1', 'start-web.cmd', 'start-desktop.cmd', 'smoke-native.cjs')) {
+            $source = Join-Path $SourceRoot $name
+            if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination (Join-Path $APP_ROOT $name) -Force }
         }
+        Test-PortableLayout -Root $APP_ROOT
+        Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue
+    } catch {
+        if (Test-Path -LiteralPath $RUNTIME_DIR) { Remove-Item -LiteralPath $RUNTIME_DIR -Recurse -Force -ErrorAction SilentlyContinue }
+        if (Test-Path -LiteralPath $backup) { Move-Item -LiteralPath $backup -Destination $RUNTIME_DIR }
+        throw
     }
-
-    Remove-Item -Path $tempFile -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path $tempExtract -Recurse -Force -ErrorAction SilentlyContinue
-
-    Write-Host ""
-    Write-Host "================================================================" -ForegroundColor Green
-    Write-Host ("  🎉 Update Successful! Synchronized with official upstream " + $RemoteVer) -ForegroundColor Green
-    Write-Host "  All user sessions, settings and workspaces are safely preserved." -ForegroundColor White
-    Write-Host "================================================================" -ForegroundColor Green
-    Write-Host ""
 }
 
 try {
     Write-Banner
-    $localVer = Get-LocalVersion
-    Write-Host ("  Local version:  " + $localVer) -ForegroundColor White
-    
+    $localVersion = Get-LocalVersion
+    Write-Host ('  Local version:  ' + $localVersion) -ForegroundColor White
     $release = Get-RemoteRelease
-    $remoteVer = $release.tag_name
-    Write-Host ("  Latest version: " + $remoteVer) -ForegroundColor White
-    Write-Host ""
-
-    if ($localVer -eq $remoteVer -and -not $Force) {
-        Write-Host "================================================================" -ForegroundColor Green
-        Write-Host ("  [Notice] Already up to date with official release (" + $localVer + ")!") -ForegroundColor Green
-        Write-Host "================================================================" -ForegroundColor Green
-        Write-Host ""
+    Write-Host ('  Latest version: ' + $release.tag_name) -ForegroundColor White
+    if (-not $Force -and $localVersion -eq $release.tag_name) {
+        Write-Host '  Already up to date.' -ForegroundColor Green
         return
     }
 
-    Stop-RunningProcesses
-    Apply-Update -RemoteVer $remoteVer -ReleaseInfo $release
+    $zipPath = Join-Path $env:TEMP ('DeepSeek-Harness-' + $release.version + '.zip')
+    $extractPath = Join-Path $env:TEMP ('dsh-update-' + [Guid]::NewGuid().ToString('N'))
+    try {
+        Download-And-Verify -Release $release -Destination $zipPath
+        $sourceRoot = Extract-Release -ZipPath $zipPath -Destination $extractPath
+        Install-ReleaseRoot -SourceRoot $sourceRoot
+    } finally {
+        Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $extractPath -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    Write-Host ('Update complete: ' + $release.tag_name) -ForegroundColor Green
 } catch {
-    Write-Host ""
-    Write-Host "================================================================" -ForegroundColor Red
-    Write-Host ("  [Update Error] " + $_.Exception.Message) -ForegroundColor Red
-    Write-Host "================================================================" -ForegroundColor Red
-    Write-Host ""
+    Write-Host ('Update failed: ' + $_.Exception.Message) -ForegroundColor Red
+    exit 1
 }
