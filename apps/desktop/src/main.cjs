@@ -76,6 +76,34 @@ function stopHarness() {
   })
 }
 
+function resolveUnifiedDshHome() {
+  if (process.env.DSH_HOME && process.env.DSH_HOME.trim() !== '') {
+    return process.env.DSH_HOME.trim()
+  }
+  const userHome = process.env.USERPROFILE || homedir()
+  const targetHome = join(userHome, '.dsh')
+
+  // Seamless legacy data migration: if AppData\Roaming\DeepSeek Harness\dsh has sessions, migrate to ~/.dsh
+  try {
+    const legacyDsh = join(app.getPath('userData'), 'dsh')
+    if (existsSync(legacyDsh) && legacyDsh !== targetHome) {
+      const { cpSync } = require('node:fs')
+      const legacySessions = join(legacyDsh, 'sessions')
+      const targetSessions = join(targetHome, 'sessions')
+      if (existsSync(legacySessions) && !existsSync(targetSessions)) {
+        mkdirSync(targetHome, { recursive: true })
+        if (typeof cpSync === 'function') {
+          cpSync(legacySessions, targetSessions, { recursive: true })
+        }
+      }
+    }
+  } catch {
+    // Non-blocking fallback
+  }
+
+  return targetHome
+}
+
 function startHarness(cwd) {
   const packagedBin = join(__dirname, '..', 'lib', 'packaged-bin.js')
   if (!existsSync(packagedBin)) {
@@ -94,7 +122,7 @@ function startHarness(cwd) {
     cwd,
     env: {
       ...process.env,
-      DSH_HOME: process.env.DSH_HOME?.trim() || join(app.getPath('userData'), 'dsh'),
+      DSH_HOME: resolveUnifiedDshHome(),
       DSH_TELEMETRY_DISABLED: '1',
       ELECTRON_RUN_AS_NODE: '1',
     },
