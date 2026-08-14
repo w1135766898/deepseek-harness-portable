@@ -8,7 +8,11 @@
 
 [CmdletBinding()]
 param(
-    [switch]$Force
+    [switch]$Force,
+    [string]$StatusFile,
+    [string]$FromVersion,
+    [string]$TargetVersion,
+    [switch]$LaunchAfterUpdate
 )
 
 $ErrorActionPreference = 'Stop'
@@ -23,6 +27,9 @@ $APP_ROOT = if ((Split-Path -Leaf $SCRIPT_ROOT) -ieq 'runtime') {
     $SCRIPT_ROOT
 }
 $RUNTIME_DIR = Join-Path $APP_ROOT 'runtime'
+if ([string]::IsNullOrWhiteSpace($StatusFile) -and $env:APPDATA) {
+    $StatusFile = Join-Path $env:APPDATA 'DeepSeek Harness\update-status.json'
+}
 
 function Write-Banner {
     Write-Host ''
@@ -37,6 +44,75 @@ function Read-JsonIfPresent {
     param([Parameter(Mandatory = $true)][string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) { return $null }
     try { return (Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json) } catch { return $null }
+}
+
+function Write-UpdateStatus {
+    param(
+        [Parameter(Mandatory = $true)][string]$State,
+        [Parameter(Mandatory = $true)][string]$Stage,
+        [string]$Message,
+        [string]$From,
+        [string]$Target
+    )
+
+    if ([string]::IsNullOrWhiteSpace($StatusFile)) { return }
+    try {
+        $existing = Read-JsonIfPresent $StatusFile
+        $now = [DateTime]::UtcNow.ToString('o')
+        $startedAt = if ($existing -and $existing.startedAt) {
+            [string]$existing.startedAt
+        } else {
+            $now
+        }
+        $effectiveFrom = if (-not [string]::IsNullOrWhiteSpace($From)) {
+            $From
+        } elseif ($existing -and $existing.fromVersion) {
+            [string]$existing.fromVersion
+        } else {
+            ''
+        }
+        $effectiveTarget = if (-not [string]::IsNullOrWhiteSpace($Target)) {
+            $Target
+        } elseif ($existing -and $existing.targetVersion) {
+            [string]$existing.targetVersion
+        } else {
+            ''
+        }
+        $payload = [ordered]@{
+            state = $State
+            fromVersion = $effectiveFrom
+            targetVersion = $effectiveTarget
+            stage = $Stage
+            message = if ($Message) { $Message } else { '' }
+            updatedAt = $now
+            startedAt = $startedAt
+            processId = $PID
+        }
+        $parent = Split-Path -Parent $StatusFile
+        if ($parent) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+        $temporary = $StatusFile + '.' + $PID + '.' + [Guid]::NewGuid().ToString('N') + '.tmp'
+        $encoding = New-Object System.Text.UTF8Encoding($false)
+        try {
+            [System.IO.File]::WriteAllText(
+                $temporary,
+                ($payload | ConvertTo-Json -Depth 4),
+                $encoding
+            )
+            if (Test-Path -LiteralPath $StatusFile) {
+                try {
+                    [System.IO.File]::Replace($temporary, $StatusFile, $null, $true)
+                } catch {
+                    Move-Item -LiteralPath $temporary -Destination $StatusFile -Force
+                }
+            } else {
+                Move-Item -LiteralPath $temporary -Destination $StatusFile -Force
+            }
+        } finally {
+            Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
+        }
+    } catch {
+        Write-Host ('  -> Unable to persist update status: ' + $_.Exception.Message) -ForegroundColor DarkYellow
+    }
 }
 
 function Get-LocalReleaseInfo {
@@ -178,9 +254,11 @@ function Download-And-Verify {
     foreach ($url in $urls) {
         try {
             Remove-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
+            Write-UpdateStatus -State 'downloading' -Stage 'download' -Message ('Downloading from ' + ([System.Uri]$url).Host) -From $FromVersion -Target $TargetVersion
             Write-Host ('  -> Downloading from ' + ([System.Uri]$url).Host + ' ...') -ForegroundColor Cyan
             Invoke-WebRequest -Uri $url -OutFile $Destination -UseBasicParsing -TimeoutSec 120
             if (-not (Test-Path -LiteralPath $Destination)) { throw 'download did not create a file' }
+            Write-UpdateStatus -State 'verifying' -Stage 'verify' -Message 'Verifying the downloaded ZIP with SHA-256.' -From $FromVersion -Target $TargetVersion
             $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $Destination).Hash.ToUpperInvariant()
             if ($actual -ne $Release.sha256) {
                 throw ('SHA-256 mismatch: expected ' + $Release.sha256 + ', got ' + $actual)
@@ -245,12 +323,31 @@ function Test-PortableLayout {
     }
 }
 
+function Get-RunningHarnessProcesses {
+    return @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like '*DeepSeek Harness*' })
+}
+
+function Wait-ForHarnessExit {
+    param([int]$TimeoutSeconds = 20)
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        if ((Get-RunningHarnessProcesses).Count -eq 0) { return }
+        Start-Sleep -Milliseconds 250
+    }
+}
+
 function Stop-RunningProcesses {
-    $processes = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like '*DeepSeek Harness*' }
-    if ($processes) {
-        Write-Host '  -> Stopping running DeepSeek Harness processes ...' -ForegroundColor Yellow
+    Write-UpdateStatus -State 'replacing' -Stage 'swap' -Message 'Waiting for the desktop shell to exit.' -From $FromVersion -Target $TargetVersion
+    Wait-ForHarnessExit
+    $processes = Get-RunningHarnessProcesses
+    if ($processes.Count -gt 0) {
+        Write-Host '  -> Graceful exit timed out; stopping DeepSeek Harness processes ...' -ForegroundColor Yellow
         $processes | Stop-Process -Force -ErrorAction SilentlyContinue
         Start-Sleep -Milliseconds 750
+    }
+    if ((Get-RunningHarnessProcesses).Count -gt 0) {
+        throw 'DeepSeek Harness is still running and the runtime cannot be replaced.'
     }
 }
 
@@ -305,16 +402,40 @@ function Install-ReleaseRoot {
     }
 }
 
+function Start-UpdatedDesktop {
+    if (-not $LaunchAfterUpdate) { return }
+    $desktopExecutable = Join-Path $APP_ROOT 'runtime\DeepSeek Harness.exe'
+    if (-not (Test-Path -LiteralPath $desktopExecutable)) {
+        Write-Host '  -> Update completed, but the desktop executable was not found for automatic restart.' -ForegroundColor DarkYellow
+        return
+    }
+    try {
+        Start-Process -FilePath $desktopExecutable -WorkingDirectory $APP_ROOT -WindowStyle Hidden | Out-Null
+        Write-Host '  -> Desktop shell restarted.' -ForegroundColor Green
+    } catch {
+        Write-Host ('  -> Update completed, but automatic restart failed: ' + $_.Exception.Message) -ForegroundColor DarkYellow
+    }
+}
+
+$currentStage = 'launch'
 try {
     Write-Banner
     $localInfo = Get-LocalReleaseInfo
+    if ([string]::IsNullOrWhiteSpace($FromVersion)) {
+        $FromVersion = $localInfo.distributionVersion
+    }
+    $currentStage = 'check'
+    Write-UpdateStatus -State 'checking' -Stage $currentStage -Message 'Checking for the latest portable release.' -From $FromVersion -Target $TargetVersion
     Write-Host ('  Local distribution: ' + $localInfo.distributionVersion) -ForegroundColor White
     Write-Host ('  Local desktop:      ' + $localInfo.desktopVersion) -ForegroundColor Gray
     Write-Host ('  Local kernel:       ' + $localInfo.kernelVersion) -ForegroundColor Gray
     $release = Get-RemoteRelease
+    $TargetVersion = $release.version
+    Write-UpdateStatus -State 'checking' -Stage $currentStage -Message ('Latest portable release: ' + $release.tag_name) -From $FromVersion -Target $TargetVersion
     Write-Host ('  Latest distribution: ' + $release.tag_name) -ForegroundColor White
     $versionComparison = Compare-Semver -Left $release.version -Right $localInfo.distributionVersion
     if (-not $Force -and $versionComparison -le 0) {
+        Write-UpdateStatus -State 'idle' -Stage $currentStage -Message 'Already up to date.' -From $FromVersion -Target $TargetVersion
         Write-Host '  Already up to date.' -ForegroundColor Green
         return
     }
@@ -322,15 +443,25 @@ try {
     $zipPath = Join-Path $env:TEMP ('DeepSeek-Harness-' + $release.version + '.zip')
     $extractPath = Join-Path $env:TEMP ('dsh-update-' + [Guid]::NewGuid().ToString('N'))
     try {
+        $currentStage = 'download'
+        Write-UpdateStatus -State 'downloading' -Stage $currentStage -Message 'Downloading the portable release.' -From $FromVersion -Target $TargetVersion
         Download-And-Verify -Release $release -Destination $zipPath
+        $currentStage = 'extract'
+        Write-UpdateStatus -State 'extracting' -Stage $currentStage -Message 'Extracting and validating the portable release.' -From $FromVersion -Target $TargetVersion
         $sourceRoot = Extract-Release -ZipPath $zipPath -Destination $extractPath -ExpectedDistributionVersion $release.version
+        $currentStage = 'swap'
+        Write-UpdateStatus -State 'replacing' -Stage $currentStage -Message 'Waiting for the desktop shell and replacing runtime.' -From $FromVersion -Target $TargetVersion
         Install-ReleaseRoot -SourceRoot $sourceRoot
     } finally {
         Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $extractPath -Recurse -Force -ErrorAction SilentlyContinue
     }
+    Write-UpdateStatus -State 'completed' -Stage 'completed' -Message ('Updated to ' + $release.tag_name + '.') -From $FromVersion -Target $TargetVersion
     Write-Host ('Update complete: ' + $release.tag_name) -ForegroundColor Green
+    Start-UpdatedDesktop
 } catch {
-    Write-Host ('Update failed: ' + $_.Exception.Message) -ForegroundColor Red
+    $failureMessage = $_.Exception.Message
+    Write-UpdateStatus -State 'failed' -Stage $currentStage -Message $failureMessage -From $FromVersion -Target $TargetVersion
+    Write-Host ('Update failed: ' + $failureMessage) -ForegroundColor Red
     exit 1
 }
