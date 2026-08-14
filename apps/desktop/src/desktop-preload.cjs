@@ -53,8 +53,13 @@ if (!isSplashDocument) {
     noticeExpanded: true,
     noticeTimer: undefined,
     requestId: 0,
+    drawerRefreshing: false,
     updateState: '',
   }
+
+  let chromeRefs
+  let noticeMarkup
+  let drawerContentMarkup
 
   function escapeHtml(value) {
     return String(value == null ? '' : value)
@@ -145,8 +150,7 @@ if (!isSplashDocument) {
     }).join('') + '</div>'
   }
 
-  function renderDrawer() {
-    if (!state.drawerOpen) return ''
+  function renderDrawerContent() {
     const data = state.data
     const status = data?.updateStatus || {}
     const update = data?.latestRelease
@@ -158,9 +162,33 @@ if (!isSplashDocument) {
     const updateCard = hasUpdate
       ? '<div class="dsh-update-card"><div><strong>新版本 v' + escapeHtml(update.version) + ' 已发布</strong><span>安全下载并替换便携版运行时</span></div><button class="dsh-button primary" data-action="update"' + (busy ? ' disabled' : '') + '>' + escapeHtml(state.updateState || (busy ? '更新进行中…' : '立即更新')) + '</button></div>'
       : ''
+    const refreshing = state.drawerRefreshing ? '<div class="dsh-refreshing">正在后台同步最新更新记录…</div>' : ''
+    if (state.drawerLoading) return '<div class="dsh-loading">正在读取本地更新记录…</div>'
+    return refreshing + (state.drawerContext.mode === 'about'
+      ? '<div class="dsh-about"><div class="dsh-about-logo">◈</div><h3>DeepSeek Harness</h3><p>面向 Windows 的 DeepSeek Harness 桌面外壳。</p><p class="dsh-muted">内核 v' + escapeHtml(data?.localInfo?.kernelVersion || 'unknown') + ' · 外壳 v' + escapeHtml(data?.localInfo?.desktopVersion || 'unknown') + '</p></div>'
+      : updateCard + statusNotice + renderTimeline(data?.history || []))
+  }
+
+  function renderDrawerShell() {
+    return '<div class="dsh-drawer-layer" aria-hidden="true"><button class="dsh-drawer-backdrop" data-action="drawer-close" aria-label="关闭"></button><aside class="dsh-drawer" role="dialog" aria-modal="true" aria-label="更新日志"><header class="dsh-drawer-header"><div><div class="dsh-eyebrow">DEEPSEEK HARNESS</div><h2 class="dsh-drawer-title"></h2><span class="dsh-subtitle"></span></div><button class="dsh-close" data-action="drawer-close" aria-label="关闭">×</button></header><div class="dsh-drawer-tabs"><button class="dsh-notes-tab active" data-action="show-notes">更新日志</button><button class="dsh-about-tab" data-action="show-about">关于</button></div><div class="dsh-drawer-scroll"></div><footer class="dsh-drawer-footer"><button class="dsh-button ghost" data-action="open-github">GitHub 仓库 ↗</button><button class="dsh-button ghost" data-action="drawer-close">完成</button></footer></aside></div>'
+  }
+
+  function syncDrawer() {
+    if (chromeRefs === undefined) return
     const title = state.drawerContext.mode === 'about' ? '关于 DeepSeek Harness' : '更新日志'
-    const version = data?.currentVersion || '—'
-    return '<div class="dsh-drawer-layer"><button class="dsh-drawer-backdrop" data-action="drawer-close" aria-label="关闭"></button><aside class="dsh-drawer" role="dialog" aria-modal="true" aria-label="' + escapeHtml(title) + '"><header class="dsh-drawer-header"><div><div class="dsh-eyebrow">DEEPSEEK HARNESS</div><h2>' + title + '</h2><span class="dsh-subtitle">当前版本 v' + escapeHtml(version) + '</span></div><button class="dsh-close" data-action="drawer-close" aria-label="关闭">×</button></header><div class="dsh-drawer-tabs"><button class="' + (state.drawerContext.mode === 'about' ? '' : 'active') + '" data-action="show-notes">更新日志</button><button class="' + (state.drawerContext.mode === 'about' ? 'active' : '') + '" data-action="show-about">关于</button></div><div class="dsh-drawer-scroll">' + (state.drawerLoading ? '<div class="dsh-loading">正在加载更新记录…</div>' : (state.drawerContext.mode === 'about' ? '<div class="dsh-about"><div class="dsh-about-logo">◈</div><h3>DeepSeek Harness</h3><p>面向 Windows 的 DeepSeek Harness 桌面外壳。</p><p class="dsh-muted">内核 v' + escapeHtml(data?.localInfo?.kernelVersion || 'unknown') + ' · 外壳 v' + escapeHtml(data?.localInfo?.desktopVersion || 'unknown') + '</p></div>' : updateCard + statusNotice + renderTimeline(data?.history || []))) + '</div><footer class="dsh-drawer-footer"><button class="dsh-button ghost" data-action="open-github">GitHub 仓库 ↗</button><button class="dsh-button ghost" data-action="drawer-close">完成</button></footer></aside></div>'
+    const version = state.data?.currentVersion || '—'
+    chromeRefs.drawerLayer.classList.toggle('is-open', state.drawerOpen)
+    chromeRefs.drawerLayer.setAttribute('aria-hidden', state.drawerOpen ? 'false' : 'true')
+    chromeRefs.drawer.setAttribute('aria-label', title)
+    chromeRefs.drawerTitle.textContent = title
+    chromeRefs.drawerSubtitle.textContent = '当前版本 v' + version
+    chromeRefs.notesTab.classList.toggle('active', state.drawerContext.mode !== 'about')
+    chromeRefs.aboutTab.classList.toggle('active', state.drawerContext.mode === 'about')
+    const content = renderDrawerContent()
+    if (content !== drawerContentMarkup) {
+      chromeRefs.drawerScroll.innerHTML = content
+      drawerContentMarkup = content
+    }
   }
 
   function renderNotice() {
@@ -183,14 +211,19 @@ if (!isSplashDocument) {
   }
 
   function render() {
-    if (!host?.shadowRoot) return
-    shadow.innerHTML = '<style>' + SHADOW_CSS + '</style><div class="dsh-chrome"><div class="dsh-drag-region" aria-hidden="true"></div>' + renderNotice() + renderDrawer() + '</div>'
+    if (!host?.shadowRoot || chromeRefs === undefined) return
+    const nextNoticeMarkup = renderNotice()
+    if (nextNoticeMarkup !== noticeMarkup) {
+      chromeRefs.noticeHost.innerHTML = nextNoticeMarkup
+      noticeMarkup = nextNoticeMarkup
+    }
+    syncDrawer()
   }
 
-  function collapseNotice() {
+  function collapseNotice(renderNow = true) {
     state.noticeExpanded = false
     if (state.noticeTimer !== undefined) clearTimeout(state.noticeTimer)
-    render()
+    if (renderNow) render()
   }
 
   function scheduleNoticeCollapse() {
@@ -202,18 +235,28 @@ if (!isSplashDocument) {
     state.drawerContext = context && typeof context === 'object' ? context : { mode: 'history' }
     state.drawerOpen = true
     state.drawerLoading = true
+    state.drawerRefreshing = false
     state.updateState = ''
-    render()
     const requestId = ++state.requestId
+    render()
+    let hasCachedData = false
+    try {
+      state.data = await ipcRenderer.invoke('desktop:release-notes:get-cached-data', state.drawerContext)
+      hasCachedData = true
+    } catch {}
+    if (requestId !== state.requestId) return
+    state.drawerLoading = false
+    state.drawerRefreshing = true
+    render()
     try {
       const data = await ipcRenderer.invoke('desktop:release-notes:get-data', state.drawerContext)
       if (requestId !== state.requestId) return
       state.data = data
     } catch (error) {
-      state.data = { error: error instanceof Error ? error.message : String(error), history: [] }
+      if (!hasCachedData) state.data = { error: error instanceof Error ? error.message : String(error), history: [] }
     } finally {
       if (requestId === state.requestId) {
-        state.drawerLoading = false
+        state.drawerRefreshing = false
         render()
       }
     }
@@ -234,7 +277,7 @@ if (!isSplashDocument) {
       const context = state.notice?.kind === 'available'
         ? { mode: 'update', currentVersion: state.notice.currentVersion, update: state.notice.release }
         : { mode: 'history', selectedVersion: state.notice?.currentVersion }
-      collapseNotice()
+      collapseNotice(false)
       void openDrawer(context)
       return
     }
@@ -293,9 +336,12 @@ if (!isSplashDocument) {
     .dsh-button.primary:hover { background: #2567ce; }
     .dsh-button.ghost { color: #5d6d85; background: transparent; }
     .dsh-button:disabled { opacity: .6; cursor: default; }
-    .dsh-drawer-layer { position: fixed; inset: 36px 0 0; display: flex; justify-content: flex-end; }
-    .dsh-drawer-backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: rgba(12, 22, 38, .24); cursor: default; animation: dsh-fade-in .2s ease; }
-    .dsh-drawer { position: relative; display: flex; flex-direction: column; width: min(540px, calc(100vw - 12px)); height: 100%; overflow: hidden; border-left: 1px solid rgba(116, 138, 171, .22); background: rgba(250, 252, 255, .97); box-shadow: -20px 0 50px rgba(23, 43, 72, .2); animation: dsh-drawer-in .3s cubic-bezier(.16,1,.3,1); }
+    .dsh-drawer-layer { position: fixed; inset: 36px 0 0; display: flex; justify-content: flex-end; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s ease, visibility 0s linear .3s; }
+    .dsh-drawer-layer.is-open { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+    .dsh-drawer-backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: rgba(12, 22, 38, .24); cursor: default; opacity: 0; transition: opacity .2s ease; }
+    .dsh-drawer-layer.is-open .dsh-drawer-backdrop { opacity: 1; }
+    .dsh-drawer { position: relative; display: flex; flex-direction: column; width: min(540px, calc(100vw - 12px)); height: 100%; overflow: hidden; border-left: 1px solid rgba(116, 138, 171, .22); background: rgba(250, 252, 255, .97); box-shadow: -20px 0 50px rgba(23, 43, 72, .2); opacity: .75; transform: translateX(100%); transition: transform .3s cubic-bezier(.16,1,.3,1), opacity .3s ease; will-change: transform, opacity; }
+    .dsh-drawer-layer.is-open .dsh-drawer { opacity: 1; transform: translateX(0); }
     .dsh-drawer-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 28px 28px 18px; border-bottom: 1px solid rgba(42, 61, 92, .1); }
     .dsh-eyebrow { margin-bottom: 4px; color: #6e85a8; font: 700 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .12em; }
     .dsh-drawer h2 { margin: 0; color: #18263d; font-size: 21px; letter-spacing: -.02em; }
@@ -339,6 +385,7 @@ if (!isSplashDocument) {
     .dsh-release-item strong { color: #203452; }
     .dsh-link { padding: 0; border: 0; color: #2672dc; background: transparent; cursor: pointer; font: inherit; }
     .dsh-empty-copy, .dsh-loading { padding: 42px 8px; color: #8a99ae; text-align: center; }
+    .dsh-refreshing { margin: -8px 0 14px; color: #8191a8; font-size: 11px; }
     .dsh-about { padding: 48px 10px; text-align: center; }
     .dsh-about-logo { width: 64px; height: 64px; display: grid; place-items: center; margin: 0 auto 16px; border-radius: 20px; color: #fff; background: linear-gradient(145deg, #3a8bff, #1b59c5); box-shadow: 0 10px 28px rgba(47, 117, 238, .26); font-size: 28px; }
     .dsh-about h3 { margin: 0 0 8px; color: #1e2d44; font-size: 18px; }
@@ -358,7 +405,7 @@ if (!isSplashDocument) {
       .dsh-button.ghost { color: #9eafc8; background: transparent; }
       .dsh-drawer { border-color: rgba(170, 192, 228, .16); background: rgba(17, 26, 42, .97); box-shadow: -20px 0 50px rgba(0, 0, 0, .36); }
       .dsh-drawer-header, .dsh-drawer-tabs, .dsh-drawer-footer { border-color: rgba(170, 192, 228, .12); }
-      .dsh-eyebrow, .dsh-subtitle, .dsh-release-head time, .dsh-empty-copy, .dsh-loading { color: #7f91ad; }
+      .dsh-eyebrow, .dsh-subtitle, .dsh-release-head time, .dsh-empty-copy, .dsh-loading, .dsh-refreshing { color: #7f91ad; }
       .dsh-drawer h2, .dsh-version, .dsh-about h3 { color: #edf4ff; }
       .dsh-drawer-tabs button { color: #8496b2; }
       .dsh-release-node { border-color: #647896; background: #18263d; }
@@ -421,6 +468,18 @@ if (!isSplashDocument) {
   function mount() {
     mountGlobalStyles()
     document.documentElement.appendChild(host)
+    shadow.innerHTML = '<style>' + SHADOW_CSS + '</style><div class="dsh-chrome"><div class="dsh-drag-region" aria-hidden="true"></div><div class="dsh-notice-host"></div><div class="dsh-drawer-host">' + renderDrawerShell() + '</div></div>'
+    const drawerLayer = shadow.querySelector('.dsh-drawer-layer')
+    chromeRefs = {
+      noticeHost: shadow.querySelector('.dsh-notice-host'),
+      drawerLayer,
+      drawer: drawerLayer.querySelector('.dsh-drawer'),
+      drawerTitle: drawerLayer.querySelector('.dsh-drawer-title'),
+      drawerSubtitle: drawerLayer.querySelector('.dsh-subtitle'),
+      notesTab: drawerLayer.querySelector('.dsh-notes-tab'),
+      aboutTab: drawerLayer.querySelector('.dsh-about-tab'),
+      drawerScroll: drawerLayer.querySelector('.dsh-drawer-scroll'),
+    }
     render()
     ipcRenderer.send('desktop:renderer-ready')
     const reportFirstPaint = () => {

@@ -778,7 +778,7 @@ function getCurrentUpdateStatus() {
   return reconciled
 }
 
-async function buildReleaseNotesData(context = {}) {
+async function buildReleaseNotesData(context = {}, options = {}) {
   const localInfo = getLocalReleaseInfo()
   const localRelease = normalizeReleaseNotes({
     ...localInfo.releaseNotes,
@@ -786,12 +786,14 @@ async function buildReleaseNotesData(context = {}) {
   }, localInfo.distributionVersion)
   const cached = cachedReleaseHistory()
   let remote = []
-  let offline = false
-  try {
-    remote = await queryReleaseHistory()
-    if (remote.length > 0) saveReleaseHistory(remote)
-  } catch {
-    offline = true
+  let offline = options.fetchRemote !== true
+  if (options.fetchRemote === true) {
+    try {
+      remote = await queryReleaseHistory()
+      if (remote.length > 0) saveReleaseHistory(remote)
+    } catch {
+      offline = true
+    }
   }
 
   const update = context.update === undefined ? undefined : normalizeReleaseNotes(context.update)
@@ -881,6 +883,11 @@ function registerReleaseNotesIpc() {
   })
 
   ipcMain.handle('desktop:release-notes:get-data', async (event, context = {}) => {
+    if (!isMainRenderer(event.sender)) throw new Error('Unknown release notes client')
+    return buildReleaseNotesData(context, { fetchRemote: true })
+  })
+
+  ipcMain.handle('desktop:release-notes:get-cached-data', async (event, context = {}) => {
     if (!isMainRenderer(event.sender)) throw new Error('Unknown release notes client')
     return buildReleaseNotesData(context)
   })
