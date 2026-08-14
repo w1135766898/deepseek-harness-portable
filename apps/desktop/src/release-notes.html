@@ -530,7 +530,7 @@
 
       function renderHUD() {
         document.body.className = 'compact'
-        const currentVer = data.currentVersion || (data.currentRelease && data.currentRelease.version) || '1.0.1'
+        const currentVer = data.currentVersion || (data.currentRelease && data.currentRelease.version) || '1.0.0'
         const status = data.updateStatus || {}
         const targetVer = status.targetVersion || currentVer
         const isFailed = status.state === 'failed'
@@ -634,7 +634,7 @@
               '<div class="header-left">' +
                 '<div class="app-logo">' + WHALE_ICON + '</div>' +
                 '<div class="app-title">DeepSeek Harness</div>' +
-                '<span class="app-ver-tag">v' + escapeHtml(data.currentVersion || '1.0.1') + '</span>' +
+                '<span class="app-ver-tag">v' + escapeHtml(data.currentVersion || '1.0.0') + '</span>' +
               '</div>' +
               '<div class="header-right">' +
                 '<button class="btn btn-ghost" data-action="open-github">GitHub 仓库 ↗</button>' +

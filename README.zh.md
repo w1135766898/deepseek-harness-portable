@@ -6,10 +6,10 @@ DeepSeek Harness for Win 是 DeepSeek Harness 的社区 Windows x64 分发版，
 
 ## 最新发布
 
-- 发布：DeepSeek Harness for Win v1.0.1
-- 标签：v1.0.1
-- 下载：[GitHub Release](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.0.1)
-- 分发版本：1.0.1
+- 发布：DeepSeek Harness for Win v1.0.0
+- 标签：v1.0.0
+- 下载：[GitHub Release](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.0.0)
+- 分发版本：1.0.0
 - 桌面外壳：0.1.0-shell.2
 - 内核：0.1.0-rc.5
 
