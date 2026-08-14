@@ -71,10 +71,47 @@ var
   DeleteUserData: Boolean;
 
 function DshHomePath(): String;
+var
+  UserProfile: String;
 begin
-  Result := GetEnv('DSH_HOME');
+  Result := Trim(GetEnv('DSH_HOME'));
   if Result = '' then
-    Result := ExpandConstant('{userprofile}\.dsh');
+  begin
+    UserProfile := Trim(GetEnv('USERPROFILE'));
+    if UserProfile = '' then
+      UserProfile := ExtractFileDir(ExtractFileDir(ExpandConstant('{userappdata}')));
+    Result := AddBackslash(UserProfile) + '.dsh';
+  end;
+end;
+
+function NormalizePathForComparison(const Value: String): String;
+begin
+  Result := Trim(Value);
+  while (Length(Result) > 3) and (Result[Length(Result)] = '\') do
+    Delete(Result, Length(Result), 1);
+end;
+
+function SamePath(const Left, Right: String): Boolean;
+begin
+  Result := (NormalizePathForComparison(Left) <> '') and
+    (CompareText(NormalizePathForComparison(Left), NormalizePathForComparison(Right)) = 0);
+end;
+
+function IsUnsafeDataRoot(const DataRoot, InstallRoot: String): Boolean;
+var
+  DriveRoot: String;
+begin
+  DriveRoot := '';
+  if ExtractFileDrive(DataRoot) <> '' then
+    DriveRoot := AddBackslash(ExtractFileDrive(DataRoot));
+
+  Result :=
+    (NormalizePathForComparison(DataRoot) = '') or
+    SamePath(DataRoot, GetEnv('USERPROFILE')) or
+    SamePath(DataRoot, ExpandConstant('{userappdata}')) or
+    SamePath(DataRoot, ExpandConstant('{localappdata}')) or
+    SamePath(DataRoot, InstallRoot) or
+    SamePath(DataRoot, DriveRoot);
 end;
 
 procedure StopRunningApp;
@@ -117,6 +154,8 @@ begin
 
   DataRoot := DshHomePath();
   ElectronUserData := ExpandConstant('{userappdata}\DeepSeek Harness');
+  if IsUnsafeDataRoot(DataRoot, ExpandConstant('{app}')) then
+    RaiseException('Refusing to delete an unsafe data directory: ' + DataRoot);
   if CompareText(DataRoot, ExpandConstant('{app}')) <> 0 then
     DelTree(DataRoot, True, True, True);
   if CompareText(DataRoot, ElectronUserData) <> 0 then
