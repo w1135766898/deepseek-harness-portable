@@ -22,7 +22,7 @@ Paste and run the following command in Windows PowerShell to automatically downl
 
 ### 2. Fast In-Place Updates (No large re-downloads)
 When a new release is published, update seamlessly in seconds through multi-mirror acceleration while preserving all workspace data and settings:
-- **Option A**: Double-click **`🔄 检查与更新.bat`** in the application directory.
+- **Option A**: Double-click **`在线更新.bat`** in the application directory.
 - **Option B**: Run the update command in any terminal:
   ```powershell
   dsh update
@@ -36,22 +36,22 @@ If you download the standalone release zip (`DeepSeek-Harness-*-win32-x64.zip`),
 
 ```text
 📦 DeepSeek Harness-win32-x64/
- ├── 🚀 启动 DeepSeek Harness (推荐网页版).bat   <-- Primary Web Launcher (100% immune to SAC)
- ├── 🖥️ 启动桌面独立窗口.bat                     <-- Standalone Native Window
- ├── 🔄 检查与更新.bat                          <-- One-Click In-Place Auto-Updater
- ├── ⚙️ 创建桌面图标与解除拦截.bat               <-- Desktop Shortcut & Security Trust Setup
- ├── 📄 使用说明.txt                            <-- Quick User Guide
+ ├── 启动网页版.bat                             <-- Primary Web Launcher (100% immune to SAC)
+ ├── 启动桌面窗口.bat                           <-- Standalone Native Window
+ ├── 在线更新.bat                               <-- One-Click In-Place Auto-Updater
+ ├── 创建桌面快捷方式.bat                       <-- Desktop Shortcut & Security Trust Setup
+ ├── 使用说明.txt                               <-- Quick User Guide
  ├── dsh.cmd                                   <-- CLI Command Shim
  └── 📂 runtime/                               <-- Isolated engine & dependencies (DO NOT delete)
 ```
 
 ### Launch Options:
-1. **Primary Recommendation**: Double-click `🚀 启动 DeepSeek Harness (推荐网页版).bat`
+1. **Primary Recommendation**: Double-click `启动网页版.bat`
    - Starts the Web engine via the official, Microsoft-trusted Node.js runtime and opens `http://127.0.0.1:3080` in your default browser.
    - **Completely immune to Windows 11 Smart App Control (SAC) and SmartScreen blocks**.
-2. **Standalone Desktop Window**: Double-click `🖥️ 启动桌面独立窗口.bat`
+2. **Standalone Desktop Window**: Double-click `启动桌面窗口.bat`
    - Starts the standalone desktop window and system tray.
-   - If blocked by Windows 11 SAC, run `⚙️ 创建桌面图标与解除拦截.bat` once to establish local trust.
+   - If blocked by Windows 11 SAC, run `创建桌面快捷方式.bat` once to establish local trust.
 
 
 

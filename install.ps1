@@ -182,7 +182,7 @@ function Create-Shortcuts {
         $iconPath = Join-Path $InstallDir 'resources\app\assets\deepseek.ico'
     }
 
-    $targetLauncher = Join-Path $InstallDir '🚀 启动 DeepSeek Harness (推荐网页版).bat'
+    $targetLauncher = Join-Path $InstallDir '启动-网页版(推荐).bat'
     if (-not (Test-Path $targetLauncher)) {
         $targetLauncher = Join-Path $InstallDir 'start-web.cmd'
     }

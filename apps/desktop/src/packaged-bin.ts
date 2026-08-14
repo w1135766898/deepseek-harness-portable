@@ -93,9 +93,15 @@ async function materializeShippedPresetRoot(): Promise<string> {
 }
 
 // Portable home: the exe's own directory unless the user opted into a
-// specific home. Must run before any module reads DSH_HOME at call time.
+// specific home. When running via global node/electron runtime, fallback to user home directory.
 if (process.env.DSH_HOME === undefined || process.env.DSH_HOME.trim() === '') {
-  process.env.DSH_HOME = join(dirname(process.execPath), '.dsh')
+  const isGlobalRuntime = /node(\.exe)?$/i.test(process.execPath) || /electron(\.exe)?$/i.test(process.execPath)
+  if (isGlobalRuntime) {
+    const userDir = process.env.USERPROFILE || process.env.HOME || process.env.LOCALAPPDATA || '.'
+    process.env.DSH_HOME = join(userDir, '.dsh')
+  } else {
+    process.env.DSH_HOME = join(dirname(process.execPath), '.dsh')
+  }
 }
 
 /**
