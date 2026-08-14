@@ -4,20 +4,25 @@
 
 这个目录说明 DeepSeek Harness 的个人 Windows 分发渠道。发布物是未封装的 Electron 原生桌面外壳，会在自己的窗口中启动本地 Web 运行时。它不是官方签名版本。
 
-## 快速安装与自动更新
+## 快速安装与自动更新（推荐方式）
 
-### 1. 一键在线安装（推荐）
-在 Windows PowerShell 中粘贴并运行以下命令，即可全自动完成最新版本的下载、解压、桌面快捷方式创建与环境变量配置：
+### 1. 一键在线极速安装
+在 Windows PowerShell 终端中粘贴并运行以下命令，即可全自动完成最新版本的下载、解压、桌面快捷方式创建与环境变量配置：
 
-```powershell
-irm https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
-```
+- **🇨🇳 中国大陆用户推荐（内置高速镜像通道，秒级响应）**：
+  ```powershell
+  irm https://ghfast.top/https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
+  ```
+- **🌍 海外/直连用户**：
+  ```powershell
+  irm https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
+  ```
 
-- 安装完成后，可直接在桌面打开 **DeepSeek Harness**，或在任何终端输入 **`dsh`** 启动。
+安装完成后，可在桌面直接打开 **DeepSeek Harness**，或在任何命令行中输入 **`dsh`** 启动。
 
-### 2. 快速热更新（免重新下载大包）
-当后续发布新版本时，无需手动重新下载完整压缩包，使用以下任一方式即可在 3 秒内完成增量升级并保留所有数据：
-- **方式 A**：双击软件根目录下的 **`update.cmd`**。
+### 2. 快速热更新（免手动重新下载大包）
+当后续发布新版本时，自动通过多节点加速通道增量升级，保留所有用户数据与配置：
+- **方式 A**：双击软件根目录下的 **`🔄 检查与更新.bat`**。
 - **方式 B**：在任何终端中直接执行命令：
   ```powershell
   dsh update
@@ -25,20 +30,29 @@ irm https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main
 
 ---
 
-## 手动便携式运行方式
+## 绿色便携版目录结构与使用说明
 
-若您选择直接下载 Release 压缩包（`DeepSeek-Harness-*-win32-x64.zip`），解压后提供以下三种启动方式：
+若您选择直接下载 Release 压缩包（`DeepSeek-Harness-*-win32-x64.zip`），解压后根目录结构清晰极简，底层 29,000+ 个运行库文件已全部收纳至 `runtime/` 目录中：
 
-1. **方式一：双击 `start-web.cmd`（推荐 ⭐⭐⭐⭐⭐，100% 免疫拦截）**
-   - 通过系统已安装的官方签名 Node.js 运行时启动 Web 引擎，自动在默认浏览器中打开 `http://127.0.0.1:3080`。
-   - 完全绕过 Windows 11 智能应用控制（SAC）与 SmartScreen 拦截，所有功能、预设与插件完全一致。
-2. **方式二：双击 `DeepSeek Harness.exe`（原生独立桌面窗口）**
+```text
+📦 DeepSeek Harness-win32-x64/
+ ├── 🚀 启动 DeepSeek Harness (推荐网页版).bat   <-- 主启动入口 (100% 免疫拦截)
+ ├── 🖥️ 启动桌面独立窗口.bat                     <-- 备用原生桌面窗口
+ ├── 🔄 检查与更新.bat                          <-- 一键在线增量热升级
+ ├── ⚙️ 创建桌面图标与解除拦截.bat               <-- 桌面快捷方式与本机证书信任
+ ├── 📄 使用说明.txt                            <-- 新手快速上手指南
+ ├── dsh.cmd                                   <-- CLI 命令行入口
+ └── 📂 runtime/                               <-- 底层运行库与依赖核心 (请勿删除)
+```
+
+### 启动方式选择：
+1. **主推荐：双击 `🚀 启动 DeepSeek Harness (推荐网页版).bat`**
+   - 自动调用官方签名的 Node.js 运行时启动 Web 引擎，并在默认浏览器中打开 `http://127.0.0.1:3080`。
+   - **彻底免疫 Windows 11 智能应用控制 (SAC) 与 SmartScreen 拦截**。
+2. **备用窗口：双击 `🖥️ 启动桌面独立窗口.bat`**
    - 启动独立桌面应用窗口与右下角系统托盘。
-   - **若遇到 Windows 11 智能应用控制（SAC）强制拦截**：直接双击运行目录内的 **`一键解除拦截(自签名信任).bat`**（或以管理员身份运行），即可自动在当前电脑生成并信任专属安全签名，之后便可直接双击 exe 启动。
-3. **方式三：双击 `start-desktop.cmd`（官方 Electron 独立窗口）**
-   - 通过官方签名版 Electron 加载应用窗口，兼顾独立窗口体验与防拦截。
+   - 若遇到 Windows 11 智能应用控制 (SAC) 拦截，只需运行一次 **`⚙️ 创建桌面图标与解除拦截.bat`** 即可永久解除拦截。
 
-可以在启动环境中设置 `DEEPSEEK_API_KEY`，也可以在 Web 界面设置中填写。桌面分发物会为本地渠道关闭 telemetry。
 
 
 ## 数据与便携性

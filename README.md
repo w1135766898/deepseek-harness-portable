@@ -4,20 +4,25 @@ English | [中文](README.zh.md)
 
 This directory documents the personal Windows distribution channel for DeepSeek Harness. The release is an unpacked Electron desktop shell that starts the local Web runtime in its own window. It is not an official signed release.
 
-## Quick Online Install & Auto-Update
+## Quick Online Install & Auto-Update (Recommended)
 
-### 1. One-Click Online Installer (Recommended)
+### 1. One-Click Online Installer
 Paste and run the following command in Windows PowerShell to automatically download, extract, create desktop shortcuts, and configure PATH:
 
-```powershell
-irm https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
-```
+- **🇨🇳 For Users in Mainland China (High-speed mirror acceleration)**:
+  ```powershell
+  irm https://ghfast.top/https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
+  ```
+- **🌍 Global / Direct Access**:
+  ```powershell
+  irm https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
+  ```
 
 - After installation, launch **DeepSeek Harness** directly from your Desktop, or type **`dsh`** in any terminal.
 
 ### 2. Fast In-Place Updates (No large re-downloads)
-When a new release is published, update seamlessly in seconds while preserving all workspace data and settings:
-- **Option A**: Double-click **`update.cmd`** in the application directory.
+When a new release is published, update seamlessly in seconds through multi-mirror acceleration while preserving all workspace data and settings:
+- **Option A**: Double-click **`🔄 检查与更新.bat`** in the application directory.
 - **Option B**: Run the update command in any terminal:
   ```powershell
   dsh update
@@ -25,20 +30,29 @@ When a new release is published, update seamlessly in seconds while preserving a
 
 ---
 
-## Manual Portable Usage Options
+## Clean Portable Distribution Layout
 
-If you download the standalone release zip (`DeepSeek-Harness-*-win32-x64.zip`), three launch options are available after extraction:
+If you download the standalone release zip (`DeepSeek-Harness-*-win32-x64.zip`), the extracted directory is organized cleanly, with all 29,000+ underlying runtime files isolated under `runtime/`:
 
-1. **Option 1: Double-click `start-web.cmd` (Recommended ⭐⭐⭐⭐⭐, 100% immune to SAC)**
+```text
+📦 DeepSeek Harness-win32-x64/
+ ├── 🚀 启动 DeepSeek Harness (推荐网页版).bat   <-- Primary Web Launcher (100% immune to SAC)
+ ├── 🖥️ 启动桌面独立窗口.bat                     <-- Standalone Native Window
+ ├── 🔄 检查与更新.bat                          <-- One-Click In-Place Auto-Updater
+ ├── ⚙️ 创建桌面图标与解除拦截.bat               <-- Desktop Shortcut & Security Trust Setup
+ ├── 📄 使用说明.txt                            <-- Quick User Guide
+ ├── dsh.cmd                                   <-- CLI Command Shim
+ └── 📂 runtime/                               <-- Isolated engine & dependencies (DO NOT delete)
+```
+
+### Launch Options:
+1. **Primary Recommendation**: Double-click `🚀 启动 DeepSeek Harness (推荐网页版).bat`
    - Starts the Web engine via the official, Microsoft-trusted Node.js runtime and opens `http://127.0.0.1:3080` in your default browser.
-   - Completely avoids Windows 11 Smart App Control (SAC) and SmartScreen blocks while maintaining identical features, presets, tools, and plugin capabilities.
-2. **Option 2: Double-click `DeepSeek Harness.exe` (Native Standalone Desktop Window)**
+   - **Completely immune to Windows 11 Smart App Control (SAC) and SmartScreen blocks**.
+2. **Standalone Desktop Window**: Double-click `🖥️ 启动桌面独立窗口.bat`
    - Starts the standalone desktop window and system tray.
-   - **If blocked by Windows 11 Smart App Control (SAC)**: Run **`一键解除拦截(自签名信任).bat`** inside the folder (or run as Administrator) to automatically generate and trust a local Code Signing certificate on your machine, enabling direct launch.
-3. **Option 3: Double-click `start-desktop.cmd` (Official Electron Standalone Window)**
-   - Loads the native application window using the official signed Electron binary.
+   - If blocked by Windows 11 SAC, run `⚙️ 创建桌面图标与解除拦截.bat` once to establish local trust.
 
-Set `DEEPSEEK_API_KEY` in the launch environment or enter it in the Web UI settings. The desktop distribution disables telemetry for the local desktop channel.
 
 
 ## Data and portability

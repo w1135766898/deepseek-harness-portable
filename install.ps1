@@ -1,7 +1,9 @@
 ﻿# ==============================================================================
 # DeepSeek Harness Portable - One-Click Online Installer for Windows (x64)
+# 支持中国大陆镜像多节点容灾加速与全球官方直连
 # Usage:
-#   irm https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
+#   海外/直连: irm https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
+#   大陆加速: irm https://ghfast.top/https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
 # ==============================================================================
 
 [CmdletBinding()]
@@ -20,7 +22,8 @@ $APP_NAME = 'DeepSeek Harness'
 function Write-Header {
     Write-Host ''
     Write-Host '================================================================' -ForegroundColor Cyan
-    Write-Host '         DeepSeek Harness Windows 一键安装与配置程序            ' -ForegroundColor Cyan
+    Write-Host '   🚀 DeepSeek Harness Windows 一键极速安装与配置程序           ' -ForegroundColor Cyan
+    Write-Host '   （内置中国大陆多节点智能加速与海外直连双通道）               ' -ForegroundColor Gray
     Write-Host '================================================================' -ForegroundColor Cyan
     Write-Host ''
 }
@@ -36,66 +39,102 @@ function Test-Prerequisites {
         $nodeVer = & node -v
         Write-Host ('  -> 检测到 Node.js: ' + $nodeVer) -ForegroundColor Green
     } else {
-        Write-Host '  -> [提示] 未检测到 Node.js。推荐安装官方 Node.js (https://nodejs.org) 以获得最佳兼容性与免拦截体验。' -ForegroundColor Yellow
+        Write-Host '  -> [提示] 未检测到全局 Node.js。建议安装官方 Node.js (https://nodejs.org) 以获得最佳免拦截体验。' -ForegroundColor Yellow
     }
 }
 
 function Get-LatestReleaseInfo {
-    Write-Host '[2/6] 获取 GitHub 最新发布版本信息...' -ForegroundColor Yellow
-    $apiUrl = 'https://api.github.com/repos/' + $REPO + '/releases/latest'
-    try {
-        $headers = @{ 'User-Agent' = 'DeepSeek-Harness-Installer' }
-        $release = Invoke-RestMethod -Uri $apiUrl -Headers $headers -TimeoutSec 15
-        return $release
-    } catch {
-        Write-Host '  -> 无法连接到 GitHub Releases API，尝试直接获取主分支分发配置...' -ForegroundColor Yellow
-        return [PSCustomObject]@{
-            tag_name = 'v0.1.0-rc.5'
-            assets = @(
-                [PSCustomObject]@{
-                    name = 'DeepSeek-Harness-0.1.0-rc.5-win32-x64.zip'
-                    browser_download_url = 'https://github.com/' + $REPO + '/releases/download/v0.1.0-rc.5/DeepSeek-Harness-0.1.0-rc.5-win32-x64.zip'
+    Write-Host '[2/6] 获取最新版本信息 (智能多通道查询)...' -ForegroundColor Yellow
+    
+    $endpoints = @(
+        ('https://api.github.com/repos/' + $REPO + '/releases/latest'),
+        ('https://ghfast.top/https://raw.githubusercontent.com/' + $REPO + '/main/apps/desktop/package.json'),
+        ('https://raw.gitmirror.com/' + $REPO + '/main/apps/desktop/package.json')
+    )
+
+    foreach ($ep in $endpoints) {
+        try {
+            $headers = @{ 'User-Agent' = 'DeepSeek-Harness-Installer' }
+            $res = Invoke-RestMethod -Uri $ep -Headers $headers -TimeoutSec 5
+            if ($res.tag_name) {
+                Write-Host ('  -> [成功] 远程发布通道连接畅通，最新版本: ' + $res.tag_name) -ForegroundColor Green
+                return $res
+            }
+            if ($res.version) {
+                Write-Host ('  -> [成功] 镜像发布通道连接畅通，最新版本: v' + $res.version) -ForegroundColor Green
+                return [PSCustomObject]@{
+                    tag_name = ('v' + $res.version)
+                    assets = @()
                 }
-            )
-        }
+            }
+        } catch {}
+    }
+
+    Write-Host '  -> 自动采用主分支最新候选版本: v0.1.0-rc.5' -ForegroundColor Gray
+    return [PSCustomObject]@{
+        tag_name = 'v0.1.0-rc.5'
+        assets = @()
     }
 }
 
-function Download-And-Extract {
-    param($Release)
-    $version = $Release.tag_name
-    Write-Host ('[3/6] 准备安装版本: ' + $version + ' ...') -ForegroundColor Yellow
+function Download-WithMirrorFailover {
+    param(
+        [string]$Version,
+        [string]$DestinationZip
+    )
+
+    $fileName = 'DeepSeek-Harness-0.1.0-rc.5-win32-x64.zip'
+    $directUrl = 'https://github.com/' + $REPO + '/releases/download/' + $Version + '/' + $fileName
     
-    $zipAsset = $Release.assets | Where-Object { $_.name -like '*win32-x64.zip' } | Select-Object -First 1
-    if (-not $zipAsset) {
-        $downloadUrl = 'https://github.com/' + $REPO + '/releases/download/' + $version + '/DeepSeek-Harness-0.1.0-rc.5-win32-x64.zip'
-        $zipName = 'DeepSeek-Harness-0.1.0-rc.5-win32-x64.zip'
-    } else {
-        $downloadUrl = $zipAsset.browser_download_url
-        $zipName = $zipAsset.name
+    $mirrors = @(
+        $directUrl,
+        ('https://ghfast.top/' + $directUrl),
+        ('https://mirror.ghproxy.com/' + $directUrl),
+        ('https://gh-proxy.com/' + $directUrl),
+        ('https://gh.ddlc.top/' + $directUrl)
+    )
+
+    $downloadSuccess = $false
+    foreach ($url in $mirrors) {
+        try {
+            $hostName = ([System.Uri]$url).Host
+            Write-Host ('  -> 正在连接下载节点: ' + $hostName + ' ...') -ForegroundColor Cyan
+            
+            # Use basic parsing with 120s timeout
+            Invoke-WebRequest -Uri $url -OutFile $DestinationZip -UseBasicParsing -TimeoutSec 120
+            
+            if ((Test-Path $DestinationZip) -and (Get-Item $DestinationZip).Length -gt 10000000) {
+                $sizeMb = [Math]::Round(((Get-Item $DestinationZip).Length / 1MB), 2)
+                Write-Host ('  -> [成功] 下载完成 (' + $sizeMb + ' MB)，节点响应正常！') -ForegroundColor Green
+                $downloadSuccess = $true
+                break
+            }
+        } catch {
+            Write-Host ('  -> 节点响应异常，自动无缝切换下一个加速镜像...') -ForegroundColor Yellow
+        }
     }
 
-    $tempZip = Join-Path $env:TEMP $zipName
-    Write-Host ('  -> 正在下载分发包 (' + $zipName + ')...') -ForegroundColor Cyan
-    
-    try {
-        Start-BitsTransfer -Source $downloadUrl -Destination $tempZip -Description 'Downloading DeepSeek Harness' -ErrorAction Stop
-    } catch {
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $tempZip -UseBasicParsing
+    if (-not $downloadSuccess) {
+        throw '所有下载节点均连接失败，请检查网络或代理设置。'
     }
+}
+
+function Extract-And-Install {
+    param(
+        [string]$ZipPath
+    )
+    Write-Host ('[3/6] 正在解压并部署到: ' + $InstallDir + ' ...') -ForegroundColor Yellow
     
-    Write-Host ('  -> 正在解压至: ' + $InstallDir + ' ...') -ForegroundColor Cyan
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-
     $guid = [Guid]::NewGuid().ToString('N')
     $extractTemp = Join-Path $env:TEMP ('dsh-extract-' + $guid)
     New-Item -ItemType Directory -Path $extractTemp -Force | Out-Null
-    
+
     $tar = Get-Command tar.exe -ErrorAction SilentlyContinue
     if ($tar) {
-        & tar.exe -xf $tempZip -C $extractTemp
+        & tar.exe -xf $ZipPath -C $extractTemp
     } else {
-        Expand-Archive -Path $tempZip -DestinationPath $extractTemp -Force
+        Expand-Archive -Path $ZipPath -DestinationPath $extractTemp -Force
     }
 
     $innerDir = Get-ChildItem -Path $extractTemp -Directory | Where-Object { $_.Name -like 'DeepSeek Harness*' } | Select-Object -First 1
@@ -104,16 +143,20 @@ function Download-And-Extract {
     & robocopy.exe $sourceRoot $InstallDir /E /R:2 /W:1 /NP /NDL /NFL /NJH /NJS | Out-Null
     $code = $LASTEXITCODE
     if ($code -ge 8) {
-        throw ('文件复制失败，Robocopy 退出码: ' + $code)
+        throw ('文件同步失败，Robocopy 错误码: ' + $code)
     }
 
-    Remove-Item -Path $tempZip -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $ZipPath -Force -ErrorAction SilentlyContinue
     Remove-Item -Path $extractTemp -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 function Setup-SecurityTrust {
-    Write-Host '[4/6] 配置本地安全证书与签名 (绕过 Windows 11 SAC 拦截)...' -ForegroundColor Yellow
-    $exePath = Join-Path $InstallDir 'DeepSeek Harness.exe'
+    Write-Host '[4/6] 配置本地安全证书与信任 (彻底规避 Windows 11 SAC 拦截)...' -ForegroundColor Yellow
+    $exePath = Join-Path $InstallDir 'runtime\DeepSeek Harness.exe'
+    if (-not (Test-Path $exePath)) {
+        $exePath = Join-Path $InstallDir 'DeepSeek Harness.exe'
+    }
+    
     if (Test-Path $exePath) {
         try {
             $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=DeepSeekHarnessLocal' -CertStoreLocation 'Cert:\CurrentUser\My'
@@ -126,7 +169,7 @@ function Setup-SecurityTrust {
             Remove-Item $certTemp -Force -ErrorAction SilentlyContinue
             Write-Host '  -> [成功] 本地信任签名配置完成！' -ForegroundColor Green
         } catch {
-            Write-Host ('  -> [提示] 自动自签名跳过 (' + $_.Exception.Message + ')，可通过 start-web.cmd 直接启动。') -ForegroundColor Gray
+            Write-Host ('  -> [提示] 自动自签名跳过 (' + $_.Exception.Message + ')。') -ForegroundColor Gray
         }
     }
 }
@@ -134,9 +177,14 @@ function Setup-SecurityTrust {
 function Create-Shortcuts {
     Write-Host '[5/6] 创建快捷方式与环境命令...' -ForegroundColor Yellow
     $wshShell = New-Object -ComObject WScript.Shell
-    $iconPath = Join-Path $InstallDir 'resources\app\assets\deepseek.ico'
+    $iconPath = Join-Path $InstallDir 'runtime\resources\app\assets\deepseek.ico'
     if (-not (Test-Path $iconPath)) {
-        $iconPath = Join-Path $InstallDir 'DeepSeek Harness.exe'
+        $iconPath = Join-Path $InstallDir 'resources\app\assets\deepseek.ico'
+    }
+
+    $targetLauncher = Join-Path $InstallDir '🚀 启动 DeepSeek Harness (推荐网页版).bat'
+    if (-not (Test-Path $targetLauncher)) {
+        $targetLauncher = Join-Path $InstallDir 'start-web.cmd'
     }
 
     # 1. Desktop Shortcut
@@ -144,7 +192,7 @@ function Create-Shortcuts {
         $desktopPath = [Environment]::GetFolderPath('Desktop')
         $shortcutFile = Join-Path $desktopPath ($APP_NAME + '.lnk')
         $shortcut = $wshShell.CreateShortcut($shortcutFile)
-        $shortcut.TargetPath = Join-Path $InstallDir 'start-web.cmd'
+        $shortcut.TargetPath = $targetLauncher
         $shortcut.WorkingDirectory = $InstallDir
         $shortcut.Description = 'DeepSeek Harness 智能编程与 Agent 运行时'
         $shortcut.IconLocation = $iconPath + ',0'
@@ -159,7 +207,7 @@ function Create-Shortcuts {
     New-Item -ItemType Directory -Path $appStartMenuDir -Force | Out-Null
     
     $startShortcut = $wshShell.CreateShortcut((Join-Path $appStartMenuDir ($APP_NAME + '.lnk')))
-    $startShortcut.TargetPath = Join-Path $InstallDir 'start-web.cmd'
+    $startShortcut.TargetPath = $targetLauncher
     $startShortcut.WorkingDirectory = $InstallDir
     $startShortcut.Description = 'DeepSeek Harness 智能编程与 Agent 运行时'
     $startShortcut.IconLocation = $iconPath + ',0'
@@ -194,7 +242,9 @@ try {
     Write-Header
     Test-Prerequisites
     $releaseInfo = Get-LatestReleaseInfo
-    Download-And-Extract -Release $releaseInfo
+    $tempZip = Join-Path $env:TEMP ('DeepSeek-Harness-' + $releaseInfo.tag_name + '.zip')
+    Download-WithMirrorFailover -Version $releaseInfo.tag_name -DestinationZip $tempZip
+    Extract-And-Install -ZipPath $tempZip
     Setup-SecurityTrust
     Create-Shortcuts
     Write-Success

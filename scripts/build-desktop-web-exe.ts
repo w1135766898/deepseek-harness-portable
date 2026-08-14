@@ -594,12 +594,16 @@ class DesktopExeBuild {
         'LICENSE',
         'THIRD_PARTY_NOTICES.md',
         'smoke-native.cjs',
+        'apps/desktop/🚀 启动 DeepSeek Harness (推荐网页版).bat',
+        'apps/desktop/🖥️ 启动桌面独立窗口.bat',
+        'apps/desktop/🔄 检查与更新.bat',
+        'apps/desktop/⚙️ 创建桌面图标与解除拦截.bat',
+        'apps/desktop/📄 使用说明.txt',
+        'apps/desktop/dsh.cmd',
         'apps/desktop/start-web.cmd',
         'apps/desktop/start-desktop.cmd',
-        'apps/desktop/一键解除拦截(自签名信任).bat',
         'apps/desktop/update.cmd',
         'apps/desktop/update.ps1',
-        'apps/desktop/dsh.cmd',
       ]
       for (const relPath of rootFiles) {
         const source = join(root, relPath)
