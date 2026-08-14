@@ -71,6 +71,43 @@ async function run(command: string, args: string[]): Promise<void> {
   })
 }
 
+async function listArchiveEntries(path: string): Promise<Set<string>> {
+  return await new Promise((resolvePromise, reject) => {
+    const child = spawn('tar.exe', ['-tf', path], {
+      cwd: root,
+      stdio: ['ignore', 'pipe', 'inherit'],
+    })
+    let output = ''
+    child.stdout.on('data', chunk => { output += chunk.toString() })
+    child.once('error', reject)
+    child.once('exit', (code, signal) => {
+      if (code !== 0) {
+        reject(new Error(`tar.exe failed while validating ${path} (${code === null ? signal ?? 'signal' : `exit ${code}`})`))
+        return
+      }
+      resolvePromise(new Set(output.split(/\r?\n/).map(entry => entry.trim()).filter(Boolean)))
+    })
+  })
+}
+
+async function verifyPortableArchive(zipPath: string, buildRoot: string): Promise<void> {
+  const prefix = `${basename(buildRoot).replaceAll('\\', '/')}/`
+  const entries = await listArchiveEntries(zipPath)
+  const required = [
+    'dsh.cmd',
+    'update.ps1',
+    'setup-shortcuts.ps1',
+    'runtime/DeepSeek Harness.exe',
+    'runtime/resources/app/package.json',
+    'runtime/resources/app/lib/packaged-bin.js',
+  ]
+  const missing = required.filter(relative => !entries.has(`${prefix}${relative}`))
+  if (missing.length > 0) {
+    throw new Error(`Portable ZIP layout validation failed; missing: ${missing.join(', ')}`)
+  }
+  console.log(`Release archive layout verified: ${prefix}`)
+}
+
 function hashFile(path: string): Promise<string> {
   return new Promise((resolvePromise, reject) => {
     const hash = createHash('sha256')
@@ -133,6 +170,7 @@ async function main(): Promise<void> {
     throw new Error(`Portable build root is missing runtime/DeepSeek Harness.exe: ${buildRoot}`)
   }
   await run('tar.exe', ['-a', '-c', '-f', zipPath, '-C', dirname(buildRoot), basename(buildRoot)])
+  await verifyPortableArchive(zipPath, buildRoot)
 
   let setupPath: string | undefined
   if (!options.noSetup) {

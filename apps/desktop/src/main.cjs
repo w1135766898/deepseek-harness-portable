@@ -4,6 +4,7 @@ const { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } = require
 const { homedir } = require('node:os')
 const { join } = require('node:path')
 const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
+const { findPortableRoot } = require('./update-path.cjs')
 
 const APP_NAME = 'DeepSeek Harness'
 const STARTUP_TIMEOUT_MS = 60_000
@@ -356,19 +357,17 @@ async function queryLatestVersion() {
 }
 
 function triggerInPlaceUpdate() {
-  const root = join(__dirname, '..', '..', '..')
-  const updateScript = join(root, '在线更新.bat')
-  const updatePs1 = join(root, 'runtime', 'update.ps1')
-
-  if (existsSync(updateScript)) {
-    shell.openPath(updateScript)
-  } else if (existsSync(updatePs1)) {
+  const root = findPortableRoot(__dirname)
+  if (root !== undefined) {
+    const updatePs1 = join(root, 'update.ps1')
     spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', updatePs1], {
+      cwd: root,
       detached: true,
       stdio: 'ignore',
+      windowsHide: true,
     }).unref()
   } else {
-    void shell.openExternal('https://github.com/deepseek-ai/deepseek-harness/releases')
+    void shell.openExternal('https://github.com/wsnxxxs/deepseek-harness-portable/releases')
   }
 }
 
