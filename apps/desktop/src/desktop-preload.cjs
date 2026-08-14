@@ -64,6 +64,7 @@ if (!isSplashDocument) {
     requestId: 0,
     drawerRefreshing: false,
     updateState: '',
+    updateProgress: undefined,
   }
 
   let chromeRefs
@@ -107,7 +108,7 @@ if (!isSplashDocument) {
   }
 
   function updateIsBusy(status) {
-    return Boolean(state.updateState || (status && ['starting', 'checking', 'downloading', 'verifying', 'extracting', 'replacing'].includes(status.state)))
+    return Boolean(state.updateState || (status && ['starting', 'checking', 'downloading', 'verifying', 'extracting', 'replacing', 'ready'].includes(status.state)))
   }
 
   function mountGlobalStyles() {
@@ -175,13 +176,21 @@ if (!isSplashDocument) {
     const data = state.data
     const status = data?.updateStatus || {}
     const update = data?.latestRelease
-    const hasUpdate = Boolean(data?.updateAvailable && update)
-    const busy = updateIsBusy(status)
+    const progressState = state.updateProgress?.state || status.state || ''
+    const ready = progressState === 'ready'
+    const hasUpdate = Boolean((data?.updateAvailable || ready) && update)
+    const busy = updateIsBusy({ ...status, state: progressState })
+    const progressValue = Number.isFinite(state.updateProgress?.progress)
+      ? Math.max(0, Math.min(100, state.updateProgress.progress))
+      : undefined
+    const progressMarkup = ['checking', 'downloading', 'verifying'].includes(progressState)
+      ? '<div class="dsh-update-progress"><div class="dsh-progress-track"><span class="dsh-progress-fill' + (progressValue === undefined ? ' indeterminate' : '') + '"' + (progressValue === undefined ? '' : ' style="width:' + progressValue + '%"') + '></span></div><small>' + (progressValue === undefined ? '正在处理…' : progressValue + '%') + '</small></div>'
+      : ''
     const statusNotice = status.state === 'failed' || status.state === 'interrupted'
       ? '<div class="dsh-status ' + (status.state === 'failed' ? 'failed' : 'interrupted') + '"><strong>' + (status.state === 'failed' ? '更新失败' : '上次更新未完成') + '</strong><span>' + escapeHtml(status.message || '当前安装仍可使用，可以重新检查更新。') + '</span><button class="dsh-button ghost" data-action="retry-update">重新检查</button></div>'
       : ''
     const updateCard = hasUpdate
-      ? '<div class="dsh-update-card"><div><strong>新版本 v' + escapeHtml(update.version) + ' 已发布</strong><span>安全下载并替换便携版运行时</span></div><button class="dsh-button primary" data-action="update"' + (busy ? ' disabled' : '') + '>' + escapeHtml(state.updateState || (busy ? '更新进行中…' : '立即更新')) + '</button></div>'
+      ? '<div class="dsh-update-card"><div><strong>' + (ready ? '新版本 v' + escapeHtml(update.version) + ' 已准备就绪' : '新版本 v' + escapeHtml(update.version) + ' 已发布') + '</strong><span>' + escapeHtml(state.updateState || (ready ? '更新包已下载并校验，重启后完成替换' : (busy ? '正在准备更新包…' : '安全下载并替换便携版运行时'))) + '</span>' + progressMarkup + '</div><button class="dsh-button primary" data-action="update"' + (busy && !ready ? ' disabled' : '') + '>' + escapeHtml(ready ? '立即重启更新' : (state.updateState || (busy ? '更新进行中…' : '立即更新'))) + '</button></div>'
       : ''
     const refreshing = state.drawerRefreshing ? '<div class="dsh-refreshing">正在后台同步最新更新记录…</div>' : ''
     if (state.drawerLoading) return '<div class="dsh-loading">正在读取本地更新记录…</div>'
@@ -353,6 +362,7 @@ if (!isSplashDocument) {
     state.drawerLoading = true
     state.drawerRefreshing = false
     state.updateState = ''
+    state.updateProgress = undefined
     const requestId = ++state.requestId
     render()
     let hasCachedData = false
@@ -473,7 +483,8 @@ if (!isSplashDocument) {
     }
     if (action === 'update') {
       const version = state.data?.latestRelease?.version || state.notice?.release?.version || ''
-      state.updateState = '更新器已启动，正在安全退出应用…'
+      const ready = state.updateProgress?.state === 'ready' || state.data?.updateStatus?.state === 'ready'
+      state.updateState = ready ? '正在请求重启确认…' : '正在准备下载…'
       render()
       sendAction('update', { targetVersion: version })
       return
@@ -557,6 +568,11 @@ if (!isSplashDocument) {
     .dsh-update-card div { min-width: 0; display: grid; gap: 2px; }
     .dsh-update-card strong { color: #245db1; }
     .dsh-update-card span, .dsh-status span { color: #6e7e96; font-size: 11px; }
+    .dsh-update-progress { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+    .dsh-progress-track { min-width: 120px; height: 5px; overflow: hidden; border-radius: 999px; background: rgba(54, 113, 201, .16); }
+    .dsh-progress-fill { display: block; height: 100%; border-radius: inherit; background: #347ff2; transition: width .2s ease; }
+    .dsh-progress-fill.indeterminate { width: 42%; animation: dsh-progress-slide 1.1s ease-in-out infinite; }
+    .dsh-update-progress small { color: #6e7e96; font-size: 10px; }
     .dsh-status { justify-content: flex-start; flex-wrap: wrap; border-color: rgba(221, 143, 33, .28); background: rgba(245, 174, 68, .1); }
     .dsh-status.failed { border-color: rgba(224, 71, 95, .26); background: rgba(224, 71, 95, .08); }
     .dsh-status strong { color: #aa6c11; }
@@ -594,6 +610,7 @@ if (!isSplashDocument) {
     .dsh-about p { margin: 5px 0; color: #657793; }
     .dsh-muted { color: #9aa7ba !important; font-size: 11px; }
     @keyframes dsh-slide-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes dsh-progress-slide { from { transform: translateX(-110%); } to { transform: translateX(260%); } }
     @keyframes dsh-drawer-in { from { opacity: .75; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
     @keyframes dsh-fade-in { from { opacity: 0; } to { opacity: 1; } }
     @media (prefers-color-scheme: dark) {
@@ -636,6 +653,8 @@ if (!isSplashDocument) {
       .dsh-update-card, .dsh-status { border-color: rgba(81, 149, 255, .28); background: rgba(55, 113, 201, .16); }
       .dsh-update-card strong { color: #9fc5ff; }
       .dsh-update-card span, .dsh-status span { color: #9aacC5; }
+      .dsh-progress-track { background: rgba(159, 193, 255, .18); }
+      .dsh-update-progress small { color: #9aacC5; }
       .dsh-status { border-color: rgba(245, 174, 68, .28); background: rgba(159, 104, 22, .17); }
       .dsh-status.failed { border-color: rgba(245, 100, 122, .28); background: rgba(159, 40, 66, .17); }
       .dsh-status strong { color: #f5c46e; }
@@ -688,6 +707,14 @@ if (!isSplashDocument) {
   })
   ipcRenderer.on('desktop:update-state', (_event, update) => {
     state.updateState = update?.label || ''
+    state.updateProgress = update?.state === 'idle'
+      ? undefined
+      : (update && typeof update === 'object' ? {
+          state: update.state || '',
+          stage: update.stage || '',
+          progress: Number.isFinite(update.progress) ? update.progress : undefined,
+          targetVersion: update.targetVersion || '',
+        } : undefined)
     render()
   })
 
