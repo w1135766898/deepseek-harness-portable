@@ -166,9 +166,26 @@ function queueOrSendReleaseNotes(context) {
   if (sendRenderer('desktop:release-notes:open', queuedReleaseNotesContext)) queuedReleaseNotesContext = undefined
 }
 
+function noticeVersion(notice) {
+  const candidates = [notice?.release?.version, notice?.currentVersion]
+  const value = candidates.find(candidate => typeof candidate === 'string' && candidate.trim() !== '')
+  return value === undefined ? '' : value.trim()
+}
+
+function isNoticeDismissed(notice) {
+  const version = noticeVersion(notice)
+  return version !== '' && readConfig().lastDismissedVersion === version
+}
+
 function showInAppNotice(notice) {
-  inAppNotice = notice && typeof notice === 'object' ? notice : undefined
+  const nextNotice = notice && typeof notice === 'object' ? notice : undefined
+  if (nextNotice !== undefined && isNoticeDismissed(nextNotice)) {
+    inAppNotice = undefined
+    return false
+  }
+  inAppNotice = nextNotice
   sendRenderer('desktop:notice', inAppNotice)
+  return true
 }
 
 function sendSplashStatus(status) {
@@ -1478,6 +1495,14 @@ function registerReleaseNotesIpc() {
   ipcMain.on('desktop:notice:show', event => {
     if (!isMainRenderer(event.sender) || inAppNotice === undefined) return
     event.sender.send('desktop:notice', inAppNotice)
+  })
+
+  ipcMain.on('desktop:notice:dismiss', (event, version) => {
+    if (!isMainRenderer(event.sender) || typeof version !== 'string') return
+    const normalized = version.trim()
+    if (normalized === '') return
+    updateConfig({ lastDismissedVersion: normalized })
+    if (noticeVersion(inAppNotice) === normalized) inAppNotice = undefined
   })
 
   ipcMain.on('desktop:release-notes:action', (event, action) => {

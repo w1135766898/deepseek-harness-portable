@@ -59,7 +59,6 @@ if (!isSplashDocument) {
     actionMessage: '',
     actionMessageTimer: undefined,
     notice: undefined,
-    noticeExpanded: true,
     noticeTimer: undefined,
     requestId: 0,
     drawerRefreshing: false,
@@ -72,6 +71,8 @@ if (!isSplashDocument) {
   let noticeMarkup
   let healthMarkup
   let drawerContentMarkup
+  let noticeDismissCleanup
+  let noticeDismissSequence = 0
 
   function escapeHtml(value) {
     return String(value == null ? '' : value)
@@ -239,8 +240,8 @@ if (!isSplashDocument) {
       : (isProblem ? escapeHtml(status.message || '当前安装仍可使用，可以重新检查更新。') : '查看新特性与完整更新记录。')
     const actionLabel = isAvailable ? '查看新特性' : (isProblem ? '重新检查' : '查看新特性')
     const action = isProblem ? 'retry-update' : 'open-release-notes'
-    if (!state.noticeExpanded) return actionMarkup + '<button class="dsh-notice-pill" data-action="open-release-notes" title="查看更新日志">' + logoMarkup('dsh-bell-logo') + '<span>更新</span><i></i></button>'
-    return actionMarkup + '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">' + logoMarkup('dsh-notice-logo') + '</div><div class="dsh-notice-copy"><strong>' + title + '</strong><span>' + desc + '</span></div><button class="dsh-button primary" data-action="' + action + '">' + actionLabel + '</button><button class="dsh-notice-dismiss" data-action="notice-collapse" aria-label="稍后查看">×</button></section>'
+    const version = release.version || notice.currentVersion || ''
+    return actionMarkup + '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">' + logoMarkup('dsh-notice-logo') + '</div><div class="dsh-notice-copy"><strong>' + title + '</strong><span>' + desc + '</span></div><button class="dsh-button primary" data-action="' + action + '">' + actionLabel + '</button><button class="dsh-button ghost dsh-notice-never" data-action="notice-dismiss-forever" data-version="' + escapeHtml(version) + '"' + (version ? '' : ' disabled') + '>不再提示</button><button class="dsh-notice-dismiss" data-action="notice-dismiss" aria-label="关闭通知">×</button></section>'
   }
 
   function showActionMessage(message) {
@@ -345,15 +346,63 @@ if (!isSplashDocument) {
     syncMenuFocus()
   }
 
-  function collapseNotice(renderNow = true) {
-    state.noticeExpanded = false
+  function clearNoticeTimer() {
     if (state.noticeTimer !== undefined) clearTimeout(state.noticeTimer)
-    if (renderNow) render()
+    state.noticeTimer = undefined
   }
 
-  function scheduleNoticeCollapse() {
-    if (state.noticeTimer !== undefined) clearTimeout(state.noticeTimer)
-    state.noticeTimer = setTimeout(collapseNotice, 7000)
+  function cancelNoticeDismiss() {
+    noticeDismissSequence += 1
+    if (noticeDismissCleanup !== undefined) {
+      noticeDismissCleanup()
+      noticeDismissCleanup = undefined
+    }
+  }
+
+  function dismissNotice(remember = false) {
+    const notice = state.notice
+    const version = notice?.release?.version || notice?.currentVersion || ''
+    const node = chromeRefs?.noticeHost?.querySelector('.dsh-notice')
+    clearNoticeTimer()
+    if (remember && version) ipcRenderer.send('desktop:notice:dismiss', String(version).trim())
+
+    cancelNoticeDismiss()
+    if (!notice || node === null || node === undefined) {
+      state.notice = undefined
+      noticeMarkup = ''
+      render()
+      return
+    }
+
+    const sequence = noticeDismissSequence
+    const finalize = () => {
+      if (sequence !== noticeDismissSequence || state.notice !== notice) return
+      const cleanup = noticeDismissCleanup
+      noticeDismissCleanup = undefined
+      if (cleanup !== undefined) cleanup()
+      state.notice = undefined
+      chromeRefs.noticeHost.replaceChildren()
+      noticeMarkup = ''
+      render()
+    }
+    const onAnimationEnd = event => {
+      if (event.target === node && event.animationName === 'dsh-notice-out') finalize()
+    }
+    const fallbackTimer = setTimeout(finalize, 320)
+    node.addEventListener('animationend', onAnimationEnd)
+    noticeDismissCleanup = () => {
+      clearTimeout(fallbackTimer)
+      node.removeEventListener('animationend', onAnimationEnd)
+    }
+    node.classList.add('is-closing')
+  }
+
+  function scheduleNoticeDismiss() {
+    clearNoticeTimer()
+    state.noticeTimer = setTimeout(() => {
+      state.noticeTimer = undefined
+      dismissNotice()
+    }, 7000)
   }
 
   async function openDrawer(context = { mode: 'history' }) {
@@ -460,15 +509,19 @@ if (!isSplashDocument) {
       ipcRenderer.send('desktop:health:action', { type: 'restart-engine' })
       return
     }
-    if (action === 'notice-collapse') {
-      collapseNotice()
+    if (action === 'notice-dismiss') {
+      dismissNotice()
+      return
+    }
+    if (action === 'notice-dismiss-forever') {
+      dismissNotice(true)
       return
     }
     if (action === 'open-release-notes') {
       const context = state.notice?.kind === 'available'
         ? { mode: 'update', currentVersion: state.notice.currentVersion, update: state.notice.release }
         : { mode: 'history', selectedVersion: state.notice?.currentVersion }
-      collapseNotice(false)
+      dismissNotice()
       void openDrawer(context)
       return
     }
@@ -478,6 +531,7 @@ if (!isSplashDocument) {
       return
     }
     if (action === 'retry-update') {
+      dismissNotice()
       sendAction('retry-update')
       return
     }
@@ -511,7 +565,7 @@ if (!isSplashDocument) {
     .dsh-chrome, .dsh-chrome * { box-sizing: border-box; }
     .dsh-chrome { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; color: #182235; font: 13px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif; }
     .dsh-drag-region { position: fixed; inset: 0 140px auto 44px; height: var(--dsh-titlebar-height); pointer-events: none; -webkit-app-region: drag; }
-    .dsh-app-menu, .dsh-notice, .dsh-notice-pill, .dsh-drawer-layer { pointer-events: auto; }
+    .dsh-app-menu, .dsh-notice, .dsh-drawer-layer { pointer-events: auto; }
     .dsh-app-menu { position: fixed; top: 5px; left: 10px; z-index: 2; -webkit-app-region: no-drag; }
     .dsh-menu-trigger { display: grid; place-items: center; width: 28px; height: 26px; padding: 0; border: 1px solid rgba(93, 126, 177, .2); border-radius: 8px; color: #4775b8; background: rgba(247, 250, 255, .72); box-shadow: 0 4px 12px rgba(31, 50, 83, .1); cursor: pointer; font-size: 15px; -webkit-app-region: no-drag; }
     .dsh-menu-logo { width: 18px; height: 18px; object-fit: contain; pointer-events: none; }
@@ -526,7 +580,7 @@ if (!isSplashDocument) {
     .dsh-menu-item:disabled { color: #9aa8bc; cursor: default; opacity: .78; }
     .dsh-menu-heading { padding: 5px 9px 3px; color: #8191a8; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
     .dsh-menu-separator { height: 1px; margin: 5px 4px; background: rgba(116, 138, 171, .18); }
-    .dsh-notice { position: fixed; right: 24px; bottom: 24px; width: min(520px, calc(100vw - 32px)); display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid rgba(87, 151, 255, .32); border-radius: 14px; background: rgba(247, 250, 255, .94); box-shadow: 0 14px 40px rgba(31, 50, 83, .18), 0 1px 2px rgba(15, 23, 42, .08); backdrop-filter: blur(22px) saturate(160%); animation: dsh-slide-in .28s cubic-bezier(.16,1,.3,1); z-index: 3; }
+    .dsh-notice { position: fixed; top: var(--dsh-titlebar-height, 36px); left: 50%; right: auto; bottom: auto; width: min(700px, calc(100vw - 32px)); display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid rgba(87, 151, 255, .32); border-radius: 10px; background: rgba(247, 250, 255, .94); box-shadow: 0 10px 28px rgba(31, 50, 83, .18), 0 1px 2px rgba(15, 23, 42, .08); backdrop-filter: blur(22px) saturate(160%); animation: dsh-notice-in .28s cubic-bezier(.16,1,.3,1) both; z-index: 5; }
     .dsh-action-toast { position: fixed; right: 24px; bottom: 86px; max-width: min(520px, calc(100vw - 32px)); padding: 9px 13px; border: 1px solid rgba(87, 151, 255, .3); border-radius: 10px; color: #2e5a9d; background: rgba(247, 250, 255, .96); box-shadow: 0 10px 28px rgba(31, 50, 83, .18); font-size: 12px; animation: dsh-slide-in .22s ease-out; z-index: 5; }
     .dsh-disconnect-banner { position: fixed; top: calc(var(--dsh-titlebar-height) + 12px); right: 16px; width: min(560px, calc(100vw - 32px)); display: flex; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid rgba(221, 143, 33, .34); border-radius: 12px; background: rgba(255, 248, 235, .96); box-shadow: 0 12px 32px rgba(31, 50, 83, .18); backdrop-filter: blur(18px) saturate(150%); animation: dsh-slide-in .28s cubic-bezier(.16,1,.3,1); z-index: 4; }
     .dsh-disconnect-copy { min-width: 0; flex: 1; display: grid; gap: 2px; }
@@ -538,10 +592,10 @@ if (!isSplashDocument) {
     .dsh-notice-copy strong { color: #15223a; font-weight: 650; }
     .dsh-notice-copy span { overflow: hidden; color: #60708a; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
     .dsh-notice-dismiss, .dsh-close { border: 0; background: transparent; color: #7b8aa3; cursor: pointer; font-size: 18px; line-height: 1; }
-    .dsh-notice-dismiss { padding: 5px; }
-    .dsh-notice-pill { position: fixed; right: 24px; bottom: 24px; display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid rgba(87, 151, 255, .28); border-radius: 999px; color: #2f6fda; background: rgba(247, 250, 255, .92); box-shadow: 0 8px 24px rgba(31, 50, 83, .14); cursor: pointer; backdrop-filter: blur(18px); z-index: 3; }
-    .dsh-notice-pill i { width: 6px; height: 6px; border-radius: 50%; background: #3a8bff; box-shadow: 0 0 0 4px rgba(58, 139, 255, .15); }
-    .dsh-bell-logo { width: 16px; height: 16px; object-fit: contain; pointer-events: none; }
+    .dsh-notice-dismiss { flex: 0 0 auto; padding: 5px; }
+    .dsh-notice-never { flex: 0 0 auto; min-height: 28px; padding-inline: 8px; color: #5d6d85; }
+    .dsh-notice-never:hover { color: #2d6fd6; }
+    .dsh-notice.is-closing { pointer-events: none; animation: dsh-notice-out .24s ease-in both; }
     .dsh-button { display: inline-flex; align-items: center; justify-content: center; min-height: 30px; padding: 5px 11px; border: 1px solid rgba(28, 48, 78, .11); border-radius: 8px; color: #1d2b42; background: rgba(241, 245, 251, .92); cursor: pointer; font: 600 12px/1.2 inherit; white-space: nowrap; }
     .dsh-button:hover { background: #e4ebf6; }
     .dsh-button.primary { border-color: #307bf0; color: #fff; background: #307bf0; box-shadow: 0 3px 10px rgba(48, 123, 240, .25); }
@@ -609,10 +663,16 @@ if (!isSplashDocument) {
     .dsh-about h3 { margin: 0 0 8px; color: #1e2d44; font-size: 18px; }
     .dsh-about p { margin: 5px 0; color: #657793; }
     .dsh-muted { color: #9aa7ba !important; font-size: 11px; }
+    @keyframes dsh-notice-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    @keyframes dsh-notice-out { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -8px); } }
     @keyframes dsh-slide-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes dsh-progress-slide { from { transform: translateX(-110%); } to { transform: translateX(260%); } }
     @keyframes dsh-drawer-in { from { opacity: .75; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
     @keyframes dsh-fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) {
+      .dsh-notice { animation: none; transform: translateX(-50%); }
+      .dsh-notice.is-closing { animation: none; opacity: 0; transform: translate(-50%, -8px); }
+    }
     @media (prefers-color-scheme: dark) {
       .dsh-chrome { color: #e8eef9; }
       .dsh-notice-icon, .dsh-about-logo { border-color: rgba(93, 157, 255, .36); background: #edf4ff; }
@@ -626,7 +686,7 @@ if (!isSplashDocument) {
       .dsh-menu-item kbd { color: #8ca3c8; }
       .dsh-menu-item:disabled, .dsh-menu-heading { color: #7185a5; }
       .dsh-menu-separator { background: rgba(170, 192, 228, .16); }
-      .dsh-notice, .dsh-notice-pill { border-color: rgba(93, 157, 255, .36); background: rgba(19, 29, 47, .94); box-shadow: 0 16px 40px rgba(0, 0, 0, .36); }
+      .dsh-notice { border-color: rgba(93, 157, 255, .36); background: rgba(19, 29, 47, .94); box-shadow: 0 16px 40px rgba(0, 0, 0, .36); }
       .dsh-action-toast { border-color: rgba(93, 157, 255, .36); color: #b5d0ff; background: rgba(19, 29, 47, .96); box-shadow: 0 16px 40px rgba(0, 0, 0, .36); }
       .dsh-disconnect-banner { border-color: rgba(245, 174, 68, .36); background: rgba(55, 42, 22, .96); box-shadow: 0 16px 40px rgba(0, 0, 0, .36); }
       .dsh-disconnect-copy strong { color: #f5c46e; }
@@ -662,9 +722,11 @@ if (!isSplashDocument) {
       .dsh-about p { color: #a2b2c9; }
     }
     @media (max-width: 620px) {
-      .dsh-notice, .dsh-disconnect-banner, .dsh-action-toast { right: 16px; width: calc(100vw - 32px); }
+      .dsh-disconnect-banner, .dsh-action-toast { right: 16px; width: calc(100vw - 32px); }
+      .dsh-notice { left: 50%; right: auto; width: calc(100vw - 32px); gap: 8px; padding: 7px 8px; }
       .dsh-notice-copy span { white-space: normal; }
       .dsh-notice .dsh-button { padding-inline: 8px; }
+      .dsh-notice-never { padding-inline: 6px !important; }
       .dsh-drawer-header, .dsh-drawer-scroll { padding-left: 20px; padding-right: 20px; }
       .dsh-drawer-tabs { padding-left: 20px; padding-right: 20px; }
     }
@@ -696,10 +758,11 @@ if (!isSplashDocument) {
     showActionMessage(result?.message || '')
   })
   ipcRenderer.on('desktop:notice', (_event, notice) => {
+    cancelNoticeDismiss()
+    clearNoticeTimer()
     state.notice = notice && typeof notice === 'object' ? notice : undefined
-    state.noticeExpanded = true
     render()
-    scheduleNoticeCollapse()
+    if (state.notice !== undefined) scheduleNoticeDismiss()
   })
   ipcRenderer.on('desktop:release-notes:open', (_event, context) => { void openDrawer(context) })
   ipcRenderer.on('desktop:release-notes:reload', () => {
