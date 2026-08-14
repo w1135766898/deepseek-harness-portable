@@ -1,29 +1,17 @@
-================================================================
-           DeepSeek Harness 便携版使用指南
-================================================================
+DeepSeek Harness portable quick guide
+=====================================
 
-【启动方式】
-1. 启动-网页版(推荐).bat
-   - 推荐使用！通过官方 Node.js 运行时启动，100% 免疫 Windows 拦截。
-   - 自动在默认浏览器中打开 http://127.0.0.1:3080。
+1. start-desktop.cmd
+   Launches the bundled Electron desktop shell.
+2. start-web.cmd
+   Uses Node.js from PATH to launch the web entry in a browser.
+3. update.ps1 or dsh update
+   Downloads a complete release, verifies SHA-256, and atomically replaces runtime.
+4. setup-shortcuts.ps1
+   Creates a desktop shortcut and adds this portable root to the user PATH.
 
-2. 启动-桌面窗口.bat
-   - 启动原生 Electron 独立窗口与系统托盘。
+This release is not signed by a trusted commercial CA. Self-signed certificates do
+not bypass Smart App Control or SmartScreen, so no certificate or trust store is
+created automatically. Verify SHA256SUMS.txt before running downloaded files.
 
-3. 在线更新.bat
-   - 一键检查 GitHub 最新发布，自动增量更新程序，保留所有数据。
-
-4. 创建桌面快捷方式与解除拦截.bat
-   - 自动在电脑桌面创建快捷方式，并为可执行文件添加本机信任签名。
-
-【命令行支持】
-在终端中执行 dsh 命令即可启动：
-- dsh             : 启动网页版服务
-- dsh desktop     : 启动桌面独立窗口
-- dsh update      : 执行在线热更新
-- dsh trust       : 一键创建快捷方式并添加本机信任
-
-【注意】
-- 本软件所有底层运行文件均存放在 runtime/ 目录下，请勿随意删除 runtime/ 中的文件。
-- 项目主页: https://github.com/w1135766898/deepseek-harness-portable
-================================================================
+All application files are under runtime/. Do not delete or rename that directory.

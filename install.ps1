@@ -187,26 +187,10 @@ function Extract-And-Install {
     }
 }
 
-function Setup-SecurityTrust {
-    Write-Host '[4/6] Configuring local trust...' -ForegroundColor Yellow
-    $exePath = Join-Path $InstallDir 'runtime\DeepSeek Harness.exe'
-    if (-not (Test-Path -LiteralPath $exePath)) {
-        $exePath = Join-Path $InstallDir 'DeepSeek Harness.exe'
-    }
-    if (Test-Path -LiteralPath $exePath) {
-        try {
-            $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=DeepSeekHarnessLocal' -CertStoreLocation 'Cert:\CurrentUser\My'
-            Set-AuthenticodeSignature -Certificate $cert -FilePath $exePath | Out-Null
-            $certTemp = Join-Path $env:TEMP ('dsh-cert-' + [Guid]::NewGuid().ToString('N') + '.cer')
-            Export-Certificate -Cert $cert -FilePath $certTemp | Out-Null
-            Import-Certificate -FilePath $certTemp -CertStoreLocation 'Cert:\CurrentUser\Root' | Out-Null
-            Import-Certificate -FilePath $certTemp -CertStoreLocation 'Cert:\CurrentUser\TrustedPublisher' | Out-Null
-            Remove-Item -LiteralPath $certTemp -Force -ErrorAction SilentlyContinue
-            Write-Host '  Local trust configuration completed.' -ForegroundColor Green
-        } catch {
-            Write-Host ('  Local signing was skipped: ' + $_.Exception.Message) -ForegroundColor Gray
-        }
-    }
+function Show-SigningNotice {
+    Write-Host '[4/6] Checking release signing status...' -ForegroundColor Yellow
+    Write-Host '  This community release is not signed by a trusted commercial CA.' -ForegroundColor Gray
+    Write-Host '  The installer never creates certificates or changes Windows trust stores.' -ForegroundColor Gray
 }
 
 function Create-Shortcuts {
@@ -277,7 +261,7 @@ try {
     $tempZip = Join-Path $env:TEMP ('DeepSeek-Harness-' + $releaseInfo.version + '.zip')
     Download-WithMirrorFailover -ReleaseInfo $releaseInfo -DestinationZip $tempZip
     Extract-And-Install -ZipPath $tempZip
-    Setup-SecurityTrust
+    Show-SigningNotice
     Create-Shortcuts
     Write-Success
 } catch {

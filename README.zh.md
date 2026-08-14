@@ -1,101 +1,57 @@
-# DeepSeek Harness Windows 便携式分发物
+# DeepSeek Harness Windows 便携版
 
 [English](README.md) | 中文
 
-这个目录说明 DeepSeek Harness 的个人 Windows 分发渠道。发布物是未封装的 Electron 原生桌面外壳，会在自己的窗口中启动本地 Web 运行时。它不是官方签名版本。
+本仓库生成 DeepSeek Harness 的社区 Windows x64 分发包。产物由 Electron 桌面外壳和 `runtime/` 运行目录组成，不是 Microsoft 官方签名版本。
 
-## 快速安装方式（三选一）
+## 安装
 
-### 方式一：标准 Windows 单文件安装包 (Setup.exe，新手首选)
-从 Release 页面直接下载 **`DeepSeek-Harness-Setup-0.1.0-rc.6-win32-x64.exe`**：
+- **Setup 安装包：** 从 Releases 下载 `DeepSeek-Harness-Setup-<version>-win32-x64.exe`。
+- **在线安装：** 运行仓库中的 `install.ps1`。脚本只接受带有可信 SHA-256 清单的发布 ZIP。
+- **便携 ZIP：** 下载 `DeepSeek-Harness-<version>-win32-x64.zip`，先核对 `SHA256SUMS.txt`，再解压且不要改动 `runtime/` 目录名。
 
-- **零配置安装**：双击即可全自动极速安装，告别手动解压与路径管理；
-- **标准程序目录**：默认安装至用户标准程序目录 `%LOCALAPPDATA%\Programs\DeepSeek Harness`（免 UAC 管理员提权）；
-- **完整系统集成**：全自动创建桌面图标、开始菜单快捷方式，并自动注册到 Windows 控制面板“添加或删除程序”（支持一键干净卸载）；
-- **长路径引擎**：彻底免疫 Windows 260 字符路径过长限制。
+安装器和更新器会校验 ZIP 摘要、应用清单及原生模块；不会创建证书，也不会修改 Windows 信任存储。
 
----
-
-### 方式二：PowerShell 一键在线快速安装
-
-在 PowerShell 终端中粘贴运行：
-
-```powershell
-# 中国大陆极速通道 (内置高防 CDN 镜像):
-irm https://ghfast.top/https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
-
-# 海外 / 直连通道:
-irm https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
-```
-
----
-
-### 方式三：绿色便携版 ZIP 压缩包 (免安装)
-
-下载 **`DeepSeek-Harness-0.1.0-rc.6-win32-x64.zip`**，解压到任意文件夹后直接双击 **`启动桌面版.bat`** 即可即开即用，随身携带，不污染系统。
-
----
-
-## 快速热更新（免重新下载大包）
-当后续发布新版本时，自动通过多节点加速通道增量升级，保留所有用户数据与配置：
-- **方式 A**：双击软件根目录下的 **`在线更新.bat`**。
-- **方式 B**：在任何终端中直接执行命令：
-  ```powershell
-  dsh update
-  ```
-
----
-
-## 绿色便携版目录结构与使用说明
-
-若您选择直接下载 Release 压缩包（`DeepSeek-Harness-*-win32-x64.zip`），解压后根目录结构清晰极简，底层 29,000+ 个运行库文件已全部收纳至 `runtime/` 目录中：
+## 目录和启动
 
 ```text
-📦 DeepSeek Harness-win32-x64/
- ├── 启动网页版.bat                             <-- 主启动入口 (100% 免疫拦截，双击即可)
- ├── 启动桌面窗口.bat                           <-- 备用原生桌面窗口
- ├── 在线更新.bat                               <-- 一键在线增量热升级
- ├── 创建桌面快捷方式.bat                       <-- 桌面快捷方式与本机证书信任
- ├── 使用说明.txt                               <-- 新手快速上手指南
- ├── dsh.cmd                                   <-- CLI 命令行入口
- └── 📂 runtime/                               <-- 底层运行库与依赖核心 (请勿删除)
+DeepSeek Harness-win32-x64/
+├── dsh.cmd
+├── start-web.cmd
+├── start-desktop.cmd
+├── update.ps1
+├── setup-shortcuts.ps1
+└── runtime/                 # Electron 可执行文件和应用依赖
 ```
 
-### 启动方式选择：
-1. **主推荐：双击 `启动网页版.bat`**
-   - 自动调用官方签名的 Node.js 运行时启动 Web 引擎，并在默认浏览器中打开 `http://127.0.0.1:3080`。
-   - **彻底免疫 Windows 11 智能应用控制 (SAC) 与 SmartScreen 拦截**。
-2. **备用窗口：双击 `启动桌面窗口.bat`**
-   - 启动独立桌面应用窗口与右下角系统托盘。
-   - 若遇到 Windows 11 智能应用控制 (SAC) 拦截，只需运行一次 **`创建桌面快捷方式.bat`** 即可永久解除拦截。
+- `start-desktop.cmd` 启动内置 Electron 桌面窗口。
+- `start-web.cmd` 使用 `PATH` 中的 Node.js 启动网页版；`dsh.cmd` 提供相同入口并支持 `dsh update`。
+- `setup-shortcuts.ps1` 创建桌面快捷方式并把便携根目录加入当前用户 `PATH`。
 
+## 更新
 
+运行 `dsh update` 或 `update.ps1`。更新器下载完整便携 ZIP，校验 SHA-256，检查应用清单和原生模块，然后整体替换 `runtime/`；用户数据保存在发布目录之外。
 
-## 数据与便携性
+## 构建和发布
 
-原生外壳把偏好和运行时数据保存在 Electron 的用户数据目录下。移动便携式环境时，请把原生目录整体复制。
-
-删除对应的用户数据目录可以重置本地环境。不要把 API key 放进仓库，也不要把它和可执行文件一起分享。
-
-## 重新构建
-
-在安装了 Node.js `^22.19.0 || >=24` 和 pnpm 的 Windows x64 checkout 中运行：
+在 Windows x64、Node.js `^22.19.0 || >=24` 和 pnpm 环境中运行：
 
 ```powershell
 pnpm install
 pnpm run build
-pnpm run desktop:package:win
+pnpm run desktop:release:win
 ```
 
-原生输出写入 `dist-desktop/electron/`。构建会在打包前校验 Electron 运行时；如果安装时跳过了生命周期脚本，会在此处下载 Electron。
+发布命令读取 `apps/desktop/package.json` 的版本，构建便携目录，生成 ZIP；安装了 Inno Setup 时同时生成 Setup.exe，最后一步重算 `SHA256SUMS.txt`。
 
 ## 安全与发布状态
 
-本地 Web 服务默认只监听回环地址。桌面可执行文件当前没有商业 CA 代码签名，首次启动时可能触发 Windows SmartScreen 警告或 Windows 11 智能应用控制（SAC）提示。
+当前桌面可执行文件没有由受信任商业 CA 签发的代码签名，因此 SmartScreen 或 Smart App Control 可能发出警告或阻止运行。自签名证书或把证书导入当前用户存储不能满足 Smart App Control，本项目不会自动执行这种操作。
 
-- **普通 SmartScreen 警告**：点击“更多信息” -> “仍要运行”即可。
-- **智能应用控制（SAC）拦截**：直接使用 `start-web.cmd`，或运行 `一键解除拦截(自签名信任).bat` 添加本机信任。
-- 部分杀毒软件（实测火绒）会在首次写入或下载时静默隔离未签名的可执行文件。请核对随附的 SHA-256 校验值；若被杀毒软件拦截，请从隔离区恢复或为该目录添加信任。当前 Release 的校验值记录在 [SHA256SUMS.txt](SHA256SUMS.txt) 中。
+- 运行前请用发布的 SHA-256 值核对 ZIP 和 Setup.exe。
+- 如果组织要求受信任的可执行文件，请使用获批准的 CA、Microsoft Artifact Signing 或企业代码签名策略重新签名。
+- 本地 Web 服务默认只监听回环地址；不要把 API key 放进仓库或发布目录。
 
-DeepSeek Harness 使用 [MIT](LICENSE) 许可证。第三方声明位于 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+可参考 Microsoft 的 [Smart App Control 说明](https://learn.microsoft.com/en-us/windows/apps/develop/smart-app-control/overview) 和 [SmartScreen 声誉指南](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation)。
 
+DeepSeek Harness 使用 [MIT](LICENSE) 许可证，第三方声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
