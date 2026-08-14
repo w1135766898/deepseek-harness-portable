@@ -7,6 +7,12 @@ const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 const { mergeReleaseHistory, normalizeReleaseNotes } = require('./release-notes.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
 const {
+  GITHUB_MIRROR_PREFIXES,
+  compareVersions,
+  fetchJson,
+  mirrorUrls,
+} = require('./update-client.cjs')
+const {
   DEFAULT_WINDOW_BOUNDS,
   restoreWindowBounds,
 } = require('./window-state.cjs')
@@ -867,32 +873,6 @@ async function chooseWorkspace() {
   await switchWorkspace(result.filePaths[0], parentWindow)
 }
 
-const https = require('node:https')
-
-function fetchJson(url, timeoutMs = 5000) {
-  return new Promise((resolve, reject) => {
-    const req = https.get(url, { headers: { 'User-Agent': 'DeepSeek-Harness-Desktop' }, timeout: timeoutMs }, res => {
-      if (res.statusCode < 200 || res.statusCode >= 300) {
-        return reject(new Error(`HTTP ${res.statusCode}`))
-      }
-      let data = ''
-      res.on('data', c => data += c)
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data))
-        } catch (e) {
-          reject(e)
-        }
-      })
-    })
-    req.on('error', reject)
-    req.on('timeout', () => {
-      req.destroy()
-      reject(new Error('请求超时'))
-    })
-  })
-}
-
 function readJsonIfPresent(path) {
   try {
     if (existsSync(path)) return JSON.parse(readFileSync(path, 'utf8'))
@@ -949,46 +929,24 @@ function getLocalVersion() {
   return getLocalReleaseInfo().distributionVersion
 }
 
-function compareVersions(v1, v2) {
-  const clean = v => (v || '').replace(/^v/, '').trim()
-  const s1 = clean(v1).split(/[-.]/)
-  const s2 = clean(v2).split(/[-.]/)
-  for (let i = 0; i < Math.max(s1.length, s2.length); i++) {
-    const p1 = isNaN(Number(s1[i])) ? s1[i] || '' : Number(s1[i])
-    const p2 = isNaN(Number(s2[i])) ? s2[i] || '' : Number(s2[i])
-    if (p1 < p2) return -1
-    if (p1 > p2) return 1
-  }
-  return 0
-}
-
 async function queryLatestVersion() {
-  // Race direct GitHub and the mirror, but keep both channels on the same
-  // Windows portable release source that the updater actually downloads.
-  const channels = [
-    {
-      name: 'Portable Windows GitHub',
-      url: `https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases/latest`,
-      parser: data => (data.tag_name || '').replace(/^v/, ''),
-      releaseUrl: data => data.html_url || `https://github.com/${PORTABLE_RELEASE_REPO}/releases`,
-    },
-    {
-      name: 'Portable Windows GitHub mirror',
-      url: `https://ghfast.top/https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases/latest`,
-      parser: data => (data.tag_name || '').replace(/^v/, ''),
-      releaseUrl: `https://github.com/${PORTABLE_RELEASE_REPO}/releases`,
-    }
-  ]
+  const apiUrl = `https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases/latest`
+  const channels = GITHUB_MIRROR_PREFIXES.map((prefix, index) => ({
+    name: index === 0 ? 'Portable Windows GitHub' : `Portable Windows GitHub mirror ${index}`,
+    url: mirrorUrls(apiUrl, [prefix])[0],
+  }))
 
-  const results = await Promise.allSettled(channels.map(async c => {
+  // Promise.any resolves as soon as the first complete and valid channel
+  // responds. A slow or blocked direct connection must not hold up a mirror.
+  return Promise.any(channels.map(async c => {
     const data = await fetchJson(c.url)
-    const version = c.parser(data)
+    const version = (data.tag_name || '').replace(/^v/i, '')
     if (!version) throw new Error('No version tag found')
     const zipAsset = Array.isArray(data.assets)
       ? data.assets.find(asset => asset?.name === `DeepSeek-Harness-${version}-win32-x64.zip`)
       : undefined
     if (zipAsset === undefined) throw new Error('No portable ZIP asset found')
-    const relUrl = typeof c.releaseUrl === 'function' ? c.releaseUrl(data) : c.releaseUrl
+    const relUrl = data.html_url || `https://github.com/${PORTABLE_RELEASE_REPO}/releases`
     return {
       ...normalizeReleaseNotes({
         ...data,
@@ -999,56 +957,39 @@ async function queryLatestVersion() {
       }, version),
       channel: c.name,
       assetName: zipAsset.name,
+      assetUrl: zipAsset.browser_download_url || '',
+      assetDigest: zipAsset.digest || '',
+      assetSize: Number(zipAsset.size) || 0,
+      tagName: data.tag_name || `v${version}`,
     }
   }))
-
-  const successful = results
-    .filter(r => r.status === 'fulfilled')
-    .map(r => r.value)
-
-  if (successful.length === 0) {
-    throw new Error('所有官方更新节点连接超时，请检查网络。')
-  }
-
-  successful.sort((a, b) => compareVersions(b.version, a.version))
-  return successful[0]
 }
 
 async function queryReleaseHistory() {
-  const channels = [
-    {
-      name: 'Portable Windows GitHub',
-      url: `https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases?per_page=${RELEASE_HISTORY_LIMIT}`,
-      releaseUrl: data => data.html_url || `https://github.com/${PORTABLE_RELEASE_REPO}/releases`,
-    },
-    {
-      name: 'Portable Windows GitHub mirror',
-      url: `https://ghfast.top/https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases?per_page=${RELEASE_HISTORY_LIMIT}`,
-      releaseUrl: `https://github.com/${PORTABLE_RELEASE_REPO}/releases`,
-    },
-  ]
+  const apiUrl = `https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases?per_page=${RELEASE_HISTORY_LIMIT}`
+  const channels = GITHUB_MIRROR_PREFIXES.map((prefix, index) => ({
+    name: index === 0 ? 'Portable Windows GitHub' : `Portable Windows GitHub mirror ${index}`,
+    url: mirrorUrls(apiUrl, [prefix])[0],
+  }))
 
-  const results = await Promise.allSettled(channels.map(async channel => {
+  const history = await Promise.any(channels.map(async channel => {
     const data = await fetchJson(channel.url)
     if (!Array.isArray(data)) throw new Error('Release history response was not an array')
-    return data
+    const releases = data
       .filter(release => release && !release.draft)
       .map(release => normalizeReleaseNotes({
         ...release,
-        releaseUrl: typeof channel.releaseUrl === 'function' ? channel.releaseUrl(release) : channel.releaseUrl,
+        releaseUrl: release.html_url || `https://github.com/${PORTABLE_RELEASE_REPO}/releases`,
         channel: channel.name,
         assetName: Array.isArray(release.assets)
           ? release.assets.find(asset => asset?.name === `DeepSeek-Harness-${String(release.tag_name || '').replace(/^v/, '')}-win32-x64.zip`)?.name
           : undefined,
       }))
       .filter(release => release.version !== '0.0.0')
+    if (releases.length === 0) throw new Error('Release history response was empty')
+    return releases
   }))
-
-  const successful = results
-    .filter(result => result.status === 'fulfilled')
-    .flatMap(result => result.value)
-  if (successful.length === 0) throw new Error('Release history is unavailable')
-  return successful
+  return history
 }
 
 function sortReleaseHistory(history) {
