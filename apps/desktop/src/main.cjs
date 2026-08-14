@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, nativeTheme, screen, shell, Tray } = require('electron')
+const { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, screen, session, shell, Tray } = require('electron')
 const { spawn } = require('node:child_process')
 const { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } = require('node:fs')
 const { homedir } = require('node:os')
@@ -271,6 +271,63 @@ function makeStartupError(message, output = '', code = undefined) {
 function startupLog(error) {
   if (error && typeof error.startupLog === 'string' && error.startupLog.trim() !== '') return error.startupLog
   return lastStartupLog
+}
+
+function recentLogLines(value, limit = 200) {
+  return String(value || '').split(/\r?\n/).slice(-limit).join('\n') || '暂无启动日志。'
+}
+
+function diagnosticsText() {
+  const release = getLocalReleaseInfo()
+  return [
+    `${APP_NAME} diagnostics`,
+    `Generated: ${new Date().toISOString()}`,
+    `Desktop version: ${release.desktopVersion}`,
+    `Distribution version: ${release.distributionVersion}`,
+    `Kernel version: ${release.kernelVersion}`,
+    `Kernel commit: ${release.kernelCommit}`,
+    `Electron: ${process.versions.electron || 'unknown'}`,
+    `Chrome: ${process.versions.chrome || 'unknown'}`,
+    `Node: ${process.versions.node || 'unknown'}`,
+    `Platform: ${process.platform} ${process.arch}`,
+    `Workspace: ${workspace()}`,
+    `Harness URL: ${harnessUrl || 'unavailable'}`,
+    '',
+    'Last 200 startup log lines:',
+    recentLogLines(lastStartupLog),
+  ].join('\n')
+}
+
+function sendDiagnosticsResult(sender, payload) {
+  try { sender.send('desktop:diagnostics:result', payload) } catch {}
+}
+
+function exportDiagnostics(sender) {
+  clipboard.writeText(diagnosticsText())
+  sendDiagnosticsResult(sender, { kind: 'success', message: '排障信息已复制到剪贴板。' })
+}
+
+async function clearDesktopStorage(sender) {
+  const result = await dialog.showMessageBox(visibleDialogParent(), {
+    type: 'warning',
+    buttons: ['清理并重启', '取消'],
+    defaultId: 1,
+    cancelId: 1,
+    title: '清理本地缓存与存储',
+    message: '将清理 Web UI 的本地缓存、IndexedDB 和 LocalStorage。',
+    detail: '登录 cookies 会保留，但本地界面状态和缓存数据会被删除，应用随后重启。是否继续？',
+  })
+  if (result.response !== 0) return
+  try {
+    await session.defaultSession.clearStorageData({
+      storages: ['appcache', 'filesystem', 'indexdb', 'localstorage', 'shadercache', 'websql', 'serviceworkers', 'cachestorage'],
+    })
+    await session.defaultSession.clearCache()
+    sendDiagnosticsResult(sender, { kind: 'success', message: '本地存储已清理，正在重启应用…' })
+    await requestHarnessRestart()
+  } catch (error) {
+    sendDiagnosticsResult(sender, { kind: 'error', message: `清理失败：${errorMessage(error)}` })
+  }
 }
 
 function isPortInUseError(error) {
@@ -1199,6 +1256,14 @@ function registerReleaseNotesIpc() {
       reloadRenderer()
       return
     }
+    if (action.type === 'export-diagnostics') {
+      exportDiagnostics(event.sender)
+      return
+    }
+    if (action.type === 'clear-storage') {
+      void clearDesktopStorage(event.sender)
+      return
+    }
     if (action.type === 'restart') {
       void requestHarnessRestart()
       return
@@ -1421,6 +1486,9 @@ function menuItems() {
     },
     { label: 'Refresh Interface / 刷新界面', accelerator: 'CmdOrCtrl+R', click: reloadRenderer },
     { label: 'Restart Harness / 完全重启服务', accelerator: 'CmdOrCtrl+Shift+R', click: () => { void requestHarnessRestart() } },
+    { type: 'separator' },
+    { label: 'Copy Diagnostics / 复制排障信息', click: () => { exportDiagnostics({ send: () => {} }) } },
+    { label: 'Clear Web Storage / 清理本地缓存与存储', click: () => { void clearDesktopStorage({ send: () => {} }) } },
     { type: 'separator' },
     { label: 'Quit', accelerator: process.platform === 'darwin' ? 'Command+Q' : 'Alt+F4', click: () => app.quit() },
   ]

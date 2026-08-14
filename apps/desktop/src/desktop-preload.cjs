@@ -52,9 +52,12 @@ if (!isSplashDocument) {
     drawerOpen: false,
     drawerLoading: false,
     menuOpen: false,
+    menuFocusIndex: -1,
     recentWorkspaces: [],
     currentWorkspace: '',
     harnessStatus: { state: 'starting', consecutiveFailures: 0, message: '' },
+    actionMessage: '',
+    actionMessageTimer: undefined,
     notice: undefined,
     noticeExpanded: true,
     noticeTimer: undefined,
@@ -211,7 +214,10 @@ if (!isSplashDocument) {
 
   function renderNotice() {
     const notice = state.notice
-    if (!notice) return ''
+    const actionMarkup = state.actionMessage
+      ? '<div class="dsh-action-toast" role="status">' + escapeHtml(state.actionMessage) + '</div>'
+      : ''
+    if (!notice) return actionMarkup
     const release = notice.release || {}
     const status = notice.updateStatus || {}
     const isAvailable = notice.kind === 'available'
@@ -224,8 +230,21 @@ if (!isSplashDocument) {
       : (isProblem ? escapeHtml(status.message || '当前安装仍可使用，可以重新检查更新。') : '查看新特性与完整更新记录。')
     const actionLabel = isAvailable ? '查看新特性' : (isProblem ? '重新检查' : '查看新特性')
     const action = isProblem ? 'retry-update' : 'open-release-notes'
-    if (!state.noticeExpanded) return '<button class="dsh-notice-pill" data-action="open-release-notes" title="查看更新日志">' + logoMarkup('dsh-bell-logo') + '<span>更新</span><i></i></button>'
-    return '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">' + logoMarkup('dsh-notice-logo') + '</div><div class="dsh-notice-copy"><strong>' + title + '</strong><span>' + desc + '</span></div><button class="dsh-button primary" data-action="' + action + '">' + actionLabel + '</button><button class="dsh-notice-dismiss" data-action="notice-collapse" aria-label="稍后查看">×</button></section>'
+    if (!state.noticeExpanded) return actionMarkup + '<button class="dsh-notice-pill" data-action="open-release-notes" title="查看更新日志">' + logoMarkup('dsh-bell-logo') + '<span>更新</span><i></i></button>'
+    return actionMarkup + '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">' + logoMarkup('dsh-notice-logo') + '</div><div class="dsh-notice-copy"><strong>' + title + '</strong><span>' + desc + '</span></div><button class="dsh-button primary" data-action="' + action + '">' + actionLabel + '</button><button class="dsh-notice-dismiss" data-action="notice-collapse" aria-label="稍后查看">×</button></section>'
+  }
+
+  function showActionMessage(message) {
+    state.actionMessage = typeof message === 'string' ? message : ''
+    if (state.actionMessageTimer !== undefined) clearTimeout(state.actionMessageTimer)
+    render()
+    if (state.actionMessage !== '') {
+      state.actionMessageTimer = setTimeout(() => {
+        state.actionMessage = ''
+        state.actionMessageTimer = undefined
+        render()
+      }, 5000)
+    }
   }
 
   function renderHealthBanner() {
@@ -259,7 +278,41 @@ if (!isSplashDocument) {
       '<button class="dsh-menu-item" data-action="desktop-reload-ui" role="menuitem"><span>⟳</span><strong>刷新界面 <kbd>Ctrl+R</kbd></strong></button>' +
       '<button class="dsh-menu-item" data-action="desktop-restart" role="menuitem"><span>↺</span><strong>完全重启服务 <kbd>Ctrl+Shift+R</kbd></strong></button>' +
       '<button class="dsh-menu-item" data-action="desktop-open-browser" role="menuitem"><span>↗</span><strong>在浏览器打开 Web UI</strong></button>' +
+      '<div class="dsh-menu-separator"></div>' +
+      '<button class="dsh-menu-item" data-action="desktop-export-diagnostics" role="menuitem"><span>⇩</span><strong>复制排障信息</strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-clear-storage" role="menuitem"><span>⌫</span><strong>清理本地缓存与存储</strong></button>' +
       '</div></div>'
+  }
+
+  function focusableMenuItems() {
+    return Array.from(shadow.querySelectorAll('.dsh-menu-item:not(:disabled)'))
+  }
+
+  function syncMenuFocus() {
+    const items = focusableMenuItems()
+    items.forEach((item, index) => {
+      const focused = state.menuOpen && index === state.menuFocusIndex
+      item.classList.toggle('is-focused', focused)
+      if (focused) item.setAttribute('aria-current', 'true')
+      else item.removeAttribute('aria-current')
+    })
+    if (state.menuOpen && state.menuFocusIndex >= 0 && items[state.menuFocusIndex] !== undefined) {
+      items[state.menuFocusIndex].focus({ preventScroll: true })
+    }
+  }
+
+  function moveMenuFocus(delta) {
+    const items = focusableMenuItems()
+    if (items.length === 0) return
+    const current = state.menuFocusIndex < 0 ? 0 : state.menuFocusIndex
+    state.menuFocusIndex = (current + delta + items.length) % items.length
+    syncMenuFocus()
+  }
+
+  function activateMenuFocus() {
+    const items = focusableMenuItems()
+    const item = items[state.menuFocusIndex]
+    if (item !== undefined) item.click()
   }
 
   function render() {
@@ -280,6 +333,7 @@ if (!isSplashDocument) {
       healthMarkup = nextHealthMarkup
     }
     syncDrawer()
+    syncMenuFocus()
   }
 
   function collapseNotice(renderNow = true) {
@@ -330,6 +384,7 @@ if (!isSplashDocument) {
 
   function sendMenuAction(type, extra = {}) {
     state.menuOpen = false
+    state.menuFocusIndex = -1
     render()
     ipcRenderer.send('desktop:menu:action', { type, ...extra })
   }
@@ -339,6 +394,7 @@ if (!isSplashDocument) {
     if (!action) return
     if (action === 'toggle-menu') {
       state.menuOpen = !state.menuOpen
+      state.menuFocusIndex = state.menuOpen ? 0 : -1
       render()
       return
     }
@@ -368,6 +424,14 @@ if (!isSplashDocument) {
     }
     if (action === 'desktop-reload-ui') {
       sendMenuAction('reload-ui')
+      return
+    }
+    if (action === 'desktop-export-diagnostics') {
+      sendMenuAction('export-diagnostics')
+      return
+    }
+    if (action === 'desktop-clear-storage') {
+      sendMenuAction('clear-storage')
       return
     }
     if (action === 'desktop-restart') {
@@ -444,6 +508,7 @@ if (!isSplashDocument) {
     .dsh-menu-popover { display: grid; min-width: 236px; margin-top: 6px; padding: 6px; border: 1px solid rgba(116, 138, 171, .24); border-radius: 12px; background: rgba(250, 252, 255, .98); box-shadow: 0 16px 40px rgba(23, 43, 72, .2); -webkit-app-region: no-drag; }
     .dsh-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 7px 9px; border: 0; border-radius: 7px; color: #263a5a; background: transparent; cursor: pointer; text-align: left; font: 12px/1.2 inherit; -webkit-app-region: no-drag; }
     .dsh-menu-item:hover { color: #1d5ebf; background: #eaf2ff; }
+    .dsh-menu-item.is-focused { color: #1d5ebf; background: #eaf2ff; outline: 2px solid rgba(52, 127, 242, .24); outline-offset: -2px; }
     .dsh-menu-item span { display: inline-grid; place-items: center; width: 17px; color: #5b80b8; font-size: 14px; }
     .dsh-menu-item strong { font-weight: 600; }
     .dsh-menu-item kbd { margin-left: auto; color: #8191a8; font: 10px ui-monospace, SFMono-Regular, Consolas, monospace; }
@@ -451,6 +516,7 @@ if (!isSplashDocument) {
     .dsh-menu-heading { padding: 5px 9px 3px; color: #8191a8; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
     .dsh-menu-separator { height: 1px; margin: 5px 4px; background: rgba(116, 138, 171, .18); }
     .dsh-notice { position: fixed; right: 24px; bottom: 24px; width: min(520px, calc(100vw - 32px)); display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid rgba(87, 151, 255, .32); border-radius: 14px; background: rgba(247, 250, 255, .94); box-shadow: 0 14px 40px rgba(31, 50, 83, .18), 0 1px 2px rgba(15, 23, 42, .08); backdrop-filter: blur(22px) saturate(160%); animation: dsh-slide-in .28s cubic-bezier(.16,1,.3,1); z-index: 3; }
+    .dsh-action-toast { position: fixed; right: 24px; bottom: 86px; max-width: min(520px, calc(100vw - 32px)); padding: 9px 13px; border: 1px solid rgba(87, 151, 255, .3); border-radius: 10px; color: #2e5a9d; background: rgba(247, 250, 255, .96); box-shadow: 0 10px 28px rgba(31, 50, 83, .18); font-size: 12px; animation: dsh-slide-in .22s ease-out; z-index: 5; }
     .dsh-disconnect-banner { position: fixed; top: calc(var(--dsh-titlebar-height) + 12px); right: 16px; width: min(560px, calc(100vw - 32px)); display: flex; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid rgba(221, 143, 33, .34); border-radius: 12px; background: rgba(255, 248, 235, .96); box-shadow: 0 12px 32px rgba(31, 50, 83, .18); backdrop-filter: blur(18px) saturate(150%); animation: dsh-slide-in .28s cubic-bezier(.16,1,.3,1); z-index: 4; }
     .dsh-disconnect-copy { min-width: 0; flex: 1; display: grid; gap: 2px; }
     .dsh-disconnect-copy strong { color: #8c5710; font-weight: 700; }
@@ -538,11 +604,13 @@ if (!isSplashDocument) {
       .dsh-menu-popover { border-color: rgba(170, 192, 228, .16); background: rgba(17, 26, 42, .98); box-shadow: 0 16px 40px rgba(0, 0, 0, .4); }
       .dsh-menu-item { color: #dbe7fa; }
       .dsh-menu-item:hover { color: #d5e5ff; background: #253b61; }
+      .dsh-menu-item.is-focused { color: #d5e5ff; background: #253b61; outline-color: rgba(93, 157, 255, .4); }
       .dsh-menu-item span { color: #9ebdf0; }
       .dsh-menu-item kbd { color: #8ca3c8; }
       .dsh-menu-item:disabled, .dsh-menu-heading { color: #7185a5; }
       .dsh-menu-separator { background: rgba(170, 192, 228, .16); }
       .dsh-notice, .dsh-notice-pill { border-color: rgba(93, 157, 255, .36); background: rgba(19, 29, 47, .94); box-shadow: 0 16px 40px rgba(0, 0, 0, .36); }
+      .dsh-action-toast { border-color: rgba(93, 157, 255, .36); color: #b5d0ff; background: rgba(19, 29, 47, .96); box-shadow: 0 16px 40px rgba(0, 0, 0, .36); }
       .dsh-disconnect-banner { border-color: rgba(245, 174, 68, .36); background: rgba(55, 42, 22, .96); box-shadow: 0 16px 40px rgba(0, 0, 0, .36); }
       .dsh-disconnect-copy strong { color: #f5c46e; }
       .dsh-disconnect-copy span { color: #c9b38e; }
@@ -575,7 +643,7 @@ if (!isSplashDocument) {
       .dsh-about p { color: #a2b2c9; }
     }
     @media (max-width: 620px) {
-      .dsh-notice, .dsh-disconnect-banner { right: 16px; width: calc(100vw - 32px); }
+      .dsh-notice, .dsh-disconnect-banner, .dsh-action-toast { right: 16px; width: calc(100vw - 32px); }
       .dsh-notice-copy span { white-space: normal; }
       .dsh-notice .dsh-button { padding-inline: 8px; }
       .dsh-drawer-header, .dsh-drawer-scroll { padding-left: 20px; padding-right: 20px; }
@@ -604,6 +672,9 @@ if (!isSplashDocument) {
       ? { state: status.state || 'starting', consecutiveFailures: Number(status.consecutiveFailures) || 0, message: status.message || '' }
       : { state: 'starting', consecutiveFailures: 0, message: '' }
     render()
+  })
+  ipcRenderer.on('desktop:diagnostics:result', (_event, result) => {
+    showActionMessage(result?.message || '')
   })
   ipcRenderer.on('desktop:notice', (_event, notice) => {
     state.notice = notice && typeof notice === 'object' ? notice : undefined
@@ -659,6 +730,7 @@ if (!isSplashDocument) {
   document.addEventListener('pointerdown', event => {
     if (!state.menuOpen || event.composedPath().includes(host)) return
     state.menuOpen = false
+    state.menuFocusIndex = -1
     render()
   }, true)
   window.addEventListener('keydown', event => {
@@ -672,6 +744,7 @@ if (!isSplashDocument) {
       if (state.menuOpen) {
         event.preventDefault()
         state.menuOpen = false
+        state.menuFocusIndex = -1
         render()
       }
       return
@@ -710,9 +783,25 @@ if (!isSplashDocument) {
       sendMenuAction('reload-ui')
       return
     }
+    if (state.menuOpen && event.key === 'ArrowDown') {
+      event.preventDefault()
+      moveMenuFocus(1)
+      return
+    }
+    if (state.menuOpen && event.key === 'ArrowUp') {
+      event.preventDefault()
+      moveMenuFocus(-1)
+      return
+    }
+    if (state.menuOpen && event.key === 'Enter') {
+      event.preventDefault()
+      activateMenuFocus()
+      return
+    }
     if (event.key === 'Alt' || event.key === 'F10') {
       event.preventDefault()
       state.menuOpen = !state.menuOpen
+      state.menuFocusIndex = state.menuOpen ? 0 : -1
       render()
       return
     }
