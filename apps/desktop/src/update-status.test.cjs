@@ -1,0 +1,79 @@
+const assert = require('node:assert/strict')
+const { mkdtempSync, rmSync } = require('node:fs')
+const { tmpdir } = require('node:os')
+const { join } = require('node:path')
+const test = require('node:test')
+const {
+  normalizeUpdateStatus,
+  readUpdateStatus,
+  reconcileUpdateStatus,
+  statusNeedsNotice,
+  updateStatusKey,
+  writeUpdateStatus,
+} = require('./update-status.cjs')
+
+test('persists and reads a terminal update status in user data', () => {
+  const userData = mkdtempSync(join(tmpdir(), 'dsh-update-status-'))
+  try {
+    const written = writeUpdateStatus(userData, {
+      state: 'completed',
+      fromVersion: '1.0.0',
+      targetVersion: '1.0.1',
+      stage: 'completed',
+      message: 'Update complete',
+      updatedAt: '2026-08-14T12:00:00.000Z',
+      startedAt: '2026-08-14T11:58:00.000Z',
+      processId: 1234,
+    })
+    assert.deepEqual(readUpdateStatus(userData), written)
+    assert.equal(statusNeedsNotice(written, ''), true)
+    assert.equal(statusNeedsNotice(written, updateStatusKey(written)), false)
+  } finally {
+    rmSync(userData, { recursive: true, force: true })
+  }
+})
+
+test('accepts the legacy version field and rejects malformed status', () => {
+  assert.equal(normalizeUpdateStatus(undefined), undefined)
+  assert.equal(normalizeUpdateStatus({ message: 'missing state' }), undefined)
+  assert.deepEqual(normalizeUpdateStatus({ state: 'failed', version: 1 }), {
+    state: 'failed',
+    fromVersion: '',
+    targetVersion: '',
+    stage: 'failed',
+    message: '',
+    updatedAt: '',
+    startedAt: '',
+    processId: 0,
+  })
+})
+
+test('reconciles an active status when its updater process has stopped', () => {
+  const active = normalizeUpdateStatus({
+    state: 'downloading',
+    fromVersion: '1.0.0',
+    targetVersion: '1.0.1',
+    stage: 'download',
+    updatedAt: '2026-08-14T12:00:00.000Z',
+    processId: 4321,
+  })
+  const reconciled = reconcileUpdateStatus(active, {
+    now: Date.parse('2026-08-14T12:00:05.000Z'),
+    processIsAlive: () => false,
+  })
+  assert.equal(reconciled.state, 'interrupted')
+  assert.equal(reconciled.stage, 'interrupted')
+  assert.match(reconciled.message, /download/)
+})
+
+test('keeps a recent active status while its updater process is alive', () => {
+  const active = normalizeUpdateStatus({
+    state: 'replacing',
+    updatedAt: '2026-08-14T12:00:00.000Z',
+    processId: 4321,
+  })
+  assert.deepEqual(reconcileUpdateStatus(active, {
+    now: Date.parse('2026-08-14T12:00:05.000Z'),
+    processIsAlive: () => true,
+  }), active)
+})
