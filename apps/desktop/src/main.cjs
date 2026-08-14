@@ -119,7 +119,6 @@ function startHarness(cwd) {
   }
 
   const child = spawn(process.execPath, [
-    '--expose-internals',
     packagedBin,
     '--host',
     '127.0.0.1',
