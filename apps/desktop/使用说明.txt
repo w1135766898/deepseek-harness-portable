@@ -1,19 +1,61 @@
-DeepSeek Harness portable quick guide
-=====================================
+DeepSeek Harness for Win v1.0.0
+================================
+
+English
+-------
 
 1. start-desktop.cmd
    Launches the bundled Electron desktop shell.
-2. start-web.cmd
-   Uses Node.js from PATH to launch the web entry in a browser.
-3. update.ps1 or dsh update
-   Downloads a complete release, verifies SHA-256, and atomically replaces runtime.
-4. setup-shortcuts.ps1
-   Creates a desktop shortcut and adds this portable root to the user PATH.
-5. uninstall.cmd
-   Removes the portable application, shortcuts, and PATH entry. It keeps user data unless you explicitly confirm its removal.
 
-This release is not signed by a trusted commercial CA. Self-signed certificates do
-not bypass Smart App Control or SmartScreen, so no certificate or trust store is
-created automatically. Verify SHA256SUMS.txt before running downloaded files.
+2. start-web.cmd
+   Uses Node.js from PATH to launch the Web surface in a browser.
+
+3. dsh.cmd or update.ps1
+   Checks the latest distribution, downloads a complete release, verifies SHA-256,
+   validates the release manifest and atomically replaces runtime.
+
+4. Release Notes / 更新日志
+   Open the tray menu to read the current release, release history, and component
+   versions. The desktop shell uses the GitHub mirror and a bundled local fallback.
+
+5. setup-shortcuts.ps1
+   Creates a desktop shortcut and adds this portable root to the user PATH.
+
+6. uninstall.cmd or uninstall.ps1
+   Removes the portable application, shortcuts, and PATH entry. User data is kept
+   unless you explicitly confirm its removal.
+
+This release is not signed by a trusted commercial CA. SmartScreen or Smart App
+Control may warn or block it. No certificate or trust-store change is performed
+automatically. Verify SHA256SUMS.txt before running downloaded files.
 
 All application files are under runtime/. Do not delete or rename that directory.
+
+中文
+----
+
+1. start-desktop.cmd
+   启动内置 Electron 桌面端。
+
+2. start-web.cmd
+   使用 PATH 中的 Node.js 在浏览器中启动 Web 界面。
+
+3. dsh.cmd 或 update.ps1
+   检查最新分发版本，下载完整发布包，校验 SHA-256，验证发布清单，
+   并以原子方式替换 runtime。
+
+4. Release Notes / 更新日志
+   打开托盘菜单即可查看当前版本、历史发布记录和组件版本。桌面外壳会
+   使用 GitHub 镜像，并在网络不可用时回退到本地发布清单。
+
+5. setup-shortcuts.ps1
+   创建桌面快捷方式，并将当前便携目录加入用户 PATH。
+
+6. uninstall.cmd 或 uninstall.ps1
+   删除便携应用、快捷方式和 PATH 项。除非明确确认，否则会保留用户数据。
+
+本版本没有可信商业 CA 签名，SmartScreen 或 Smart App Control 可能警告或
+阻止运行。程序不会自动创建证书或修改信任存储。运行下载文件前请先核对
+SHA256SUMS.txt。
+
+所有应用文件都位于 runtime/ 下，请不要删除或重命名该目录。
