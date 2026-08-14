@@ -1,5 +1,5 @@
 # Bilingual-pair consistency record: the Git blob hash of each README side after the
 # last confirmed translation update. Keep README.md and README.zh.md synchronized.
 # Refresh the values with git hash-object after editing either side.
-README.md: cd5a798d53d94dc8d92276662c5679a2dd4130c3
-README.zh.md: acee8c0548189e030c2cfb2c8b11a1abe29312b7
+README.md: 7fbe556417e4f228fdad10c6aaa0c39f460ee051
+README.zh.md: fdb7cb7f8b56144d24e478baea9f9fa81a3abcd2
