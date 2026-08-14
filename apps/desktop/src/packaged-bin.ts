@@ -23,6 +23,7 @@
 
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
+import { createRequire } from 'node:module'
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -227,6 +228,48 @@ function hasRequiredClientGraph(html: string): boolean {
 }
 
 /**
+ * Repair the client-module roster after the host loader has settled.
+ *
+ * The packaged runtime resolves the profile from a SEA/VFS path. The
+ * client-modules service creates its package resolver from that profile path,
+ * where no on-disk `node_modules` directory exists, so it caches every client
+ * package as a non-client and serves an empty graph. Repoint its resolver at
+ * the packaged app anchor, clear that negative cache, and re-run the existing
+ * reconciliation pass after the loader barrier.
+ */
+function refreshClientModuleGraph(ctx: Context): void {
+  const registry = ctx.get('clientModules') as unknown as {
+    processOne?: (entryName: string) => boolean
+    compose?: () => unknown
+    notifyGraphChanged?: () => void
+    composed?: unknown
+    pkgMeta?: Map<string, unknown>
+    resolvePkgJson?: (packageName: string) => string
+  } | undefined
+  const loader = ctx.get('loader') as unknown as {
+    entries?: () => Iterable<{ options?: { name?: string } }>
+  } | undefined
+  if (registry?.processOne === undefined || registry.compose === undefined || loader?.entries === undefined) return
+
+  const packageRequire = createRequire(INSTALL_ANCHOR)
+  registry.resolvePkgJson = packageName => packageRequire.resolve(`${packageName}/package.json`)
+  registry.pkgMeta?.clear()
+
+  const names = new Set<string>()
+  for (const entry of loader.entries()) {
+    const name = entry.options?.name
+    if (typeof name === 'string') names.add(name)
+  }
+  let changed = false
+  for (const name of names) {
+    if (registry.processOne.call(registry, name)) changed = true
+  }
+  if (!changed) return
+  registry.composed = registry.compose.call(registry)
+  registry.notifyGraphChanged?.call(registry)
+}
+
+/**
  * Poll the local web URL until the server answers, then open it in the
  * default browser. Bounded, non-fatal: a server that never answers only
  * prints a hint, and the open failure never kills the server.
@@ -357,6 +400,7 @@ async function main(): Promise<void> {
     ]), bareModuleBaseUrl)
     await ctx.get('loader')?.await()
     if (ctx.get('loader') !== undefined) await assertEntriesActivated(ctx, NAME)
+    refreshClientModuleGraph(ctx)
   } catch (cause) {
     await ctx.fiber.dispose()
     throw cause
