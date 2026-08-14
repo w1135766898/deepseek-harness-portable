@@ -8,23 +8,49 @@
     :root { color-scheme: dark; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background: #0c1220; color: #f8fbff; }
     * { box-sizing: border-box; }
     html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-    body { display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, #142849 0, #0c1220 56%); }
-    .splash { display: grid; justify-items: center; gap: 12px; margin-top: -4vh; }
-    .mark { width: 68px; height: 68px; display: grid; place-items: center; border-radius: 22px; color: #fff; background: linear-gradient(145deg, #3d92ff, #1859ca); box-shadow: 0 16px 50px rgba(36, 126, 255, .36); font-size: 31px; animation: breathe 1.8s ease-in-out infinite; }
+    body { display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, #142849 0, #0c1220 56%); opacity: 1; transition: opacity .42s ease; }
+    body.is-hidden { opacity: 0; pointer-events: none; }
+    .splash { display: grid; justify-items: center; gap: 12px; width: min(520px, calc(100vw - 48px)); margin-top: -4vh; }
+    .mark { width: 68px; height: 68px; display: grid; place-items: center; padding: 6px; border: 1px solid rgba(136, 181, 255, .36); border-radius: 22px; background: #f7faff; box-shadow: 0 16px 50px rgba(36, 126, 255, .36); animation: breathe 1.8s ease-in-out infinite; }
+    .mark img { width: 54px; height: 54px; object-fit: contain; }
     h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: .01em; }
     .status { min-height: 22px; color: rgba(224, 235, 252, .7); font-size: 13px; }
     .progress { width: 168px; height: 3px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.12); }
     .progress i { display: block; width: 40%; height: 100%; border-radius: inherit; background: #5ba8ff; animation: progress 1.35s ease-in-out infinite; }
+    .error-panel { display: grid; gap: 10px; width: 100%; margin-top: 8px; padding: 16px 18px; border: 1px solid rgba(255, 145, 145, .28); border-radius: 14px; background: rgba(30, 22, 35, .74); box-shadow: 0 16px 42px rgba(0, 0, 0, .2); text-align: left; }
+    .error-panel[hidden] { display: none; }
+    .error-title { margin: 0; color: #fff; font-size: 14px; font-weight: 650; }
+    .error-message, .error-detail { margin: 0; color: rgba(235, 221, 231, .78); font-size: 12px; line-height: 1.55; }
+    .error-detail { color: rgba(224, 204, 218, .58); }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+    button { min-height: 30px; padding: 6px 11px; border: 1px solid rgba(190, 205, 232, .2); border-radius: 8px; color: #e8f0ff; background: rgba(49, 71, 105, .72); cursor: pointer; font: 600 12px/1.2 "Segoe UI", "Microsoft YaHei", sans-serif; }
+    button:hover { background: rgba(67, 96, 141, .86); }
+    button.primary { border-color: #478cff; color: #fff; background: #2d72df; }
+    button.primary:hover { background: #3b82ed; }
+    button:focus-visible { outline: 2px solid #79b2ff; outline-offset: 2px; }
+    .log { max-height: 180px; margin: 0; padding: 10px; overflow: auto; border: 1px solid rgba(190, 205, 232, .12); border-radius: 8px; color: #c1d0e8; background: rgba(6, 11, 20, .7); white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .log[hidden] { display: none; }
     @keyframes breathe { 50% { transform: scale(1.07); box-shadow: 0 18px 58px rgba(36, 126, 255, .56); } }
     @keyframes progress { from { transform: translateX(-150%); } to { transform: translateX(400%); } }
   </style>
 </head>
 <body>
   <main class="splash" aria-live="polite">
-    <div class="mark">◈</div>
+    <div class="mark"><img src="../assets/deepseek.ico" alt="DeepSeek"></div>
     <h1>DeepSeek Harness</h1>
     <div class="status" id="status">正在拉起后台引擎…</div>
     <div class="progress"><i></i></div>
+    <section class="error-panel" id="error-panel" hidden aria-live="assertive">
+      <h2 class="error-title" id="error-title">后台启动失败</h2>
+      <p class="error-message" id="error-message"></p>
+      <p class="error-detail" id="error-detail"></p>
+      <div class="actions">
+        <button type="button" id="show-log">查看启动日志</button>
+        <button type="button" id="retry" class="primary">重试</button>
+        <button type="button" id="choose-workspace">切换工作区</button>
+      </div>
+      <pre class="log" id="log" hidden></pre>
+    </section>
   </main>
   <script>
     (() => {
@@ -34,8 +60,52 @@
         interface: '正在加载界面…',
       }
       const status = document.getElementById('status')
+      const progress = document.querySelector('.progress')
+      const errorPanel = document.getElementById('error-panel')
+      const errorTitle = document.getElementById('error-title')
+      const errorMessage = document.getElementById('error-message')
+      const errorDetail = document.getElementById('error-detail')
+      const log = document.getElementById('log')
+      const showLog = document.getElementById('show-log')
+      const retry = document.getElementById('retry')
+      const chooseWorkspace = document.getElementById('choose-workspace')
       const setStatus = value => { if (labels[value]) status.textContent = labels[value] }
-      if (window.deepSeekSplash) window.deepSeekSplash.onStatus(setStatus)
+      const setState = value => {
+        const kind = value?.kind
+        if (kind === 'loading' || kind === 'ready') {
+          errorPanel.hidden = true
+          progress.hidden = false
+          return
+        }
+        if (kind !== 'slow' && kind !== 'error') return
+        errorPanel.hidden = false
+        progress.hidden = true
+        errorTitle.textContent = value.title || (kind === 'slow' ? '启动时间较长' : '后台启动失败')
+        errorMessage.textContent = value.message || ''
+        errorDetail.textContent = value.detail || ''
+        log.textContent = value.log || '暂无启动日志。'
+        log.hidden = true
+        showLog.textContent = '查看启动日志'
+      }
+      if (window.deepSeekSplash) {
+        window.deepSeekSplash.onStatus(setStatus)
+        window.deepSeekSplash.onState(setState)
+        window.deepSeekSplash.onTransition(value => {
+          if (value === 'hide') document.body.classList.add('is-hidden')
+        })
+      }
+      showLog.addEventListener('click', () => {
+        log.hidden = !log.hidden
+        showLog.textContent = log.hidden ? '查看启动日志' : '收起启动日志'
+      })
+      retry.addEventListener('click', () => {
+        setState({ kind: 'loading' })
+        setStatus('engine')
+        if (window.deepSeekSplash) window.deepSeekSplash.retry()
+      })
+      chooseWorkspace.addEventListener('click', () => {
+        if (window.deepSeekSplash) window.deepSeekSplash.chooseWorkspace()
+      })
       const fallback = ['engine', 'workspace', 'interface']
       fallback.forEach((value, index) => setTimeout(() => setStatus(value), (index + 1) * 1500))
     })()

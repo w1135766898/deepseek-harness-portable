@@ -1,4 +1,4 @@
-# DeepSeek Harness for Win v1.0.2
+# DeepSeek Harness for Win v1.0.4
 
 [中文](RELEASE_NOTES.zh.md)
 
@@ -8,33 +8,30 @@ Community distribution, not an official Microsoft-signed build.
 
 ## Features
 
-- Raycast- and Linear-style timeline for release history.
-- A lightweight in-app update banner that collapses to an update bell after a successful upgrade.
-- DeepSeek whale branding with adaptive light and dark glass styling.
-- Persistent updater progress and terminal status in the user data directory.
+- Keyboard navigation for the desktop action menu with Arrow keys, Enter, Escape, Alt, and F10.
+- Copy Diagnostics exports runtime, workspace, and recent startup information to the clipboard.
+- Clear Web Storage removes local UI caches and storage after confirmation, then restarts the app.
 
 ## Improvements
 
-- Atomic rows make features, improvements, and fixes easier to scan.
-- Same-window release history drawer with no separate update window or floating HUD.
-- Graceful handoff waits for the desktop shell before replacing the portable runtime.
-- Failed or interrupted updates remain visible and can be retried.
+- Action feedback appears in a lightweight in-app toast after desktop diagnostics actions.
+- The storage cleanup flow keeps login cookies while clearing application caches and IndexedDB data.
 
 ## Fixes
 
-- Windows PowerShell 5.1 now reads UTF-8 release manifests correctly.
+- Desktop menu focus is reset when the menu closes or dispatches an action, preventing stale focus state.
 
 ## Components
 
-- Distribution: 1.0.2
+- Distribution: 1.0.4
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.0-rc.5 (@deepseek-ai/dsh-web-app)
-- Tag: v1.0.2
+- Tag: v1.0.4
 
 ## Checksums and security
 
-- Portable ZIP SHA-256: 4477F87A45885758089E45C5D3BCD35694845AA27478800384ABFCA0909D9CE7
-- Setup SHA-256: 9FFC70C43A37DE2CBF630D4617D85E0F7825531A87D356056EFB2B9BE96ECCD3
+- Portable ZIP SHA-256: 22DC9AE99C18BF0DEBDFDEB560F00F3C99BC723F93D7EA7216C494BD2755A565
+- Setup SHA-256: E226AC007DB80D6738E0FDAF451F11A7B702A8E6B2837E1CED8FDB7362516155
 - Verify SHA256SUMS.txt before launching.
 - The executable is unsigned; Windows SmartScreen may warn.
 - Conversations, credentials, settings, and attachments stay outside the release directory during updates.
