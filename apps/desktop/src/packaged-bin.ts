@@ -22,6 +22,7 @@
  */
 
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -80,6 +81,25 @@ async function copyPackagedTree(source: string, target: string): Promise<void> {
   await writeFile(target, await readFile(source))
 }
 
+async function packagedTreeManifest(source: string, prefix = ''): Promise<string> {
+  const entries: Array<{ path: string; size: number; sha256: string }> = []
+  const visit = async (directory: string, relative: string): Promise<void> => {
+    for (const name of (await readdir(directory)).sort()) {
+      const sourcePath = join(directory, name)
+      const relativePath = relative === '' ? name : `${relative}/${name}`
+      const metadata = await stat(sourcePath)
+      if (metadata.isDirectory()) {
+        await visit(sourcePath, relativePath)
+      } else {
+        const digest = createHash('sha256').update(await readFile(sourcePath)).digest('hex')
+        entries.push({ path: relativePath, size: metadata.size, sha256: digest })
+      }
+    }
+  }
+  await visit(source, prefix)
+  return JSON.stringify(entries)
+}
+
 /**
  * Materialize shipped presets before the host exposes preset discovery.
  * @returns a real filesystem root that preserves the shipped-root contract.
@@ -87,8 +107,14 @@ async function copyPackagedTree(source: string, target: string): Promise<void> {
 async function materializeShippedPresetRoot(): Promise<string> {
   const target = join(resolveDshHome(), '.system-agent-presets')
   if (resolve(SHIPPED_PRESET_SOURCE) === resolve(target)) return SHIPPED_PRESET_SOURCE
+  const manifestPath = join(target, '.manifest.json')
+  const manifest = await packagedTreeManifest(SHIPPED_PRESET_SOURCE)
+  try {
+    if ((await readFile(manifestPath, 'utf8')) === manifest) return target
+  } catch {}
   await rm(target, { recursive: true, force: true })
   await copyPackagedTree(SHIPPED_PRESET_SOURCE, target)
+  await writeFile(manifestPath, manifest)
   return target
 }
 
