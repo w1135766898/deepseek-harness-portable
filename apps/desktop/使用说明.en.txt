@@ -1,4 +1,4 @@
-DeepSeek Harness for Win v1.0.4
+DeepSeek Harness for Win v1.0.5
 ================================
 
 Chinese guide: 使用说明.txt
@@ -11,7 +11,8 @@ Chinese guide: 使用说明.txt
 
 3. dsh.cmd or update.ps1
    Checks the latest distribution, downloads a complete release, verifies SHA-256,
-   validates the release manifest, and replaces runtime as one operation.
+   validates the release manifest, and replaces runtime as one operation. The desktop
+   shell keeps running until the package is ready and restart is confirmed.
 
 4. Release Notes
    Open the tray menu to read the current release, release history, and component

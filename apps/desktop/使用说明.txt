@@ -1,4 +1,4 @@
-DeepSeek Harness for Win v1.0.4
+DeepSeek Harness for Win v1.0.5
 ================================
 
 英文说明：使用说明.en.txt
@@ -11,7 +11,7 @@ DeepSeek Harness for Win v1.0.4
 
 3. dsh.cmd 或 update.ps1
    检查最新分发版本，下载完整发布包，校验 SHA-256，验证发布清单，
-   并以整体替换方式更新 runtime。
+   并以整体替换方式更新 runtime。桌面端会在更新包准备好并确认重启前保持运行。
 
 4. 更新日志
    打开托盘菜单即可查看当前版本、历史发布记录和组件版本。桌面外壳会

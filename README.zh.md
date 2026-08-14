@@ -6,10 +6,10 @@ DeepSeek Harness for Win 是 DeepSeek Harness 的社区 Windows x64 分发版，
 
 ## 最新发布
 
-- 发布：DeepSeek Harness for Win v1.0.4
-- 标签：v1.0.4
-- 下载：[GitHub Release](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.0.4)
-- 分发版本：1.0.4
+- 发布：DeepSeek Harness for Win v1.0.5
+- 标签：v1.0.5
+- 下载：[GitHub Release](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.0.5)
+- 分发版本：1.0.5
 - 桌面外壳：0.1.0-shell.2
 - 内核：0.1.0-rc.5
 
@@ -43,11 +43,11 @@ DeepSeek Harness for Win 是 DeepSeek Harness 的社区 Windows x64 分发版，
 - start-web.cmd 使用 PATH 中的 Node.js 启动网页版。
 - dsh.cmd 提供同样的网页版入口，并支持 dsh update。
 - 桌面托盘菜单提供“检查更新”“更新日志”和“关于”。
-- 检测到新版本时，桌面外壳会在主窗口顶部显示轻量应用内通知，再启动便携版更新器。
+- 检测到新版本时，桌面外壳会在应用内显示下载与校验进度，完成后再询问是否重启。
 - “更新日志”和“关于”会在当前窗口内滑出侧边抽屉；升级后通知会自动收起为小铃铛。
 - Windows 外壳支持 Mica/标题栏覆盖、分阶段启动过渡、系统主题同步，以及适配多显示器的窗口状态记忆。
 
-更新器会下载完整便携 ZIP，校验 SHA-256、发布清单和原生依赖，最后以一次整体替换的方式更新 runtime。
+更新器会再次校验已准备好的便携 ZIP、发布清单和原生依赖，并在确认重启后以一次整体替换的方式更新 runtime。
 
 ## 构建与发布
 
