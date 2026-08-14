@@ -1,4 +1,4 @@
-﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = 'Stop'
 
 try {
@@ -15,17 +15,20 @@ try {
     Write-Host '================================================' -ForegroundColor Cyan
     Write-Host ''
     
-    Write-Host '[1/3] 配置本地自签名证书与信任 (解除 Windows 11 SAC 拦截)...' -ForegroundColor Yellow
+    Write-Host '[1/3] 配置本地代码签名与受信任发布者 (解除 Windows 11 SAC 拦截)...' -ForegroundColor Yellow
     if (Test-Path $exe) {
-        $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=DeepSeekHarnessLocal' -CertStoreLocation 'Cert:\CurrentUser\My'
-        Set-AuthenticodeSignature -Certificate $cert -FilePath $exe | Out-Null
-        $guid = [Guid]::NewGuid().ToString('N')
-        $certPath = Join-Path $env:TEMP ('dsh-' + $guid + '.cer')
-        Export-Certificate -Cert $cert -FilePath $certPath | Out-Null
-        Import-Certificate -FilePath $certPath -CertStoreLocation 'Cert:\CurrentUser\Root' | Out-Null
-        Import-Certificate -FilePath $certPath -CertStoreLocation 'Cert:\CurrentUser\TrustedPublisher' | Out-Null
-        Remove-Item $certPath -Force -ErrorAction SilentlyContinue
-        Write-Host '  -> [成功] 本地信任签名已注入！' -ForegroundColor Green
+        try {
+            $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=DeepSeekHarnessLocal' -CertStoreLocation 'Cert:\CurrentUser\My'
+            Set-AuthenticodeSignature -Certificate $cert -FilePath $exe | Out-Null
+            $guid = [Guid]::NewGuid().ToString('N')
+            $certPath = Join-Path $env:TEMP ('dsh-' + $guid + '.cer')
+            Export-Certificate -Cert $cert -FilePath $certPath | Out-Null
+            Import-Certificate -FilePath $certPath -CertStoreLocation 'Cert:\CurrentUser\TrustedPublisher' | Out-Null
+            Remove-Item $certPath -Force -ErrorAction SilentlyContinue
+            Write-Host '  -> [成功] 本地受信任发布者证书已生效！' -ForegroundColor Green
+        } catch {
+            Write-Host ('  -> [提示] 证书签名跳过: ' + $_.Exception.Message) -ForegroundColor Gray
+        }
     }
 
     Write-Host '[2/3] 创建桌面快捷方式...' -ForegroundColor Yellow

@@ -7,6 +7,7 @@
 #define MyAppPublisher "DeepSeek Harness Contributors"
 #define MyAppURL "https://github.com/w1135766898/deepseek-harness-portable"
 #define MyAppExeName "启动网页版.bat"
+#define MyZipName "DeepSeek-Harness-0.1.0-rc.5-win32-x64.zip"
 
 [Setup]
 AppId={{D5E8E89B-4C08-4EA4-8A89-E654C115F05A}
@@ -23,8 +24,8 @@ LicenseFile=..\LICENSE
 OutputDir=C:\Users\Ryan\Desktop\deepseek-harness-portable\release
 OutputBaseFilename=DeepSeek-Harness-Setup-{#MyAppVersion}-win32-x64
 SetupIconFile=C:\Users\Ryan\Desktop\deepseek-harness-portable\apps\desktop\assets\deepseek.ico
-Compression=lzma2/fast
-SolidCompression=yes
+Compression=none
+SolidCompression=no
 WizardStyle=modern
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
@@ -38,15 +39,37 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
-Source: "X:\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\release\{#MyZipName}"; DestDir: "{tmp}"; Flags: deleteafterinstall nocompression
+Source: "C:\Users\Ryan\Desktop\deepseek-harness-portable\apps\desktop\assets\deepseek.ico"; DestDir: "{app}\assets"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\runtime\resources\app\assets\deepseek.ico"
-Name: "{group}\DeepSeek Harness (原生独立窗口)"; Filename: "{app}\启动桌面窗口.bat"; IconFilename: "{app}\runtime\resources\app\assets\deepseek.ico"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\deepseek.ico"
+Name: "{group}\DeepSeek Harness (原生独立窗口)"; Filename: "{app}\启动桌面窗口.bat"; IconFilename: "{app}\assets\deepseek.ico"
 Name: "{group}\在线更新"; Filename: "{app}\在线更新.bat"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\runtime\resources\app\assets\deepseek.ico"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\deepseek.ico"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\创建桌面快捷方式.bat"; Flags: runhidden
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: shellexec postinstall skipifsilent nowait
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}"
+
+[Code]
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResultCode: Integer;
+  ZipPath, AppDir, TarExe: String;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    ZipPath := ExpandConstant('{tmp}\{#MyZipName}');
+    AppDir := ExpandConstant('{app}');
+    TarExe := ExpandConstant('{sys}\tar.exe');
+    if not FileExists(TarExe) then
+      TarExe := ExpandConstant('{sysnative}\tar.exe');
+    if not FileExists(TarExe) then
+      TarExe := 'tar.exe';
+    Exec(TarExe, '-xf "' + ZipPath + '" -C "' + AppDir + '" --strip-components 1', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  end;
+end;
