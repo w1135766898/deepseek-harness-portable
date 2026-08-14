@@ -105,6 +105,12 @@ function bundledReleaseNotes(version: string): Record<string, unknown> {
   }
 }
 
+function asciiJson(value: unknown): string {
+  return JSON.stringify(value, null, 2).replace(/[^\x00-\x7F]/g, character => (
+    `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`
+  ))
+}
+
 async function writeReleaseManifest(buildRoot: string, version: string, shellVersion: string): Promise<void> {
   const manifest = {
     schemaVersion: 2,
@@ -116,7 +122,7 @@ async function writeReleaseManifest(buildRoot: string, version: string, shellVer
     kernelRepository: 'https://github.com/deepseek-ai/deepseek-harness',
     releaseNotes: bundledReleaseNotes(version),
   }
-  await writeFile(join(buildRoot, RELEASE_MANIFEST_NAME), `${JSON.stringify(manifest, null, 2)}\n`)
+  await writeFile(join(buildRoot, RELEASE_MANIFEST_NAME), `${asciiJson(manifest)}\n`)
   console.log(`Release manifest written: ${join(buildRoot, RELEASE_MANIFEST_NAME)}`)
 }
 

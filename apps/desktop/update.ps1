@@ -43,7 +43,7 @@ function Write-Banner {
 function Read-JsonIfPresent {
     param([Parameter(Mandatory = $true)][string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) { return $null }
-    try { return (Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json) } catch { return $null }
+    try { return (Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return $null }
 }
 
 function Write-UpdateStatus {
@@ -301,7 +301,7 @@ function Test-PortableLayout {
         throw 'Portable release is missing the sharp Windows native addon.'
     }
 
-    $releaseManifest = Get-Content -LiteralPath (Join-Path $Root $RELEASE_MANIFEST_NAME) -Raw | ConvertFrom-Json
+    $releaseManifest = Get-Content -LiteralPath (Join-Path $Root $RELEASE_MANIFEST_NAME) -Raw -Encoding UTF8 | ConvertFrom-Json
     foreach ($field in @('distributionVersion', 'desktopVersion', 'kernelVersion')) {
         if (-not $releaseManifest.$field) {
             throw ('The release manifest is missing: ' + $field)
@@ -313,7 +313,7 @@ function Test-PortableLayout {
     }
 
     $manifestPath = Join-Path $Root 'runtime\resources\app\package.json'
-    $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $nodeModules = Join-Path $Root 'runtime\resources\app\node_modules'
     foreach ($dependency in @($manifest.dependencies.PSObject.Properties.Name)) {
         $dependencyPath = Join-Path $nodeModules ($dependency -replace '/', '\')

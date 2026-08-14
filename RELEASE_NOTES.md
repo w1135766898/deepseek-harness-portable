@@ -1,4 +1,4 @@
-# DeepSeek Harness for Win v1.0.1
+# DeepSeek Harness for Win v1.0.2
 
 [中文](RELEASE_NOTES.zh.md)
 
@@ -20,17 +20,21 @@ Community distribution, not an official Microsoft-signed build.
 - Graceful handoff waits for the desktop shell before replacing the portable runtime.
 - Failed or interrupted updates remain visible and can be retried.
 
+## Fixes
+
+- Windows PowerShell 5.1 now reads UTF-8 release manifests correctly.
+
 ## Components
 
-- Distribution: 1.0.1
+- Distribution: 1.0.2
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.0-rc.5 (@deepseek-ai/dsh-web-app)
-- Tag: v1.0.1
+- Tag: v1.0.2
 
 ## Checksums and security
 
-- Portable ZIP SHA-256: C8A19489F6B70964995FB7F9333026ECFAF0A9AED55FE2A6E77A5788E619EA80
-- Setup SHA-256: 2DE8379E7220A01F9446B6102381C556234B0DBE59882D1C5FC8CFA77E154145
+- Portable ZIP SHA-256: 3C9C60967B6B7641564616D250A88F193F944348278BF5A5BFBE0E8A3AC58671
+- Setup SHA-256: 4B9AB48E23BA9C5D30E2897A39F3943D25526F129816AD6F7FCCDB2491A75142
 - Verify SHA256SUMS.txt before launching.
 - The executable is unsigned; Windows SmartScreen may warn.
 - Conversations, credentials, settings, and attachments stay outside the release directory during updates.

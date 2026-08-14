@@ -1,4 +1,4 @@
-# DeepSeek Harness for Win v1.0.1
+# DeepSeek Harness for Win v1.0.2
 
 [English](RELEASE_NOTES.md)
 
@@ -20,17 +20,21 @@ Windows x64 便携版 · 2026-08-15
 - 更新前安全交接，等待桌面外壳退出后再替换便携运行时。
 - 更新失败或中断后保留可见状态，并支持重新检查。
 
+## 修复
+
+- Windows PowerShell 5.1 现在可以正确读取 UTF-8 发布清单。
+
 ## 组件版本
 
-- 分发：1.0.1
+- 分发：1.0.2
 - 桌面外壳：0.1.0-shell.2
 - 内核：0.1.0-rc.5（@deepseek-ai/dsh-web-app）
-- 标签：v1.0.1
+- 标签：v1.0.2
 
 ## 校验和与安全
 
-- 便携 ZIP SHA-256：C8A19489F6B70964995FB7F9333026ECFAF0A9AED55FE2A6E77A5788E619EA80
-- 安装程序 SHA-256：2DE8379E7220A01F9446B6102381C556234B0DBE59882D1C5FC8CFA77E154145
+- 便携 ZIP SHA-256：3C9C60967B6B7641564616D250A88F193F944348278BF5A5BFBE0E8A3AC58671
+- 安装程序 SHA-256：4B9AB48E23BA9C5D30E2897A39F3943D25526F129816AD6F7FCCDB2491A75142
 - 运行前请核对 SHA256SUMS.txt。
 - 可执行文件未签名，Windows SmartScreen 可能提示风险。
 - 更新时，会话、凭据、设置和附件保存在发布目录之外。

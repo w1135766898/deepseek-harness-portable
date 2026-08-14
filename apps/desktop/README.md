@@ -2,7 +2,7 @@
 
 [中文](README.zh.md)
 
-This workspace package builds the native Electron desktop shell for DeepSeek Harness for Win v1.0.1. It starts the existing Web runtime on loopback, embeds it in a BrowserWindow, and keeps a tray icon for desktop actions.
+This workspace package builds the native Electron desktop shell for DeepSeek Harness for Win v1.0.2. It starts the existing Web runtime on loopback, embeds it in a BrowserWindow, and keeps a tray icon for desktop actions.
 
 ## Runtime features
 
@@ -31,8 +31,8 @@ The native build downloads Electron and targets Windows x64. The packaged output
 
 ## Release identity
 
-- Release: DeepSeek Harness for Win v1.0.1
-- Distribution: 1.0.1
+- Release: DeepSeek Harness for Win v1.0.2
+- Distribution: 1.0.2
 - Desktop shell: 0.1.0-shell.2
 - Kernel: read from the packaged @deepseek-ai/dsh-web-app manifest
 
