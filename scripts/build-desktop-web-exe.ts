@@ -18,6 +18,7 @@ import { copyFile, cp, lstat, mkdir, readFile, readdir, realpath, rm, writeFile 
 import { homedir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
 import { parseArgs } from 'node:util'
+import { patchWelcomeNoticeStore } from '../patches/dsh-client-ui-settings-models-welcome-store.js'
 
 const root = resolve(import.meta.dirname, '..')
 
@@ -446,6 +447,25 @@ class DesktopExeBuild {
       .replace(oldPost, newPost)
     await writeFile(workerTarget, patchedWorker)
     console.log('build-desktop-web-exe: applied Windows directory-picker runtime patches')
+
+    const welcomeTarget = join(
+      this.staging,
+      'node_modules',
+      '@deepseek-ai',
+      'dsh-client-ui-settings-models',
+      'lib',
+      'client.js',
+    )
+    if (!existsSync(welcomeTarget)) {
+      throw new Error(`build-desktop-web-exe: welcome-notice bundle is missing: ${welcomeTarget}`)
+    }
+    const welcomeSource = await readFile(welcomeTarget, 'utf8')
+    const welcomePatched = patchWelcomeNoticeStore(welcomeSource)
+    if (welcomePatched === welcomeSource) {
+      throw new Error('build-desktop-web-exe: welcome-notice patch made no changes.')
+    }
+    await writeFile(welcomeTarget, welcomePatched)
+    console.log('build-desktop-web-exe: applied welcome-notice retry runtime patch')
   }
 
   /** Add the executable entry and pkg assets to the staged manifest. */
