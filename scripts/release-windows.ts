@@ -137,7 +137,9 @@ async function main(): Promise<void> {
   if (!options.noSetup) {
     const iscc = await findIscc()
     setupPath = join(releaseDir, `DeepSeek-Harness-Setup-${version}-win32-x64.exe`)
-    await rm(setupPath, { force: true })
+    if (!options.setupTemplate || resolve(options.setupTemplate) !== resolve(setupPath)) {
+      await rm(setupPath, { force: true })
+    }
     if (iscc) {
       await run(iscc, [
         `/DMyAppVersion=${version}`,
