@@ -402,6 +402,49 @@ class DesktopExeBuild {
     await this.ensureNativeFile('@koromix+koffi-win32-x64@', '@koromix/koffi-win32-x64', 'win32_x64/koffi.node')
   }
 
+  /**
+   * Apply the Windows directory-picker fixes to the deployed dependency.
+   *
+   * Electron must launch the dialog child in Node mode, and the child must
+   * keep IPC connected after its non-terminal `showing` notice. These are
+   * local release patches until the corresponding upstream package includes
+   * both fixes.
+   */
+  async applyRuntimePatches(): Promise<void> {
+    const packageLib = join(
+      this.staging,
+      'node_modules',
+      '@deepseek-ai',
+      'dsh-host-directory-picker-native',
+      'lib',
+    )
+    const indexSource = resolve(root, 'patches/dsh-host-directory-picker-native-index.js')
+    const indexTarget = join(packageLib, 'index.js')
+    const workerTarget = join(packageLib, 'worker.cjs')
+    if (this.cli.dryRun) {
+      console.log(`build-desktop-web-exe: [dry-run] cp ${indexSource} ${indexTarget}`)
+      console.log(`build-desktop-web-exe: [dry-run] patch ${workerTarget} IPC lifecycle`)
+      return
+    }
+    if (!existsSync(indexSource) || !existsSync(workerTarget)) {
+      throw new Error('build-desktop-web-exe: Windows directory-picker patch inputs are missing.')
+    }
+    await copyFile(indexSource, indexTarget)
+    const worker = await readFile(workerTarget, 'utf8')
+    const oldPost = `const post = (message) => {\n\t/* v8 ignore next 3 -- disconnect needs a live IPC channel the unit lane must not sever (built-worker.e2e.ts owns the real close path). */\n\tsend(message, () => {\n\t\tif (process.connected) process.disconnect();\n\t});\n};`
+    const newPost = `const post = (message) => {\n\tsend(message);\n};\nconst finish = (message) => {\n\t/* Disconnect only after the terminal message has reached the parent. The\n\t * earlier \`showing\` notice is non-terminal: disconnecting there triggers\n\t * the handler below and exits while the native dialog is still open. */\n\tsend(message, () => {\n\t\tif (process.connected) process.disconnect();\n\t});\n};`
+    if (!worker.includes(oldPost)) {
+      throw new Error('build-desktop-web-exe: directory-picker worker no longer matches the expected upstream IPC code.')
+    }
+    const terminalMessages = /\t\tpost\(\{\n\t\t\tkind: "(done|error)",/g
+    const patchedWorker = worker.replace(oldPost, newPost).replace(terminalMessages, '\t\tfinish({\n\t\t\tkind: "$1",')
+    if ((patchedWorker.match(/\t\tfinish\(\{/g) ?? []).length !== 2) {
+      throw new Error('build-desktop-web-exe: failed to patch both terminal directory-picker worker messages.')
+    }
+    await writeFile(workerTarget, patchedWorker)
+    console.log('build-desktop-web-exe: applied Windows directory-picker runtime patches')
+  }
+
   /** Add the executable entry and pkg assets to the staged manifest. */
   async injectPkgConfig(): Promise<void> {
     const patch = this.cli.electron ? {} : { bin: ENTRY_BIN, pkg: { assets: ASSET_GLOBS } }
@@ -664,6 +707,7 @@ async function main(): Promise<void> {
   await pipeline.build()
   await pipeline.deployStaging()
   await pipeline.stageNativeAddons()
+  await pipeline.applyRuntimePatches()
   await pipeline.injectPkgConfig()
   const product = await pipeline.pack()
   await pipeline.stageDistributionDocs(product)
