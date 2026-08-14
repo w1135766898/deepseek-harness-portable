@@ -52,6 +52,8 @@ if (!isSplashDocument) {
     drawerOpen: false,
     drawerLoading: false,
     menuOpen: false,
+    recentWorkspaces: [],
+    currentWorkspace: '',
     notice: undefined,
     noticeExpanded: true,
     noticeTimer: undefined,
@@ -224,6 +226,16 @@ if (!isSplashDocument) {
     return '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">' + logoMarkup('dsh-notice-logo') + '</div><div class="dsh-notice-copy"><strong>' + title + '</strong><span>' + desc + '</span></div><button class="dsh-button primary" data-action="' + action + '">' + actionLabel + '</button><button class="dsh-notice-dismiss" data-action="notice-collapse" aria-label="稍后查看">×</button></section>'
   }
 
+  function renderRecentWorkspaceItems() {
+    const entries = Array.isArray(state.recentWorkspaces) ? state.recentWorkspaces : []
+    const items = entries.length === 0
+      ? '<button class="dsh-menu-item" type="button" disabled><span>·</span><strong>暂无最近工作区</strong></button>'
+      : entries.map(path => (
+        '<button class="dsh-menu-item" type="button" data-action="desktop-recent-workspace" data-path="' + escapeHtml(path) + '" role="menuitem"><span>' + (path === state.currentWorkspace ? '✓' : '↪') + '</span><strong>' + escapeHtml(path) + '</strong></button>'
+      )).join('')
+    return items + '<button class="dsh-menu-item" type="button" data-action="desktop-clear-recent-workspaces" role="menuitem"' + (entries.length === 0 ? ' disabled' : '') + '><span>×</span><strong>清空最近工作区</strong></button>'
+  }
+
   function renderMenu() {
     const trigger = '<button class="dsh-menu-trigger" data-action="toggle-menu" aria-haspopup="menu" aria-expanded="' + (state.menuOpen ? 'true' : 'false') + '" title="桌面菜单">' + logoMarkup('dsh-menu-logo') + '</button>'
     if (!state.menuOpen) return '<div class="dsh-app-menu">' + trigger + '</div>'
@@ -233,6 +245,9 @@ if (!isSplashDocument) {
       '<button class="dsh-menu-item" data-action="desktop-about" role="menuitem"><span>ⓘ</span><strong>关于 DeepSeek Harness</strong></button>' +
       '<div class="dsh-menu-separator"></div>' +
       '<button class="dsh-menu-item" data-action="desktop-choose-workspace" role="menuitem"><span>⌂</span><strong>选择工作区</strong></button>' +
+      '<div class="dsh-menu-heading">最近工作区</div>' +
+      renderRecentWorkspaceItems() +
+      '<div class="dsh-menu-separator"></div>' +
       '<button class="dsh-menu-item" data-action="desktop-restart" role="menuitem"><span>↺</span><strong>重启 Harness</strong></button>' +
       '<button class="dsh-menu-item" data-action="desktop-open-browser" role="menuitem"><span>↗</span><strong>在浏览器打开 Web UI</strong></button>' +
       '</div></div>'
@@ -299,10 +314,10 @@ if (!isSplashDocument) {
     ipcRenderer.send('desktop:release-notes:action', { type, ...extra })
   }
 
-  function sendMenuAction(type) {
+  function sendMenuAction(type, extra = {}) {
     state.menuOpen = false
     render()
-    ipcRenderer.send('desktop:menu:action', { type })
+    ipcRenderer.send('desktop:menu:action', { type, ...extra })
   }
 
   function handleAction(target) {
@@ -327,6 +342,14 @@ if (!isSplashDocument) {
     }
     if (action === 'desktop-choose-workspace') {
       sendMenuAction('choose-workspace')
+      return
+    }
+    if (action === 'desktop-recent-workspace') {
+      sendMenuAction('recent-workspace', { path: target.dataset.path })
+      return
+    }
+    if (action === 'desktop-clear-recent-workspaces') {
+      sendMenuAction('clear-recent-workspaces')
       return
     }
     if (action === 'desktop-restart') {
@@ -397,6 +420,8 @@ if (!isSplashDocument) {
     .dsh-menu-item:hover { color: #1d5ebf; background: #eaf2ff; }
     .dsh-menu-item span { display: inline-grid; place-items: center; width: 17px; color: #5b80b8; font-size: 14px; }
     .dsh-menu-item strong { font-weight: 600; }
+    .dsh-menu-item:disabled { color: #9aa8bc; cursor: default; opacity: .78; }
+    .dsh-menu-heading { padding: 5px 9px 3px; color: #8191a8; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
     .dsh-menu-separator { height: 1px; margin: 5px 4px; background: rgba(116, 138, 171, .18); }
     .dsh-notice { position: fixed; top: 46px; left: 50%; width: min(760px, calc(100vw - 32px)); transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid rgba(87, 151, 255, .32); border-radius: 14px; background: rgba(247, 250, 255, .94); box-shadow: 0 14px 40px rgba(31, 50, 83, .18), 0 1px 2px rgba(15, 23, 42, .08); backdrop-filter: blur(22px) saturate(160%); animation: dsh-slide-in .28s cubic-bezier(.16,1,.3,1); }
     .dsh-notice-icon { display: grid; flex: 0 0 32px; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: rgba(255, 255, 255, .94); box-shadow: 0 5px 16px rgba(47, 117, 238, .3); }
@@ -483,6 +508,7 @@ if (!isSplashDocument) {
       .dsh-menu-item { color: #dbe7fa; }
       .dsh-menu-item:hover { color: #d5e5ff; background: #253b61; }
       .dsh-menu-item span { color: #9ebdf0; }
+      .dsh-menu-item:disabled, .dsh-menu-heading { color: #7185a5; }
       .dsh-menu-separator { background: rgba(170, 192, 228, .16); }
       .dsh-notice, .dsh-notice-pill { border-color: rgba(93, 157, 255, .36); background: rgba(19, 29, 47, .94); box-shadow: 0 16px 40px rgba(0, 0, 0, .36); }
       .dsh-notice-copy strong { color: #edf4ff; }
@@ -532,6 +558,11 @@ if (!isSplashDocument) {
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
     document.documentElement.style.setProperty('--dsh-titlebar-height', `${Number(theme?.titleBar?.height) || 36}px`)
     document.documentElement.style.setProperty('--dsh-window-surface', theme?.surface || (dark ? '#0c1220' : '#f4f7fb'))
+  })
+  ipcRenderer.on('desktop:workspace:recents', (_event, payload) => {
+    state.currentWorkspace = typeof payload?.current === 'string' ? payload.current : ''
+    state.recentWorkspaces = Array.isArray(payload?.workspaces) ? payload.workspaces.filter(value => typeof value === 'string') : []
+    render()
   })
   ipcRenderer.on('desktop:notice', (_event, notice) => {
     state.notice = notice && typeof notice === 'object' ? notice : undefined

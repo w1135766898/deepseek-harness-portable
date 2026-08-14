@@ -2,7 +2,7 @@ const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, nativeTheme, scr
 const { spawn } = require('node:child_process')
 const { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } = require('node:fs')
 const { homedir } = require('node:os')
-const { join } = require('node:path')
+const { basename, join, resolve } = require('node:path')
 const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 const { mergeReleaseHistory, normalizeReleaseNotes } = require('./release-notes.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
@@ -27,6 +27,7 @@ const RELEASE_NOTES_FILE_NAME = 'release-notes.json'
 const DESKTOP_PRELOAD_NAME = 'desktop-preload.cjs'
 const SPLASH_PAGE_NAME = 'splash.html'
 const RELEASE_HISTORY_LIMIT = 20
+const RECENT_WORKSPACES_LIMIT = 5
 const DESKTOP_TITLEBAR_HEIGHT = 36
 const LIGHT_WINDOW_SURFACE = '#f4f7fb'
 const DARK_WINDOW_SURFACE = '#0c1220'
@@ -108,6 +109,17 @@ function sendRenderer(channel, payload) {
   if (window === undefined || window.isDestroyed() || !rendererReady) return false
   window.webContents.send(channel, payload)
   return true
+}
+
+function recentWorkspacePayload() {
+  return {
+    current: workspace(),
+    workspaces: recentWorkspaces(),
+  }
+}
+
+function sendRecentWorkspaceState() {
+  sendRenderer('desktop:workspace:recents', recentWorkspacePayload())
 }
 
 function queueOrSendReleaseNotes(context) {
@@ -291,15 +303,84 @@ function scheduleWindowBoundsPersistence() {
 function workspace() {
   try {
     const saved = readConfig().workspace
-    if (typeof saved === 'string' && existsSync(saved) && statSync(saved).isDirectory()) return saved
+    const normalized = normalizeWorkspacePath(saved)
+    if (normalized !== undefined && isWorkspaceDirectory(normalized)) return normalized
   } catch {
     // A missing or invalid preference uses the documented home-directory default.
   }
   return homedir()
 }
 
+function normalizeWorkspacePath(path) {
+  if (typeof path !== 'string' || path.trim() === '') return undefined
+  try {
+    return resolve(path)
+  } catch {
+    return undefined
+  }
+}
+
+function isWorkspaceDirectory(path) {
+  try {
+    return typeof path === 'string' && existsSync(path) && statSync(path).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+function recentWorkspaces() {
+  const configured = readConfig().recentWorkspaces
+  if (!Array.isArray(configured)) return []
+  const seen = new Set()
+  const result = []
+  for (const value of configured) {
+    const normalized = normalizeWorkspacePath(value)
+    if (normalized === undefined || seen.has(normalized) || !isWorkspaceDirectory(normalized)) continue
+    seen.add(normalized)
+    result.push(normalized)
+    if (result.length >= RECENT_WORKSPACES_LIMIT) break
+  }
+  return result
+}
+
 function saveWorkspace(path) {
-  updateConfig({ workspace: path })
+  const normalized = normalizeWorkspacePath(path)
+  if (normalized === undefined || !isWorkspaceDirectory(normalized)) return false
+  const configured = readConfig().recentWorkspaces
+  const previous = Array.isArray(configured) ? configured : []
+  const recents = [normalized, ...previous]
+    .map(normalizeWorkspacePath)
+    .filter((value, index, values) => value !== undefined && values.indexOf(value) === index && isWorkspaceDirectory(value))
+    .slice(0, RECENT_WORKSPACES_LIMIT)
+  updateConfig({ workspace: normalized, recentWorkspaces: recents })
+  sendRecentWorkspaceState()
+  return true
+}
+
+function clearRecentWorkspaces() {
+  updateConfig({ recentWorkspaces: [] })
+  sendRecentWorkspaceState()
+}
+
+function recentWorkspaceMenuItems() {
+  const current = workspace()
+  const entries = recentWorkspaces()
+  const items = entries.length === 0
+    ? [{ label: '暂无最近工作区', enabled: false }]
+    : entries.map(path => ({
+      label: `${path === current ? '✓ ' : ''}${basename(path)} — ${path}`,
+      click: () => { void switchWorkspace(path) },
+    }))
+  items.push({ type: 'separator' })
+  items.push({
+    label: '清空最近工作区 / Clear Recent Workspaces',
+    enabled: entries.length > 0,
+    click: () => {
+      clearRecentWorkspaces()
+      rebuildMenus()
+    },
+  })
+  return items
 }
 
 function iconPath() {
@@ -558,19 +639,53 @@ async function openWebUiInBrowser() {
   void shell.openExternal(harnessUrl)
 }
 
+function visibleDialogParent() {
+  if (window !== undefined && !window.isDestroyed() && window.isVisible()) return window
+  if (splashWindow !== undefined && !splashWindow.isDestroyed() && splashWindow.isVisible()) return splashWindow
+  return undefined
+}
+
+async function confirmWorkspaceSwitch(targetPath, parentWindow = visibleDialogParent()) {
+  if (targetPath === workspace()) return true
+  const result = await dialog.showMessageBox(parentWindow, {
+    type: 'warning',
+    buttons: ['立即切换', '取消'],
+    defaultId: 1,
+    cancelId: 1,
+    title: '切换工作区确认',
+    message: '切换工作区将重新启动后台服务。',
+    detail: '当前会话或正在运行的后台任务可能被中断，是否继续？',
+  })
+  return result.response === 0
+}
+
+async function switchWorkspace(path, parentWindow = visibleDialogParent()) {
+  const targetPath = normalizeWorkspacePath(path)
+  if (targetPath === undefined || !isWorkspaceDirectory(targetPath)) {
+    await dialog.showMessageBox(parentWindow, {
+      type: 'error',
+      title: '工作区不可用',
+      message: '所选工作区不存在或不是文件夹。',
+      buttons: ['确定'],
+    })
+    return false
+  }
+  if (!await confirmWorkspaceSwitch(targetPath, parentWindow)) return false
+  saveWorkspace(targetPath)
+  await requestHarnessRestart()
+  rebuildMenus()
+  return true
+}
+
 async function chooseWorkspace() {
-  const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible()
-    ? window
-    : (splashWindow !== undefined && !splashWindow.isDestroyed() && splashWindow.isVisible() ? splashWindow : undefined)
+  const parentWindow = visibleDialogParent()
   const result = await dialog.showOpenDialog(parentWindow, {
     title: 'Choose workspace',
     defaultPath: workspace(),
     properties: ['openDirectory'],
   })
   if (result.canceled || result.filePaths[0] === undefined) return
-  saveWorkspace(result.filePaths[0])
-  await requestHarnessRestart()
-  rebuildMenus()
+  await switchWorkspace(result.filePaths[0], parentWindow)
 }
 
 const https = require('node:https')
@@ -867,6 +982,7 @@ function registerReleaseNotesIpc() {
     if (!isMainRenderer(event.sender)) return
     rendererReady = true
     event.sender.send('desktop:theme-changed', themePayload())
+    event.sender.send('desktop:workspace:recents', recentWorkspacePayload())
     if (inAppNotice !== undefined) event.sender.send('desktop:notice', inAppNotice)
     if (queuedReleaseNotesContext !== undefined) {
       event.sender.send('desktop:release-notes:open', queuedReleaseNotesContext)
@@ -922,6 +1038,15 @@ function registerReleaseNotesIpc() {
     }
     if (action.type === 'choose-workspace') {
       void chooseWorkspace()
+      return
+    }
+    if (action.type === 'recent-workspace') {
+      void switchWorkspace(action.path)
+      return
+    }
+    if (action.type === 'clear-recent-workspaces') {
+      clearRecentWorkspaces()
+      rebuildMenus()
       return
     }
     if (action.type === 'restart') {
@@ -1129,14 +1254,13 @@ function menuItems() {
     { label: 'Open Web UI in Browser', click: () => { void openWebUiInBrowser() } },
     { type: 'separator' },
     { label: 'Choose Workspace / 选择工作区', click: () => { void chooseWorkspace() } },
+    { label: 'Recent Workspaces / 最近工作区', submenu: recentWorkspaceMenuItems() },
     { label: `Open Workspace (${workspace()})`, click: () => { void shell.openPath(workspace()) } },
     {
       label: 'Use Home as Workspace',
       enabled: workspace() !== homedir(),
       click: async () => {
-        saveWorkspace(homedir())
-        await requestHarnessRestart()
-        rebuildMenus()
+        await switchWorkspace(homedir())
       },
     },
     { label: 'Restart Harness', click: () => { void requestHarnessRestart() } },
@@ -1224,6 +1348,7 @@ async function createApp() {
   tray.setToolTip(APP_NAME)
   tray.on('click', () => window !== undefined && window.isVisible() ? window.hide() : showWindow())
   tray.on('double-click', () => showWindow())
+  saveWorkspace(workspace())
   rebuildMenus()
 
   try {
