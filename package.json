@@ -9,6 +9,7 @@
     "desktop:test": "pnpm --filter dsh-desktop-web-pkg test",
     "desktop:package:win": "pnpm exec tsx scripts/build-desktop-web-exe.ts --electron",
     "desktop:make:win": "pnpm exec tsx scripts/build-desktop-web-exe.ts --electron",
+    "desktop:release:win": "pnpm exec tsx scripts/release-windows.ts",
     "desktop:package:exe": "pnpm exec tsx scripts/build-desktop-web-exe.ts"
   },
   "devDependencies": {
