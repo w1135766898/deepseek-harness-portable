@@ -1,4 +1,4 @@
-# DeepSeek Harness for Win v1.0.2
+# DeepSeek Harness for Win v1.0.3
 
 [English](RELEASE_NOTES.md)
 
@@ -26,10 +26,10 @@ Windows x64 便携版 · 2026-08-15
 
 ## 组件版本
 
-- 分发：1.0.2
+- 分发：1.0.3
 - 桌面外壳：0.1.0-shell.2
 - 内核：0.1.0-rc.5（@deepseek-ai/dsh-web-app）
-- 标签：v1.0.2
+- 标签：v1.0.3
 
 ## 校验和与安全
 

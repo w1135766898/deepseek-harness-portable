@@ -1,4 +1,4 @@
-# DeepSeek Harness for Win v1.0.2
+# DeepSeek Harness for Win v1.0.3
 
 [中文](RELEASE_NOTES.zh.md)
 
@@ -26,10 +26,10 @@ Community distribution, not an official Microsoft-signed build.
 
 ## Components
 
-- Distribution: 1.0.2
+- Distribution: 1.0.3
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.0-rc.5 (@deepseek-ai/dsh-web-app)
-- Tag: v1.0.2
+- Tag: v1.0.3
 
 ## Checksums and security
 
