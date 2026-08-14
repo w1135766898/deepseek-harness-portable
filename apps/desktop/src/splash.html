@@ -11,7 +11,8 @@
     body { display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, #142849 0, #0c1220 56%); opacity: 1; transition: opacity .42s ease; }
     body.is-hidden { opacity: 0; pointer-events: none; }
     .splash { display: grid; justify-items: center; gap: 12px; width: min(520px, calc(100vw - 48px)); margin-top: -4vh; }
-    .mark { width: 68px; height: 68px; display: grid; place-items: center; border-radius: 22px; color: #fff; background: linear-gradient(145deg, #3d92ff, #1859ca); box-shadow: 0 16px 50px rgba(36, 126, 255, .36); font-size: 31px; animation: breathe 1.8s ease-in-out infinite; }
+    .mark { width: 68px; height: 68px; display: grid; place-items: center; padding: 6px; border: 1px solid rgba(136, 181, 255, .36); border-radius: 22px; background: #f7faff; box-shadow: 0 16px 50px rgba(36, 126, 255, .36); animation: breathe 1.8s ease-in-out infinite; }
+    .mark img { width: 54px; height: 54px; object-fit: contain; }
     h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: .01em; }
     .status { min-height: 22px; color: rgba(224, 235, 252, .7); font-size: 13px; }
     .progress { width: 168px; height: 3px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.12); }
@@ -35,7 +36,7 @@
 </head>
 <body>
   <main class="splash" aria-live="polite">
-    <div class="mark">◈</div>
+    <div class="mark"><img src="../assets/deepseek.ico" alt="DeepSeek"></div>
     <h1>DeepSeek Harness</h1>
     <div class="status" id="status">正在拉起后台引擎…</div>
     <div class="progress"><i></i></div>

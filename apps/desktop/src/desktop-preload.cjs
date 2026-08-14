@@ -1,5 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+const DEEPSEEK_LOGO_DATA_URI = 'data:image/png;base64,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'
+
 const SPLASH_STATUSES = new Set(['engine', 'workspace', 'interface'])
 const isSplashDocument = window.location.protocol === 'file:'
 
@@ -70,6 +72,10 @@ if (!isSplashDocument) {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;')
+  }
+
+  function logoMarkup(className, alt = '') {
+    return '<img class="' + className + '" src="' + DEEPSEEK_LOGO_DATA_URI + '" alt="' + escapeHtml(alt) + '" draggable="false">'
   }
 
   function formatDate(value) {
@@ -167,7 +173,7 @@ if (!isSplashDocument) {
     const refreshing = state.drawerRefreshing ? '<div class="dsh-refreshing">正在后台同步最新更新记录…</div>' : ''
     if (state.drawerLoading) return '<div class="dsh-loading">正在读取本地更新记录…</div>'
     return refreshing + (state.drawerContext.mode === 'about'
-      ? '<div class="dsh-about"><div class="dsh-about-logo">◈</div><h3>DeepSeek Harness</h3><p>面向 Windows 的 DeepSeek Harness 桌面外壳。</p><p class="dsh-muted">内核 v' + escapeHtml(data?.localInfo?.kernelVersion || 'unknown') + ' · 外壳 v' + escapeHtml(data?.localInfo?.desktopVersion || 'unknown') + '</p></div>'
+      ? '<div class="dsh-about"><div class="dsh-about-logo">' + logoMarkup('dsh-about-logo-image', 'DeepSeek') + '</div><h3>DeepSeek Harness</h3><p>面向 Windows 的 DeepSeek Harness 桌面外壳。</p><p class="dsh-muted">内核 v' + escapeHtml(data?.localInfo?.kernelVersion || 'unknown') + ' · 外壳 v' + escapeHtml(data?.localInfo?.desktopVersion || 'unknown') + '</p></div>'
       : updateCard + statusNotice + renderTimeline(data?.history || []))
   }
 
@@ -208,12 +214,12 @@ if (!isSplashDocument) {
       : (isProblem ? escapeHtml(status.message || '当前安装仍可使用，可以重新检查更新。') : '查看新特性与完整更新记录。')
     const actionLabel = isAvailable ? '查看新特性' : (isProblem ? '重新检查' : '查看新特性')
     const action = isProblem ? 'retry-update' : 'open-release-notes'
-    if (!state.noticeExpanded) return '<button class="dsh-notice-pill" data-action="open-release-notes" title="查看更新日志"><span class="dsh-bell">♢</span><span>更新</span><i></i></button>'
-    return '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">◈</div><div class="dsh-notice-copy"><strong>' + title + '</strong><span>' + desc + '</span></div><button class="dsh-button primary" data-action="' + action + '">' + actionLabel + '</button><button class="dsh-notice-dismiss" data-action="notice-collapse" aria-label="稍后查看">×</button></section>'
+    if (!state.noticeExpanded) return '<button class="dsh-notice-pill" data-action="open-release-notes" title="查看更新日志">' + logoMarkup('dsh-bell-logo') + '<span>更新</span><i></i></button>'
+    return '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">' + logoMarkup('dsh-notice-logo') + '</div><div class="dsh-notice-copy"><strong>' + title + '</strong><span>' + desc + '</span></div><button class="dsh-button primary" data-action="' + action + '">' + actionLabel + '</button><button class="dsh-notice-dismiss" data-action="notice-collapse" aria-label="稍后查看">×</button></section>'
   }
 
   function renderMenu() {
-    const trigger = '<button class="dsh-menu-trigger" data-action="toggle-menu" aria-haspopup="menu" aria-expanded="' + (state.menuOpen ? 'true' : 'false') + '" title="桌面菜单">◈</button>'
+    const trigger = '<button class="dsh-menu-trigger" data-action="toggle-menu" aria-haspopup="menu" aria-expanded="' + (state.menuOpen ? 'true' : 'false') + '" title="桌面菜单">' + logoMarkup('dsh-menu-logo') + '</button>'
     if (!state.menuOpen) return '<div class="dsh-app-menu">' + trigger + '</div>'
     return '<div class="dsh-app-menu">' + trigger + '<div class="dsh-menu-popover" role="menu" aria-label="桌面菜单">' +
       '<button class="dsh-menu-item" data-action="desktop-check-updates" role="menuitem"><span>↻</span><strong>检查更新</strong></button>' +
@@ -378,6 +384,7 @@ if (!isSplashDocument) {
     .dsh-app-menu, .dsh-notice, .dsh-notice-pill, .dsh-drawer-layer { pointer-events: auto; }
     .dsh-app-menu { position: fixed; top: 5px; left: 10px; z-index: 2; -webkit-app-region: no-drag; }
     .dsh-menu-trigger { display: grid; place-items: center; width: 28px; height: 26px; padding: 0; border: 1px solid rgba(93, 126, 177, .2); border-radius: 8px; color: #4775b8; background: rgba(247, 250, 255, .72); box-shadow: 0 4px 12px rgba(31, 50, 83, .1); cursor: pointer; font-size: 15px; -webkit-app-region: no-drag; }
+    .dsh-menu-logo { width: 18px; height: 18px; object-fit: contain; pointer-events: none; }
     .dsh-menu-trigger:hover, .dsh-menu-trigger[aria-expanded="true"] { border-color: rgba(52, 127, 242, .5); color: #2366ca; background: rgba(231, 240, 255, .96); }
     .dsh-menu-popover { display: grid; min-width: 236px; margin-top: 6px; padding: 6px; border: 1px solid rgba(116, 138, 171, .24); border-radius: 12px; background: rgba(250, 252, 255, .98); box-shadow: 0 16px 40px rgba(23, 43, 72, .2); -webkit-app-region: no-drag; }
     .dsh-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 7px 9px; border: 0; border-radius: 7px; color: #263a5a; background: transparent; cursor: pointer; text-align: left; font: 12px/1.2 inherit; -webkit-app-region: no-drag; }
@@ -386,7 +393,8 @@ if (!isSplashDocument) {
     .dsh-menu-item strong { font-weight: 600; }
     .dsh-menu-separator { height: 1px; margin: 5px 4px; background: rgba(116, 138, 171, .18); }
     .dsh-notice { position: fixed; top: 46px; left: 50%; width: min(760px, calc(100vw - 32px)); transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid rgba(87, 151, 255, .32); border-radius: 14px; background: rgba(247, 250, 255, .94); box-shadow: 0 14px 40px rgba(31, 50, 83, .18), 0 1px 2px rgba(15, 23, 42, .08); backdrop-filter: blur(22px) saturate(160%); animation: dsh-slide-in .28s cubic-bezier(.16,1,.3,1); }
-    .dsh-notice-icon { display: grid; flex: 0 0 32px; place-items: center; width: 32px; height: 32px; border-radius: 10px; color: #fff; background: linear-gradient(145deg, #3a8bff, #1b59c5); box-shadow: 0 5px 16px rgba(47, 117, 238, .3); font-size: 16px; }
+    .dsh-notice-icon { display: grid; flex: 0 0 32px; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: rgba(255, 255, 255, .94); box-shadow: 0 5px 16px rgba(47, 117, 238, .3); }
+    .dsh-notice-logo { width: 25px; height: 25px; object-fit: contain; pointer-events: none; }
     .dsh-notice-copy { min-width: 0; flex: 1; display: grid; gap: 1px; }
     .dsh-notice-copy strong { color: #15223a; font-weight: 650; }
     .dsh-notice-copy span { overflow: hidden; color: #60708a; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
@@ -394,7 +402,7 @@ if (!isSplashDocument) {
     .dsh-notice-dismiss { padding: 5px; }
     .dsh-notice-pill { position: fixed; top: 46px; right: 16px; display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid rgba(87, 151, 255, .28); border-radius: 999px; color: #2f6fda; background: rgba(247, 250, 255, .92); box-shadow: 0 8px 24px rgba(31, 50, 83, .14); cursor: pointer; backdrop-filter: blur(18px); }
     .dsh-notice-pill i { width: 6px; height: 6px; border-radius: 50%; background: #3a8bff; box-shadow: 0 0 0 4px rgba(58, 139, 255, .15); }
-    .dsh-bell { font-size: 16px; }
+    .dsh-bell-logo { width: 16px; height: 16px; object-fit: contain; pointer-events: none; }
     .dsh-button { display: inline-flex; align-items: center; justify-content: center; min-height: 30px; padding: 5px 11px; border: 1px solid rgba(28, 48, 78, .11); border-radius: 8px; color: #1d2b42; background: rgba(241, 245, 251, .92); cursor: pointer; font: 600 12px/1.2 inherit; white-space: nowrap; }
     .dsh-button:hover { background: #e4ebf6; }
     .dsh-button.primary { border-color: #307bf0; color: #fff; background: #307bf0; box-shadow: 0 3px 10px rgba(48, 123, 240, .25); }
@@ -452,7 +460,8 @@ if (!isSplashDocument) {
     .dsh-empty-copy, .dsh-loading { padding: 42px 8px; color: #8a99ae; text-align: center; }
     .dsh-refreshing { margin: -8px 0 14px; color: #8191a8; font-size: 11px; }
     .dsh-about { padding: 48px 10px; text-align: center; }
-    .dsh-about-logo { width: 64px; height: 64px; display: grid; place-items: center; margin: 0 auto 16px; border-radius: 20px; color: #fff; background: linear-gradient(145deg, #3a8bff, #1b59c5); box-shadow: 0 10px 28px rgba(47, 117, 238, .26); font-size: 28px; }
+    .dsh-about-logo { width: 64px; height: 64px; display: grid; place-items: center; margin: 0 auto 16px; border: 1px solid rgba(72, 112, 190, .16); border-radius: 20px; background: #f7faff; box-shadow: 0 10px 28px rgba(47, 117, 238, .26); }
+    .dsh-about-logo-image { width: 54px; height: 54px; object-fit: contain; }
     .dsh-about h3 { margin: 0 0 8px; color: #1e2d44; font-size: 18px; }
     .dsh-about p { margin: 5px 0; color: #657793; }
     .dsh-muted { color: #9aa7ba !important; font-size: 11px; }
@@ -461,6 +470,7 @@ if (!isSplashDocument) {
     @keyframes dsh-fade-in { from { opacity: 0; } to { opacity: 1; } }
     @media (prefers-color-scheme: dark) {
       .dsh-chrome { color: #e8eef9; }
+      .dsh-notice-icon, .dsh-about-logo { border-color: rgba(93, 157, 255, .36); background: #edf4ff; }
       .dsh-menu-trigger { border-color: rgba(93, 157, 255, .36); color: #a8c7fa; background: rgba(19, 29, 47, .86); }
       .dsh-menu-trigger:hover, .dsh-menu-trigger[aria-expanded="true"] { color: #d5e5ff; background: rgba(44, 72, 119, .96); }
       .dsh-menu-popover { border-color: rgba(170, 192, 228, .16); background: rgba(17, 26, 42, .98); box-shadow: 0 16px 40px rgba(0, 0, 0, .4); }
