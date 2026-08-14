@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, shell, Tray } = require('electron')
+const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, nativeTheme, screen, shell, Tray } = require('electron')
 const { spawn } = require('node:child_process')
 const { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } = require('node:fs')
 const { homedir } = require('node:os')
@@ -6,6 +6,10 @@ const { join } = require('node:path')
 const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 const { mergeReleaseHistory, normalizeReleaseNotes } = require('./release-notes.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
+const {
+  DEFAULT_WINDOW_BOUNDS,
+  restoreWindowBounds,
+} = require('./window-state.cjs')
 const {
   isActiveUpdateStatus,
   readUpdateStatus,
@@ -20,8 +24,8 @@ const APP_NAME = 'DeepSeek Harness'
 const PORTABLE_RELEASE_REPO = 'wsnxxxs/deepseek-harness-portable'
 const RELEASE_MANIFEST_NAME = 'release-manifest.json'
 const RELEASE_NOTES_FILE_NAME = 'release-notes.json'
-const RELEASE_NOTES_PAGE_NAME = 'release-notes.html'
-const RELEASE_NOTES_PRELOAD_NAME = 'release-notes-preload.cjs'
+const DESKTOP_PRELOAD_NAME = 'desktop-preload.cjs'
+const SPLASH_PAGE_NAME = 'splash.html'
 const RELEASE_HISTORY_LIMIT = 20
 const STARTUP_TIMEOUT_MS = 60_000
 const STOP_TIMEOUT_MS = 5_000
@@ -33,9 +37,11 @@ let harnessUrl
 let restartPromise
 let quitting = false
 let restarting = false
-let releaseNotesWindow
-let whatsNewWindow
 let releaseNotesContext = { mode: 'history' }
+let rendererReady = false
+let inAppNotice
+let queuedReleaseNotesContext
+let boundsSaveTimer
 
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error)
@@ -57,6 +63,79 @@ function readConfig() {
 function updateConfig(patch) {
   mkdirSync(app.getPath('userData'), { recursive: true })
   writeFileSync(configPath(), `${JSON.stringify({ ...readConfig(), ...patch }, null, 2)}\n`)
+}
+
+function themePayload() {
+  const isDark = nativeTheme.shouldUseDarkColors
+  return {
+    theme: isDark ? 'dark' : 'light',
+    isDark,
+    titleBar: {
+      color: '#00000000',
+      symbolColor: isDark ? '#f4f7fb' : '#1f2937',
+      height: 36,
+    },
+  }
+}
+
+function syncNativeTheme() {
+  if (window === undefined || window.isDestroyed()) return
+  const theme = themePayload()
+  if (process.platform === 'win32' && typeof window.setTitleBarOverlay === 'function') {
+    try { window.setTitleBarOverlay(theme.titleBar) } catch {}
+  }
+  if (rendererReady) window.webContents.send('desktop:theme-changed', theme)
+}
+
+function sendRenderer(channel, payload) {
+  if (window === undefined || window.isDestroyed() || !rendererReady) return false
+  window.webContents.send(channel, payload)
+  return true
+}
+
+function queueOrSendReleaseNotes(context) {
+  queuedReleaseNotesContext = { ...context }
+  if (sendRenderer('desktop:release-notes:open', queuedReleaseNotesContext)) queuedReleaseNotesContext = undefined
+}
+
+function showInAppNotice(notice) {
+  inAppNotice = notice && typeof notice === 'object' ? notice : undefined
+  sendRenderer('desktop:notice', inAppNotice)
+}
+
+function sendSplashStatus(status) {
+  if (window === undefined || window.isDestroyed()) return
+  window.webContents.send('desktop:splash-status', { status })
+}
+
+function currentWindowBounds() {
+  if (window === undefined || window.isDestroyed()) return undefined
+  const maximized = window.isMaximized()
+  const bounds = maximized && typeof window.getNormalBounds === 'function'
+    ? window.getNormalBounds()
+    : window.getBounds()
+  return {
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
+    isMaximized: maximized,
+  }
+}
+
+function persistWindowBounds() {
+  const bounds = currentWindowBounds()
+  if (bounds === undefined) return
+  updateConfig({ windowBounds: bounds })
+}
+
+function scheduleWindowBoundsPersistence() {
+  if (boundsSaveTimer !== undefined) clearTimeout(boundsSaveTimer)
+  boundsSaveTimer = setTimeout(() => {
+    boundsSaveTimer = undefined
+    persistWindowBounds()
+  }, 180)
+  boundsSaveTimer.unref()
 }
 
 function workspace() {
@@ -194,6 +273,7 @@ function startHarness(cwd) {
       const url = readyUrl(output)
       if (url !== undefined && !readyUrlSeen) {
         readyUrlSeen = true
+        sendSplashStatus('workspace')
         void waitForOnboardingReady(url).then(
           () => {
             ready = true
@@ -231,9 +311,11 @@ async function restartHarness() {
   const currentRestart = (async () => {
     restarting = true
     try {
+      sendSplashStatus('engine')
       await stopHarness()
       const url = await startHarness(workspace())
       harnessUrl = url
+      sendSplashStatus('interface')
       if (window !== undefined && !window.isDestroyed()) await window.loadURL(url)
     } catch (error) {
       await dialog.showMessageBox({
@@ -547,12 +629,6 @@ function openExternalSafe(value) {
   }
 }
 
-function releaseNotesWindowKind(senderId) {
-  if (releaseNotesWindow !== undefined && !releaseNotesWindow.isDestroyed() && releaseNotesWindow.webContents.id === senderId) return 'full'
-  if (whatsNewWindow !== undefined && !whatsNewWindow.isDestroyed() && whatsNewWindow.webContents.id === senderId) return 'whats-new'
-  return undefined
-}
-
 function markVersionSeen(version) {
   if (typeof version === 'string' && version.trim() !== '') updateConfig({ lastSeenVersion: version.trim() })
 }
@@ -562,186 +638,115 @@ function markUpdateStatusSeen(status) {
   if (key !== '') updateConfig({ lastAcknowledgedUpdateStatus: key })
 }
 
-function closeWhatsNewWindow() {
-  if (whatsNewWindow !== undefined && !whatsNewWindow.isDestroyed()) whatsNewWindow.close()
+function isMainRenderer(sender) {
+  return window !== undefined && !window.isDestroyed() && window.webContents.id === sender.id
+}
+
+function updateNoticeKind(status) {
+  if (status?.state === 'failed') return 'failed'
+  if (status?.state === 'interrupted') return 'interrupted'
+  return 'updated'
 }
 
 function registerReleaseNotesIpc() {
-  ipcMain.handle('release-notes:get-data', async event => {
-    const kind = releaseNotesWindowKind(event.sender.id)
-    if (kind === 'full') return buildReleaseNotesData(releaseNotesContext)
-    if (kind === 'whats-new') {
-      const localInfo = getLocalReleaseInfo()
-      return {
-        mode: 'whats-new',
-        currentVersion: localInfo.distributionVersion,
-        currentRelease: localInfo.releaseNotes,
-        updateStatus: getCurrentUpdateStatus(),
-      }
+  ipcMain.on('desktop:renderer-ready', event => {
+    if (!isMainRenderer(event.sender)) return
+    rendererReady = true
+    event.sender.send('desktop:theme-changed', themePayload())
+    if (inAppNotice !== undefined) event.sender.send('desktop:notice', inAppNotice)
+    if (queuedReleaseNotesContext !== undefined) {
+      event.sender.send('desktop:release-notes:open', queuedReleaseNotesContext)
+      queuedReleaseNotesContext = undefined
     }
-    throw new Error('Unknown release notes window')
   })
 
-  ipcMain.on('release-notes:action', (event, action) => {
-    const kind = releaseNotesWindowKind(event.sender.id)
-    if (kind === undefined || !action || typeof action.type !== 'string') return
+  ipcMain.handle('desktop:release-notes:get-data', async (event, context = {}) => {
+    if (!isMainRenderer(event.sender)) throw new Error('Unknown release notes client')
+    return buildReleaseNotesData(context)
+  })
 
-    if (action.type === 'close') {
-      if (kind === 'full' && releaseNotesWindow !== undefined && !releaseNotesWindow.isDestroyed()) releaseNotesWindow.close()
-      if (kind === 'whats-new') closeWhatsNewWindow()
-      return
-    }
+  ipcMain.on('desktop:release-notes:open', (event, context = {}) => {
+    if (!isMainRenderer(event.sender)) return
+    openInAppReleaseNotes(context)
+  })
+
+  ipcMain.on('desktop:notice:show', event => {
+    if (!isMainRenderer(event.sender) || inAppNotice === undefined) return
+    event.sender.send('desktop:notice', inAppNotice)
+  })
+
+  ipcMain.on('desktop:release-notes:action', (event, action) => {
+    if (!isMainRenderer(event.sender) || !action || typeof action.type !== 'string') return
 
     if (action.type === 'open-url') {
       openExternalSafe(action.url)
       return
     }
 
-    if (action.type === 'update' && kind === 'full') {
+    if (action.type === 'update') {
       const currentStatus = getCurrentUpdateStatus()
       if (isActiveUpdateStatus(currentStatus)) {
-        event.sender.send('release-notes:update-state', { label: '更新已在进行中…' })
+        event.sender.send('desktop:update-state', { label: '更新已在进行中…' })
         return
       }
-      const targetVersion = releaseNotesContext.update?.version || ''
-      event.sender.send('release-notes:update-state', { label: '更新器已启动，正在安全退出应用…' })
+      const targetVersion = typeof action.targetVersion === 'string' && action.targetVersion.trim() !== ''
+        ? action.targetVersion.trim()
+        : (releaseNotesContext.update?.version || inAppNotice?.release?.version || '')
+      event.sender.send('desktop:update-state', { label: '更新器已启动，正在安全退出应用…' })
       if (!triggerPortableUpdate(targetVersion)) {
-        event.sender.send('release-notes:update-state', { label: '无法启动便携版更新器，已打开发布页' })
+        event.sender.send('desktop:update-state', { label: '无法启动便携版更新器，已打开发布页' })
       }
       return
     }
 
-    if (action.type === 'open-notes' && kind === 'whats-new') {
-      closeWhatsNewWindow()
-      void openReleaseNotesWindow({ mode: 'history', selectedVersion: getLocalVersion() })
-      return
-    }
-
-    if (action.type === 'retry-update' && (kind === 'whats-new' || kind === 'full')) {
-      if (kind === 'whats-new') closeWhatsNewWindow()
+    if (action.type === 'retry-update') {
       void checkForUpdates(true)
       return
     }
 
-    if (action.type === 'show-about' && kind === 'full') {
-      releaseNotesContext = { ...releaseNotesContext, mode: 'about' }
-      releaseNotesWindow?.webContents.send('release-notes:reload')
+    if (action.type === 'show-about') {
+      openInAppReleaseNotes({ ...releaseNotesContext, mode: 'about' })
       return
     }
 
-    if (action.type === 'show-notes' && kind === 'full') {
-      releaseNotesContext = { ...releaseNotesContext, mode: releaseNotesContext.update ? 'update' : 'history' }
-      releaseNotesWindow?.webContents.send('release-notes:reload')
+    if (action.type === 'show-notes') {
+      openInAppReleaseNotes({ ...releaseNotesContext, mode: releaseNotesContext.update ? 'update' : 'history' })
     }
   })
 }
 
-async function openReleaseNotesWindow(context = {}) {
+function openInAppReleaseNotes(context = {}) {
   releaseNotesContext = { ...context }
-  if (releaseNotesWindow !== undefined && !releaseNotesWindow.isDestroyed()) {
-    releaseNotesWindow.show()
-    releaseNotesWindow.focus()
-    releaseNotesWindow.webContents.send('release-notes:reload')
-    return
-  }
-
-  const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible() ? window : undefined
-  releaseNotesWindow = new BrowserWindow({
-    width: 660,
-    height: 580,
-    minWidth: 540,
-    minHeight: 460,
-    show: false,
-    title: `${APP_NAME} Updates`,
-    icon: iconPath(),
-    parent: releaseNotesContext.mode === 'update' ? parentWindow : undefined,
-    modal: releaseNotesContext.mode === 'update' && parentWindow !== undefined,
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      preload: join(__dirname, RELEASE_NOTES_PRELOAD_NAME),
-    },
-  })
-  releaseNotesWindow.on('closed', () => { releaseNotesWindow = undefined })
-  releaseNotesWindow.webContents.setWindowOpenHandler(({ url }) => {
-    openExternalSafe(url)
-    return { action: 'deny' }
-  })
-
-  try {
-    await releaseNotesWindow.loadFile(join(__dirname, RELEASE_NOTES_PAGE_NAME))
-    if (releaseNotesWindow !== undefined && !releaseNotesWindow.isDestroyed()) {
-      releaseNotesWindow.show()
-      releaseNotesWindow.focus()
-    }
-  } catch (error) {
-    if (releaseNotesWindow !== undefined && !releaseNotesWindow.isDestroyed()) releaseNotesWindow.close()
-    await dialog.showMessageBox({
-      type: 'error',
-      title: `${APP_NAME} Release Notes`,
-      message: `Unable to open release notes.\n\n${errorMessage(error)}`,
-    })
-  }
+  queueOrSendReleaseNotes(releaseNotesContext)
 }
 
-async function showWhatsNewWindow() {
-  if (whatsNewWindow !== undefined && !whatsNewWindow.isDestroyed()) {
-    whatsNewWindow.showInactive()
-    return
-  }
-
-  whatsNewWindow = new BrowserWindow({
-    width: 430,
-    height: 76,
-    resizable: false,
-    movable: true,
-    frame: false,
-    transparent: true,
-    hasShadow: true,
-    show: false,
-    skipTaskbar: true,
-    alwaysOnTop: true,
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      preload: join(__dirname, RELEASE_NOTES_PRELOAD_NAME),
-    },
-  })
-  whatsNewWindow.on('closed', () => { whatsNewWindow = undefined })
-  try {
-    await whatsNewWindow.loadFile(join(__dirname, RELEASE_NOTES_PAGE_NAME))
-    const workArea = screen.getPrimaryDisplay().workArea
-    const [width, height] = whatsNewWindow.getSize()
-    whatsNewWindow.setPosition(
-      Math.max(workArea.x + 16, workArea.x + workArea.width - width - 24),
-      Math.max(workArea.y + 16, workArea.y + workArea.height - height - 24),
-    )
-    whatsNewWindow.showInactive()
-  } catch {
-    if (whatsNewWindow !== undefined && !whatsNewWindow.isDestroyed()) whatsNewWindow.close()
-  }
-}
-
-async function showWhatsNewIfNeeded() {
-  const current = getLocalVersion()
+async function showUpdateNoticeIfNeeded() {
+  const localInfo = getLocalReleaseInfo()
+  const current = localInfo.distributionVersion
   const config = readConfig()
   const updateStatus = getCurrentUpdateStatus()
   if (updateStatus !== undefined && statusNeedsNotice(updateStatus, config.lastAcknowledgedUpdateStatus)) {
     markUpdateStatusSeen(updateStatus)
-    await showWhatsNewWindow()
+    showInAppNotice({
+      kind: updateNoticeKind(updateStatus),
+      currentVersion: current,
+      release: localInfo.releaseNotes,
+      updateStatus,
+    })
     return
   }
   const lastSeen = config.lastSeenVersion
   if (typeof lastSeen !== 'string' || lastSeen.trim() === '') {
     markVersionSeen(current)
-    await showWhatsNewWindow()
     return
   }
   if (compareVersions(current, lastSeen) <= 0) return
   markVersionSeen(current)
-  await showWhatsNewWindow()
+  showInAppNotice({
+    kind: 'updated',
+    currentVersion: current,
+    release: localInfo.releaseNotes,
+  })
 }
 
 function triggerPortableUpdate(targetVersion) {
@@ -813,6 +818,17 @@ function triggerPortableUpdate(targetVersion) {
   }
 }
 
+function showAvailableUpdateNotice(latestInfo, currentVersion, force = false) {
+  const config = readConfig()
+  if (!force && config.lastNotifiedAvailableVersion === latestInfo.version) return
+  updateConfig({ lastNotifiedAvailableVersion: latestInfo.version })
+  showInAppNotice({
+    kind: 'available',
+    currentVersion,
+    release: latestInfo,
+  })
+}
+
 async function checkForUpdates(manual = true) {
   const current = getLocalVersion()
   try {
@@ -820,11 +836,11 @@ async function checkForUpdates(manual = true) {
     const hasUpdate = compareVersions(latestInfo.version, current) > 0
 
     if (hasUpdate) {
-      closeWhatsNewWindow()
-      await openReleaseNotesWindow({ mode: 'update', currentVersion: current, update: latestInfo })
+      showAvailableUpdateNotice(latestInfo, current, manual)
+      if (manual) openInAppReleaseNotes({ mode: 'update', currentVersion: current, update: latestInfo })
       return
     } else if (manual) {
-      await openReleaseNotesWindow({ mode: 'history', selectedVersion: current })
+      openInAppReleaseNotes({ mode: 'history', selectedVersion: current })
     }
   } catch (error) {
     if (manual) {
@@ -844,8 +860,8 @@ function menuItems() {
   return [
     { label: `Show ${APP_NAME}`, click: showWindow },
     { label: 'Check for Updates / 检查更新', click: () => { void checkForUpdates(true) } },
-    { label: 'Release Notes / 更新日志', click: () => { void openReleaseNotesWindow({ mode: 'history' }) } },
-    { label: 'About DeepSeek Harness / 关于', click: () => { void openReleaseNotesWindow({ mode: 'about' }) } },
+    { label: 'Release Notes / 更新日志', click: () => { openInAppReleaseNotes({ mode: 'history' }) } },
+    { label: 'About DeepSeek Harness / 关于', click: () => { openInAppReleaseNotes({ mode: 'about' }) } },
     { label: 'Open Web UI in Browser', click: () => { void openWebUiInBrowser() } },
     { type: 'separator' },
     { label: 'Choose Workspace / 选择工作区', click: () => { void chooseWorkspace() } },
@@ -878,28 +894,59 @@ function rebuildMenus() {
 
 async function createApp() {
   registerReleaseNotesIpc()
+  nativeTheme.themeSource = 'system'
+
+  const restoredBounds = restoreWindowBounds(
+    readConfig().windowBounds,
+    screen.getAllDisplays(),
+    DEFAULT_WINDOW_BOUNDS,
+  )
+  const { isMaximized: shouldMaximize, ...initialBounds } = restoredBounds
+  const nativeWindowOptions = process.platform === 'win32'
+    ? {
+        backgroundMaterial: 'mica',
+        titleBarStyle: 'hidden',
+        titleBarOverlay: themePayload().titleBar,
+      }
+    : {}
+
   window = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    ...initialBounds,
     minWidth: 900,
     minHeight: 600,
     show: false,
     title: APP_NAME,
     icon: iconPath(),
+    backgroundColor: process.platform === 'win32'
+      ? '#00000000'
+      : (nativeTheme.shouldUseDarkColors ? '#0c1220' : '#f4f7fb'),
+    autoHideMenuBar: true,
+    ...nativeWindowOptions,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      preload: join(__dirname, DESKTOP_PRELOAD_NAME),
     },
   })
+
+  window.webContents.on('did-start-loading', () => {
+    rendererReady = false
+  })
   window.on('close', event => {
+    persistWindowBounds()
     if (!quitting) {
       event.preventDefault()
       window.hide()
     }
   })
-  window.on('closed', () => { window = undefined })
-  window.once('ready-to-show', showWindow)
+  for (const eventName of ['resize', 'move', 'maximize', 'unmaximize']) {
+    window.on(eventName, scheduleWindowBoundsPersistence)
+  }
+  window.on('closed', () => {
+    rendererReady = false
+    window = undefined
+  })
   window.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url)
     return { action: 'deny' }
@@ -910,13 +957,27 @@ async function createApp() {
   tray.on('click', () => window !== undefined && window.isVisible() ? window.hide() : showWindow())
   tray.on('double-click', () => showWindow())
   rebuildMenus()
-  await restartHarness()
+
+  try {
+    await window.loadFile(join(__dirname, SPLASH_PAGE_NAME))
+    if (shouldMaximize) window.maximize()
+    showWindow()
+    sendSplashStatus('engine')
+    await restartHarness()
+  } catch (error) {
+    await dialog.showMessageBox(window, {
+      type: 'error',
+      title: `${APP_NAME} failed to start`,
+      message: errorMessage(error),
+    })
+  }
+
   setTimeout(() => {
     void (async () => {
-      await showWhatsNewIfNeeded()
+      await showUpdateNoticeIfNeeded()
       await checkForUpdates(false)
     })()
-  }, 4000)
+  }, 4000).unref()
 }
 
 const gotLock = app.requestSingleInstanceLock()
@@ -924,7 +985,11 @@ if (!gotLock) {
   app.quit()
 } else {
   app.on('second-instance', showWindow)
-  app.on('before-quit', () => { quitting = true })
+  nativeTheme.on('updated', syncNativeTheme)
+  app.on('before-quit', () => {
+    quitting = true
+    persistWindowBounds()
+  })
   app.on('will-quit', event => {
     if (tray !== undefined && !tray.isDestroyed()) {
       tray.destroy()
