@@ -49,6 +49,7 @@ if (!isSplashDocument) {
     drawerContext: { mode: 'history' },
     drawerOpen: false,
     drawerLoading: false,
+    menuOpen: false,
     notice: undefined,
     noticeExpanded: true,
     noticeTimer: undefined,
@@ -58,6 +59,7 @@ if (!isSplashDocument) {
   }
 
   let chromeRefs
+  let menuMarkup
   let noticeMarkup
   let drawerContentMarkup
 
@@ -210,8 +212,27 @@ if (!isSplashDocument) {
     return '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">◈</div><div class="dsh-notice-copy"><strong>' + title + '</strong><span>' + desc + '</span></div><button class="dsh-button primary" data-action="' + action + '">' + actionLabel + '</button><button class="dsh-notice-dismiss" data-action="notice-collapse" aria-label="稍后查看">×</button></section>'
   }
 
+  function renderMenu() {
+    const trigger = '<button class="dsh-menu-trigger" data-action="toggle-menu" aria-haspopup="menu" aria-expanded="' + (state.menuOpen ? 'true' : 'false') + '" title="桌面菜单">◈</button>'
+    if (!state.menuOpen) return '<div class="dsh-app-menu">' + trigger + '</div>'
+    return '<div class="dsh-app-menu">' + trigger + '<div class="dsh-menu-popover" role="menu" aria-label="桌面菜单">' +
+      '<button class="dsh-menu-item" data-action="desktop-check-updates" role="menuitem"><span>↻</span><strong>检查更新</strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-release-notes" role="menuitem"><span>☷</span><strong>更新日志</strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-about" role="menuitem"><span>ⓘ</span><strong>关于 DeepSeek Harness</strong></button>' +
+      '<div class="dsh-menu-separator"></div>' +
+      '<button class="dsh-menu-item" data-action="desktop-choose-workspace" role="menuitem"><span>⌂</span><strong>选择工作区</strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-restart" role="menuitem"><span>↺</span><strong>重启 Harness</strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-open-browser" role="menuitem"><span>↗</span><strong>在浏览器打开 Web UI</strong></button>' +
+      '</div></div>'
+  }
+
   function render() {
     if (!host?.shadowRoot || chromeRefs === undefined) return
+    const nextMenuMarkup = renderMenu()
+    if (nextMenuMarkup !== menuMarkup) {
+      chromeRefs.menuHost.innerHTML = nextMenuMarkup
+      menuMarkup = nextMenuMarkup
+    }
     const nextNoticeMarkup = renderNotice()
     if (nextNoticeMarkup !== noticeMarkup) {
       chromeRefs.noticeHost.innerHTML = nextNoticeMarkup
@@ -266,9 +287,44 @@ if (!isSplashDocument) {
     ipcRenderer.send('desktop:release-notes:action', { type, ...extra })
   }
 
+  function sendMenuAction(type) {
+    state.menuOpen = false
+    render()
+    ipcRenderer.send('desktop:menu:action', { type })
+  }
+
   function handleAction(target) {
     const action = target?.dataset?.action
     if (!action) return
+    if (action === 'toggle-menu') {
+      state.menuOpen = !state.menuOpen
+      render()
+      return
+    }
+    if (action === 'desktop-check-updates') {
+      sendMenuAction('check-for-updates')
+      return
+    }
+    if (action === 'desktop-release-notes') {
+      sendMenuAction('release-notes')
+      return
+    }
+    if (action === 'desktop-about') {
+      sendMenuAction('about')
+      return
+    }
+    if (action === 'desktop-choose-workspace') {
+      sendMenuAction('choose-workspace')
+      return
+    }
+    if (action === 'desktop-restart') {
+      sendMenuAction('restart')
+      return
+    }
+    if (action === 'desktop-open-browser') {
+      sendMenuAction('open-browser')
+      return
+    }
     if (action === 'notice-collapse') {
       collapseNotice()
       return
@@ -319,7 +375,16 @@ if (!isSplashDocument) {
     .dsh-chrome, .dsh-chrome * { box-sizing: border-box; }
     .dsh-chrome { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; color: #182235; font: 13px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif; }
     .dsh-drag-region { position: fixed; inset: 0 0 auto; height: 36px; pointer-events: auto; -webkit-app-region: drag; }
-    .dsh-notice, .dsh-notice-pill, .dsh-drawer-layer { pointer-events: auto; }
+    .dsh-app-menu, .dsh-notice, .dsh-notice-pill, .dsh-drawer-layer { pointer-events: auto; }
+    .dsh-app-menu { position: fixed; top: 5px; left: 10px; z-index: 2; -webkit-app-region: no-drag; }
+    .dsh-menu-trigger { display: grid; place-items: center; width: 28px; height: 26px; padding: 0; border: 1px solid rgba(93, 126, 177, .2); border-radius: 8px; color: #4775b8; background: rgba(247, 250, 255, .72); box-shadow: 0 4px 12px rgba(31, 50, 83, .1); cursor: pointer; font-size: 15px; -webkit-app-region: no-drag; }
+    .dsh-menu-trigger:hover, .dsh-menu-trigger[aria-expanded="true"] { border-color: rgba(52, 127, 242, .5); color: #2366ca; background: rgba(231, 240, 255, .96); }
+    .dsh-menu-popover { display: grid; min-width: 236px; margin-top: 6px; padding: 6px; border: 1px solid rgba(116, 138, 171, .24); border-radius: 12px; background: rgba(250, 252, 255, .98); box-shadow: 0 16px 40px rgba(23, 43, 72, .2); -webkit-app-region: no-drag; }
+    .dsh-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 7px 9px; border: 0; border-radius: 7px; color: #263a5a; background: transparent; cursor: pointer; text-align: left; font: 12px/1.2 inherit; -webkit-app-region: no-drag; }
+    .dsh-menu-item:hover { color: #1d5ebf; background: #eaf2ff; }
+    .dsh-menu-item span { display: inline-grid; place-items: center; width: 17px; color: #5b80b8; font-size: 14px; }
+    .dsh-menu-item strong { font-weight: 600; }
+    .dsh-menu-separator { height: 1px; margin: 5px 4px; background: rgba(116, 138, 171, .18); }
     .dsh-notice { position: fixed; top: 46px; left: 50%; width: min(760px, calc(100vw - 32px)); transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid rgba(87, 151, 255, .32); border-radius: 14px; background: rgba(247, 250, 255, .94); box-shadow: 0 14px 40px rgba(31, 50, 83, .18), 0 1px 2px rgba(15, 23, 42, .08); backdrop-filter: blur(22px) saturate(160%); animation: dsh-slide-in .28s cubic-bezier(.16,1,.3,1); }
     .dsh-notice-icon { display: grid; flex: 0 0 32px; place-items: center; width: 32px; height: 32px; border-radius: 10px; color: #fff; background: linear-gradient(145deg, #3a8bff, #1b59c5); box-shadow: 0 5px 16px rgba(47, 117, 238, .3); font-size: 16px; }
     .dsh-notice-copy { min-width: 0; flex: 1; display: grid; gap: 1px; }
@@ -396,6 +461,13 @@ if (!isSplashDocument) {
     @keyframes dsh-fade-in { from { opacity: 0; } to { opacity: 1; } }
     @media (prefers-color-scheme: dark) {
       .dsh-chrome { color: #e8eef9; }
+      .dsh-menu-trigger { border-color: rgba(93, 157, 255, .36); color: #a8c7fa; background: rgba(19, 29, 47, .86); }
+      .dsh-menu-trigger:hover, .dsh-menu-trigger[aria-expanded="true"] { color: #d5e5ff; background: rgba(44, 72, 119, .96); }
+      .dsh-menu-popover { border-color: rgba(170, 192, 228, .16); background: rgba(17, 26, 42, .98); box-shadow: 0 16px 40px rgba(0, 0, 0, .4); }
+      .dsh-menu-item { color: #dbe7fa; }
+      .dsh-menu-item:hover { color: #d5e5ff; background: #253b61; }
+      .dsh-menu-item span { color: #9ebdf0; }
+      .dsh-menu-separator { background: rgba(170, 192, 228, .16); }
       .dsh-notice, .dsh-notice-pill { border-color: rgba(93, 157, 255, .36); background: rgba(19, 29, 47, .94); box-shadow: 0 16px 40px rgba(0, 0, 0, .36); }
       .dsh-notice-copy strong { color: #edf4ff; }
       .dsh-notice-copy span { color: #9aabc4; }
@@ -468,9 +540,10 @@ if (!isSplashDocument) {
   function mount() {
     mountGlobalStyles()
     document.documentElement.appendChild(host)
-    shadow.innerHTML = '<style>' + SHADOW_CSS + '</style><div class="dsh-chrome"><div class="dsh-drag-region" aria-hidden="true"></div><div class="dsh-notice-host"></div><div class="dsh-drawer-host">' + renderDrawerShell() + '</div></div>'
+    shadow.innerHTML = '<style>' + SHADOW_CSS + '</style><div class="dsh-chrome"><div class="dsh-drag-region" aria-hidden="true"></div><div class="dsh-menu-host"></div><div class="dsh-notice-host"></div><div class="dsh-drawer-host">' + renderDrawerShell() + '</div></div>'
     const drawerLayer = shadow.querySelector('.dsh-drawer-layer')
     chromeRefs = {
+      menuHost: shadow.querySelector('.dsh-menu-host'),
       noticeHost: shadow.querySelector('.dsh-notice-host'),
       drawerLayer,
       drawer: drawerLayer.querySelector('.dsh-drawer'),
@@ -491,6 +564,25 @@ if (!isSplashDocument) {
     }
     reportFirstPaint()
   }
+
+  document.addEventListener('pointerdown', event => {
+    if (!state.menuOpen || event.composedPath().includes(host)) return
+    state.menuOpen = false
+    render()
+  }, true)
+  window.addEventListener('keydown', event => {
+    if (event.key === 'Alt' || event.key === 'F10') {
+      event.preventDefault()
+      state.menuOpen = !state.menuOpen
+      render()
+      return
+    }
+    if (event.key === 'Escape' && state.menuOpen) {
+      event.preventDefault()
+      state.menuOpen = false
+      render()
+    }
+  })
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true })
   else mount()

@@ -897,6 +897,34 @@ function registerReleaseNotesIpc() {
     openInAppReleaseNotes(context)
   })
 
+  ipcMain.on('desktop:menu:action', (event, action) => {
+    if (!isMainRenderer(event.sender) || !action || typeof action.type !== 'string') return
+
+    if (action.type === 'check-for-updates') {
+      void checkForUpdates(true)
+      return
+    }
+    if (action.type === 'release-notes') {
+      openInAppReleaseNotes({ mode: 'history' })
+      return
+    }
+    if (action.type === 'about') {
+      openInAppReleaseNotes({ mode: 'about' })
+      return
+    }
+    if (action.type === 'choose-workspace') {
+      void chooseWorkspace()
+      return
+    }
+    if (action.type === 'restart') {
+      void requestHarnessRestart()
+      return
+    }
+    if (action.type === 'open-browser') {
+      void openWebUiInBrowser()
+    }
+  })
+
   ipcMain.on('desktop:notice:show', event => {
     if (!isMainRenderer(event.sender) || inAppNotice === undefined) return
     event.sender.send('desktop:notice', inAppNotice)
