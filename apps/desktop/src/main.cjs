@@ -1,8 +1,8 @@
-const { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, nativeTheme, screen, shell, Tray } = require('electron')
+const { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, screen, session, shell, Tray } = require('electron')
 const { spawn } = require('node:child_process')
 const { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } = require('node:fs')
 const { homedir } = require('node:os')
-const { join } = require('node:path')
+const { basename, join, resolve } = require('node:path')
 const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 const { mergeReleaseHistory, normalizeReleaseNotes } = require('./release-notes.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
@@ -27,21 +27,49 @@ const RELEASE_NOTES_FILE_NAME = 'release-notes.json'
 const DESKTOP_PRELOAD_NAME = 'desktop-preload.cjs'
 const SPLASH_PAGE_NAME = 'splash.html'
 const RELEASE_HISTORY_LIMIT = 20
+const RECENT_WORKSPACES_LIMIT = 5
+const DESKTOP_TITLEBAR_HEIGHT = 36
+const LIGHT_WINDOW_SURFACE = '#f4f7fb'
+const DARK_WINDOW_SURFACE = '#0c1220'
+const SLOW_STARTUP_MS = 10_000
 const STARTUP_TIMEOUT_MS = 60_000
+const RENDERER_FIRST_PAINT_TIMEOUT_MS = 5_000
+const SPLASH_FADE_MS = 420
 const STOP_TIMEOUT_MS = 5_000
+const DEFAULT_ZOOM_FACTOR = 1
+const MIN_ZOOM_FACTOR = 0.8
+const MAX_ZOOM_FACTOR = 1.5
+const ZOOM_STEP = 0.1
+const HARNESS_HEALTH_INTERVAL_MS = 10_000
+const HARNESS_HEALTH_TIMEOUT_MS = 3_000
+const HARNESS_HEALTH_FAILURE_THRESHOLD = 3
 
 let window
+let splashWindow
 let tray
 let harness
 let harnessUrl
 let restartPromise
+let activeStartupController
+let queuedRestart = false
 let quitting = false
 let restarting = false
 let releaseNotesContext = { mode: 'history' }
 let rendererReady = false
+let rendererFirstPaint = false
+let rendererFirstPaintWaiters = []
+let lastStartupLog = ''
 let inAppNotice
 let queuedReleaseNotesContext
 let boundsSaveTimer
+let healthTimer
+let healthProbePromise
+let healthGeneration = 0
+let harnessHealth = {
+  state: 'starting',
+  consecutiveFailures: 0,
+  message: '正在启动后台引擎…',
+}
 
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error)
@@ -67,13 +95,15 @@ function updateConfig(patch) {
 
 function themePayload() {
   const isDark = nativeTheme.shouldUseDarkColors
+  const surface = isDark ? DARK_WINDOW_SURFACE : LIGHT_WINDOW_SURFACE
   return {
     theme: isDark ? 'dark' : 'light',
     isDark,
+    surface,
     titleBar: {
-      color: '#00000000',
+      color: surface,
       symbolColor: isDark ? '#f4f7fb' : '#1f2937',
-      height: 36,
+      height: DESKTOP_TITLEBAR_HEIGHT,
     },
   }
 }
@@ -84,6 +114,9 @@ function syncNativeTheme() {
   if (process.platform === 'win32' && typeof window.setTitleBarOverlay === 'function') {
     try { window.setTitleBarOverlay(theme.titleBar) } catch {}
   }
+  if (process.platform === 'win32' && typeof window.setBackgroundColor === 'function') {
+    try { window.setBackgroundColor(theme.surface) } catch {}
+  }
   if (rendererReady) window.webContents.send('desktop:theme-changed', theme)
 }
 
@@ -91,6 +124,26 @@ function sendRenderer(channel, payload) {
   if (window === undefined || window.isDestroyed() || !rendererReady) return false
   window.webContents.send(channel, payload)
   return true
+}
+
+function recentWorkspacePayload() {
+  return {
+    current: workspace(),
+    workspaces: recentWorkspaces(),
+  }
+}
+
+function sendRecentWorkspaceState() {
+  sendRenderer('desktop:workspace:recents', recentWorkspacePayload())
+}
+
+function sendHarnessHealthState() {
+  sendRenderer('desktop:harness-status', harnessHealth)
+}
+
+function setHarnessHealth(patch) {
+  harnessHealth = { ...harnessHealth, ...patch }
+  sendHarnessHealthState()
 }
 
 function queueOrSendReleaseNotes(context) {
@@ -104,8 +157,198 @@ function showInAppNotice(notice) {
 }
 
 function sendSplashStatus(status) {
-  if (window === undefined || window.isDestroyed()) return
-  window.webContents.send('desktop:splash-status', { status })
+  if (splashWindow === undefined || splashWindow.isDestroyed()) return
+  splashWindow.webContents.send('desktop:splash-status', { status })
+}
+
+function sendSplashState(state) {
+  if (splashWindow === undefined || splashWindow.isDestroyed()) return
+  splashWindow.webContents.send('desktop:splash-state', state && typeof state === 'object' ? state : {})
+}
+
+function syncSplashBounds() {
+  if (window === undefined || window.isDestroyed() || splashWindow === undefined || splashWindow.isDestroyed()) return
+  try {
+    const bounds = window.getBounds()
+    if (bounds.width > 0 && bounds.height > 0) splashWindow.setBounds(bounds)
+  } catch {}
+}
+
+function showSplashWindow() {
+  if (splashWindow === undefined || splashWindow.isDestroyed()) return
+  syncSplashBounds()
+  if (!splashWindow.isVisible()) splashWindow.show()
+  splashWindow.focus()
+}
+
+function hideSplashWindow() {
+  const current = splashWindow
+  if (current === undefined || current.isDestroyed()) return Promise.resolve()
+
+  return new Promise(resolve => {
+    let settled = false
+    let timer
+    const finish = () => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve()
+    }
+    current.once('closed', finish)
+    timer = setTimeout(() => {
+      if (!current.isDestroyed()) current.close()
+      setTimeout(finish, 60).unref()
+    }, SPLASH_FADE_MS + 80)
+    timer.unref()
+    try {
+      current.webContents.send('desktop:splash-transition', 'hide')
+    } catch {
+      finish()
+    }
+  })
+}
+
+function destroySplashWindow() {
+  if (splashWindow === undefined || splashWindow.isDestroyed()) return
+  try { splashWindow.destroy() } catch {}
+}
+
+async function createSplashWindow() {
+  if (window === undefined || window.isDestroyed()) throw new Error('Main window is unavailable')
+  splashWindow = new BrowserWindow({
+    ...window.getBounds(),
+    parent: window,
+    show: false,
+    frame: false,
+    resizable: false,
+    movable: false,
+    skipTaskbar: true,
+    backgroundColor: '#0c1220',
+    icon: iconPath(),
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      preload: join(__dirname, DESKTOP_PRELOAD_NAME),
+    },
+  })
+  splashWindow.on('closed', () => {
+    splashWindow = undefined
+  })
+  await splashWindow.loadFile(join(__dirname, SPLASH_PAGE_NAME))
+}
+
+function waitForRendererFirstPaint() {
+  if (rendererFirstPaint) return Promise.resolve()
+  return new Promise(resolve => {
+    const waiter = { resolve, timer: undefined }
+    waiter.timer = setTimeout(() => {
+      rendererFirstPaintWaiters = rendererFirstPaintWaiters.filter(item => item !== waiter)
+      resolve()
+    }, RENDERER_FIRST_PAINT_TIMEOUT_MS)
+    waiter.timer.unref()
+    rendererFirstPaintWaiters.push(waiter)
+  })
+}
+
+function notifyRendererFirstPaint() {
+  rendererFirstPaint = true
+  const waiters = rendererFirstPaintWaiters
+  rendererFirstPaintWaiters = []
+  waiters.forEach(waiter => {
+    clearTimeout(waiter.timer)
+    waiter.resolve()
+  })
+}
+
+function makeStartupError(message, output = '', code = undefined) {
+  const error = new Error(message)
+  error.code = code
+  error.startupLog = output
+  return error
+}
+
+function startupLog(error) {
+  if (error && typeof error.startupLog === 'string' && error.startupLog.trim() !== '') return error.startupLog
+  return lastStartupLog
+}
+
+function recentLogLines(value, limit = 200) {
+  return String(value || '').split(/\r?\n/).slice(-limit).join('\n') || '暂无启动日志。'
+}
+
+function diagnosticsText() {
+  const release = getLocalReleaseInfo()
+  return [
+    `${APP_NAME} diagnostics`,
+    `Generated: ${new Date().toISOString()}`,
+    `Desktop version: ${release.desktopVersion}`,
+    `Distribution version: ${release.distributionVersion}`,
+    `Kernel version: ${release.kernelVersion}`,
+    `Kernel commit: ${release.kernelCommit}`,
+    `Electron: ${process.versions.electron || 'unknown'}`,
+    `Chrome: ${process.versions.chrome || 'unknown'}`,
+    `Node: ${process.versions.node || 'unknown'}`,
+    `Platform: ${process.platform} ${process.arch}`,
+    `Workspace: ${workspace()}`,
+    `Harness URL: ${harnessUrl || 'unavailable'}`,
+    '',
+    'Last 200 startup log lines:',
+    recentLogLines(lastStartupLog),
+  ].join('\n')
+}
+
+function sendDiagnosticsResult(sender, payload) {
+  try { sender.send('desktop:diagnostics:result', payload) } catch {}
+}
+
+function exportDiagnostics(sender) {
+  clipboard.writeText(diagnosticsText())
+  sendDiagnosticsResult(sender, { kind: 'success', message: '排障信息已复制到剪贴板。' })
+}
+
+async function clearDesktopStorage(sender) {
+  const result = await dialog.showMessageBox(visibleDialogParent(), {
+    type: 'warning',
+    buttons: ['清理并重启', '取消'],
+    defaultId: 1,
+    cancelId: 1,
+    title: '清理本地缓存与存储',
+    message: '将清理 Web UI 的本地缓存、IndexedDB 和 LocalStorage。',
+    detail: '登录 cookies 会保留，但本地界面状态和缓存数据会被删除，应用随后重启。是否继续？',
+  })
+  if (result.response !== 0) return
+  try {
+    await session.defaultSession.clearStorageData({
+      storages: ['appcache', 'filesystem', 'indexdb', 'localstorage', 'shadercache', 'websql', 'serviceworkers', 'cachestorage'],
+    })
+    await session.defaultSession.clearCache()
+    sendDiagnosticsResult(sender, { kind: 'success', message: '本地存储已清理，正在重启应用…' })
+    await requestHarnessRestart()
+  } catch (error) {
+    sendDiagnosticsResult(sender, { kind: 'error', message: `清理失败：${errorMessage(error)}` })
+  }
+}
+
+function isPortInUseError(error) {
+  const value = `${errorMessage(error)}\n${startupLog(error)}`
+  return /EADDRINUSE|address already in use|only one usage of each socket address|端口[^\n]*(占用|使用)|bind[^\n]*(failed|error)/i.test(value)
+}
+
+function startupStateForError(error) {
+  const portInUse = isPortInUseError(error)
+  const log = startupLog(error) || errorMessage(error)
+  return {
+    kind: 'error',
+    title: portInUse ? '启动端口被占用' : '后台启动失败',
+    message: portInUse
+      ? '本地服务端口已被其他程序占用。请关闭占用程序后重试，或切换工作区。'
+      : '后台引擎没有成功启动，请查看启动日志后重试。',
+    detail: portInUse
+      ? '如果问题持续存在，请确认没有其他 DeepSeek Harness 实例正在运行。'
+      : errorMessage(error),
+    log,
+  }
 }
 
 function currentWindowBounds() {
@@ -141,15 +384,84 @@ function scheduleWindowBoundsPersistence() {
 function workspace() {
   try {
     const saved = readConfig().workspace
-    if (typeof saved === 'string' && existsSync(saved) && statSync(saved).isDirectory()) return saved
+    const normalized = normalizeWorkspacePath(saved)
+    if (normalized !== undefined && isWorkspaceDirectory(normalized)) return normalized
   } catch {
     // A missing or invalid preference uses the documented home-directory default.
   }
   return homedir()
 }
 
+function normalizeWorkspacePath(path) {
+  if (typeof path !== 'string' || path.trim() === '') return undefined
+  try {
+    return resolve(path)
+  } catch {
+    return undefined
+  }
+}
+
+function isWorkspaceDirectory(path) {
+  try {
+    return typeof path === 'string' && existsSync(path) && statSync(path).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+function recentWorkspaces() {
+  const configured = readConfig().recentWorkspaces
+  if (!Array.isArray(configured)) return []
+  const seen = new Set()
+  const result = []
+  for (const value of configured) {
+    const normalized = normalizeWorkspacePath(value)
+    if (normalized === undefined || seen.has(normalized) || !isWorkspaceDirectory(normalized)) continue
+    seen.add(normalized)
+    result.push(normalized)
+    if (result.length >= RECENT_WORKSPACES_LIMIT) break
+  }
+  return result
+}
+
 function saveWorkspace(path) {
-  updateConfig({ workspace: path })
+  const normalized = normalizeWorkspacePath(path)
+  if (normalized === undefined || !isWorkspaceDirectory(normalized)) return false
+  const configured = readConfig().recentWorkspaces
+  const previous = Array.isArray(configured) ? configured : []
+  const recents = [normalized, ...previous]
+    .map(normalizeWorkspacePath)
+    .filter((value, index, values) => value !== undefined && values.indexOf(value) === index && isWorkspaceDirectory(value))
+    .slice(0, RECENT_WORKSPACES_LIMIT)
+  updateConfig({ workspace: normalized, recentWorkspaces: recents })
+  sendRecentWorkspaceState()
+  return true
+}
+
+function clearRecentWorkspaces() {
+  updateConfig({ recentWorkspaces: [] })
+  sendRecentWorkspaceState()
+}
+
+function recentWorkspaceMenuItems() {
+  const current = workspace()
+  const entries = recentWorkspaces()
+  const items = entries.length === 0
+    ? [{ label: '暂无最近工作区', enabled: false }]
+    : entries.map(path => ({
+      label: `${path === current ? '✓ ' : ''}${basename(path)} — ${path}`,
+      click: () => { void switchWorkspace(path) },
+    }))
+  items.push({ type: 'separator' })
+  items.push({
+    label: '清空最近工作区 / Clear Recent Workspaces',
+    enabled: entries.length > 0,
+    click: () => {
+      clearRecentWorkspaces()
+      rebuildMenus()
+    },
+  })
+  return items
 }
 
 function iconPath() {
@@ -170,6 +482,7 @@ function appendOutput(current, chunk) {
 
 function stopHarness() {
   return new Promise(resolve => {
+    stopHarnessHealthMonitor()
     harnessUrl = undefined
     if (harness === undefined) {
       resolve()
@@ -227,7 +540,8 @@ function resolveUnifiedDshHome() {
   return targetHome
 }
 
-function startHarness(cwd) {
+function startHarness(cwd, signal) {
+  lastStartupLog = ''
   const packagedBin = join(__dirname, '..', 'lib', 'packaged-bin.js')
   if (!existsSync(packagedBin)) {
     throw new Error(`The packaged Harness entry is missing: ${packagedBin}. Run the desktop build first.`)
@@ -255,21 +569,49 @@ function startHarness(cwd) {
     let output = ''
     let ready = false
     let readyUrlSeen = false
+    let portIssueShown = false
     let settled = false
-    const timeout = setTimeout(() => {
-      child.kill()
-      fail(`Harness startup timed out.`)
-    }, STARTUP_TIMEOUT_MS)
-    timeout.unref()
+    let timeout
+    let slowTimer
     const finish = (callback) => {
       if (settled) return
       settled = true
       clearTimeout(timeout)
+      clearTimeout(slowTimer)
+      signal?.removeEventListener('abort', onAbort)
       callback()
     }
-    const fail = message => finish(() => reject(new Error(`${message}\n\n${output}`)))
+    const fail = (message, code) => finish(() => {
+      lastStartupLog = output
+      reject(makeStartupError(message, output, code))
+    })
+    const onAbort = () => {
+      child.kill()
+      fail('Harness startup was cancelled.', 'ABORTED')
+    }
+    timeout = setTimeout(() => {
+      child.kill()
+      fail('Harness startup timed out.', 'TIMEOUT')
+    }, STARTUP_TIMEOUT_MS)
+    timeout.unref()
+    slowTimer = setTimeout(() => {
+      if (portIssueShown) return
+      sendSplashState({
+        kind: 'slow',
+        title: '启动时间较长',
+        message: '后台仍在启动中，可以查看日志、重试，或切换工作区。',
+        log: output,
+      })
+    }, SLOW_STARTUP_MS)
+    slowTimer.unref()
+    signal?.addEventListener('abort', onAbort, { once: true })
+    if (signal?.aborted) onAbort()
     const onOutput = chunk => {
       output = appendOutput(output, chunk)
+      if (!portIssueShown && isPortInUseError(makeStartupError('', output, 'EADDRINUSE'))) {
+        portIssueShown = true
+        sendSplashState(startupStateForError(makeStartupError('Port is already in use.', output, 'EADDRINUSE')))
+      }
       const url = readyUrl(output)
       if (url !== undefined && !readyUrlSeen) {
         readyUrlSeen = true
@@ -281,16 +623,17 @@ function startHarness(cwd) {
           },
           error => {
             child.kill()
-            fail(`Harness host was not ready: ${error instanceof Error ? error.message : String(error)}`)
+            fail(`Harness host was not ready: ${error instanceof Error ? error.message : String(error)}`, 'NOT_READY')
           },
         )
       }
     }
     child.stdout.on('data', onOutput)
     child.stderr.on('data', onOutput)
-    child.once('error', error => fail(`Harness failed to start: ${error.message}`))
+    child.once('error', error => fail(`Harness failed to start: ${error.message}`, error.code || 'SPAWN_ERROR'))
     child.once('exit', code => {
       if (harness === child) {
+        stopHarnessHealthMonitor('disconnected', `后台引擎已退出（code ${code ?? 'unknown'}）`)
         harness = undefined
         harnessUrl = undefined
         if (!quitting && !restarting && ready) {
@@ -301,30 +644,52 @@ function startHarness(cwd) {
           })
         }
       }
-      if (!ready) fail(`Harness exited before it was ready (code ${code}).`)
+      if (!ready) fail(`Harness exited before it was ready (code ${code}).`, `EXIT_${code ?? 'UNKNOWN'}`)
     })
   })
 }
 
 async function restartHarness() {
   if (restartPromise !== undefined) return restartPromise
+  const controller = new AbortController()
+  let restartAgain = false
   const currentRestart = (async () => {
     restarting = true
+    activeStartupController = controller
+    showSplashWindow()
+    sendSplashState({ kind: 'loading' })
     try {
       sendSplashStatus('engine')
       await stopHarness()
-      const url = await startHarness(workspace())
+      const url = await startHarness(workspace(), controller.signal)
+      if (controller.signal.aborted) throw makeStartupError('Harness startup was cancelled.', lastStartupLog, 'ABORTED')
       harnessUrl = url
+      startHarnessHealthMonitor()
       sendSplashStatus('interface')
-      if (window !== undefined && !window.isDestroyed()) await window.loadURL(url)
+      if (window !== undefined && !window.isDestroyed()) {
+        await window.loadURL(url)
+        if (controller.signal.aborted) throw makeStartupError('Harness startup was cancelled.', lastStartupLog, 'ABORTED')
+        if (!window.isVisible()) window.show()
+        await waitForRendererFirstPaint()
+        if (controller.signal.aborted) throw makeStartupError('Harness startup was cancelled.', lastStartupLog, 'ABORTED')
+        sendSplashState({ kind: 'ready' })
+        showWindow()
+        await hideSplashWindow()
+      }
+      return true
     } catch (error) {
-      await dialog.showMessageBox({
-        type: 'error',
-        title: `${APP_NAME} failed to start`,
-        message: errorMessage(error),
-      })
+      harnessUrl = undefined
+      if (!controller.signal.aborted) stopHarnessHealthMonitor('disconnected', errorMessage(error))
+      if (!controller.signal.aborted && !quitting) sendSplashState(startupStateForError(error))
+      return false
     } finally {
+      if (activeStartupController === controller) activeStartupController = undefined
       restarting = false
+      restartAgain = queuedRestart && !quitting
+      if (restartAgain) {
+        queuedRestart = false
+        await stopHarness()
+      }
     }
   })()
   restartPromise = currentRestart
@@ -332,7 +697,111 @@ async function restartHarness() {
     await currentRestart
   } finally {
     if (restartPromise === currentRestart) restartPromise = undefined
+    if (restartAgain && !quitting) void restartHarness()
   }
+}
+
+function requestHarnessRestart() {
+  if (restartPromise !== undefined) {
+    queuedRestart = true
+    activeStartupController?.abort()
+    return restartPromise
+  }
+  return restartHarness()
+}
+
+function normalizeZoomFactor(value) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return DEFAULT_ZOOM_FACTOR
+  return Math.min(MAX_ZOOM_FACTOR, Math.max(MIN_ZOOM_FACTOR, Math.round(numeric * 100) / 100))
+}
+
+function restoreRendererZoom() {
+  if (window === undefined || window.isDestroyed()) return
+  const factor = normalizeZoomFactor(readConfig().zoomFactor)
+  try { window.webContents.setZoomFactor(factor) } catch {}
+}
+
+function setRendererZoom(factor) {
+  if (window === undefined || window.isDestroyed()) return
+  const normalized = normalizeZoomFactor(factor)
+  try {
+    window.webContents.setZoomFactor(normalized)
+    updateConfig({ zoomFactor: normalized })
+  } catch {}
+}
+
+function adjustRendererZoom(action) {
+  if (window === undefined || window.isDestroyed()) return
+  let current = DEFAULT_ZOOM_FACTOR
+  try { current = window.webContents.getZoomFactor() } catch {}
+  if (action === 'reset') setRendererZoom(DEFAULT_ZOOM_FACTOR)
+  if (action === 'in') setRendererZoom(current + ZOOM_STEP)
+  if (action === 'out') setRendererZoom(current - ZOOM_STEP)
+}
+
+function reloadRenderer() {
+  if (window === undefined || window.isDestroyed()) return
+  rendererReady = false
+  rendererFirstPaint = false
+  window.webContents.reload()
+}
+
+async function probeHarnessHealth(url) {
+  const response = await fetch(`${url}/api/settings.describe`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'client-request',
+      rpcId: `desktop-health-${Date.now()}`,
+      method: 'settings.describe',
+      payload: {},
+    }),
+    signal: AbortSignal.timeout(HARNESS_HEALTH_TIMEOUT_MS),
+  })
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  const body = await response.json()
+  if (!body?.result?.ok) throw new Error(body?.result?.error?.message || '后台引擎未响应 settings.describe')
+}
+
+function runHarnessHealthProbe() {
+  if (harnessUrl === undefined || healthProbePromise !== undefined) return
+  const generation = healthGeneration
+  const url = harnessUrl
+  healthProbePromise = (async () => {
+    try {
+      await probeHarnessHealth(url)
+      if (generation !== healthGeneration) return
+      setHarnessHealth({ state: 'connected', consecutiveFailures: 0, message: '' })
+    } catch (error) {
+      if (generation !== healthGeneration) return
+      const failures = harnessHealth.consecutiveFailures + 1
+      setHarnessHealth({
+        state: failures >= HARNESS_HEALTH_FAILURE_THRESHOLD ? 'disconnected' : 'checking',
+        consecutiveFailures: failures,
+        message: errorMessage(error),
+      })
+    } finally {
+      if (generation === healthGeneration) healthProbePromise = undefined
+    }
+  })()
+}
+
+function stopHarnessHealthMonitor(state = 'starting', message = '正在启动后台引擎…') {
+  healthGeneration += 1
+  if (healthTimer !== undefined) clearInterval(healthTimer)
+  healthTimer = undefined
+  healthProbePromise = undefined
+  harnessHealth = { state, consecutiveFailures: 0, message }
+  sendHarnessHealthState()
+}
+
+function startHarnessHealthMonitor() {
+  if (harnessUrl === undefined) return
+  stopHarnessHealthMonitor('checking', '正在检查后台引擎连接…')
+  healthTimer = setInterval(runHarnessHealthProbe, HARNESS_HEALTH_INTERVAL_MS)
+  healthTimer.unref()
+  runHarnessHealthProbe()
 }
 
 async function openWebUiInBrowser() {
@@ -349,20 +818,53 @@ async function openWebUiInBrowser() {
   void shell.openExternal(harnessUrl)
 }
 
-async function chooseWorkspace() {
-  if (window !== undefined && !window.isDestroyed() && !window.isVisible()) {
-    showWindow()
+function visibleDialogParent() {
+  if (window !== undefined && !window.isDestroyed() && window.isVisible()) return window
+  if (splashWindow !== undefined && !splashWindow.isDestroyed() && splashWindow.isVisible()) return splashWindow
+  return undefined
+}
+
+async function confirmWorkspaceSwitch(targetPath, parentWindow = visibleDialogParent()) {
+  if (targetPath === workspace()) return true
+  const result = await dialog.showMessageBox(parentWindow, {
+    type: 'warning',
+    buttons: ['立即切换', '取消'],
+    defaultId: 1,
+    cancelId: 1,
+    title: '切换工作区确认',
+    message: '切换工作区将重新启动后台服务。',
+    detail: '当前会话或正在运行的后台任务可能被中断，是否继续？',
+  })
+  return result.response === 0
+}
+
+async function switchWorkspace(path, parentWindow = visibleDialogParent()) {
+  const targetPath = normalizeWorkspacePath(path)
+  if (targetPath === undefined || !isWorkspaceDirectory(targetPath)) {
+    await dialog.showMessageBox(parentWindow, {
+      type: 'error',
+      title: '工作区不可用',
+      message: '所选工作区不存在或不是文件夹。',
+      buttons: ['确定'],
+    })
+    return false
   }
-  const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible() ? window : undefined
+  if (!await confirmWorkspaceSwitch(targetPath, parentWindow)) return false
+  saveWorkspace(targetPath)
+  await requestHarnessRestart()
+  rebuildMenus()
+  return true
+}
+
+async function chooseWorkspace() {
+  const parentWindow = visibleDialogParent()
   const result = await dialog.showOpenDialog(parentWindow, {
     title: 'Choose workspace',
     defaultPath: workspace(),
     properties: ['openDirectory'],
   })
   if (result.canceled || result.filePaths[0] === undefined) return
-  saveWorkspace(result.filePaths[0])
-  await restartHarness()
-  rebuildMenus()
+  await switchWorkspace(result.filePaths[0], parentWindow)
 }
 
 const https = require('node:https')
@@ -578,7 +1080,7 @@ function getCurrentUpdateStatus() {
   return reconciled
 }
 
-async function buildReleaseNotesData(context = {}) {
+async function buildReleaseNotesData(context = {}, options = {}) {
   const localInfo = getLocalReleaseInfo()
   const localRelease = normalizeReleaseNotes({
     ...localInfo.releaseNotes,
@@ -586,12 +1088,14 @@ async function buildReleaseNotesData(context = {}) {
   }, localInfo.distributionVersion)
   const cached = cachedReleaseHistory()
   let remote = []
-  let offline = false
-  try {
-    remote = await queryReleaseHistory()
-    if (remote.length > 0) saveReleaseHistory(remote)
-  } catch {
-    offline = true
+  let offline = options.fetchRemote !== true
+  if (options.fetchRemote === true) {
+    try {
+      remote = await queryReleaseHistory()
+      if (remote.length > 0) saveReleaseHistory(remote)
+    } catch {
+      offline = true
+    }
   }
 
   const update = context.update === undefined ? undefined : normalizeReleaseNotes(context.update)
@@ -642,10 +1146,36 @@ function isMainRenderer(sender) {
   return window !== undefined && !window.isDestroyed() && window.webContents.id === sender.id
 }
 
+function isSplashRenderer(sender) {
+  return splashWindow !== undefined && !splashWindow.isDestroyed() && splashWindow.webContents.id === sender.id
+}
+
 function updateNoticeKind(status) {
   if (status?.state === 'failed') return 'failed'
   if (status?.state === 'interrupted') return 'interrupted'
   return 'updated'
+}
+
+async function confirmAndStartPortableUpdate(sender, targetVersion) {
+  const currentStatus = getCurrentUpdateStatus()
+  if (isActiveUpdateStatus(currentStatus)) {
+    sender.send('desktop:update-state', { label: '更新已在进行中…' })
+    return
+  }
+  const result = await dialog.showMessageBox(visibleDialogParent(), {
+    type: 'question',
+    buttons: ['立即更新', '取消'],
+    defaultId: 1,
+    cancelId: 1,
+    title: '确认更新',
+    message: `即将更新 DeepSeek Harness 到 v${targetVersion || '最新版本'}。`,
+    detail: '应用会在更新前退出，完成后自动重新启动。是否继续？',
+  })
+  if (result.response !== 0) return
+  sender.send('desktop:update-state', { label: '更新器已启动，正在安全退出应用…' })
+  if (!triggerPortableUpdate(targetVersion)) {
+    sender.send('desktop:update-state', { label: '无法启动便携版更新器，已打开发布页' })
+  }
 }
 
 function registerReleaseNotesIpc() {
@@ -653,6 +1183,9 @@ function registerReleaseNotesIpc() {
     if (!isMainRenderer(event.sender)) return
     rendererReady = true
     event.sender.send('desktop:theme-changed', themePayload())
+    event.sender.send('desktop:workspace:recents', recentWorkspacePayload())
+    restoreRendererZoom()
+    event.sender.send('desktop:harness-status', harnessHealth)
     if (inAppNotice !== undefined) event.sender.send('desktop:notice', inAppNotice)
     if (queuedReleaseNotesContext !== undefined) {
       event.sender.send('desktop:release-notes:open', queuedReleaseNotesContext)
@@ -660,7 +1193,28 @@ function registerReleaseNotesIpc() {
     }
   })
 
+  ipcMain.on('desktop:renderer-first-paint', event => {
+    if (!isMainRenderer(event.sender)) return
+    notifyRendererFirstPaint()
+  })
+
+  ipcMain.on('desktop:splash-action', (event, action = {}) => {
+    if (!isSplashRenderer(event.sender) || !action || typeof action.type !== 'string') return
+    if (action.type === 'retry') {
+      void requestHarnessRestart()
+      return
+    }
+    if (action.type === 'choose-workspace') {
+      void chooseWorkspace()
+    }
+  })
+
   ipcMain.handle('desktop:release-notes:get-data', async (event, context = {}) => {
+    if (!isMainRenderer(event.sender)) throw new Error('Unknown release notes client')
+    return buildReleaseNotesData(context, { fetchRemote: true })
+  })
+
+  ipcMain.handle('desktop:release-notes:get-cached-data', async (event, context = {}) => {
     if (!isMainRenderer(event.sender)) throw new Error('Unknown release notes client')
     return buildReleaseNotesData(context)
   })
@@ -668,6 +1222,69 @@ function registerReleaseNotesIpc() {
   ipcMain.on('desktop:release-notes:open', (event, context = {}) => {
     if (!isMainRenderer(event.sender)) return
     openInAppReleaseNotes(context)
+  })
+
+  ipcMain.on('desktop:menu:action', (event, action) => {
+    if (!isMainRenderer(event.sender) || !action || typeof action.type !== 'string') return
+
+    if (action.type === 'check-for-updates') {
+      void checkForUpdates(true)
+      return
+    }
+    if (action.type === 'release-notes') {
+      openInAppReleaseNotes({ mode: 'history' })
+      return
+    }
+    if (action.type === 'about') {
+      openInAppReleaseNotes({ mode: 'about' })
+      return
+    }
+    if (action.type === 'choose-workspace') {
+      void chooseWorkspace()
+      return
+    }
+    if (action.type === 'recent-workspace') {
+      void switchWorkspace(action.path)
+      return
+    }
+    if (action.type === 'clear-recent-workspaces') {
+      clearRecentWorkspaces()
+      rebuildMenus()
+      return
+    }
+    if (action.type === 'reload-ui') {
+      reloadRenderer()
+      return
+    }
+    if (action.type === 'export-diagnostics') {
+      exportDiagnostics(event.sender)
+      return
+    }
+    if (action.type === 'clear-storage') {
+      void clearDesktopStorage(event.sender)
+      return
+    }
+    if (action.type === 'restart') {
+      void requestHarnessRestart()
+      return
+    }
+    if (action.type === 'open-browser') {
+      void openWebUiInBrowser()
+    }
+  })
+
+  ipcMain.on('desktop:zoom', (event, action = {}) => {
+    if (!isMainRenderer(event.sender) || !action || typeof action.type !== 'string') return
+    if (action.type === 'reset' || action.type === 'in' || action.type === 'out') adjustRendererZoom(action.type)
+  })
+
+  ipcMain.on('desktop:health:action', (event, action = {}) => {
+    if (!isMainRenderer(event.sender) || !action || typeof action.type !== 'string') return
+    if (action.type === 'reconnect') {
+      runHarnessHealthProbe()
+      return
+    }
+    if (action.type === 'restart-engine') void requestHarnessRestart()
   })
 
   ipcMain.on('desktop:notice:show', event => {
@@ -684,18 +1301,10 @@ function registerReleaseNotesIpc() {
     }
 
     if (action.type === 'update') {
-      const currentStatus = getCurrentUpdateStatus()
-      if (isActiveUpdateStatus(currentStatus)) {
-        event.sender.send('desktop:update-state', { label: '更新已在进行中…' })
-        return
-      }
       const targetVersion = typeof action.targetVersion === 'string' && action.targetVersion.trim() !== ''
         ? action.targetVersion.trim()
         : (releaseNotesContext.update?.version || inAppNotice?.release?.version || '')
-      event.sender.send('desktop:update-state', { label: '更新器已启动，正在安全退出应用…' })
-      if (!triggerPortableUpdate(targetVersion)) {
-        event.sender.send('desktop:update-state', { label: '无法启动便携版更新器，已打开发布页' })
-      }
+      void confirmAndStartPortableUpdate(event.sender, targetVersion)
       return
     }
 
@@ -866,17 +1475,20 @@ function menuItems() {
     { label: 'Open Web UI in Browser', click: () => { void openWebUiInBrowser() } },
     { type: 'separator' },
     { label: 'Choose Workspace / 选择工作区', click: () => { void chooseWorkspace() } },
+    { label: 'Recent Workspaces / 最近工作区', submenu: recentWorkspaceMenuItems() },
     { label: `Open Workspace (${workspace()})`, click: () => { void shell.openPath(workspace()) } },
     {
       label: 'Use Home as Workspace',
       enabled: workspace() !== homedir(),
       click: async () => {
-        saveWorkspace(homedir())
-        await restartHarness()
-        rebuildMenus()
+        await switchWorkspace(homedir())
       },
     },
-    { label: 'Restart Harness', click: () => { void restartHarness() } },
+    { label: 'Refresh Interface / 刷新界面', accelerator: 'CmdOrCtrl+R', click: reloadRenderer },
+    { label: 'Restart Harness / 完全重启服务', accelerator: 'CmdOrCtrl+Shift+R', click: () => { void requestHarnessRestart() } },
+    { type: 'separator' },
+    { label: 'Copy Diagnostics / 复制排障信息', click: () => { exportDiagnostics({ send: () => {} }) } },
+    { label: 'Clear Web Storage / 清理本地缓存与存储', click: () => { void clearDesktopStorage({ send: () => {} }) } },
     { type: 'separator' },
     { label: 'Quit', accelerator: process.platform === 'darwin' ? 'Command+Q' : 'Alt+F4', click: () => app.quit() },
   ]
@@ -918,9 +1530,7 @@ async function createApp() {
     show: false,
     title: APP_NAME,
     icon: iconPath(),
-    backgroundColor: process.platform === 'win32'
-      ? '#00000000'
-      : (nativeTheme.shouldUseDarkColors ? '#0c1220' : '#f4f7fb'),
+    backgroundColor: themePayload().surface,
     autoHideMenuBar: true,
     ...nativeWindowOptions,
     webPreferences: {
@@ -933,19 +1543,25 @@ async function createApp() {
 
   window.webContents.on('did-start-loading', () => {
     rendererReady = false
+    rendererFirstPaint = false
   })
   window.on('close', event => {
     persistWindowBounds()
     if (!quitting) {
       event.preventDefault()
       window.hide()
+      if (splashWindow !== undefined && !splashWindow.isDestroyed()) splashWindow.hide()
     }
   })
   for (const eventName of ['resize', 'move', 'maximize', 'unmaximize']) {
-    window.on(eventName, scheduleWindowBoundsPersistence)
+    window.on(eventName, () => {
+      syncSplashBounds()
+      scheduleWindowBoundsPersistence()
+    })
   }
   window.on('closed', () => {
     rendererReady = false
+    destroySplashWindow()
     window = undefined
   })
   window.webContents.setWindowOpenHandler(({ url }) => {
@@ -957,16 +1573,18 @@ async function createApp() {
   tray.setToolTip(APP_NAME)
   tray.on('click', () => window !== undefined && window.isVisible() ? window.hide() : showWindow())
   tray.on('double-click', () => showWindow())
+  saveWorkspace(workspace())
   rebuildMenus()
 
   try {
-    await window.loadFile(join(__dirname, SPLASH_PAGE_NAME))
     if (shouldMaximize) window.maximize()
-    showWindow()
+    await createSplashWindow()
+    showSplashWindow()
     sendSplashStatus('engine')
     await restartHarness()
   } catch (error) {
-    await dialog.showMessageBox(window, {
+    if (splashWindow !== undefined && !splashWindow.isDestroyed()) sendSplashState(startupStateForError(error))
+    else await dialog.showMessageBox(window, {
       type: 'error',
       title: `${APP_NAME} failed to start`,
       message: errorMessage(error),
@@ -995,6 +1613,7 @@ if (!gotLock) {
     if (tray !== undefined && !tray.isDestroyed()) {
       tray.destroy()
     }
+    destroySplashWindow()
     if (harness !== undefined) {
       event.preventDefault()
       void stopHarness().then(() => app.quit())
