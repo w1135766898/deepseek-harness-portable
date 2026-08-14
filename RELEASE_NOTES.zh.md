@@ -32,8 +32,8 @@ Windows x64 便携版 · 2026-08-15
 
 ## 校验和与安全
 
-- 便携 ZIP SHA-256：由 1.0.6 发布构建生成，并同步写入 SHA256SUMS.txt。
-- 安装程序 SHA-256：由 1.0.6 发布构建生成，并同步写入 SHA256SUMS.txt。
+- 便携 ZIP SHA-256：`B05743443CB0BB8CBB4CB8BC2BB114D92C5B15E98B190F8D02A6D86A6E960317`
+- 安装程序 SHA-256：`4DA26E0BCA75DC3BA10DC2634C30869EF870F98BF6F056E7485765FA273641E7`
 - 运行前请核对 SHA256SUMS.txt。
 - 可执行文件未签名，Windows SmartScreen 可能提示风险。
 - 更新时，会话、凭据、设置和附件保存在发布目录之外。
