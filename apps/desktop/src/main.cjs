@@ -716,6 +716,7 @@ function registerReleaseNotesIpc() {
 }
 
 function openInAppReleaseNotes(context = {}) {
+  showWindow()
   releaseNotesContext = { ...context }
   queueOrSendReleaseNotes(releaseNotesContext)
 }
