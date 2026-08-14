@@ -587,6 +587,33 @@ class DesktopExeBuild {
       await copyFile(join(root, name), destination)
       console.log(`build-desktop-web-exe: staged ${name} into ${destination}`)
     }
+
+    if (this.cli.electron) {
+      const rootDir = dirname(product)
+      const rootFiles = [
+        'LICENSE',
+        'THIRD_PARTY_NOTICES.md',
+        'smoke-native.cjs',
+        'apps/desktop/start-web.cmd',
+        'apps/desktop/start-desktop.cmd',
+        'apps/desktop/一键解除拦截(自签名信任).bat',
+        'apps/desktop/update.cmd',
+        'apps/desktop/update.ps1',
+        'apps/desktop/dsh.cmd',
+      ]
+      for (const relPath of rootFiles) {
+        const source = join(root, relPath)
+        if (!existsSync(source)) continue
+        const basename = relPath.includes('/') ? relPath.slice(relPath.lastIndexOf('/') + 1) : relPath
+        const dest = join(rootDir, basename)
+        if (this.cli.dryRun) {
+          console.log(`build-desktop-web-exe: [dry-run] cp ${source} ${dest}`)
+        } else {
+          await copyFile(source, dest)
+          console.log(`build-desktop-web-exe: staged ${basename} into ${dest}`)
+        }
+      }
+    }
   }
 
   /**

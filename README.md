@@ -4,35 +4,30 @@ English | [中文](README.zh.md)
 
 This directory documents the personal Windows distribution channel for DeepSeek Harness. The release is an unpacked Electron desktop shell that starts the local Web runtime in its own window. It is not an official signed release.
 
-## Download
+## Quick Online Install & Auto-Update
 
-Download the complete `DeepSeek Harness-win32-x64` directory. Keep every file in the native directory together.
+### 1. One-Click Online Installer (Recommended)
+Paste and run the following command in Windows PowerShell to automatically download, extract, create desktop shortcuts, and configure PATH:
 
-## Why this project
+```powershell
+irm https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
+```
 
-This is a distribution layer for DeepSeek Harness itself, not a replacement chat client. The Web UI and plugin runtime remain the Harness product, including its profiles, sessions, skills, tools, workspace flow, and composable plugin graph; this repository adds a Windows delivery path around that runtime.
+- After installation, launch **DeepSeek Harness** directly from your Desktop, or type **`dsh`** in any terminal.
 
-The comparison below uses adjacent public projects as reference points rather than treating different product categories as direct substitutes. Repositories change over time; the notes describe their public README and release model checked on 2026-08-14.
+### 2. Fast In-Place Updates (No large re-downloads)
+When a new release is published, update seamlessly in seconds while preserving all workspace data and settings:
+- **Option A**: Double-click **`update.cmd`** in the application directory.
+- **Option B**: Run the update command in any terminal:
+  ```powershell
+  dsh update
+  ```
 
-| Project | Primary focus | What this project adds for a Windows user |
-| --- | --- | --- |
-| [Eddie0521/turn-deepseek-into-desktop](https://github.com/Eddie0521/turn-deepseek-into-desktop) | Minimal native macOS wrapper with one-command install, menu-bar residency, loopback binding, and telemetry disabled. | The same wrapper direction is carried to Windows x64 as an unpacked Electron shell with a tray, workspace memory, and a portable directory; it does not require Xcode or an installer. |
-| [doxdk/deepseek-desktop](https://github.com/doxdk/deepseek-desktop) | Electron desktop access to the DeepSeek chat site, with localStorage/cookies and an installer-oriented flow. | Packages the DeepSeek Harness agent runtime rather than only a chat page, while keeping profiles, plugins, sessions, tools, and workspace behavior in a native Windows shell. |
-| [DeepFundAI/ai-browser](https://github.com/DeepFundAI/ai-browser) | A broader Electron/Next.js AI browser with multimodal automation, scheduling, social integrations, file management, and multiple providers. | Keeps the scope focused on DeepSeek Harness fidelity and offers a smaller, easier-to-copy Windows distribution instead of requiring an application build environment. |
-| [RealZST/HarnessKit](https://github.com/RealZST/HarnessKit) | A cross-agent management center for skills, MCP servers, plugins, hooks, configs, and rules. | Optimizes for running one complete Harness runtime faithfully in a native window/tray shell with the same packaged backend. |
+---
 
-### Main advantages
+## Manual Portable Usage Options
 
-- **Upstream fidelity:** the desktop layer wraps the real DeepSeek Harness composition instead of reimplementing a parallel chat or agent client.
-- **Actual portability:** copy the complete Electron directory to another Windows x64 machine; it includes its runtime and does not require Node.js or an installer.
-- **Local-first operation:** the server binds to `127.0.0.1` by default, desktop-channel telemetry is disabled, and API keys are entered at runtime rather than embedded in the artifact.
-- **Practical Windows packaging:** the build includes the application icon, packaged runtime dependencies, shipped presets, and the supporting notices needed to move the distribution as a folder.
-
-This narrower focus is intentional: HarnessKit and AI Browser cover broader multi-agent or automation management, while this project aims to make the DeepSeek Harness experience itself easy to carry and launch on Windows.
-
-## Launch and Usage Options
-
-After extracting the complete `DeepSeek Harness-win32-x64` directory, three launch options are available:
+If you download the standalone release zip (`DeepSeek-Harness-*-win32-x64.zip`), three launch options are available after extraction:
 
 1. **Option 1: Double-click `start-web.cmd` (Recommended ⭐⭐⭐⭐⭐, 100% immune to SAC)**
    - Starts the Web engine via the official, Microsoft-trusted Node.js runtime and opens `http://127.0.0.1:3080` in your default browser.
@@ -44,6 +39,7 @@ After extracting the complete `DeepSeek Harness-win32-x64` directory, three laun
    - Loads the native application window using the official signed Electron binary.
 
 Set `DEEPSEEK_API_KEY` in the launch environment or enter it in the Web UI settings. The desktop distribution disables telemetry for the local desktop channel.
+
 
 ## Data and portability
 

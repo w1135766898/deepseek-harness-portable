@@ -4,35 +4,30 @@
 
 这个目录说明 DeepSeek Harness 的个人 Windows 分发渠道。发布物是未封装的 Electron 原生桌面外壳，会在自己的窗口中启动本地 Web 运行时。它不是官方签名版本。
 
-## 下载
+## 快速安装与自动更新
 
-请下载完整的 `DeepSeek Harness-win32-x64` 目录。目录中的所有文件必须保持在一起。
+### 1. 一键在线安装（推荐）
+在 Windows PowerShell 中粘贴并运行以下命令，即可全自动完成最新版本的下载、解压、桌面快捷方式创建与环境变量配置：
 
-## 为什么做这个项目
+```powershell
+irm https://raw.githubusercontent.com/w1135766898/deepseek-harness-portable/main/install.ps1 | iex
+```
 
-这里提供的是 DeepSeek Harness 本身的分发层，而不是另一个聊天客户端。Web 界面和插件运行时仍然是 Harness 产品本身，保留 profile、session、skill、tool、workspace 流程以及可组合的插件图；这个仓库为同一个运行时补充 Windows 分发方式。
+- 安装完成后，可直接在桌面打开 **DeepSeek Harness**，或在任何终端输入 **`dsh`** 启动。
 
-下面的比较选取相邻的公开项目作为参照，并不把不同产品类别当成直接替代品。仓库会持续变化，以下内容根据 2026-08-14 查看的公开 README 和发布方式整理。
+### 2. 快速热更新（免重新下载大包）
+当后续发布新版本时，无需手动重新下载完整压缩包，使用以下任一方式即可在 3 秒内完成增量升级并保留所有数据：
+- **方式 A**：双击软件根目录下的 **`update.cmd`**。
+- **方式 B**：在任何终端中直接执行命令：
+  ```powershell
+  dsh update
+  ```
 
-| 项目 | 主要方向 | 这个项目为 Windows 用户增加的内容 |
-| --- | --- | --- |
-| [Eddie0521/turn-deepseek-into-desktop](https://github.com/Eddie0521/turn-deepseek-into-desktop) | 面向 macOS 的轻量原生外壳，提供一键安装、菜单栏常驻、回环地址绑定和关闭 telemetry。 | 把同样的外壳思路带到 Windows x64，提供带托盘、工作区记忆和便携目录的 Electron 原生外壳；不需要 Xcode 或安装程序。 |
-| [doxdk/deepseek-desktop](https://github.com/doxdk/deepseek-desktop) | 通过 Electron 访问 DeepSeek 聊天网站，支持 localStorage/cookie，流程偏向安装程序。 | 打包的是 DeepSeek Harness agent 运行时，而不只是聊天页面，在原生 Windows 外壳中保留 profile、插件、session、tool 和 workspace 行为。 |
-| [DeepFundAI/ai-browser](https://github.com/DeepFundAI/ai-browser) | 基于 Electron/Next.js 的更宽泛 AI 浏览器，包含多模态自动化、计划任务、社交集成、文件管理和多模型支持。 | 把范围聚焦在 DeepSeek Harness 的完整运行一致性上，提供更容易复制的 Windows 分发物，不要求终端用户准备应用构建环境。 |
-| [RealZST/HarnessKit](https://github.com/RealZST/HarnessKit) | 统一管理多个 agent 的 skill、MCP server、plugin、hook、配置和规则。 | 专注于在原生窗口和托盘外壳中忠实运行一套完整 Harness，并使用同一个打包后的后端。 |
+---
 
-### 主要优势
+## 手动便携式运行方式
 
-- **保持上游一致：** 桌面层包装真实的 DeepSeek Harness composition，而不是另起一套聊天或 agent 客户端。
-- **真正便携：** 将完整 Electron 目录复制到其他 Windows x64 机器即可运行，不需要 Node.js 或安装程序。
-- **本地优先：** 服务默认绑定 `127.0.0.1`，桌面渠道关闭 telemetry，API key 在运行时填写，不嵌入分发文件。
-- **面向 Windows 的打包：** 分发物包含应用图标、打包后的运行时依赖、内置预设和第三方声明，可以整体复制目录。
-
-这种更窄的定位是有意为之：HarnessKit 和 AI Browser 覆盖更广的多 agent 或自动化管理，而这个项目的目标是让 DeepSeek Harness 本身更容易在 Windows 上携带和启动。
-
-## 使用方式与启动说明
-
-解压完整的 `DeepSeek Harness-win32-x64` 目录后，提供以下三种启动方式：
+若您选择直接下载 Release 压缩包（`DeepSeek-Harness-*-win32-x64.zip`），解压后提供以下三种启动方式：
 
 1. **方式一：双击 `start-web.cmd`（推荐 ⭐⭐⭐⭐⭐，100% 免疫拦截）**
    - 通过系统已安装的官方签名 Node.js 运行时启动 Web 引擎，自动在默认浏览器中打开 `http://127.0.0.1:3080`。
@@ -44,6 +39,7 @@
    - 通过官方签名版 Electron 加载应用窗口，兼顾独立窗口体验与防拦截。
 
 可以在启动环境中设置 `DEEPSEEK_API_KEY`，也可以在 Web 界面设置中填写。桌面分发物会为本地渠道关闭 telemetry。
+
 
 ## 数据与便携性
 
