@@ -466,6 +466,19 @@ class DesktopExeBuild {
   private async packElectron(): Promise<string> {
     const product = join(this.electronOutDir, `${ELECTRON_APP_NAME}-win32-x64`, `${ELECTRON_APP_NAME}.exe`)
     if (!this.cli.dryRun) await mkdir(this.electronOutDir, { recursive: true })
+    // electron-packager reads the Electron package's downloaded distribution
+    // directly. If install scripts were skipped, that package can contain
+    // only the npm wrapper and path metadata, which lets packager emit an exe
+    // without the ICU, Chromium, and GPU runtime files beside it. Running the
+    // wrapper first makes the missing distribution download itself and fails
+    // before a partial portable directory can be presented as a product.
+    await this.run('prepare Electron runtime', pnpmBin(), [
+      '--filter',
+      DEPLOY_ROOT_PACKAGE,
+      'exec',
+      'electron',
+      '--version',
+    ])
     await this.run(`Electron ${ELECTRON_APP_NAME} win32-x64`, pnpmBin(), [
       '--filter',
       DEPLOY_ROOT_PACKAGE,

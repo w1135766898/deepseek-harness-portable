@@ -58,7 +58,7 @@ pnpm run desktop:package:win
 pnpm exec tsx scripts/build-desktop-web-exe.ts
 ```
 
-原生输出写入 `dist-desktop/electron/`；单文件输出写入 `dist-exe/`。首次构建时会下载 Electron 和 SEA Node 基础运行时。
+原生输出写入 `dist-desktop/electron/`；单文件输出写入 `dist-exe/`。构建会在打包前校验 Electron 运行时；如果安装时跳过了生命周期脚本，会在此处下载 Electron；SEA Node 基础运行时也会在首次使用时下载。
 
 ## 安全与发布状态
 

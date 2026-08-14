@@ -58,7 +58,7 @@ pnpm run desktop:package:win
 pnpm exec tsx scripts/build-desktop-web-exe.ts
 ```
 
-The native output is written to `dist-desktop/electron/`; the single-file output is written to `dist-exe/`. The build downloads Electron and the SEA Node base on first use.
+The native output is written to `dist-desktop/electron/`; the single-file output is written to `dist-exe/`. The build verifies the Electron runtime before packaging and downloads it when an install skipped lifecycle scripts; the SEA Node base is also downloaded on first use.
 
 ## Security and release status
 
