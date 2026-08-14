@@ -33,8 +33,8 @@ Community distribution, not an official Microsoft-signed build.
 
 ## Checksums and security
 
-- Portable ZIP SHA-256: 6AF094A456D28C7B90BEA03A4AA9537A7A36031A71BBC407FFC5569AF400B876
-- Setup SHA-256: A9607D9D77225F34FB202D2858006614FCBC4512B9593A5A597C51889F6713F4
+- Portable ZIP SHA-256: 99332893F2DED698C6742330805FE411076CE1CD9F1BD1320AC8E1300E41EA18
+- Setup SHA-256: E8D2155352A509D9EE0B8083F6BA9CE65180C54D95C2EA8F060C0BF2041B4299
 - Verify SHA256SUMS.txt before launching.
 - The executable is unsigned; Windows SmartScreen may warn.
 - Conversations, credentials, settings, and attachments stay outside the release directory during updates.
