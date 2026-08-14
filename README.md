@@ -66,6 +66,4 @@ The local Web server is loopback-only by default. The executables are not code-s
 
 Some antivirus products (observed with Huorong/火绒) silently quarantine unsigned pkg/Electron executables on first write or download. Verify the SHA-256 checksum published with each release; if your antivirus flags the file, restore it from quarantine or add an exclusion for the directory, then re-check the checksum before running.
 
-The current release checksums are also recorded in [SHA256SUMS.txt](SHA256SUMS.txt).
-
 DeepSeek Harness is licensed under [MIT](LICENSE). Third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
