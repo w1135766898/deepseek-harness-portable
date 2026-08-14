@@ -101,6 +101,8 @@ class BuildCli {
     readonly dryRun: boolean,
     /** Build the native Electron shell instead of the browser-opening exe. */
     readonly electron: boolean,
+    /** Remove ordinary TypeScript sources after the safe release pruning pass. */
+    readonly pruneSources: boolean,
   ) {}
 
   /**
@@ -121,7 +123,7 @@ class BuildCli {
       console.log(BuildCli.usage())
       process.exit(0)
     }
-    return new BuildCli(values['skip-build'], values['dry-run'], values.electron)
+    return new BuildCli(values['skip-build'], values['dry-run'], values.electron, values['prune-sources'])
   }
 
   private static parseRaw(argv: string[]) {
@@ -131,6 +133,7 @@ class BuildCli {
         'skip-build': { type: 'boolean', default: false },
         'dry-run': { type: 'boolean', default: false },
         'electron': { type: 'boolean', default: false },
+        'prune-sources': { type: 'boolean', default: false },
         'help': { type: 'boolean', default: false },
       },
     }).values
@@ -143,6 +146,7 @@ class BuildCli {
       '  --skip-build   skip `pnpm run build` (lib/ artifacts must already exist).',
       '  --dry-run      print every command and config patch without executing.',
       '  --electron     build the native Windows Electron shell (portable folder).',
+      '  --prune-sources remove ordinary .ts/.tsx source files after safe pruning; smoke-test the release before publishing.',
       '  --help         print this help.',
       '',
       `Default route: ${PKG_SPEC} --sea, target ${DEFAULT_NODE_RANGE}-win-x64; writes to ${OUT_DIR}/.`,
@@ -482,6 +486,65 @@ class DesktopExeBuild {
     console.log('build-desktop-web-exe: applied welcome-notice retry runtime patch')
   }
 
+  /** Remove files that are never loaded by the Windows runtime. */
+  async pruneReleasePayload(): Promise<void> {
+    if (this.cli.dryRun) {
+      console.log('build-desktop-web-exe: [dry-run] prune native extras, maps, and declarations')
+      if (this.cli.pruneSources) console.log('build-desktop-web-exe: [dry-run] prune ordinary TypeScript sources')
+      return
+    }
+
+    const nodePty = join(this.staging, 'node_modules', 'node-pty')
+    for (const platform of ['darwin-arm64', 'darwin-x64', 'win32-arm64']) {
+      await rm(join(nodePty, 'prebuilds', platform), { recursive: true, force: true })
+    }
+    const removedPdb = await this.removeStagedFiles((path) => path.startsWith(nodePty + sep) && path.toLowerCase().endsWith('.pdb'))
+    const removedMaps = await this.removeStagedFiles((path) => path.toLowerCase().endsWith('.map'))
+    const removedDeclarations = await this.removeStagedFiles((path) => path.toLowerCase().endsWith('.d.ts'))
+    const rceditPath = join(this.staging, 'node_modules', 'rcedit')
+    if (existsSync(rceditPath)) await rm(rceditPath, { recursive: true, force: true })
+    const removedSources = this.cli.pruneSources
+      ? await this.removeStagedFiles((path) => /\.(?:ts|tsx)$/i.test(path))
+      : 0
+    console.log(
+      `build-desktop-web-exe: pruned ${removedPdb} PDB, ${removedMaps} map, ${removedDeclarations} declaration` +
+      `${this.cli.pruneSources ? `, and ${removedSources} source` : ''} files`,
+    )
+  }
+
+  private async removeStagedFiles(predicate: (path: string) => boolean): Promise<number> {
+    let removed = 0
+    const visit = async (directory: string): Promise<void> => {
+      for (const entry of await readdir(directory, { withFileTypes: true })) {
+        const path = join(directory, entry.name)
+        if (entry.isDirectory()) {
+          await visit(path)
+        } else if (entry.isFile() && predicate(path)) {
+          await rm(path, { force: true })
+          removed += 1
+        }
+      }
+    }
+    await visit(this.staging)
+    return removed
+  }
+
+  /** Keep only the locales shipped by the product's supported UI languages. */
+  async pruneElectronLocales(product: string): Promise<void> {
+    if (!this.cli.electron || this.cli.dryRun) return
+    const localesDir = join(dirname(product), 'locales')
+    if (!existsSync(localesDir)) return
+    const keep = new Set(['en-US.pak', 'zh-CN.pak', 'zh-TW.pak'])
+    let removed = 0
+    for (const entry of await readdir(localesDir, { withFileTypes: true })) {
+      if (entry.isFile() && entry.name.toLowerCase().endsWith('.pak') && !keep.has(entry.name)) {
+        await rm(join(localesDir, entry.name), { force: true })
+        removed += 1
+      }
+    }
+    console.log(`build-desktop-web-exe: pruned ${removed} Electron locale files`)
+  }
+
   /** Add the executable entry and pkg assets to the staged manifest. */
   async injectPkgConfig(): Promise<void> {
     const patch = this.cli.electron ? {} : { bin: ENTRY_BIN, pkg: { assets: ASSET_GLOBS } }
@@ -760,8 +823,10 @@ async function main(): Promise<void> {
   await pipeline.deployStaging()
   await pipeline.stageNativeAddons()
   await pipeline.applyRuntimePatches()
+  await pipeline.pruneReleasePayload()
   await pipeline.injectPkgConfig()
   const product = await pipeline.pack()
+  await pipeline.pruneElectronLocales(product)
   await pipeline.stageDistributionDocs(product)
   pipeline.printProduct(product)
 }
