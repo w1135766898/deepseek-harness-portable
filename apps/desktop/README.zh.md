@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-这个私有 workspace 包为 DeepSeek Harness 的 Web 界面构建两种 Windows 分发物：原生 Electron 桌面外壳，以及在默认浏览器中打开同一个本地 Web 界面的单文件可执行文件。
+这个私有 workspace 包为 DeepSeek Harness 的 Web 界面构建原生 Electron 桌面外壳。
 
 ## 原生桌面外壳
 
@@ -10,15 +10,9 @@
 
 Electron 外壳会在回环地址启动现有的 dsh web 运行时，把返回的地址嵌入 BrowserWindow，保留托盘图标，记住所选 workspace，并使用 apps/desktop/assets/deepseek.ico 作为窗口、托盘和 Windows 可执行文件图标。
 
-## 单文件 Web 可执行文件
-
-运行 pnpm exec tsx scripts/build-desktop-web-exe.ts，会生成 dist-exe/dsh-desktop-web-<version>-win-x64.exe。这个路径会启动本地 Web 服务并打开默认浏览器；传入 --no-open 可让它用于启动器或脚本而不自动打开浏览器。
-
-单文件可执行文件会通过 Windows 资源编辑器写入同一个 deepseek.ico。Electron 分发物提供完整的桌面体验；单文件路径继续适合偏好浏览器启动方式的场景。
-
 ## 运行时行为
 
-两种分发物都会把 Web 服务绑定到 127.0.0.1，并设置 DSH_TELEMETRY_DISABLED=1。Electron 外壳把 workspace 偏好和运行时 home 保存在 Electron 的用户数据目录下，关闭窗口时隐藏窗口，并在应用退出时停止子运行时。
+分发物会把 Web 服务绑定到 127.0.0.1，并设置 DSH_TELEMETRY_DISABLED=1。Electron 外壳把 workspace 偏好和运行时 home 保存在 Electron 的用户数据目录下，关闭窗口时隐藏窗口，并在应用退出时停止子运行时。
 
 可以在 Web 界面设置中配置 DeepSeek API key，也可以在启动可执行文件时提供环境变量。workspace 选择和其他应用数据属于用户数据，不会写入只读的打包应用目录。
 
