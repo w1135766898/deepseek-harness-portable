@@ -542,10 +542,19 @@ class DesktopExeBuild {
     ])
   }
 
-  /** Package the flat staged runtime into an icon-bearing portable Electron app. */
+  /** Package the staged runtime into a portable root with a `runtime` child. */
   private async packElectron(): Promise<string> {
-    const product = join(this.electronOutDir, `${ELECTRON_APP_NAME}-win32-x64`, `${ELECTRON_APP_NAME}.exe`)
-    if (!this.cli.dryRun) await mkdir(this.electronOutDir, { recursive: true })
+    const portableRoot = join(this.electronOutDir, `${ELECTRON_APP_NAME}-win32-x64`)
+    const packagerOutDir = join(this.electronOutDir, '.packager')
+    const packagedRoot = join(packagerOutDir, `${ELECTRON_APP_NAME}-win32-x64`)
+    const packagedProduct = join(packagedRoot, `${ELECTRON_APP_NAME}.exe`)
+    const runtimeRoot = join(portableRoot, 'runtime')
+    const product = join(runtimeRoot, `${ELECTRON_APP_NAME}.exe`)
+    if (!this.cli.dryRun) {
+      await rm(portableRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
+      await rm(packagerOutDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
+      await mkdir(packagerOutDir, { recursive: true })
+    }
     // electron-packager reads the Electron package's downloaded distribution
     // directly. If install scripts were skipped, that package can contain
     // only the npm wrapper and path metadata, which lets packager emit an exe
@@ -573,13 +582,18 @@ class DesktopExeBuild {
       '--icon',
       DESKTOP_ICON,
       '--out',
-      this.electronOutDir,
+      packagerOutDir,
       '--overwrite',
       '--no-asar',
       '--no-prune',
     ])
-    if (!this.cli.dryRun && !existsSync(product)) {
-      throw new Error(`build-desktop-web-exe: Electron product ${product} is missing after packaging.`)
+    if (!this.cli.dryRun) {
+      if (!existsSync(packagedProduct)) {
+        throw new Error(`build-desktop-web-exe: Electron product ${packagedProduct} is missing after packaging.`)
+      }
+      await mkdir(portableRoot, { recursive: true })
+      await cp(packagedRoot, runtimeRoot, { recursive: true, dereference: true })
+      await rm(packagerOutDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
     }
     return product
   }
@@ -664,18 +678,24 @@ class DesktopExeBuild {
     }
 
     if (this.cli.electron) {
-      const rootDir = dirname(product)
+      const rootDir = dirname(dirname(product))
       const rootFiles = [
         'LICENSE',
         'THIRD_PARTY_NOTICES.md',
         'smoke-native.cjs',
+        'apps/desktop/start-web.cmd',
+        'apps/desktop/start-desktop.cmd',
+        'apps/desktop/update.cmd',
         'apps/desktop/启动网页版.bat',
         'apps/desktop/启动桌面窗口.bat',
+        'apps/desktop/启动桌面版.bat',
         'apps/desktop/在线更新.bat',
         'apps/desktop/创建桌面快捷方式.bat',
+        'apps/desktop/一键解除拦截(自签名信任).bat',
         'apps/desktop/使用说明.txt',
         'apps/desktop/dsh.cmd',
         'apps/desktop/update.ps1',
+        'apps/desktop/setup-shortcuts.ps1',
       ]
       for (const relPath of rootFiles) {
         const source = join(root, relPath)
