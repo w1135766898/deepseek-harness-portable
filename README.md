@@ -40,8 +40,8 @@ DeepSeek Harness for Win is a community Windows x64 distribution of [DeepSeek Ha
 
 | Item | Version |
 | --- | --- |
-| Release | DeepSeek Harness for Win **v1.1.0** ([download](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.1.0)) |
-| Distribution | 1.1.0 |
+| Release | DeepSeek Harness for Win **v1.1.1** ([download](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.1.1)) |
+| Distribution | 1.1.1 |
 | Desktop shell | 0.1.0-shell.2 |
 | Kernel | 0.1.0-rc.5 |
 
