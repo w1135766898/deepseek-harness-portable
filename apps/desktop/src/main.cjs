@@ -75,6 +75,7 @@ const MIN_ZOOM_FACTOR = 0.8
 const MAX_ZOOM_FACTOR = 1.5
 const ZOOM_STEP = 0.1
 const HARNESS_HEALTH_INTERVAL_MS = 10_000
+const HARNESS_HEALTH_MAX_INTERVAL_MS = 60_000
 const HARNESS_HEALTH_TIMEOUT_MS = 3_000
 const HARNESS_HEALTH_FAILURE_THRESHOLD = 3
 // Automatic background update checks are throttled to once per day; manual
@@ -965,8 +966,23 @@ function runHarnessHealthProbe() {
       })
     } finally {
       if (generation === healthGeneration) healthProbePromise = undefined
+      scheduleNextHealthProbe()
     }
   })()
+}
+
+// Back off the probe interval while failures accumulate, capping at
+// HARNESS_HEALTH_MAX_INTERVAL_MS, and restore the base interval as soon as a
+// probe succeeds. Does nothing when the monitor is stopped.
+function scheduleNextHealthProbe() {
+  if (healthTimer === undefined) return
+  const failures = Math.max(0, harnessHealth.consecutiveFailures)
+  const delay = failures === 0
+    ? HARNESS_HEALTH_INTERVAL_MS
+    : Math.min(HARNESS_HEALTH_MAX_INTERVAL_MS, HARNESS_HEALTH_INTERVAL_MS * 2 ** Math.min(failures, 4))
+  clearInterval(healthTimer)
+  healthTimer = setInterval(runHarnessHealthProbe, delay)
+  healthTimer.unref()
 }
 
 function stopHarnessHealthMonitor(state = 'starting', message = desktopText('health.starting')) {
