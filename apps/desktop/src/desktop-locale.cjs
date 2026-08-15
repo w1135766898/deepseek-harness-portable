@@ -25,6 +25,18 @@ const MESSAGES = {
     diagnostics: {
       copied: 'Diagnostics copied to the clipboard.',
     },
+    wsl: {
+      menuStatusReady: 'WSL Linux: Ready ({distros})',
+      menuStatusMissing: 'Minimal Mode: WSL Not Configured',
+      dialogTitle: 'WSL Linux Environment Guide',
+      missingMessage: 'Minimal preset requires WSL (Linux Bash)',
+      missingDetail: 'The Minimal preset is aligned with DeepSeek RL training on Linux Bash.\n\nTo install WSL:\n1. Open PowerShell and run: wsl --install\n2. Follow prompts to set up username and password.\n3. Restart DeepSeek Harness.\n\nNote: Standard mode (PowerShell) does not require WSL.',
+      readyMessage: 'WSL Linux Environment Is Ready',
+      readyDetail: 'Detected distributions: {distros}.\nMinimal preset commands will run directly inside your WSL Linux environment.',
+      copyInstallCmd: 'Copy Install Command',
+      cmdCopied: 'Copied "wsl --install" to clipboard.',
+      ok: 'Got it',
+    },
     storage: {
       confirm: 'Clear and Restart',
       cancel: 'Cancel',
@@ -199,6 +211,18 @@ const MESSAGES = {
     },
     diagnostics: {
       copied: '排障信息已复制到剪贴板。',
+    },
+    wsl: {
+      menuStatusReady: 'WSL Linux 环境: 已就绪 ({distros})',
+      menuStatusMissing: '极简模式环境: 未配置 WSL',
+      dialogTitle: 'WSL Linux 环境配置指南',
+      missingMessage: '极简模式需要 WSL (Linux Bash) 运行环境',
+      missingDetail: '极简模式专为 DeepSeek RL 训练环境对齐设计（需要原生 Linux Bash）。\n\n推荐配置步骤：\n1. 打开 PowerShell 运行：wsl --install\n2. 安装完成后根据提示设置 Linux 用户名与密码\n3. 重启 DeepSeek Harness 即可体验极简模式。\n\n提示：若无需极简模式，可在新会话中直接使用【标准模式 (PowerShell)】，无需安装 WSL。',
+      readyMessage: 'WSL Linux 环境已就绪',
+      readyDetail: '检测到已安装发行版：{distros}。\n极简模式将直接在您的 WSL Linux 环境中运行。',
+      copyInstallCmd: '复制安装命令',
+      cmdCopied: '已复制 "wsl --install" 安装命令到剪贴板。',
+      ok: '知道了',
     },
     storage: {
       confirm: '清理并重启',

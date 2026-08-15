@@ -44,7 +44,7 @@ import {
 import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
 import { dshHomePath, resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { DSH_LAUNCH_ENVIRONMENT_KEY, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
-import { createWin32TerminalInspector } from './win32-terminal-inspector.js'
+import { adaptWin32SubprocessRuntime } from './win32-terminal-inspector.js'
 
 /** Diagnostic prefix for every fail-loud and load error. */
 const NAME = 'dsh-desktop'
@@ -388,10 +388,7 @@ async function main(): Promise<void> {
     })
     if (process.platform === 'win32') {
       hostCtx.inject(['subprocess'], (scopeCtx: Context) => {
-        const runtime = scopeCtx.get('subprocess') as { terminalInspector?: unknown } | undefined
-        if (runtime !== undefined) {
-          runtime.terminalInspector = createWin32TerminalInspector()
-        }
+        adaptWin32SubprocessRuntime(scopeCtx.get('subprocess'))
       })
     }
   }
@@ -410,10 +407,7 @@ async function main(): Promise<void> {
     await ctx.get('loader')?.await()
     if (ctx.get('loader') !== undefined) await assertEntriesActivated(ctx, NAME)
     if (process.platform === 'win32') {
-      const runtime = ctx.get('subprocess') as { terminalInspector?: unknown } | undefined
-      if (runtime !== undefined && runtime.terminalInspector === undefined) {
-        runtime.terminalInspector = createWin32TerminalInspector()
-      }
+      adaptWin32SubprocessRuntime(ctx.get('subprocess'))
     }
     refreshClientModuleGraph(ctx)
   } catch (cause) {

@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 import yaml from 'js-yaml'
 import { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import { evaluate } from '@deepseek-ai/cordis-plugin-loader'
-import { createWin32TerminalInspector } from '../lib/win32-terminal-inspector.js'
+import { adaptWin32SubprocessRuntime, createWin32TerminalInspector } from '../lib/win32-terminal-inspector.js'
 
 const presetPath = fileURLToPath(new URL('../config/agent-presets/minimal/agent.cordis.yml', import.meta.url))
 
@@ -97,4 +97,38 @@ test('win32 terminal inspector stub satisfies ProcessInspector contracts safely'
   // Signals must be safe no-ops
   assert.doesNotThrow(() => inspector.signalGroup(9999, 'SIGINT'))
   assert.doesNotThrow(() => inspector.signalProcess({ pid: 9999, started: 'wsl-root' }, 'SIGTERM'))
+})
+
+test('adaptWin32SubprocessRuntime injects inspector and translates WSL launch failures', async () => {
+  const fakeRuntime = {
+    terminalInspector: undefined,
+    spawnTerminal: async (spec) => {
+      if (spec?.argv?.[0]?.includes('wsl.exe')) {
+        throw new Error('ENOENT: command not found')
+      }
+      if (spec?.argv?.[0]?.includes('fail.exe')) {
+        throw new Error('generic failure')
+      }
+      return { ok: true }
+    },
+  }
+
+  adaptWin32SubprocessRuntime(fakeRuntime)
+  assert.ok(fakeRuntime.terminalInspector, 'terminalInspector must be set')
+
+  // WSL error must be translated with guidance
+  await assert.rejects(
+    async () => fakeRuntime.spawnTerminal({ argv: ['C:/Windows/System32/wsl.exe', '--', 'bash'] }),
+    /Failed to start WSL Linux terminal.*wsl --install.*Standard preset/,
+  )
+
+  // Non-WSL error must preserve original message
+  await assert.rejects(
+    async () => fakeRuntime.spawnTerminal({ argv: ['C:/fail.exe'] }),
+    /generic failure/,
+  )
+
+  // Successful spawn
+  const result = await fakeRuntime.spawnTerminal({ argv: ['C:/other.exe'] })
+  assert.deepEqual(result, { ok: true })
 })

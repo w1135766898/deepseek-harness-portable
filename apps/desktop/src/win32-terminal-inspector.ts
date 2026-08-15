@@ -9,6 +9,9 @@
  * - `isStdinWaiting()` returns `false` (terminal readiness safely falls back to prompt-marker and silence detection).
  * - `signalGroup` and `signalProcess` are safe no-ops.
  *
+ * It also wraps `spawnTerminal` on win32 to catch WSL launch failures (e.g. ENOENT or missing distro)
+ * and provide actionable instructions for the user.
+ *
  * @module dsh-desktop-web-pkg/win32-terminal-inspector
  */
 
@@ -63,4 +66,39 @@ export class Win32TerminalProcessInspector implements ProcessInspector {
 
 export function createWin32TerminalInspector(): ProcessInspector {
   return new Win32TerminalProcessInspector()
+}
+
+interface SubprocessRuntimeWithTerminal {
+  terminalInspector?: ProcessInspector
+  spawnTerminal?: (spec: { argv?: string[] }) => Promise<unknown>
+}
+
+/**
+ * Configure a subprocess runtime for Windows: attach the Win32 inspector stub
+ * and wrap spawnTerminal to translate WSL launch errors into actionable guidance.
+ */
+export function adaptWin32SubprocessRuntime(runtime: unknown): void {
+  if (runtime === null || typeof runtime !== 'object') return
+  const target = runtime as SubprocessRuntimeWithTerminal
+  target.terminalInspector = createWin32TerminalInspector()
+  if (typeof target.spawnTerminal === 'function' && !(target.spawnTerminal as { __wslWrapped?: boolean }).__wslWrapped) {
+    const originalSpawnTerminal = target.spawnTerminal.bind(target)
+    const wrapped = async (spec: { argv?: string[] }) => {
+      try {
+        return await originalSpawnTerminal(spec)
+      } catch (error: unknown) {
+        const file = spec?.argv?.[0] || ''
+        if (/wsl(\.exe)?$/i.test(file)) {
+          const msg = error instanceof Error ? error.message : String(error)
+          throw new Error(
+            `Failed to start WSL Linux terminal (${msg}). Please ensure WSL is installed with a default distribution via 'wsl --install', or switch to the Standard preset (PowerShell).`,
+            { cause: error },
+          )
+        }
+        throw error
+      }
+    }
+    wrapped.__wslWrapped = true
+    target.spawnTerminal = wrapped
+  }
 }

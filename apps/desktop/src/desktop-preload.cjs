@@ -93,6 +93,7 @@ if (!isSplashDocument) {
     modalReturnFocus: undefined,
     updateState: '',
     updateProgress: undefined,
+    wslState: undefined,
   }
 
   function desktopText(key, values = {}) {
@@ -537,6 +538,7 @@ if (!isSplashDocument) {
     state.menuOpen = true
     state.menuFocusIndex = 0
     state.menuPosition = menuPositionForButton(anchor || findNativeMenuAnchor())
+    ipcRenderer.send('desktop:wsl:probe')
     render()
   }
 
@@ -555,6 +557,9 @@ if (!isSplashDocument) {
     if (!state.menuOpen) return ''
     const position = state.menuPosition || defaultMenuPosition()
     const positionMarkup = ' style="--dsh-menu-left:' + escapeHtml(position.left) + 'px;--dsh-menu-top:' + escapeHtml(position.top) + 'px"'
+    const wslLabel = state.wslState?.available
+      ? desktopText('wsl.menuStatusReady', { distros: state.wslState?.distros?.[0] || 'Linux' })
+      : desktopText('wsl.menuStatusMissing')
     return '<div class="dsh-menu-popover" role="menu" aria-label="' + escapeHtml(desktopText('menu.desktopMenu')) + '"' + positionMarkup + '>' +
       '<button class="dsh-menu-item" data-action="desktop-check-updates" role="menuitem"><span>↻</span><strong>' + escapeHtml(desktopText('menu.checkUpdates')) + '</strong></button>' +
       '<button class="dsh-menu-item" data-action="desktop-release-notes" role="menuitem"><span>☷</span><strong>' + escapeHtml(desktopText('menu.releaseNotes')) + '</strong></button>' +
@@ -568,6 +573,7 @@ if (!isSplashDocument) {
       '<button class="dsh-menu-item" data-action="desktop-restart" role="menuitem"><span>↺</span><strong>' + escapeHtml(desktopText('menu.restartHarness')) + ' <kbd>Ctrl+Shift+R</kbd></strong></button>' +
       '<button class="dsh-menu-item" data-action="desktop-open-browser" role="menuitem"><span>↗</span><strong>' + escapeHtml(desktopText('menu.openBrowser')) + '</strong></button>' +
       '<div class="dsh-menu-separator"></div>' +
+      '<button class="dsh-menu-item" data-action="desktop-wsl-guide" role="menuitem"><span>🐧</span><strong>' + escapeHtml(wslLabel) + '</strong></button>' +
       '<button class="dsh-menu-item" data-action="desktop-export-diagnostics" role="menuitem"><span>⇩</span><strong>' + escapeHtml(desktopText('menu.copyDiagnostics')) + '</strong></button>' +
       '<button class="dsh-menu-item" data-action="desktop-clear-storage" role="menuitem"><span>⌫</span><strong>' + escapeHtml(desktopText('menu.clearWebStorage')) + '</strong></button>' +
       '</div>'
@@ -806,6 +812,10 @@ if (!isSplashDocument) {
     }
     if (action === 'desktop-reload-ui') {
       sendMenuAction('reload-ui')
+      return
+    }
+    if (action === 'desktop-wsl-guide') {
+      sendMenuAction('wsl-guide')
       return
     }
     if (action === 'desktop-export-diagnostics') {
@@ -1140,6 +1150,10 @@ if (!isSplashDocument) {
   ipcRenderer.on('desktop:workspace:recents', (_event, payload) => {
     state.currentWorkspace = typeof payload?.current === 'string' ? payload.current : ''
     state.recentWorkspaces = Array.isArray(payload?.workspaces) ? payload.workspaces.filter(value => typeof value === 'string') : []
+    render()
+  })
+  ipcRenderer.on('desktop:wsl-state', (_event, payload) => {
+    state.wslState = payload && typeof payload === 'object' ? payload : undefined
     render()
   })
   ipcRenderer.on('desktop:harness-status', (_event, status) => {
