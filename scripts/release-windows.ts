@@ -49,6 +49,7 @@ const DESKTOP_TEST_FILES = [
   'process-tree.test.cjs',
   'semver.test.cjs',
   'update-launcher.test.cjs',
+  'minimal-preset.test.js',
 ]
 const DESKTOP_SYNTAX_FILES = [
   'main.cjs',
@@ -193,7 +194,7 @@ async function run(command: string, args: string[]): Promise<void> {
       cwd: root,
       stdio: 'inherit',
       shell: process.platform === 'win32' && command.toLowerCase().endsWith('.cmd'),
-      env: { ...process.env, CI: 'false', HUSKY: '0', LEFTHOOK: '0' },
+      env: { ...process.env, CI: 'true', HUSKY: '0', LEFTHOOK: '0', npm_config_confirm_modules_purge: 'false' },
     })
     child.once('error', reject)
     child.once('exit', (code, signal) => {
@@ -256,6 +257,7 @@ async function verifyPortableArchive(zipPath: string, buildRoot: string): Promis
     'runtime/DeepSeek Harness.exe',
     'runtime/resources/app/package.json',
     'runtime/resources/app/lib/packaged-bin.js',
+    'runtime/resources/app/lib/win32-terminal-inspector.js',
     'runtime/resources/app/src/update-launcher.cjs',
     'runtime/resources/app/src/desktop-locale.cjs',
     'runtime/resources/app/src/desktop-locale-store.cjs',

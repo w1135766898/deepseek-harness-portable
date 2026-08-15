@@ -1,31 +1,29 @@
-# DeepSeek Harness for Win v1.1.3
+# DeepSeek Harness for Win v1.2.0
 
 [中文](RELEASE_NOTES.zh.md)
 
 Windows x64 portable release · 2026-08-16
 
-This is the v1.1.3 maintenance release of this Windows distribution, delivering security hardening for uninstallation, zip-slip and PATH injection fixes for installation, and reliability improvements for background updates and health checks.
+This is the v1.2.0 release of this Windows distribution, delivering native WSL Linux Bash support for the Minimal Agent Preset to achieve complete alignment with the official DeepSeek RL training environment, alongside integrated environment diagnostics and error recovery guidance.
 
-## Bug Fixes
+## New Features
 
-- **Refused to remove user data through a junction or symlink**: uninstallation strictly refuses to follow junctions or symlinks when removing user data to prevent accidental deletion of target directories.
-- **Full engine termination before removal**: uninstaller terminates the complete backend process tree before removing files and fixes percent sign escaping in delayed cleanup scripts.
-- **Case-insensitive PATH comparison**: installer checks existing PATH entries case-insensitively before appending, preventing duplicate entries.
-- **Zip-slip validation**: hardened installer and updater against zip-slip path traversal violations during extraction.
+- **Minimal Agent Preset on Windows via WSL Linux Bash**: Full alignment with the official DeepSeek RL training distribution (Linux, Bash, stty, PS1, and marker protocol), executing seamlessly on Windows via `wsl.exe`.
+- **Win32 ProcessInspector Stub & Full Access Isolation**: Injected a dedicated Win32 process inspector stub to prevent `signalForeground` session tear-downs, and isolated the `danger-full-access` sandbox policy within the minimal preset to bypass restricted-token barriers on Hyper-V and user directories.
+- **Desktop WSL Environment Diagnostic & Guide**: Direct visibility into the host WSL readiness status from the desktop menu, with a one-click dialog to copy the `wsl --install` command.
+- **Runtime Launch Error Translation**: Intercepts terminal launch errors and presents structured bilingual troubleshooting suggestions with recommendations for standard mode (PowerShell).
 
 ## Improvements
 
-- **Throttled automatic update checks**: background update checking is throttled to once per day to eliminate unnecessary startup requests.
-- **Exponential backoff for health probes**: backend health probing backs off exponentially when consecutive failures accumulate.
-- **State cache separation**: moved the release history cache out of config.json for cleaner state management.
-- **External URL validation**: window open handler enforces strict HTTP and HTTPS protocol checks.
+- **Hardened WSL Availability Probing**: Strips UTF-16 Byte Order Marks (BOM) and verifies non-empty distribution lists to prevent false positives when WSL is enabled without distributions.
+- **On-Demand Menu Freshness**: Re-probes WSL status on menu interaction in milliseconds, updating without requiring an application restart after WSL installation.
 
 ## Components
 
-- Distribution: 1.1.3
+- Distribution: 1.2.0
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.0-rc.5 (@deepseek-ai/dsh-web-app)
-- Tag: v1.1.3
+- Tag: v1.2.0
 
 ## Checksums and security
 

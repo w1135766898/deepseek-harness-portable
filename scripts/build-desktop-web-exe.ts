@@ -831,12 +831,12 @@ class DesktopExeBuild {
       // On Windows, .cmd shims (pnpm.cmd) cannot spawn directly; route the
       // whole command line through the shell.
       const child = process.platform === 'win32'
-        ? spawn(printable, { cwd: root, stdio: 'inherit', env: { ...process.env, CI: 'false', HUSKY: '0', LEFTHOOK: '0' }, shell: true })
+        ? spawn(printable, { cwd: root, stdio: 'inherit', env: { ...process.env, CI: 'true', HUSKY: '0', LEFTHOOK: '0', npm_config_confirm_modules_purge: 'false' }, shell: true })
         : spawn(command, args, {
           cwd: root,
           stdio: 'inherit',
           // Artifact builds must not mutate or validate a developer's Git hooks.
-          env: { ...process.env, CI: 'false', HUSKY: '0', LEFTHOOK: '0' },
+          env: { ...process.env, CI: 'true', HUSKY: '0', LEFTHOOK: '0', npm_config_confirm_modules_purge: 'false' },
         })
       child.once('error', (error) => {
         reject(new Error(`build-desktop-web-exe: ${label} failed to spawn: ${error.message} (${printable})`))
