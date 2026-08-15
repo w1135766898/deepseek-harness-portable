@@ -10,6 +10,7 @@ const splashListeners = new Set()
 const splashStateListeners = new Set()
 const splashTransitionListeners = new Set()
 const splashLocaleListeners = new Set()
+const splashThemeListeners = new Set()
 ipcRenderer.on('desktop:splash-status', (_event, value) => {
   const status = value && typeof value === 'object' ? value.status : value
   if (!SPLASH_STATUSES.has(status)) return
@@ -24,6 +25,9 @@ ipcRenderer.on('desktop:splash-transition', (_event, value) => {
 ipcRenderer.on('desktop:splash-locale', (_event, value) => {
   const locale = normalizePreference(value?.locale) || localeFromSystem(typeof navigator === 'object' ? navigator.language : 'en')
   splashLocaleListeners.forEach(listener => listener(locale))
+})
+ipcRenderer.on('desktop:splash-theme', (_event, value) => {
+  splashThemeListeners.forEach(listener => listener(value && typeof value === 'object' ? value : {}))
 })
 
 contextBridge.exposeInMainWorld('deepSeekSplash', {
@@ -46,6 +50,11 @@ contextBridge.exposeInMainWorld('deepSeekSplash', {
     if (typeof callback !== 'function') return () => {}
     splashLocaleListeners.add(callback)
     return () => splashLocaleListeners.delete(callback)
+  },
+  onTheme: callback => {
+    if (typeof callback !== 'function') return () => {}
+    splashThemeListeners.add(callback)
+    return () => splashThemeListeners.delete(callback)
   },
   retry: () => ipcRenderer.send('desktop:splash-action', { type: 'retry' }),
   chooseWorkspace: () => ipcRenderer.send('desktop:splash-action', { type: 'choose-workspace' }),

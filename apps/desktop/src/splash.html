@@ -5,32 +5,216 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DeepSeek Harness</title>
   <style>
-    :root { color-scheme: dark; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background: #0c1220; color: #f8fbff; }
+    :root {
+      --color-scheme: dark;
+      --bg-gradient: radial-gradient(circle at 50% 40%, #142849 0, #0c1220 56%);
+      --bg-color: #0c1220;
+      --text-main: #f8fbff;
+      --text-status: rgba(224, 235, 252, .7);
+      --mark-border: rgba(136, 181, 255, .36);
+      --mark-bg: #f7faff;
+      --mark-shadow: 0 16px 50px rgba(36, 126, 255, .36);
+      --mark-shadow-breathe: 0 18px 58px rgba(36, 126, 255, .56);
+      --progress-track: rgba(255, 255, 255, .12);
+      --progress-fill: #5ba8ff;
+      --error-panel-border: rgba(255, 145, 145, .28);
+      --error-panel-bg: rgba(30, 22, 35, .74);
+      --error-panel-shadow: 0 16px 42px rgba(0, 0, 0, .2);
+      --error-title: #fff;
+      --error-message: rgba(235, 221, 231, .78);
+      --error-detail: rgba(224, 204, 218, .58);
+      --btn-border: rgba(190, 205, 232, .2);
+      --btn-bg: rgba(49, 71, 105, .72);
+      --btn-bg-hover: rgba(67, 96, 141, .86);
+      --btn-color: #e8f0ff;
+      --btn-primary-border: #478cff;
+      --btn-primary-bg: #2d72df;
+      --btn-primary-bg-hover: #3b82ed;
+      --btn-primary-color: #fff;
+      --btn-focus: #79b2ff;
+      --log-border: rgba(190, 205, 232, .12);
+      --log-color: #c1d0e8;
+      --log-bg: rgba(6, 11, 20, .7);
+      color-scheme: var(--color-scheme);
+      font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+      background: var(--bg-color);
+      color: var(--text-main);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme="dark"]) {
+        --color-scheme: light;
+        --bg-gradient: radial-gradient(circle at 50% 40%, #e0ecfd 0, #f4f7fb 58%);
+        --bg-color: #f4f7fb;
+        --text-main: #15223a;
+        --text-status: #5b7092;
+        --mark-border: rgba(72, 112, 190, .2);
+        --mark-bg: #ffffff;
+        --mark-shadow: 0 16px 44px rgba(47, 117, 238, .22);
+        --mark-shadow-breathe: 0 18px 52px rgba(47, 117, 238, .38);
+        --progress-track: rgba(36, 92, 180, .14);
+        --progress-fill: #2b74e8;
+        --error-panel-border: rgba(220, 50, 70, .24);
+        --error-panel-bg: rgba(255, 243, 245, .94);
+        --error-panel-shadow: 0 16px 40px rgba(180, 40, 60, .08);
+        --error-title: #a31f34;
+        --error-message: #5c242c;
+        --error-detail: #7a434c;
+        --btn-border: rgba(28, 48, 78, .14);
+        --btn-bg: rgba(241, 245, 251, .94);
+        --btn-bg-hover: #e4ebf6;
+        --btn-color: #1d2b42;
+        --btn-primary-border: #2b72df;
+        --btn-primary-bg: #2b72df;
+        --btn-primary-bg-hover: #2160bf;
+        --btn-primary-color: #fff;
+        --btn-focus: #2b72df;
+        --log-border: rgba(30, 50, 80, .14);
+        --log-color: #263854;
+        --log-bg: rgba(235, 241, 250, .88);
+      }
+    }
+
+    :root[data-theme="light"] {
+      --color-scheme: light;
+      --bg-gradient: radial-gradient(circle at 50% 40%, #e0ecfd 0, #f4f7fb 58%);
+      --bg-color: #f4f7fb;
+      --text-main: #15223a;
+      --text-status: #5b7092;
+      --mark-border: rgba(72, 112, 190, .2);
+      --mark-bg: #ffffff;
+      --mark-shadow: 0 16px 44px rgba(47, 117, 238, .22);
+      --mark-shadow-breathe: 0 18px 52px rgba(47, 117, 238, .38);
+      --progress-track: rgba(36, 92, 180, .14);
+      --progress-fill: #2b74e8;
+      --error-panel-border: rgba(220, 50, 70, .24);
+      --error-panel-bg: rgba(255, 243, 245, .94);
+      --error-panel-shadow: 0 16px 40px rgba(180, 40, 60, .08);
+      --error-title: #a31f34;
+      --error-message: #5c242c;
+      --error-detail: #7a434c;
+      --btn-border: rgba(28, 48, 78, .14);
+      --btn-bg: rgba(241, 245, 251, .94);
+      --btn-bg-hover: #e4ebf6;
+      --btn-color: #1d2b42;
+      --btn-primary-border: #2b72df;
+      --btn-primary-bg: #2b72df;
+      --btn-primary-bg-hover: #2160bf;
+      --btn-primary-color: #fff;
+      --btn-focus: #2b72df;
+      --log-border: rgba(30, 50, 80, .14);
+      --log-color: #263854;
+      --log-bg: rgba(235, 241, 250, .88);
+    }
+
+    :root[data-theme="dark"] {
+      --color-scheme: dark;
+      --bg-gradient: radial-gradient(circle at 50% 40%, #142849 0, #0c1220 56%);
+      --bg-color: #0c1220;
+      --text-main: #f8fbff;
+      --text-status: rgba(224, 235, 252, .7);
+      --mark-border: rgba(136, 181, 255, .36);
+      --mark-bg: #f7faff;
+      --mark-shadow: 0 16px 50px rgba(36, 126, 255, .36);
+      --mark-shadow-breathe: 0 18px 58px rgba(36, 126, 255, .56);
+      --progress-track: rgba(255, 255, 255, .12);
+      --progress-fill: #5ba8ff;
+      --error-panel-border: rgba(255, 145, 145, .28);
+      --error-panel-bg: rgba(30, 22, 35, .74);
+      --error-panel-shadow: 0 16px 42px rgba(0, 0, 0, .2);
+      --error-title: #fff;
+      --error-message: rgba(235, 221, 231, .78);
+      --error-detail: rgba(224, 204, 218, .58);
+      --btn-border: rgba(190, 205, 232, .2);
+      --btn-bg: rgba(49, 71, 105, .72);
+      --btn-bg-hover: rgba(67, 96, 141, .86);
+      --btn-color: #e8f0ff;
+      --btn-primary-border: #478cff;
+      --btn-primary-bg: #2d72df;
+      --btn-primary-bg-hover: #3b82ed;
+      --btn-primary-color: #fff;
+      --btn-focus: #79b2ff;
+      --log-border: rgba(190, 205, 232, .12);
+      --log-color: #c1d0e8;
+      --log-bg: rgba(6, 11, 20, .7);
+    }
+
     * { box-sizing: border-box; }
     html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-    body { display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, #142849 0, #0c1220 56%); opacity: 1; transition: opacity .42s ease; }
+    body {
+      display: grid;
+      place-items: center;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      opacity: 1;
+      transition: opacity .42s ease, background .3s ease;
+    }
     body.is-hidden { opacity: 0; pointer-events: none; }
     .splash { display: grid; justify-items: center; gap: 12px; width: min(520px, calc(100vw - 48px)); margin-top: -4vh; }
-    .mark { width: 68px; height: 68px; display: grid; place-items: center; padding: 6px; border: 1px solid rgba(136, 181, 255, .36); border-radius: 22px; background: #f7faff; box-shadow: 0 16px 50px rgba(36, 126, 255, .36); animation: breathe 1.8s ease-in-out infinite; }
+    .mark {
+      width: 68px;
+      height: 68px;
+      display: grid;
+      place-items: center;
+      padding: 6px;
+      border: 1px solid var(--mark-border);
+      border-radius: 22px;
+      background: var(--mark-bg);
+      box-shadow: var(--mark-shadow);
+      animation: breathe 1.8s ease-in-out infinite;
+    }
     .mark img { width: 54px; height: 54px; object-fit: contain; }
-    h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: .01em; }
-    .status { min-height: 22px; color: rgba(224, 235, 252, .7); font-size: 13px; }
-    .progress { width: 168px; height: 3px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.12); }
-    .progress i { display: block; width: 40%; height: 100%; border-radius: inherit; background: #5ba8ff; animation: progress 1.35s ease-in-out infinite; }
-    .error-panel { display: grid; gap: 10px; width: 100%; margin-top: 8px; padding: 16px 18px; border: 1px solid rgba(255, 145, 145, .28); border-radius: 14px; background: rgba(30, 22, 35, .74); box-shadow: 0 16px 42px rgba(0, 0, 0, .2); text-align: left; }
+    h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: .01em; color: var(--text-main); }
+    .status { min-height: 22px; color: var(--text-status); font-size: 13px; }
+    .progress { width: 168px; height: 3px; overflow: hidden; border-radius: 99px; background: var(--progress-track); }
+    .progress i { display: block; width: 40%; height: 100%; border-radius: inherit; background: var(--progress-fill); animation: progress 1.35s ease-in-out infinite; }
+    .error-panel {
+      display: grid;
+      gap: 10px;
+      width: 100%;
+      margin-top: 8px;
+      padding: 16px 18px;
+      border: 1px solid var(--error-panel-border);
+      border-radius: 14px;
+      background: var(--error-panel-bg);
+      box-shadow: var(--error-panel-shadow);
+      text-align: left;
+    }
     .error-panel[hidden] { display: none; }
-    .error-title { margin: 0; color: #fff; font-size: 14px; font-weight: 650; }
-    .error-message, .error-detail { margin: 0; color: rgba(235, 221, 231, .78); font-size: 12px; line-height: 1.55; }
-    .error-detail { color: rgba(224, 204, 218, .58); }
+    .error-title { margin: 0; color: var(--error-title); font-size: 14px; font-weight: 650; }
+    .error-message { margin: 0; color: var(--error-message); font-size: 12px; line-height: 1.55; }
+    .error-detail { margin: 0; color: var(--error-detail); font-size: 12px; line-height: 1.55; }
     .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
-    button { min-height: 30px; padding: 6px 11px; border: 1px solid rgba(190, 205, 232, .2); border-radius: 8px; color: #e8f0ff; background: rgba(49, 71, 105, .72); cursor: pointer; font: 600 12px/1.2 "Segoe UI", "Microsoft YaHei", sans-serif; }
-    button:hover { background: rgba(67, 96, 141, .86); }
-    button.primary { border-color: #478cff; color: #fff; background: #2d72df; }
-    button.primary:hover { background: #3b82ed; }
-    button:focus-visible { outline: 2px solid #79b2ff; outline-offset: 2px; }
-    .log { max-height: 180px; margin: 0; padding: 10px; overflow: auto; border: 1px solid rgba(190, 205, 232, .12); border-radius: 8px; color: #c1d0e8; background: rgba(6, 11, 20, .7); white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    button {
+      min-height: 30px;
+      padding: 6px 11px;
+      border: 1px solid var(--btn-border);
+      border-radius: 8px;
+      color: var(--btn-color);
+      background: var(--btn-bg);
+      cursor: pointer;
+      font: 600 12px/1.2 "Segoe UI", "Microsoft YaHei", sans-serif;
+      transition: background .18s ease, border-color .18s ease;
+    }
+    button:hover { background: var(--btn-bg-hover); }
+    button.primary { border-color: var(--btn-primary-border); color: var(--btn-primary-color); background: var(--btn-primary-bg); }
+    button.primary:hover { background: var(--btn-primary-bg-hover); }
+    button:focus-visible { outline: 2px solid var(--btn-focus); outline-offset: 2px; }
+    .log {
+      max-height: 180px;
+      margin: 0;
+      padding: 10px;
+      overflow: auto;
+      border: 1px solid var(--log-border);
+      border-radius: 8px;
+      color: var(--log-color);
+      background: var(--log-bg);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font: 11px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
     .log[hidden] { display: none; }
-    @keyframes breathe { 50% { transform: scale(1.07); box-shadow: 0 18px 58px rgba(36, 126, 255, .56); } }
+    @keyframes breathe { 50% { transform: scale(1.07); box-shadow: var(--mark-shadow-breathe); } }
     @keyframes progress { from { transform: translateX(-150%); } to { transform: translateX(400%); } }
   </style>
 </head>
@@ -92,6 +276,19 @@
       const showLog = document.getElementById('show-log')
       const retry = document.getElementById('retry')
       const chooseWorkspace = document.getElementById('choose-workspace')
+
+      const applyTheme = value => {
+        const isLight = value?.theme === 'light' || value?.isDark === false
+        const isDark = value?.theme === 'dark' || value?.isDark === true
+        let themeName
+        if (isLight) themeName = 'light'
+        else if (isDark) themeName = 'dark'
+        else if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: light)').matches) themeName = 'light'
+        else themeName = 'dark'
+        document.documentElement.dataset.theme = themeName
+        document.documentElement.style.colorScheme = themeName
+      }
+
       const applyLocale = value => {
         locale = value === 'zh' ? 'zh' : 'en'
         labels = messages[locale]
@@ -101,6 +298,7 @@
         else showLog.textContent = labels.hideLog
       }
       const setStatus = value => { if (labels[value]) status.textContent = labels[value] }
+      applyTheme()
       applyLocale(locale)
       setStatus('engine')
       const setState = value => {
@@ -124,9 +322,20 @@
         window.deepSeekSplash.onStatus(setStatus)
         window.deepSeekSplash.onState(setState)
         window.deepSeekSplash.onLocale(applyLocale)
+        if (typeof window.deepSeekSplash.onTheme === 'function') {
+          window.deepSeekSplash.onTheme(applyTheme)
+        }
         window.deepSeekSplash.onTransition(value => {
           if (value === 'hide') document.body.classList.add('is-hidden')
         })
+      }
+      if (typeof window.matchMedia === 'function') {
+        const media = window.matchMedia('(prefers-color-scheme: light)')
+        if (typeof media.addEventListener === 'function') {
+          media.addEventListener('change', e => {
+            applyTheme({ theme: e.matches ? 'light' : 'dark' })
+          })
+        }
       }
       showLog.addEventListener('click', () => {
         log.hidden = !log.hidden

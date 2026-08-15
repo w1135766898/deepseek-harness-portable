@@ -246,15 +246,22 @@ function themePayload() {
 }
 
 function syncNativeTheme() {
-  if (window === undefined || window.isDestroyed()) return
   const theme = themePayload()
-  if (process.platform === 'win32' && typeof window.setTitleBarOverlay === 'function') {
-    try { window.setTitleBarOverlay(theme.titleBar) } catch {}
+  if (window !== undefined && !window.isDestroyed()) {
+    if (process.platform === 'win32' && typeof window.setTitleBarOverlay === 'function') {
+      try { window.setTitleBarOverlay(theme.titleBar) } catch {}
+    }
+    if (process.platform === 'win32' && typeof window.setBackgroundColor === 'function') {
+      try { window.setBackgroundColor(theme.surface) } catch {}
+    }
+    if (rendererReady) window.webContents.send('desktop:theme-changed', theme)
   }
-  if (process.platform === 'win32' && typeof window.setBackgroundColor === 'function') {
-    try { window.setBackgroundColor(theme.surface) } catch {}
+  if (splashWindow !== undefined && !splashWindow.isDestroyed()) {
+    if (typeof splashWindow.setBackgroundColor === 'function') {
+      try { splashWindow.setBackgroundColor(theme.surface) } catch {}
+    }
+    splashWindow.webContents.send('desktop:splash-theme', theme)
   }
-  if (rendererReady) window.webContents.send('desktop:theme-changed', theme)
 }
 
 function sendRenderer(channel, payload) {
@@ -331,6 +338,11 @@ function syncSplashBounds() {
 function showSplashWindow() {
   if (splashWindow === undefined || splashWindow.isDestroyed()) return
   syncSplashBounds()
+  const theme = themePayload()
+  if (typeof splashWindow.setBackgroundColor === 'function') {
+    try { splashWindow.setBackgroundColor(theme.surface) } catch {}
+  }
+  splashWindow.webContents.send('desktop:splash-theme', theme)
   if (!splashWindow.isVisible()) splashWindow.show()
   splashWindow.focus()
 }
@@ -369,6 +381,7 @@ function destroySplashWindow() {
 
 async function createSplashWindow() {
   if (window === undefined || window.isDestroyed()) throw new Error('Main window is unavailable')
+  const theme = themePayload()
   splashWindow = new BrowserWindow({
     ...window.getBounds(),
     parent: window,
@@ -377,7 +390,7 @@ async function createSplashWindow() {
     resizable: false,
     movable: false,
     skipTaskbar: true,
-    backgroundColor: '#0c1220',
+    backgroundColor: theme.surface,
     icon: iconPath(),
     webPreferences: {
       contextIsolation: true,
@@ -391,6 +404,7 @@ async function createSplashWindow() {
   })
   await splashWindow.loadFile(join(__dirname, SPLASH_PAGE_NAME))
   splashWindow.webContents.send('desktop:splash-locale', { locale: desktopLocale })
+  splashWindow.webContents.send('desktop:splash-theme', theme)
 }
 
 function waitForRendererFirstPaint() {
