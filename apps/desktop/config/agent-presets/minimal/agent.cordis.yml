@@ -20,7 +20,13 @@
   group: true
   isolate:
     terminals: true
+    sandboxPolicy: true
   config:
+    - id: sandbox-policy
+      name: '@deepseek-ai/dsh-sandbox-policy'
+      config:
+        mode: danger-full-access
+
     - id: pty
       name: '@deepseek-ai/dsh-terminal'
 

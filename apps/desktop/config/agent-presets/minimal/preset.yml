@@ -1,3 +1,3 @@
 name: 极简模式
-description: 仅提供持久 bash（Windows 上运行于 WSL）与 str_replace_editor 的双工具编码 Agent。
+description: 仅提供持久 bash（Windows 上以无沙箱 Full Access 运行于 WSL）与 str_replace_editor 的双工具编码 Agent。
 order: 3

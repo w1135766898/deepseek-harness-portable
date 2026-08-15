@@ -87,11 +87,14 @@ export function adaptWin32SubprocessRuntime(runtime: unknown): void {
       try {
         return await originalSpawnTerminal(spec)
       } catch (error: unknown) {
-        const file = spec?.argv?.[0] || ''
-        if (/wsl(\.exe)?$/i.test(file)) {
+        const isWsl = Array.isArray(spec?.argv) && spec.argv.some(arg => /wsl(\.exe)?$/i.test(arg))
+        if (isWsl) {
           const msg = error instanceof Error ? error.message : String(error)
           throw new Error(
-            `Failed to start WSL Linux terminal (${msg}). Please ensure WSL is installed with a default distribution via 'wsl --install', or switch to the Standard preset (PowerShell).`,
+            `Failed to start WSL Linux terminal (${msg}).\n` +
+            `[WSL 运行环境缺失] 极简模式需要 WSL (Linux Bash) 运行环境。\n` +
+            `请在 PowerShell 中执行 "wsl --install" 安装 Linux 发行版，或在会话设置中切换至【标准模式 (PowerShell)】。\n` +
+            `Please ensure WSL is installed via "wsl --install", or switch to the Standard preset (PowerShell).`,
             { cause: error },
           )
         }

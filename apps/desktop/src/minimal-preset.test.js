@@ -67,6 +67,14 @@ test('minimal preset keeps persistent-shell, str_replace_editor and persona', ()
   const entries = loadPreset()
   const persistentShell = row(entries, 'persistent-shell')
   assert.ok(persistentShell, 'persistent-shell row must exist')
+  assert.equal(persistentShell.isolate?.terminals, true)
+  assert.equal(persistentShell.isolate?.sandboxPolicy, true)
+
+  const innerRows = persistentShell.config
+  const sandboxPolicy = row(innerRows, 'sandbox-policy')
+  assert.ok(sandboxPolicy, 'sandbox-policy row must exist in persistent-shell')
+  assert.equal(sandboxPolicy.name, '@deepseek-ai/dsh-sandbox-policy')
+  assert.equal(sandboxPolicy.config?.mode, 'danger-full-access')
 
   const editor = row(entries, 'str-replace-editor')
   assert.ok(editor, 'str-replace-editor row must exist')
@@ -103,7 +111,7 @@ test('adaptWin32SubprocessRuntime injects inspector and translates WSL launch fa
   const fakeRuntime = {
     terminalInspector: undefined,
     spawnTerminal: async (spec) => {
-      if (spec?.argv?.[0]?.includes('wsl.exe')) {
+      if (spec?.argv?.some(arg => arg.includes('wsl.exe'))) {
         throw new Error('ENOENT: command not found')
       }
       if (spec?.argv?.[0]?.includes('fail.exe')) {
@@ -116,10 +124,16 @@ test('adaptWin32SubprocessRuntime injects inspector and translates WSL launch fa
   adaptWin32SubprocessRuntime(fakeRuntime)
   assert.ok(fakeRuntime.terminalInspector, 'terminalInspector must be set')
 
-  // WSL error must be translated with guidance
+  // Direct WSL error must be translated with guidance
   await assert.rejects(
     async () => fakeRuntime.spawnTerminal({ argv: ['C:/Windows/System32/wsl.exe', '--', 'bash'] }),
-    /Failed to start WSL Linux terminal.*wsl --install.*Standard preset/,
+    /Failed to start WSL Linux terminal.*WSL 运行环境缺失.*wsl --install/s,
+  )
+
+  // Wrapped/confined WSL argv error must also be translated
+  await assert.rejects(
+    async () => fakeRuntime.spawnTerminal({ argv: ['runner.exe', '--', 'C:/Windows/System32/wsl.exe', '--', 'bash'] }),
+    /Failed to start WSL Linux terminal.*WSL 运行环境缺失.*wsl --install/s,
   )
 
   // Non-WSL error must preserve original message
