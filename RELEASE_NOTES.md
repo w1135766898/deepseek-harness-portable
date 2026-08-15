@@ -1,28 +1,25 @@
-# DeepSeek Harness for Win v1.1.1
+# DeepSeek Harness for Win v1.1.2
 
 [中文](RELEASE_NOTES.zh.md)
 
 Windows x64 portable release · 2026-08-15
 
-This is the v1.1.1 maintenance release of this Windows distribution, fixing the in-app update restart flow and hardening the transactional updater.
+This is the v1.1.2 maintenance release of this Windows distribution, fixing the release log so it follows the interface language: bundled bilingual release notes now take priority over the English GitHub release text.
 
 ## Bug Fixes
 
-- **Fixed in-app updates never starting after restart confirmation**: the updater is now launched in a way that Windows PowerShell 5.1 actually executes (the previous detached launch exited silently without running, leaving the update stuck at `starting` and reporting "last update incomplete" on the next launch).
-- **Fixed updater self-termination risk**: the old desktop shell is now terminated without recursively killing its process tree, so the running updater can no longer be killed by its own cleanup.
-- **Fixed unexplained incomplete-update states**: early updater failures (for example a missing updater module) now record a concrete failed status with the real error message.
+- **Fixed the update log ignoring the app language**: release notes now prefer the bundled bilingual content, so a Chinese interface shows Chinese release notes instead of the English text pulled from the GitHub release page.
 
 ## Improvements
 
-- **Console updates reuse downloaded packages**: `在线更新.bat` / `update.cmd` now reuse the ZIP the desktop shell already downloaded (SHA-256 verified against the published digest), so updating after a failed in-app restart does not re-download.
-- **Normal post-update launch**: the new version's splash and main window appear normally instead of starting hidden.
+- **Bundled bilingual release history**: all published versions (v1.1.1, v1.1.0, v1.0.0) now ship with Chinese and English release notes, so the full timeline stays localized even when offline or behind a restricted network.
 
 ## Components
 
-- Distribution: 1.1.1
+- Distribution: 1.1.2
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.0-rc.5 (@deepseek-ai/dsh-web-app)
-- Tag: v1.1.1
+- Tag: v1.1.2
 
 ## Checksums and security
 
