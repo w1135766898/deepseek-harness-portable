@@ -2207,7 +2207,15 @@ async function createApp() {
     window = undefined
   })
   window.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url)
+    // Only hand http(s) targets to the system browser. The window hosts the
+    // Harness web UI, which runs third-party plugin code; a link to a file://
+    // or custom-protocol URL must not reach shell.openExternal.
+    try {
+      const parsed = new URL(url)
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') void shell.openExternal(url)
+    } catch {
+      // Malformed URLs are denied.
+    }
     return { action: 'deny' }
   })
 
