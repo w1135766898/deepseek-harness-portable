@@ -74,13 +74,23 @@ function ensureUnifiedDshHome({ env = process.env, userHome = process.env.USERPR
     if (userDataPath) {
       mkdirSync(userDataPath, { recursive: true })
     }
-  } catch {}
+  } catch (error) {
+    // A silent failure here surfaces later as a confusing engine startup
+    // error. Log it immediately so the bad DSH_HOME location is diagnosable.
+    if (logger && typeof logger.warn === 'function') {
+      logger.warn(`Failed to create unified DSH home at ${targetHome}:`, error)
+    }
+  }
 
   migrateLegacySessions({ targetHome, legacyUserDataPath: userDataPath, logger })
 
   try {
     mkdirSync(join(targetHome, 'sessions'), { recursive: true })
-  } catch {}
+  } catch (error) {
+    if (logger && typeof logger.warn === 'function') {
+      logger.warn(`Failed to create sessions directory at ${join(targetHome, 'sessions')}:`, error)
+    }
+  }
 
   return targetHome
 }
