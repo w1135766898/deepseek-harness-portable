@@ -228,8 +228,31 @@ function Compare-Version {
     $previousElectronRunAsNode = $env:ELECTRON_RUN_AS_NODE
     try {
         if ($invocation.electron) { $env:ELECTRON_RUN_AS_NODE = '1' }
-        $output = @(& $invocation.executable $invocation.cli 'compare' $Left $Right 2>&1)
-        $exitCode = $LASTEXITCODE
+        $argumentList = @(
+            ('"' + $invocation.cli + '"')
+            'compare'
+            ('"' + $Left + '"')
+            ('"' + $Right + '"')
+        ) -join ' '
+        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startInfo.FileName = $invocation.executable
+        $startInfo.Arguments = $argumentList
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        if ($invocation.electron) { $startInfo.EnvironmentVariables['ELECTRON_RUN_AS_NODE'] = '1' }
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $startInfo
+        if (-not $process.Start()) { throw 'Unable to start the canonical semver CLI.' }
+        $stdout = $process.StandardOutput.ReadToEnd()
+        $stderr = $process.StandardError.ReadToEnd()
+        $process.WaitForExit()
+        $output = @()
+        if (-not [string]::IsNullOrWhiteSpace($stdout)) { $output += $stdout }
+        if (-not [string]::IsNullOrWhiteSpace($stderr)) { $output += $stderr }
+        $exitCode = $process.ExitCode
+        $process.Dispose()
     } catch {
         throw ('SemVer comparison failed: ' + $_.Exception.Message)
     } finally {
