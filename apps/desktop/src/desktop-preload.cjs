@@ -391,25 +391,15 @@ if (!isSplashDocument) {
   }
 
   function isNativeBrandButton(button) {
-    return button instanceof Element && (
-      button.classList.contains('dsh-native-brand-trigger') ||
-      button.querySelector(NATIVE_BRAND_LOGO_SELECTOR) !== null
-    )
+    return button instanceof Element && button.querySelector(NATIVE_BRAND_LOGO_SELECTOR) !== null
   }
 
   function isNativeFishButton(button) {
-    return button instanceof Element && (
-      button.classList.contains('dsh-native-brand-trigger') ||
-      button.querySelector(NATIVE_FISH_LOGO_SELECTOR) !== null
-    )
+    return button instanceof Element && button.querySelector(NATIVE_FISH_LOGO_SELECTOR) !== null
   }
 
   function isNativeMenuTrigger(button) {
-    return button instanceof Element && (
-      button.classList.contains('dsh-native-brand-trigger') ||
-      button.querySelector(NATIVE_BRAND_LOGO_SELECTOR) !== null ||
-      button.querySelector(NATIVE_FISH_LOGO_SELECTOR) !== null
-    )
+    return isNativeBrandButton(button) || isNativeFishButton(button)
   }
 
   function nativeButtonFromTarget(target) {
@@ -429,7 +419,7 @@ if (!isSplashDocument) {
   }
 
   function findNativeMenuAnchor() {
-    return document.querySelector('button.dsh-native-brand-trigger') || findNativeBrandButton() || findNativeFishButton()
+    return findNativeBrandButton() || findNativeFishButton()
   }
 
   function defaultMenuPosition() {
@@ -456,15 +446,23 @@ if (!isSplashDocument) {
   }
 
   function syncNativeMenuTrigger() {
-    const brandButton = findNativeMenuAnchor()
-    if (!brandButton) return
-    if (!brandButton.classList.contains('dsh-native-brand-trigger')) {
-      brandButton.classList.add('dsh-native-brand-trigger')
+    const anchor = findNativeMenuAnchor()
+    for (const stale of document.querySelectorAll('button.dsh-native-brand-trigger')) {
+      if (stale !== anchor) {
+        stale.classList.remove('dsh-native-brand-trigger')
+        stale.removeAttribute('title')
+        stale.removeAttribute('aria-haspopup')
+        stale.removeAttribute('aria-expanded')
+      }
     }
-    brandButton.setAttribute('aria-haspopup', 'menu')
-    brandButton.setAttribute('aria-expanded', state.menuOpen ? 'true' : 'false')
-    brandButton.setAttribute('aria-label', desktopText('menu.desktopMenu'))
-    brandButton.title = desktopText('menu.desktopMenu')
+    if (!anchor) return
+    if (!anchor.classList.contains('dsh-native-brand-trigger')) {
+      anchor.classList.add('dsh-native-brand-trigger')
+    }
+    anchor.setAttribute('aria-haspopup', 'menu')
+    anchor.setAttribute('aria-expanded', state.menuOpen ? 'true' : 'false')
+    anchor.setAttribute('aria-label', desktopText('menu.desktopMenu'))
+    anchor.title = desktopText('menu.desktopMenu')
   }
 
   function openMenuAt(anchor) {
@@ -1150,16 +1148,20 @@ if (!isSplashDocument) {
 
   document.addEventListener('click', event => {
     const button = nativeButtonFromTarget(event.target)
-    if (button && isNativeMenuTrigger(button)) {
+    if (!button) return
+    if (isNativeBrandButton(button)) {
       event.preventDefault()
       event.stopPropagation()
       toggleMenu(button)
       return
     }
+    if (isNativeFishButton(button) && state.menuOpen) {
+      closeMenu()
+    }
   }, true)
   document.addEventListener('contextmenu', event => {
     const button = nativeButtonFromTarget(event.target)
-    if (!button || !isNativeMenuTrigger(button)) return
+    if (!button || (!isNativeFishButton(button) && !isNativeBrandButton(button))) return
     event.preventDefault()
     event.stopPropagation()
     openMenuAt(button)
