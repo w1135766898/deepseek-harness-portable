@@ -2,7 +2,7 @@
 
 [中文](README.zh.md)
 
-This workspace package builds the native Electron desktop shell for DeepSeek Harness for Win v1.0.7. It starts the existing Web runtime on loopback, embeds it in a BrowserWindow, and keeps a tray icon for desktop actions.
+This workspace package builds the native Electron desktop shell for DeepSeek Harness for Win v1.1.0. It starts the existing Web runtime on loopback, embeds it in a BrowserWindow, and keeps a tray icon for desktop actions.
 
 ## Runtime features
 
@@ -12,7 +12,7 @@ This workspace package builds the native Electron desktop shell for DeepSeek Har
 - Provides tray and application menu actions for workspace, browser mode, updates, release notes, and About.
 - Fetches release notes from GitHub or the configured mirror, with cached and bundled offline fallback.
 - Downloads and verifies portable updates in-app with progress before asking the user to restart.
-- Shows update availability in a compact, centered banner below the title bar; it auto-destroys after seven seconds or dismissal, supports per-version suppression, and keeps the full release history in a same-window slide-over drawer.
+- Shows update availability in a compact, centered banner below the title bar; it auto-destroys after seven seconds or dismissal, supports per-version suppression, and keeps the full release history in a centered card-style Update Hub.
 - Fuses the native sidebar logo with the desktop menu: expanded left click opens the menu, while collapsed left click expands the sidebar and right click opens the menu.
 - Uses a Windows 11 Mica title-bar overlay, system theme synchronization, startup splash, and persisted multi-monitor-safe window bounds.
 
@@ -33,8 +33,8 @@ The native build downloads Electron and targets Windows x64. The packaged output
 
 ## Release identity
 
-- Release: DeepSeek Harness for Win v1.0.7
-- Distribution: 1.0.7
+- Release: DeepSeek Harness for Win v1.1.0
+- Distribution: 1.1.0
 - Desktop shell: 0.1.0-shell.2
 - Kernel: read from the packaged @deepseek-ai/dsh-web-app manifest
 

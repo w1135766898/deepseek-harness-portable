@@ -1,4 +1,4 @@
-# DeepSeek Harness for Win v1.0.7
+# DeepSeek Harness for Win v1.1.0
 
 [English](RELEASE_NOTES.md)
 
@@ -7,6 +7,9 @@ Windows x64 便携版 · 2026-08-15
 社区维护的分发版，不是 Microsoft 官方签名版本。
 
 ## 主要更新
+
+- 将更新日志侧滑抽屉升级为居中卡片式更新中心，采用固定 Header/Footer 与局部滚动 Body。
+- 新增事务状态更新卡、SemVer 倒序手风琴时间线、改动徽标统计和精简关于页。
 
 - 在 JavaScript 运行时、CLI 与 PowerShell 更新脚本中统一实现了 SemVer 2.0 解析器与优先级比较器。
 - 新增基于 taskkill 并带 PID 复用安全校验的 Windows 完整进程树终止能力。
@@ -26,10 +29,10 @@ Windows x64 便携版 · 2026-08-15
 
 ## 组件版本
 
-- 分发：1.0.7
+- 分发：1.1.0
 - 桌面外壳：0.1.0-shell.2
 - 内核：0.1.0-rc.5（@deepseek-ai/dsh-web-app）
-- 标签：v1.0.7
+- 标签：v1.1.0
 
 ## 校验和与安全
 

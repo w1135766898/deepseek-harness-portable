@@ -1,4 +1,4 @@
-# DeepSeek Harness for Win v1.0.7
+# DeepSeek Harness for Win v1.1.0
 
 [中文](RELEASE_NOTES.zh.md)
 
@@ -7,6 +7,9 @@ Windows x64 portable release · 2026-08-15
 Community distribution, not an official Microsoft-signed build.
 
 ## Features
+
+- Replaced the release-notes drawer with a centered card-style Update Hub with a fixed header/footer and locally scrolling body.
+- Added transaction-aware update states, SemVer-sorted accordion history, release badge summaries, and a compact About view.
 
 - Unified SemVer 2.0 parser and precedence comparator across JavaScript runtime, CLI, and PowerShell updater scripts.
 - Clean Windows process tree termination via taskkill with PID recycling safety guards.
@@ -26,10 +29,10 @@ Community distribution, not an official Microsoft-signed build.
 
 ## Components
 
-- Distribution: 1.0.7
+- Distribution: 1.1.0
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.0-rc.5 (@deepseek-ai/dsh-web-app)
-- Tag: v1.0.7
+- Tag: v1.1.0
 
 ## Checksums and security
 
