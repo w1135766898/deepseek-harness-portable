@@ -20,7 +20,7 @@ const { basename, dirname, join, resolve } = require('node:path')
 const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 const { messageForLocale, localeFromSystem, normalizePreference } = require('./desktop-locale.cjs')
 const { readLocalePreference } = require('./desktop-locale-store.cjs')
-const { countSectionBadges, mergeReleaseHistory, normalizeReleaseNotes } = require('./release-notes.cjs')
+const { countSectionBadges, mergeReleaseHistory, normalizeReleaseNotes, normalizeReleaseNotesHistory } = require('./release-notes.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
 const { buildUpdaterArguments, launchDetachedPowerShell } = require('./update-launcher.cjs')
 const { ensureUnifiedDshHome } = require('./workspace-service.cjs')
@@ -1066,10 +1066,12 @@ function getLocalReleaseInfo() {
   const releaseManifest = portableRoot === undefined
     ? undefined
     : readJsonIfPresent(join(portableRoot, RELEASE_MANIFEST_NAME))
+  const releaseNotesSource = releaseManifest?.releaseNotes || bundledReleaseNotes
   let appVersion
   try {
     appVersion = app.getVersion()
   } catch {}
+  const releaseNotesHistory = normalizeReleaseNotesHistory(releaseNotesSource)
   return {
     distributionVersion: firstVersion(
       releaseManifest?.distributionVersion,
@@ -1085,7 +1087,7 @@ function getLocalReleaseInfo() {
     kernelVersion: firstVersion(releaseManifest?.kernelVersion, 'unknown'),
     kernelCommit: firstText(releaseManifest?.kernelCommit),
     releaseNotes: normalizeReleaseNotes(
-      releaseManifest?.releaseNotes || bundledReleaseNotes,
+      releaseNotesSource,
       firstVersion(
         releaseManifest?.distributionVersion,
         packageManifest.distributionVersion,
@@ -1093,6 +1095,11 @@ function getLocalReleaseInfo() {
         appVersion,
       ),
     ),
+    // Older release manifests do not embed the bilingual history; fall back
+    // to the bundled file so the localized timeline stays complete.
+    releaseNotesHistory: releaseNotesHistory.length > 0
+      ? releaseNotesHistory
+      : normalizeReleaseNotesHistory(bundledReleaseNotes),
   }
 }
 
@@ -1331,9 +1338,14 @@ async function buildReleaseNotesData(context = {}, options = {}) {
   const checkError = typeof context.checkError === 'string' && context.checkError.trim() !== ''
     ? context.checkError.trim()
     : (typeof context.error === 'string' && context.error.trim() !== '' ? context.error.trim() : undefined)
+  // Bundled bilingual notes are the authoritative localized source for the
+  // versions they cover; remote and cached GitHub data (English-only bodies)
+  // only fill in versions that have no bundled entry. This keeps the release
+  // log localized (Chinese UI shows Chinese notes) instead of letting remote
+  // English bodies shadow the bundled bilingual entries.
   const historySource = remote.length > 0
-    ? [update, ...remote, localRelease]
-    : [update, ...cached, localRelease]
+    ? [update, localRelease, ...localInfo.releaseNotesHistory, ...remote]
+    : [update, localRelease, ...localInfo.releaseNotesHistory, ...cached]
   const history = sortReleaseHistory(historySource)
   const latestRelease = history[0] || localRelease
   const currentRelease = history.find(item => item.version === localInfo.distributionVersion) || localRelease

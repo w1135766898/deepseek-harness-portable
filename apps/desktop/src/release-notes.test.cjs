@@ -3,6 +3,7 @@ const assert = require('node:assert/strict')
 const {
   mergeReleaseHistory,
   normalizeReleaseNotes,
+  normalizeReleaseNotesHistory,
   parseReleaseBody,
   releaseType,
 } = require('./release-notes.cjs')
@@ -67,6 +68,54 @@ test('deduplicates history while preferring the copy with a body', () => {
 
   assert.equal(merged.length, 2)
   assert.equal(merged.find(item => item.version === '1.0.0').body, '## Features\n- Notes')
+})
+
+test('normalizes bundled bilingual history entries and drops versionless ones', () => {
+  const history = normalizeReleaseNotesHistory({
+    version: '1.1.2',
+    history: [
+      {
+        version: '1.1.1',
+        body: '## Bug Fixes\n- Fixed',
+        sections: [{
+          key: 'fixes',
+          titleEn: 'Bug Fixes',
+          titleZh: '问题修复',
+          itemsEn: ['Fixed an English item'],
+          itemsZh: ['修复中文条目'],
+        }],
+      },
+      { version: '1.0.0', body: 'Older notes' },
+      {},
+    ],
+  })
+
+  assert.equal(history.length, 2)
+  assert.equal(history[0].version, '1.1.1')
+  assert.equal(history[0].sections[0].titleZh, '问题修复')
+  assert.deepEqual(history[0].sections[0].itemsZh, ['修复中文条目'])
+})
+
+test('keeps bundled bilingual notes ahead of English remote bodies for the same version', () => {
+  const merged = mergeReleaseHistory(
+    [{
+      version: '1.1.1',
+      body: '## Bug Fixes / 问题修复\n- Fixed',
+      sections: [{
+        key: 'fixes',
+        titleEn: 'Bug Fixes',
+        titleZh: '问题修复',
+        itemsEn: ['English remote would say this'],
+        itemsZh: ['中文更新说明'],
+      }],
+    }],
+    [{ version: 'v1.1.1', body: '## Bug Fixes\n- English remote note' }],
+  )
+
+  assert.equal(merged.length, 1)
+  const release = merged[0]
+  assert.equal(release.sections[0].titleZh, '问题修复')
+  assert.deepEqual(release.sections[0].itemsZh, ['中文更新说明'])
 })
 
 test('infers major, minor, and patch release types', () => {

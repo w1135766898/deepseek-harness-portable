@@ -198,6 +198,14 @@ function normalizeReleaseNotes(input, fallbackVersion = '0.0.0') {
   }
 }
 
+function normalizeReleaseNotesHistory(input) {
+  const source = input && typeof input === 'object' ? input : {}
+  const entries = Array.isArray(source.history) ? source.history : []
+  return entries
+    .map(entry => normalizeReleaseNotes(entry))
+    .filter(release => release.version !== '0.0.0')
+}
+
 function countSectionBadges(release) {
   const counts = new Map()
   const sections = release && Array.isArray(release.sections) ? release.sections : []
@@ -238,6 +246,7 @@ module.exports = {
   countSectionBadges,
   mergeReleaseHistory,
   normalizeReleaseNotes,
+  normalizeReleaseNotesHistory,
   normalizeUrl,
   parseReleaseBody,
   releaseType,

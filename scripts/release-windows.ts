@@ -153,6 +153,7 @@ function bundledReleaseNotes(version: string): Record<string, unknown> {
   const bodyEn = typeof source.bodyEn === 'string' ? source.bodyEn : ''
   const bodyZh = typeof source.bodyZh === 'string' ? source.bodyZh : ''
   const sections = Array.isArray(source.sections) ? source.sections : []
+  const history = Array.isArray(source.history) ? source.history : []
   return {
     version,
     name: typeof source.name === 'string' && source.name.trim() ? source.name : `DeepSeek Harness for Win v${version}`,
@@ -160,6 +161,7 @@ function bundledReleaseNotes(version: string): Record<string, unknown> {
     ...(bodyEn.trim() ? { bodyEn } : {}),
     ...(bodyZh.trim() ? { bodyZh } : {}),
     ...(sections.length > 0 ? { sections } : {}),
+    ...(history.length > 0 ? { history } : {}),
     body,
   }
 }
