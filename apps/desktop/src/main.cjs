@@ -8,6 +8,7 @@ const { mergeReleaseHistory, normalizeReleaseNotes } = require('./release-notes.
 const { findPortableRoot } = require('./update-path.cjs')
 const { ensureUnifiedDshHome } = require('./workspace-service.cjs')
 const { readConfigStore, updateConfigStore } = require('./config-store.cjs')
+const { terminateProcessTree } = require('./process-tree.cjs')
 const {
   GITHUB_MIRROR_PREFIXES,
   compareVersions,
@@ -518,17 +519,7 @@ function stopHarness() {
     }
     const child = harness
     harness = undefined
-    let settled = false
-    const finish = () => {
-      if (settled) return
-      settled = true
-      clearTimeout(timeout)
-      resolve()
-    }
-    const timeout = setTimeout(finish, STOP_TIMEOUT_MS)
-    timeout.unref()
-    child.once('exit', finish)
-    child.kill()
+    terminateProcessTree(child.pid, { timeoutMs: STOP_TIMEOUT_MS, logger: console }).then(resolve)
   })
 }
 
@@ -1574,6 +1565,12 @@ function triggerPortableUpdate(targetVersion, packagePath, expectedSha256) {
         '-TargetVersion',
         targetVersion,
       ]
+      if (harness && typeof harness.pid === 'number' && harness.pid > 0) {
+        updaterArgs.push('-EnginePid', String(harness.pid))
+      }
+      if (typeof process.pid === 'number' && process.pid > 0) {
+        updaterArgs.push('-ShellPid', String(process.pid))
+      }
       if (packagePath) {
         updaterArgs.push('-PackagePath', packagePath)
         if (expectedSha256) updaterArgs.push('-ExpectedSha256', expectedSha256)
