@@ -721,6 +721,10 @@ if (!isSplashDocument) {
       sendAction('retry-update')
       return
     }
+    if (action === 'desktop-rollback') {
+      sendMenuAction('rollback')
+      return
+    }
     if (action === 'update') {
       const version = state.data?.latestRelease?.version || state.notice?.release?.version || ''
       const ready = state.updateProgress?.state === 'ready' || state.data?.updateStatus?.state === 'ready'
