@@ -28,6 +28,8 @@
       name: '@deepseek-ai/dsh-terminal-bash'
       config:
         timeoutMs: 300000
+        shellPath: !!js "process.platform === 'win32' ? 'C:/Windows/System32/wsl.exe' : '/bin/bash'"
+        shellArgs: !!js "process.platform === 'win32' ? ['--', 'bash', '--noprofile', '--norc', '-i'] : ['--noprofile', '--norc', '-i']"
 
     - id: persistent-bash
       name: '@deepseek-ai/dsh-tool-bash-persistent'
