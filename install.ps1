@@ -311,8 +311,23 @@ function Create-Shortcuts {
         $uninstallShortcut.Save()
     }
 
+    $normalizedInstall = [System.IO.Path]::GetFullPath($InstallDir).TrimEnd('\')
     $userPath = [Environment]::GetEnvironmentVariable('Path', [EnvironmentVariableTarget]::User)
-    if ($userPath -notlike ('*' + $InstallDir + '*')) {
+    $pathContainsInstall = $false
+    if (-not [string]::IsNullOrWhiteSpace($userPath)) {
+        foreach ($entry in @($userPath -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })) {
+            $candidate = $entry.Trim().Trim('"')
+            try {
+                if (([System.IO.Path]::GetFullPath($candidate).TrimEnd('\')) -eq $normalizedInstall) {
+                    $pathContainsInstall = $true
+                    break
+                }
+            } catch {
+                # Skip entries that do not normalize (unquoted oddities).
+            }
+        }
+    }
+    if (-not $pathContainsInstall) {
         [Environment]::SetEnvironmentVariable('Path', ($userPath + ';' + $InstallDir), [EnvironmentVariableTarget]::User)
         $env:Path += ';' + $InstallDir
     }
