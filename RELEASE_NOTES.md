@@ -1,30 +1,31 @@
-# DeepSeek Harness for Win v1.0.0
+# DeepSeek Harness for Win v1.1.0
 
 [中文](RELEASE_NOTES.zh.md)
 
 Windows x64 portable release · 2026-08-15
 
-This is the first formal release of this Windows distribution. It is a community-maintained build and is not signed by Microsoft.
+This is the v1.1.0 release of this Windows distribution, bringing PowerShell agent support, immersive titlebar enhancements, update & rollback reliability improvements, and UI refinements.
 
 ## Features
 
-- Portable Windows x64 package combining the native Electron desktop shell with an embedded DeepSeek Harness Web runtime.
-- Workspace selection, browser mode, tray/application menus, release history, About, and diagnostics export.
-- In-app update checking, download progress, SHA-256 verification, restart confirmation, and rollback support.
-- Native blue whale logo menu, Windows 11 Mica/title-bar styling, system theme synchronization, startup splash, and multi-monitor-safe window state.
+- **Windows Minimal Agent Preset**: Added PowerShell (`pwsh`) shell support and cmdline execution on Windows.
+- **Immersive Titlebar Layout**: Adopted immersive titlebar with safe top content offset and window drag regions, preventing overlap with native window controls.
+- **Update & Rollback UX**: Added transaction state visibility (`starting`, `rolled-back`), automatic application relaunch after rollback, and localized status cards.
+- **Cross-Restart Ready Resume**: Downloaded updates are remembered and verified across app restarts with automatic stale package cleanup.
 
-## Build and reliability
+## Bug Fixes
 
-- The desktop shell, embedded Web runtime, and release package are rebuilt from the pinned vendor/deepseek-harness source workspace included in this repository.
-- Release packaging validates the runtime source copy, release manifest, portable archive layout, required native modules, and SHA-256 checksums before publication.
-- The package includes Chinese and English quick guides, portable start/update scripts, and an uninstall flow that keeps user data unless deletion is explicitly confirmed.
+- Disabled background jobs (`run_in_background`) in Minimal preset on Windows to prevent orphaned processes.
+- Fixed update ready notice suppression caused by previous dismissal records.
+- Fixed error classification during download failures and added automatic downgrade to retry on corrupted packages.
+- Fixed sidebar whale logo click dispatch and anchor synchronization.
 
 ## Components
 
-- Distribution: 1.0.0
+- Distribution: 1.1.0
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.0-rc.5 (@deepseek-ai/dsh-web-app)
-- Tag: v1.0.0
+- Tag: v1.1.0
 
 ## Checksums and security
 
