@@ -1,8 +1,11 @@
 node_modules/
 dist/
 dist-*/
+dist-desktop/
 release/
 .dsh/
 *.log
 apps/desktop/lib/
 *.tsbuildinfo
+.debug/
+.playwright-cli/

@@ -1,4 +1,4 @@
-DeepSeek Harness for Win v1.1.2
+DeepSeek Harness for Win v1.1.3
 ================================
 
 Chinese guide: 使用说明.txt
@@ -19,6 +19,8 @@ Chinese guide: 使用说明.txt
    versions. The desktop shell uses the GitHub mirror and a bundled local fallback.
    Update notices are centered below the title bar, slide away and are destroyed
    after seven seconds or dismissal, and can be suppressed per version.
+   If an online check fails, the Update Hub shows an error state with a retry
+   action instead of blocking the main window.
 
 5. Native Logo menu
    When the sidebar is expanded, click the blue native logo to open the desktop

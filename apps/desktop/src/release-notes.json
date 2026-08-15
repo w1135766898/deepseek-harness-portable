@@ -1,6 +1,6 @@
 {
-  "version": "1.1.2",
-  "name": "DeepSeek Harness for Win v1.1.2",
+  "version": "1.1.3",
+  "name": "DeepSeek Harness for Win v1.1.3",
   "publishedAt": "2026-08-15",
   "sections": [
     {
@@ -8,14 +8,14 @@
       "titleEn": "Bug Fixes",
       "titleZh": "修复",
       "itemsEn": [
-        "Unified the Update Hub modal to a stable 620 × 660 px base size across Release Notes and About.",
-        "Removed modal width/height transitions and keyword-size interpolation so tab changes no longer move the close button, footer actions, or visual focus.",
-        "Kept narrow-window sizing responsive through shared modal variables and prevented header titles and tabs from wrapping unexpectedly."
+        "Restored the polished blue native whale menu trigger without overriding pointer behavior for unrelated controls or disabled buttons.",
+        "Kept the native logo menu path connected to Release Notes, Check for Updates, and About after the visual branding override.",
+        "Changed manual update-check failures to open the centered Update Hub with a clear error state and retry action instead of blocking the main window with a native dialog."
       ],
       "itemsZh": [
-        "将更新日志和关于统一到稳定的 620 × 660 px 弹窗基础尺寸。",
-        "移除弹窗宽高过渡动画和关键字尺寸插值，切换 Tab 时关闭按钮、底部操作栏和视觉焦点不再发生跳跃位移。",
-        "使用共享弹窗变量保持窄窗口自适应，并避免头部标题和 Tab 意外换行。"
+        "恢复精致的蓝色原生鲸鱼菜单触发器，同时不再覆盖其他控件和禁用按钮的 pointer 行为。",
+        "保持原生 Logo 菜单到更新日志、检查更新和关于的完整调用链。",
+        "手动检查更新失败时改为打开居中更新中心，显示错误状态和重试入口，不再用原生对话框阻塞主窗口。"
       ]
     },
     {
@@ -23,16 +23,16 @@
       "titleEn": "Improvements",
       "titleZh": "优化提升",
       "itemsEn": [
-        "Synchronized the desktop shell locale with the Harness setting for consistent menus, release notes, and About content.",
-        "Hardened the updater launcher and post-update loopback health probe with safer process handling and reliable exit-status reporting.",
-        "Kept strict portable-runtime source consistency checks, release manifests, archive layout validation, and generated SHA-256 checksums in the release gate."
+        "The desktop shell, embedded Web runtime, and release package can now be rebuilt from the pinned vendor/deepseek-harness source workspace.",
+        "Release packaging validates runtime source consistency, the release manifest, archive layout, and SHA-256 checksums before publishing.",
+        "Generated build directories and TypeScript caches are excluded from the source tree; release binaries are published as GitHub Release assets."
       ],
       "itemsZh": [
-        "桌面外壳与 Harness 设置同步语言，使菜单、更新日志和关于页面保持一致。",
-        "加固更新器启动器与更新后回环健康探针，改善进程处理安全性并可靠传递退出状态。",
-        "发布门禁继续执行便携运行时源码一致性、发布清单、压缩包布局和 SHA-256 校验和校验。"
+        "桌面外壳、内置 Web runtime 和发行包现在可以基于固定的 vendor/deepseek-harness 源码 workspace 重新构建。",
+        "发布前继续校验 runtime 源码一致性、发布清单、压缩包布局和 SHA-256 校验和。",
+        "生成的构建目录和 TypeScript 缓存不再进入源码树，发行二进制文件作为 GitHub Release 附件发布。"
       ]
     }
   ],
-  "body": "## Fixes / 修复\n\n- Unified the Update Hub modal to a stable 620 × 660 px base size across Release Notes and About. / 将更新日志和关于统一到稳定的 620 × 660 px 弹窗基础尺寸。\n- Removed modal width/height transitions and keyword-size interpolation so tab changes no longer move the close button, footer actions, or visual focus. / 移除弹窗宽高过渡动画和关键字尺寸插值，切换 Tab 时关闭按钮、底部操作栏和视觉焦点不再发生跳跃位移。\n- Kept narrow-window sizing responsive through shared modal variables and prevented header titles and tabs from wrapping unexpectedly. / 使用共享弹窗变量保持窄窗口自适应，并避免头部标题和 Tab 意外换行。\n\n## Improvements / 优化提升\n\n- Synchronized the desktop shell locale with the Harness setting for consistent menus, release notes, and About content. / 桌面外壳与 Harness 设置同步语言，使菜单、更新日志和关于页面保持一致。\n- Hardened the updater launcher and post-update loopback health probe with safer process handling and reliable exit-status reporting. / 加固更新器启动器与更新后回环健康探针，改善进程处理安全性并可靠传递退出状态。\n- Kept strict portable-runtime source consistency checks, release manifests, archive layout validation, and generated SHA-256 checksums in the release gate. / 发布门禁继续执行便携运行时源码一致性、发布清单、压缩包布局和 SHA-256 校验和校验。"
+  "body": "## Fixes / 修复\n\n- Restored the polished blue native whale menu trigger without overriding pointer behavior for unrelated controls or disabled buttons. / 恢复精致的蓝色原生鲸鱼菜单触发器，同时不再覆盖其他控件和禁用按钮的 pointer 行为。\n- Kept the native logo menu path connected to Release Notes, Check for Updates, and About after the visual branding override. / 保持原生 Logo 菜单到更新日志、检查更新和关于的完整调用链。\n- Changed manual update-check failures to open the centered Update Hub with a clear error state and retry action instead of blocking the main window with a native dialog. / 手动检查更新失败时改为打开居中更新中心，显示错误状态和重试入口，不再用原生对话框阻塞主窗口。\n\n## Improvements / 优化提升\n\n- The desktop shell, embedded Web runtime, and release package can now be rebuilt from the pinned vendor/deepseek-harness source workspace. / 桌面外壳、内置 Web runtime 和发行包现在可以基于固定的 vendor/deepseek-harness 源码 workspace 重新构建。\n- Release packaging validates runtime source consistency, the release manifest, archive layout, and SHA-256 checksums before publishing. / 发布前继续校验 runtime 源码一致性、发布清单、压缩包布局和 SHA-256 校验和。\n- Generated build directories and TypeScript caches are excluded from the source tree; release binaries are published as GitHub Release assets. / 生成的构建目录和 TypeScript 缓存不再进入源码树，发行二进制文件作为 GitHub Release 附件发布。"
 }
