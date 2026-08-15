@@ -52,9 +52,9 @@ if (!isSplashDocument) {
 
   const state = {
     data: undefined,
-    drawerContext: { mode: 'history' },
-    drawerOpen: false,
-    drawerLoading: false,
+    modalContext: { mode: 'history' },
+    modalOpen: false,
+    modalLoading: false,
     menuOpen: false,
     menuFocusIndex: -1,
     menuPosition: { left: 8, top: 42 },
@@ -66,7 +66,10 @@ if (!isSplashDocument) {
     notice: undefined,
     noticeTimer: undefined,
     requestId: 0,
-    drawerRefreshing: false,
+    modalRefreshing: false,
+    expandedVersions: new Set(),
+    expansionSeedKey: '',
+    modalReturnFocus: undefined,
     updateState: '',
     updateProgress: undefined,
   }
@@ -75,7 +78,7 @@ if (!isSplashDocument) {
   let menuMarkup
   let noticeMarkup
   let healthMarkup
-  let drawerContentMarkup
+  let modalContentMarkup
   let noticeDismissCleanup
   let noticeDismissSequence = 0
 
@@ -111,10 +114,6 @@ if (!isSplashDocument) {
 
   function releaseIcon(key) {
     return key === 'features' ? '✦' : (key === 'improvements' ? '↗' : (key === 'fixes' ? '✓' : '•'))
-  }
-
-  function updateIsBusy(status) {
-    return Boolean(state.updateState || (status && ['starting', 'checking', 'downloading', 'verifying', 'extracting', 'replacing', 'ready'].includes(status.state)))
   }
 
   function mountGlobalStyles() {
@@ -186,58 +185,110 @@ if (!isSplashDocument) {
 
   function renderTimeline(releases) {
     if (!Array.isArray(releases) || releases.length === 0) return '<div class="dsh-empty-copy">暂无更新记录</div>'
-    return '<div class="dsh-timeline">' + releases.map(release => {
-      const current = release.version === state.data?.currentVersion
-      return '<article class="dsh-release-entry ' + (current ? 'is-current' : '') + '"><div class="dsh-release-node"></div><div class="dsh-release-head"><div><span class="dsh-version">v' + escapeHtml(release.version) + '</span><span class="dsh-type">' + escapeHtml(release.releaseType || 'Patch') + '</span>' + (current ? '<span class="dsh-current">当前安装</span>' : '') + '</div><time>' + formatDate(release.publishedAt) + '</time></div><div class="dsh-release-sections">' + renderReleaseSections(release) + '</div></article>'
+    ensureExpandedVersions(releases)
+    return '<div class="dsh-timeline" aria-label="版本时间线">' + releases.map((release, index) => {
+      const version = String(release.version || '')
+      const current = version === state.data?.currentVersion
+      const expanded = state.expandedVersions.has(version)
+      const itemId = releaseElementId(version)
+      const bodyId = itemId + '-body'
+      const badges = renderReleaseBadges(release)
+      return '<article class="dsh-accordion-item ' + (current ? 'is-current ' : '') + (expanded ? 'is-expanded' : '') + '"><div class="dsh-release-node" aria-hidden="true"></div><button class="dsh-accordion-header" type="button" data-action="toggle-release" data-version="' + escapeHtml(version) + '" id="' + escapeHtml(itemId) + '" aria-expanded="' + (expanded ? 'true' : 'false') + '" aria-controls="' + escapeHtml(bodyId) + '"><span class="dsh-accordion-chevron" aria-hidden="true">' + (expanded ? '▼' : '▶') + '</span><span class="dsh-release-heading"><span class="dsh-version">v' + escapeHtml(version) + '</span><span class="dsh-type">' + escapeHtml(release.releaseType || 'Patch') + '</span>' + (current ? '<span class="dsh-current">当前安装</span>' : (index === 0 ? '<span class="dsh-latest">最新发布</span>' : '')) + '</span><span class="dsh-release-badges">' + badges + '</span><time datetime="' + escapeHtml(release.publishedAt || '') + '">' + formatDate(release.publishedAt) + '</time></button><div class="dsh-accordion-body" id="' + escapeHtml(bodyId) + '" role="region" aria-labelledby="' + escapeHtml(itemId) + '"' + (expanded ? '' : ' hidden') + '>' + renderReleaseSections(release) + '</div></article>'
     }).join('') + '</div>'
   }
 
-  function renderDrawerContent() {
+  function releaseElementId(version) {
+    return 'dsh-release-' + encodeURIComponent(String(version || 'version')).replace(/%/g, '_')
+  }
+
+  function renderReleaseBadges(release) {
+    const badges = Array.isArray(release?.badgeSummary) ? release.badgeSummary : []
+    return badges.map(badge => '<span class="dsh-badge ' + escapeHtml(badge.key || 'other') + '" title="' + escapeHtml(badge.labelZh || badge.label || '') + '">' + escapeHtml(badge.icon || '•') + ' ' + escapeHtml(badge.count) + '</span>').join('')
+  }
+
+  function ensureExpandedVersions(releases) {
+    if (!Array.isArray(releases) || releases.length === 0) return
+    const latestVersion = String(releases[0]?.version || '')
+    const currentVersion = String(state.data?.currentVersion || '')
+    const seedKey = latestVersion + '|' + currentVersion
+    if (state.expansionSeedKey === seedKey) return
+    if (latestVersion) state.expandedVersions.add(latestVersion)
+    if (currentVersion) state.expandedVersions.add(currentVersion)
+    state.expansionSeedKey = seedKey
+  }
+
+  function formatBytes(value) {
+    const bytes = Number(value)
+    if (!Number.isFinite(bytes) || bytes <= 0) return ''
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(bytes >= 100 * 1024 * 1024 ? 0 : 1) + ' MB'
+  }
+
+  function renderProgress(status) {
+    const value = Number.isFinite(status?.progress) ? Math.max(0, Math.min(100, Number(status.progress))) : undefined
+    return '<div class="dsh-update-progress" role="group" aria-label="更新进度"><div class="dsh-progress-track"><span class="dsh-progress-fill' + (value === undefined ? ' indeterminate' : '') + '"' + (value === undefined ? '' : ' style="width:' + value + '%"') + '></span></div><span class="dsh-progress-label" role="status">' + (value === undefined ? '正在处理…' : value + '%') + '</span></div>'
+  }
+
+  function renderHeroCard() {
+    const data = state.data || {}
+    const persisted = data.updateStatus || {}
+    const live = state.updateProgress || {}
+    const rawState = live.state || persisted.state || (data.updateAvailable ? 'available' : 'idle')
+    const targetVersion = live.targetVersion || persisted.targetVersion || data.latestRelease?.version || ''
+    const update = data.latestRelease || data.currentRelease || {}
+    const message = live.label || live.message || persisted.message || state.updateState
+    const busy = ['starting', 'checking', 'downloading', 'verifying', 'extracting', 'replacing'].includes(rawState)
+    const ready = rawState === 'ready'
+    const failed = rawState === 'failed' || rawState === 'interrupted'
+    const completed = rawState === 'completed' || rawState === 'updated'
+    const size = formatBytes(update.assetSize)
+    const versionLabel = targetVersion ? 'v' + escapeHtml(targetVersion) : '当前版本'
+    const button = (action, label, kind = 'primary', extra = '') => '<button class="dsh-button ' + kind + '" type="button" data-action="' + action + '"' + extra + '>' + escapeHtml(label) + '</button>'
+
+    if (state.modalLoading) return '<div class="dsh-loading">正在读取本地更新记录…</div>'
+    if (data.error) return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">更新中心暂不可用</span><strong>无法读取更新记录</strong><small>' + escapeHtml(data.error) + '</small></div><div class="dsh-hero-actions">' + button('retry-update', '重新检查', 'secondary') + '</div></section>'
+    if (failed) return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + (rawState === 'interrupted' ? '上次更新未完成' : '更新事务异常') + '</span><strong>' + escapeHtml(message || '当前安装仍可使用，可以重新检查更新。') + '</strong><small>目标版本 ' + versionLabel + '</small></div><div class="dsh-hero-actions">' + button('retry-update', '重新检查', 'secondary') + button('desktop-rollback', '回滚到备份', 'ghost') + '</div></section>'
+    if (completed) return '<section class="dsh-hero-card dsh-hero-card-success" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">更新完成</span><strong>已更新至 ' + versionLabel + '</strong><small>' + escapeHtml(message || '启动健康检查已通过，上一版本备份仍可用于回滚。') + '</small></div><div class="dsh-hero-actions">' + button('desktop-rollback', '回滚到备份', 'ghost') + '</div></section>'
+    if (rawState === 'idle' && !data.updateAvailable) return '<section class="dsh-hero-card dsh-hero-card-neutral" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">运行状态正常</span><strong>当前已是最新版本 v' + escapeHtml(data.currentVersion || '—') + '</strong><small>' + escapeHtml(data.offline ? '使用本地缓存的版本记录。' : '暂时没有可用更新。') + '</small></div></section>'
+
+    const title = ready ? '新版本 ' + versionLabel + ' 已准备就绪' : (busy ? '正在准备 ' + versionLabel : '发现新版本 ' + versionLabel)
+    const detail = ready ? '更新包已下载并校验，确认后将重启应用完成替换。' : (busy ? (message || '更新事务正在安全执行…') : '基于事务型安全更新，支持自动备份与健康回滚。' + (size ? ' · 约 ' + size : ''))
+    const action = ready ? button('update', '立即重启更新') : (busy ? button('update', '更新进行中…', 'secondary', ' disabled') : button('update', '立即下载'))
+    return '<section class="dsh-hero-card ' + (ready ? 'dsh-hero-card-ready' : (busy ? 'dsh-hero-card-progress' : 'dsh-hero-card-available')) + '" role="status" aria-live="polite"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + (ready ? '✓ 更新包已校验' : (busy ? '事务更新引擎' : '🚀 发现新版本')) + '</span><strong>' + title + '</strong><small>' + escapeHtml(detail) + '</small>' + (busy ? renderProgress({ ...persisted, ...live }) : '') + '</div><div class="dsh-hero-actions">' + action + '</div></section>'
+  }
+
+  function renderModalContent() {
     const data = state.data
-    const status = data?.updateStatus || {}
-    const update = data?.latestRelease
-    const progressState = state.updateProgress?.state || status.state || ''
-    const ready = progressState === 'ready'
-    const hasUpdate = Boolean((data?.updateAvailable || ready) && update)
-    const busy = updateIsBusy({ ...status, state: progressState })
-    const progressValue = Number.isFinite(state.updateProgress?.progress)
-      ? Math.max(0, Math.min(100, state.updateProgress.progress))
-      : undefined
-    const progressMarkup = ['checking', 'downloading', 'verifying'].includes(progressState)
-      ? '<div class="dsh-update-progress"><div class="dsh-progress-track"><span class="dsh-progress-fill' + (progressValue === undefined ? ' indeterminate' : '') + '"' + (progressValue === undefined ? '' : ' style="width:' + progressValue + '%"') + '></span></div><small>' + (progressValue === undefined ? '正在处理…' : progressValue + '%') + '</small></div>'
-      : ''
-    const statusNotice = status.state === 'failed' || status.state === 'interrupted'
-      ? '<div class="dsh-status ' + (status.state === 'failed' ? 'failed' : 'interrupted') + '"><strong>' + (status.state === 'failed' ? '更新失败' : '上次更新未完成') + '</strong><span>' + escapeHtml(status.message || '当前安装仍可使用，可以重新检查更新。') + '</span><button class="dsh-button ghost" data-action="retry-update">重新检查</button></div>'
-      : ''
-    const updateCard = hasUpdate
-      ? '<div class="dsh-update-card"><div><strong>' + (ready ? '新版本 v' + escapeHtml(update.version) + ' 已准备就绪' : '新版本 v' + escapeHtml(update.version) + ' 已发布') + '</strong><span>' + escapeHtml(state.updateState || (ready ? '更新包已下载并校验，重启后完成替换' : (busy ? '正在准备更新包…' : '安全下载并替换便携版运行时'))) + '</span>' + progressMarkup + '</div><button class="dsh-button primary" data-action="update"' + (busy && !ready ? ' disabled' : '') + '>' + escapeHtml(ready ? '立即重启更新' : (state.updateState || (busy ? '更新进行中…' : '立即更新'))) + '</button></div>'
-      : ''
-    const refreshing = state.drawerRefreshing ? '<div class="dsh-refreshing">正在后台同步最新更新记录…</div>' : ''
-    if (state.drawerLoading) return '<div class="dsh-loading">正在读取本地更新记录…</div>'
-    return refreshing + (state.drawerContext.mode === 'about'
-      ? '<div class="dsh-about"><div class="dsh-about-logo">' + logoMarkup('dsh-about-logo-image', 'DeepSeek') + '</div><h3>DeepSeek Harness</h3><p>面向 Windows 的 DeepSeek Harness 桌面外壳。</p><p class="dsh-muted">内核 v' + escapeHtml(data?.localInfo?.kernelVersion || 'unknown') + ' · 外壳 v' + escapeHtml(data?.localInfo?.desktopVersion || 'unknown') + '</p></div>'
-      : updateCard + statusNotice + renderTimeline(data?.history || []))
+    const refreshing = state.modalRefreshing ? '<div class="dsh-refreshing" role="status">正在后台同步最新更新记录…</div>' : ''
+    if (state.modalLoading) return '<div class="dsh-loading">正在读取本地更新记录…</div>'
+    return refreshing + (state.modalContext.mode === 'about'
+      ? '<div class="dsh-about"><div class="dsh-about-logo">' + logoMarkup('dsh-about-logo-image', 'DeepSeek') + '</div><div class="dsh-status-kicker">DEEPSEEK HARNESS</div><h3>DeepSeek Harness</h3><p>面向 Windows 的 DeepSeek Harness 桌面外壳。</p><p class="dsh-muted">内核 v' + escapeHtml(data?.localInfo?.kernelVersion || 'unknown') + ' · 外壳 v' + escapeHtml(data?.localInfo?.desktopVersion || 'unknown') + '</p></div>'
+      : renderHeroCard() + renderTimeline(data?.history || []))
   }
 
-  function renderDrawerShell() {
-    return '<div class="dsh-drawer-layer" aria-hidden="true"><button class="dsh-drawer-backdrop" data-action="drawer-close" aria-label="关闭"></button><aside class="dsh-drawer" role="dialog" aria-modal="true" aria-label="更新日志"><header class="dsh-drawer-header"><div><div class="dsh-eyebrow">DEEPSEEK HARNESS</div><h2 class="dsh-drawer-title"></h2><span class="dsh-subtitle"></span></div><button class="dsh-close" data-action="drawer-close" aria-label="关闭">×</button></header><div class="dsh-drawer-tabs"><button class="dsh-notes-tab active" data-action="show-notes">更新日志</button><button class="dsh-about-tab" data-action="show-about">关于</button></div><div class="dsh-drawer-scroll"></div><footer class="dsh-drawer-footer"><button class="dsh-button ghost" data-action="open-github">GitHub 仓库 ↗</button><button class="dsh-button ghost" data-action="drawer-close">完成</button></footer></aside></div>'
+  function renderModalShell() {
+    return '<div class="dsh-modal-layer" aria-hidden="true"><button class="dsh-modal-backdrop" data-action="modal-close" aria-hidden="true" tabindex="-1"></button><section class="dsh-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="dsh-modal-title" aria-describedby="dsh-modal-subtitle"><header class="dsh-modal-header"><div class="dsh-header-brand"><div class="dsh-brand-badge">' + logoMarkup('dsh-brand-logo', 'DeepSeek') + '</div><div><div class="dsh-eyebrow">DEEPSEEK HARNESS</div><h2 class="dsh-modal-title" id="dsh-modal-title">更新日志</h2><span class="dsh-subtitle" id="dsh-modal-subtitle"></span></div></div><div class="dsh-header-controls"><nav class="dsh-modal-tabs" role="tablist" aria-label="更新中心页面"><button class="dsh-tab dsh-notes-tab active" type="button" data-action="show-notes" role="tab" id="dsh-notes-tab" aria-selected="true" aria-controls="dsh-modal-scroll">版本动态</button><button class="dsh-tab dsh-about-tab" type="button" data-action="show-about" role="tab" id="dsh-about-tab" aria-selected="false" aria-controls="dsh-modal-scroll">关于</button></nav><button class="dsh-modal-close-btn" type="button" data-action="modal-close" aria-label="关闭">×</button></div></header><main class="dsh-modal-body" id="dsh-modal-scroll" role="tabpanel" tabindex="-1" aria-labelledby="dsh-notes-tab"></main><footer class="dsh-modal-footer"><div class="dsh-footer-left"><button class="dsh-button ghost" type="button" data-action="open-github">GitHub 仓库 ↗</button><button class="dsh-button ghost" type="button" data-action="desktop-export-diagnostics">复制排障信息</button></div><div class="dsh-footer-right"><button class="dsh-button secondary" type="button" data-action="modal-close">完成</button></div></footer></section></div>'
   }
 
-  function syncDrawer() {
+  function syncModal() {
     if (chromeRefs === undefined) return
-    const title = state.drawerContext.mode === 'about' ? '关于 DeepSeek Harness' : '更新日志'
+    const isAbout = state.modalContext.mode === 'about'
+    const title = isAbout ? '关于 DeepSeek Harness' : '更新日志'
     const version = state.data?.currentVersion || '—'
-    chromeRefs.drawerLayer.classList.toggle('is-open', state.drawerOpen)
-    chromeRefs.drawerLayer.setAttribute('aria-hidden', state.drawerOpen ? 'false' : 'true')
-    chromeRefs.drawer.setAttribute('aria-label', title)
-    chromeRefs.drawerTitle.textContent = title
-    chromeRefs.drawerSubtitle.textContent = '当前版本 v' + version
-    chromeRefs.notesTab.classList.toggle('active', state.drawerContext.mode !== 'about')
-    chromeRefs.aboutTab.classList.toggle('active', state.drawerContext.mode === 'about')
-    const content = renderDrawerContent()
-    if (content !== drawerContentMarkup) {
-      chromeRefs.drawerScroll.innerHTML = content
-      drawerContentMarkup = content
+    chromeRefs.modalLayer.classList.toggle('is-open', state.modalOpen)
+    chromeRefs.modalLayer.setAttribute('aria-hidden', state.modalOpen ? 'false' : 'true')
+    chromeRefs.modalDialog.classList.toggle('is-about-mode', isAbout)
+    chromeRefs.modalTitle.textContent = title
+    chromeRefs.modalSubtitle.textContent = '当前安装 v' + version
+    chromeRefs.notesTab.classList.toggle('active', !isAbout)
+    chromeRefs.aboutTab.classList.toggle('active', isAbout)
+    chromeRefs.notesTab.setAttribute('aria-selected', isAbout ? 'false' : 'true')
+    chromeRefs.aboutTab.setAttribute('aria-selected', isAbout ? 'true' : 'false')
+    chromeRefs.modalBody.setAttribute('aria-labelledby', isAbout ? 'dsh-about-tab' : 'dsh-notes-tab')
+    const content = renderModalContent()
+    if (content !== modalContentMarkup) {
+      chromeRefs.modalBody.innerHTML = content
+      modalContentMarkup = content
     }
   }
 
@@ -430,7 +481,7 @@ if (!isSplashDocument) {
       chromeRefs.healthHost.innerHTML = nextHealthMarkup
       healthMarkup = nextHealthMarkup
     }
-    syncDrawer()
+    syncModal()
     syncMenuFocus()
     syncNativeMenuTrigger()
   }
@@ -494,34 +545,83 @@ if (!isSplashDocument) {
     }, 7000)
   }
 
-  async function openDrawer(context = { mode: 'history' }) {
-    state.drawerContext = context && typeof context === 'object' ? context : { mode: 'history' }
-    state.drawerOpen = true
-    state.drawerLoading = true
-    state.drawerRefreshing = false
-    state.updateState = ''
-    state.updateProgress = undefined
+  function focusableModalElements() {
+    if (!chromeRefs?.modalDialog) return []
+    return Array.from(chromeRefs.modalDialog.querySelectorAll('button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'))
+      .filter(element => element instanceof HTMLElement && element.offsetParent !== null)
+  }
+
+  function focusModal() {
+    const elements = focusableModalElements()
+    const target = elements.find(element => element.matches('.dsh-modal-close-btn')) || elements[0]
+    if (target) target.focus({ preventScroll: true })
+  }
+
+  function trapModalFocus(event) {
+    if (!state.modalOpen || event.key !== 'Tab') return false
+    const elements = focusableModalElements()
+    if (elements.length === 0) return false
+    const active = shadow.activeElement
+    const currentIndex = elements.indexOf(active)
+    if (currentIndex === -1) {
+      event.preventDefault()
+      focusModal()
+      return true
+    }
+    if ((event.shiftKey && currentIndex === 0) || (!event.shiftKey && currentIndex === elements.length - 1)) {
+      event.preventDefault()
+      const nextIndex = event.shiftKey ? elements.length - 1 : 0
+      elements[nextIndex].focus({ preventScroll: true })
+    }
+    return false
+  }
+
+  function closeModal() {
+    if (!state.modalOpen) return
+    state.modalOpen = false
+    render()
+    const returnFocus = state.modalReturnFocus
+    state.modalReturnFocus = undefined
+    if (returnFocus && typeof returnFocus.focus === 'function' && returnFocus.isConnected !== false) returnFocus.focus({ preventScroll: true })
+  }
+
+  function toggleReleaseAccordion(version) {
+    const normalized = typeof version === 'string' ? version : ''
+    if (!normalized) return
+    if (state.expandedVersions.has(normalized)) state.expandedVersions.delete(normalized)
+    else state.expandedVersions.add(normalized)
+    render()
+  }
+
+  async function openModal(context = { mode: 'history' }) {
+    const wasOpen = state.modalOpen
+    if (!wasOpen) state.modalReturnFocus = document.activeElement
+    state.modalContext = context && typeof context === 'object' ? context : { mode: 'history' }
+    state.modalOpen = true
+    state.modalLoading = true
+    state.modalRefreshing = false
     const requestId = ++state.requestId
     render()
     let hasCachedData = false
     try {
-      state.data = await ipcRenderer.invoke('desktop:release-notes:get-cached-data', state.drawerContext)
+      state.data = await ipcRenderer.invoke('desktop:release-notes:get-cached-data', state.modalContext)
       hasCachedData = true
     } catch {}
     if (requestId !== state.requestId) return
-    state.drawerLoading = false
-    state.drawerRefreshing = true
+    state.modalLoading = false
+    state.modalRefreshing = true
     render()
     try {
-      const data = await ipcRenderer.invoke('desktop:release-notes:get-data', state.drawerContext)
+      const data = await ipcRenderer.invoke('desktop:release-notes:get-data', state.modalContext)
       if (requestId !== state.requestId) return
       state.data = data
     } catch (error) {
       if (!hasCachedData) state.data = { error: error instanceof Error ? error.message : String(error), history: [] }
     } finally {
       if (requestId === state.requestId) {
-        state.drawerRefreshing = false
+        state.modalRefreshing = false
         render()
+        if (!wasOpen) focusModal()
       }
     }
   }
@@ -605,12 +705,15 @@ if (!isSplashDocument) {
         ? { mode: 'update', currentVersion: state.notice.currentVersion, update: state.notice.release }
         : { mode: 'history', selectedVersion: state.notice?.currentVersion }
       dismissNotice()
-      void openDrawer(context)
+      void openModal(context)
       return
     }
-    if (action === 'drawer-close') {
-      state.drawerOpen = false
-      render()
+    if (action === 'modal-close') {
+      closeModal()
+      return
+    }
+    if (action === 'toggle-release') {
+      toggleReleaseAccordion(target.dataset.version)
       return
     }
     if (action === 'retry-update') {
@@ -627,11 +730,11 @@ if (!isSplashDocument) {
       return
     }
     if (action === 'show-about') {
-      void openDrawer({ ...state.drawerContext, mode: 'about' })
+      void openModal({ ...state.modalContext, mode: 'about' })
       return
     }
     if (action === 'show-notes') {
-      void openDrawer({ ...state.drawerContext, mode: state.drawerContext.update ? 'update' : 'history' })
+      void openModal({ ...state.modalContext, mode: state.modalContext.update ? 'update' : 'history' })
       return
     }
     if (action === 'open-github') {
@@ -648,7 +751,7 @@ if (!isSplashDocument) {
     .dsh-chrome, .dsh-chrome * { box-sizing: border-box; }
     .dsh-chrome { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; color: #182235; font: 13px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif; }
     .dsh-drag-region { position: fixed; inset: 0 140px auto 0; height: var(--dsh-titlebar-height); pointer-events: none; -webkit-app-region: drag; }
-    .dsh-notice, .dsh-drawer-layer { pointer-events: auto; }
+    .dsh-notice, .dsh-modal-layer { pointer-events: auto; }
     .dsh-menu-popover { position: fixed; top: var(--dsh-menu-top, 42px); left: var(--dsh-menu-left, 8px); z-index: 6; display: grid; min-width: 236px; max-height: calc(100vh - 16px); overflow-y: auto; padding: 6px; border: 1px solid rgba(116, 138, 171, .24); border-radius: 12px; background: rgba(250, 252, 255, .98); box-shadow: 0 16px 40px rgba(23, 43, 72, .2); pointer-events: auto; -webkit-app-region: no-drag; }
     .dsh-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 7px 9px; border: 0; border-radius: 7px; color: #263a5a; background: transparent; cursor: pointer; text-align: left; font: 12px/1.2 inherit; -webkit-app-region: no-drag; }
     .dsh-menu-item:hover { color: #1d5ebf; background: #eaf2ff; }
@@ -679,49 +782,74 @@ if (!isSplashDocument) {
     .dsh-button:hover { background: #e4ebf6; }
     .dsh-button.primary { border-color: #307bf0; color: #fff; background: #307bf0; box-shadow: 0 3px 10px rgba(48, 123, 240, .25); }
     .dsh-button.primary:hover { background: #2567ce; }
+    .dsh-button.secondary { border-color: rgba(48, 123, 240, .22); color: #245db1; background: #eaf2ff; }
+    .dsh-button.secondary:hover { border-color: rgba(48, 123, 240, .34); background: #dceaff; }
     .dsh-button.ghost { color: #5d6d85; background: transparent; }
     .dsh-button:disabled { opacity: .6; cursor: default; }
-    .dsh-drawer-layer { position: fixed; inset: 0; display: flex; justify-content: flex-end; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s ease, visibility 0s linear .3s; }
-    .dsh-drawer-layer.is-open { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
-    .dsh-drawer-backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: rgba(12, 22, 38, .24); cursor: default; opacity: 0; transition: opacity .2s ease; }
-    .dsh-drawer-layer.is-open .dsh-drawer-backdrop { opacity: 1; }
-    .dsh-drawer { position: relative; display: flex; flex-direction: column; width: min(540px, calc(100vw - 12px)); height: 100%; overflow: hidden; border-left: 1px solid rgba(116, 138, 171, .22); background: rgba(250, 252, 255, .97); box-shadow: -20px 0 50px rgba(23, 43, 72, .2); opacity: .75; transform: translateX(100%); transition: transform .3s cubic-bezier(.16,1,.3,1), opacity .3s ease; will-change: transform, opacity; }
-    .dsh-drawer-layer.is-open .dsh-drawer { opacity: 1; transform: translateX(0); }
-    .dsh-drawer-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: calc(var(--dsh-titlebar-height) + 14px) 28px 18px; border-bottom: 1px solid rgba(42, 61, 92, .1); }
+    .dsh-modal-layer { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px 16px; background: rgba(10, 18, 30, .48); backdrop-filter: blur(14px) saturate(150%); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s ease, visibility 0s linear .22s; }
+    .dsh-modal-layer.is-open { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+    .dsh-modal-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: default; }
+    .dsh-modal-dialog { position: relative; z-index: 1; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; width: min(620px, calc(100vw - 32px)); min-height: 320px; height: min(660px, calc(100vh - 48px)); max-height: calc(100vh - 48px); overflow: hidden; border: 1px solid rgba(116, 138, 171, .24); border-radius: 14px; background: rgba(250, 252, 255, .98); box-shadow: 0 24px 60px rgba(15, 30, 54, .26), 0 2px 8px rgba(18, 38, 68, .06); opacity: 0; transform: scale(.96) translateY(10px); transition: opacity .2s ease, transform .22s cubic-bezier(.16, 1, .3, 1), width .25s ease, height .25s ease; interpolate-size: allow-keywords; will-change: opacity, transform; }
+    .dsh-modal-layer.is-open .dsh-modal-dialog { opacity: 1; transform: scale(1) translateY(0); }
+    .dsh-modal-dialog.is-about-mode { width: min(440px, calc(100vw - 32px)); height: min(340px, calc(100vh - 48px)); min-height: 0; max-height: min(420px, calc(100vh - 48px)); }
+    .dsh-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 24px 16px; border-bottom: 1px solid rgba(42, 61, 92, .1); }
+    .dsh-header-brand, .dsh-header-controls, .dsh-modal-tabs, .dsh-footer-left, .dsh-footer-right, .dsh-hero-actions { display: flex; align-items: center; }
+    .dsh-header-brand { min-width: 0; gap: 10px; }
+    .dsh-brand-badge { display: grid; flex: 0 0 34px; place-items: center; width: 34px; height: 34px; border: 1px solid rgba(72, 112, 190, .16); border-radius: 10px; background: #f7faff; box-shadow: 0 5px 14px rgba(47, 117, 238, .18); }
+    .dsh-brand-logo { width: 28px; height: 28px; object-fit: contain; pointer-events: none; }
     .dsh-eyebrow { margin-bottom: 4px; color: #6e85a8; font: 700 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .12em; }
-    .dsh-drawer h2 { margin: 0; color: #18263d; font-size: 21px; letter-spacing: -.02em; }
-    .dsh-subtitle { display: block; margin-top: 4px; color: #7e8da4; font-size: 12px; }
-    .dsh-close { padding: 2px 5px; font-size: 26px; }
-    .dsh-drawer-tabs { display: flex; gap: 18px; padding: 0 28px; border-bottom: 1px solid rgba(42, 61, 92, .1); }
-    .dsh-drawer-tabs button { padding: 11px 1px 9px; border: 0; border-bottom: 2px solid transparent; color: #7c8ba1; background: transparent; cursor: pointer; font: 600 12px/1.3 inherit; }
-    .dsh-drawer-tabs button.active { border-bottom-color: #347ff2; color: #2d6fd6; }
-    .dsh-drawer-scroll { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 20px 28px 36px; -webkit-overflow-scrolling: touch; }
-    .dsh-drawer-footer { display: flex; justify-content: space-between; padding: 12px 22px; border-top: 1px solid rgba(42, 61, 92, .1); }
-    .dsh-update-card, .dsh-status { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 18px; padding: 13px 14px; border: 1px solid rgba(61, 129, 240, .25); border-radius: 12px; background: rgba(74, 143, 247, .08); }
-    .dsh-update-card div { min-width: 0; display: grid; gap: 2px; }
-    .dsh-update-card strong { color: #245db1; }
-    .dsh-update-card span, .dsh-status span { color: #6e7e96; font-size: 11px; }
-    .dsh-update-progress { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
-    .dsh-progress-track { min-width: 120px; height: 5px; overflow: hidden; border-radius: 999px; background: rgba(54, 113, 201, .16); }
+    .dsh-modal-title { margin: 0; color: #18263d; font-size: 20px; letter-spacing: -.02em; }
+    .dsh-subtitle { display: block; margin-top: 3px; color: #7e8da4; font-size: 11px; }
+    .dsh-header-controls { gap: 12px; }
+    .dsh-modal-tabs { gap: 4px; padding: 3px; border: 1px solid rgba(116, 138, 171, .18); border-radius: 9px; background: rgba(235, 241, 249, .72); }
+    .dsh-tab { min-height: 28px; padding: 5px 10px; border: 0; border-radius: 7px; color: #7c8ba1; background: transparent; cursor: pointer; font: 600 12px/1.3 inherit; }
+    .dsh-tab.active, .dsh-tab[aria-selected="true"] { color: #245db1; background: #fff; box-shadow: 0 1px 3px rgba(31, 50, 83, .12); }
+    .dsh-modal-close-btn { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; color: #7b8aa3; background: transparent; cursor: pointer; font-size: 22px; line-height: 1; }
+    .dsh-modal-close-btn:hover { color: #18263d; background: #e4ebf6; }
+    .dsh-modal-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; scroll-behavior: smooth; padding: 20px 24px 30px; -webkit-overflow-scrolling: touch; }
+    .dsh-modal-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 10px 20px; border-top: 1px solid rgba(42, 61, 92, .1); }
+    .dsh-footer-left, .dsh-footer-right { gap: 6px; }
+    .dsh-hero-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; padding: 16px; border: 1px solid rgba(61, 129, 240, .25); border-radius: 12px; background: rgba(74, 143, 247, .08); }
+    .dsh-hero-card-success, .dsh-hero-card-ready { border-color: rgba(40, 116, 81, .28); background: #e5f6ee; }
+    .dsh-hero-card-error { border-color: rgba(224, 71, 95, .28); background: #fde8ed; }
+    .dsh-hero-card-neutral { border-color: rgba(116, 138, 171, .2); background: rgba(235, 241, 249, .72); }
+    .dsh-hero-copy { min-width: 0; display: grid; gap: 3px; }
+    .dsh-hero-copy strong { color: #245db1; font-size: 14px; }
+    .dsh-hero-card-success .dsh-hero-copy strong, .dsh-hero-card-ready .dsh-hero-copy strong { color: #287451; }
+    .dsh-hero-card-error .dsh-hero-copy strong { color: #bd3e56; }
+    .dsh-hero-card-neutral .dsh-hero-copy strong { color: #31435f; }
+    .dsh-hero-copy small { color: #6e7e96; font-size: 11px; line-height: 1.45; }
+    .dsh-status-kicker { color: #6e85a8; font: 700 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .dsh-hero-actions { flex: 0 0 auto; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
+    .dsh-update-progress { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+    .dsh-progress-track { min-width: 140px; width: min(280px, 100%); height: 6px; overflow: hidden; border-radius: 999px; background: rgba(54, 113, 201, .16); }
     .dsh-progress-fill { display: block; height: 100%; border-radius: inherit; background: #347ff2; transition: width .2s ease; }
     .dsh-progress-fill.indeterminate { width: 42%; animation: dsh-progress-slide 1.1s ease-in-out infinite; }
-    .dsh-update-progress small { color: #6e7e96; font-size: 10px; }
-    .dsh-status { justify-content: flex-start; flex-wrap: wrap; border-color: rgba(221, 143, 33, .28); background: rgba(245, 174, 68, .1); }
-    .dsh-status.failed { border-color: rgba(224, 71, 95, .26); background: rgba(224, 71, 95, .08); }
-    .dsh-status strong { color: #aa6c11; }
-    .dsh-status.failed strong { color: #c43b53; }
-    .dsh-status span { flex: 1 1 180px; }
+    .dsh-progress-label { color: #6e7e96; font: 10px ui-monospace, SFMono-Regular, Consolas, monospace; white-space: nowrap; }
     .dsh-timeline { position: relative; padding-left: 20px; }
     .dsh-timeline::before { content: ""; position: absolute; left: 4px; top: 10px; bottom: 10px; width: 1px; background: rgba(71, 94, 129, .16); }
-    .dsh-release-entry { position: relative; margin-bottom: 28px; }
-    .dsh-release-node { position: absolute; left: -20px; top: 5px; width: 9px; height: 9px; border: 2px solid #a4b2c8; border-radius: 50%; background: #f9fbff; }
-    .dsh-release-entry.is-current .dsh-release-node { border-color: #347ff2; background: #347ff2; box-shadow: 0 0 10px rgba(52, 127, 242, .45); }
-    .dsh-release-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-    .dsh-version { color: #1e2d44; font: 700 15px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; }
-    .dsh-type, .dsh-current { display: inline-block; margin-left: 8px; padding: 2px 7px; border-radius: 999px; color: #5371a0; background: #edf3fb; font-size: 10px; font-weight: 650; }
+    .dsh-timeline { position: relative; padding-left: 20px; }
+    .dsh-timeline::before { content: ""; position: absolute; left: 4px; top: 12px; bottom: 12px; width: 1px; background: rgba(71, 94, 129, .16); }
+    .dsh-accordion-item { position: relative; margin-bottom: 10px; border: 1px solid rgba(116, 138, 171, .18); border-radius: 10px; background: rgba(255, 255, 255, .5); overflow: hidden; transition: border-color .15s ease, background-color .15s ease; }
+    .dsh-accordion-item.is-expanded, .dsh-accordion-item.is-current { border-color: rgba(48, 123, 240, .28); background: transparent; }
+    .dsh-release-node { position: absolute; z-index: 1; left: -20px; top: 17px; width: 9px; height: 9px; border: 2px solid #a4b2c8; border-radius: 50%; background: #f9fbff; }
+    .dsh-accordion-item.is-current .dsh-release-node { border-color: #347ff2; background: #347ff2; box-shadow: 0 0 10px rgba(52, 127, 242, .45); }
+    .dsh-accordion-header { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; padding: 9px 12px; border: 0; color: inherit; background: transparent; cursor: pointer; text-align: left; font: inherit; }
+    .dsh-accordion-header:hover { background: rgba(234, 242, 255, .72); }
+    .dsh-accordion-chevron { flex: 0 0 12px; color: #6e85a8; font-size: 10px; }
+    .dsh-release-heading { min-width: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .dsh-version { color: #1e2d44; font: 700 14px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .dsh-type, .dsh-current, .dsh-latest { display: inline-block; padding: 2px 7px; border-radius: 999px; color: #5371a0; background: #edf3fb; font-size: 10px; font-weight: 650; }
     .dsh-current { color: #287451; background: #e5f6ee; }
-    .dsh-release-head time { color: #94a1b5; font-size: 11px; }
-    .dsh-release-section { margin-bottom: 13px; }
+    .dsh-latest { color: #2672dc; background: #eaf2ff; }
+    .dsh-release-badges { display: flex; align-items: center; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+    .dsh-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; border-radius: 999px; color: #6e83a0; background: #edf2f8; font: 700 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .dsh-badge.features { color: #267c58; background: #e3f5ed; }
+    .dsh-badge.improvements { color: #a96b0c; background: #fff1d8; }
+    .dsh-badge.fixes { color: #bd3e56; background: #fde8ed; }
+    .dsh-accordion-header time { flex: 0 0 auto; color: #94a1b5; font-size: 11px; }
+    .dsh-accordion-body { padding: 0 14px 14px 38px; border-top: 1px solid rgba(116, 138, 171, .15); }
+    .dsh-release-section { margin: 13px 0 0; }
     .dsh-release-section h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; color: #61738f; font-size: 11px; font-weight: 700; }
     .dsh-section-icon, .dsh-release-icon { display: inline-grid; place-items: center; flex: 0 0 auto; border-radius: 5px; font-size: 10px; font-weight: 800; }
     .dsh-section-icon { width: 17px; height: 17px; color: #347ff2; background: #e8f1ff; }
@@ -746,11 +874,12 @@ if (!isSplashDocument) {
     @keyframes dsh-notice-out { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -8px); } }
     @keyframes dsh-slide-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes dsh-progress-slide { from { transform: translateX(-110%); } to { transform: translateX(260%); } }
-    @keyframes dsh-drawer-in { from { opacity: .75; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
     @keyframes dsh-fade-in { from { opacity: 0; } to { opacity: 1; } }
     @media (prefers-reduced-motion: reduce) {
       .dsh-notice { animation: none; transform: translateX(-50%); }
       .dsh-notice.is-closing { animation: none; opacity: 0; transform: translate(-50%, -8px); }
+      .dsh-modal-dialog { transition: none; }
+      .dsh-progress-fill, .dsh-progress-fill.indeterminate { animation: none; transition: none; }
     }
     @media (prefers-color-scheme: dark) {
       .dsh-chrome { color: #e8eef9; }
@@ -770,32 +899,43 @@ if (!isSplashDocument) {
       .dsh-disconnect-copy span { color: #c9b38e; }
       .dsh-notice-copy strong { color: #edf4ff; }
       .dsh-notice-copy span { color: #9aabc4; }
-      .dsh-notice-dismiss, .dsh-close { color: #92a4c0; }
+      .dsh-notice-dismiss, .dsh-modal-close-btn { color: #92a4c0; }
       .dsh-button { border-color: rgba(185, 204, 235, .14); color: #e0eaf9; background: rgba(46, 61, 86, .8); }
       .dsh-button:hover { background: #354766; }
       .dsh-button.ghost { color: #9eafc8; background: transparent; }
-      .dsh-drawer { border-color: rgba(170, 192, 228, .16); background: rgba(17, 26, 42, .97); box-shadow: -20px 0 50px rgba(0, 0, 0, .36); }
-      .dsh-drawer-header, .dsh-drawer-tabs, .dsh-drawer-footer { border-color: rgba(170, 192, 228, .12); }
-      .dsh-eyebrow, .dsh-subtitle, .dsh-release-head time, .dsh-empty-copy, .dsh-loading, .dsh-refreshing { color: #7f91ad; }
-      .dsh-drawer h2, .dsh-version, .dsh-about h3 { color: #edf4ff; }
-      .dsh-drawer-tabs button { color: #8496b2; }
+      .dsh-modal-dialog { border-color: rgba(170, 192, 228, .16); background: rgba(17, 26, 42, .98); box-shadow: 0 24px 60px rgba(0, 0, 0, .52), 0 2px 8px rgba(0, 0, 0, .3); }
+      .dsh-modal-header, .dsh-modal-footer { border-color: rgba(170, 192, 228, .12); }
+      .dsh-modal-title, .dsh-version, .dsh-about h3 { color: #edf4ff; }
+      .dsh-modal-tabs { border-color: rgba(170, 192, 228, .16); background: #18263d; }
+      .dsh-tab { color: #8496b2; }
+      .dsh-tab.active, .dsh-tab[aria-selected="true"] { color: #d5e5ff; background: #253b61; }
+      .dsh-eyebrow, .dsh-subtitle, .dsh-status-kicker, .dsh-accordion-header time, .dsh-empty-copy, .dsh-loading, .dsh-refreshing { color: #7f91ad; }
       .dsh-release-node { border-color: #647896; background: #18263d; }
-      .dsh-version { color: #e7effc; }
       .dsh-type { color: #a9c2e9; background: #253652; }
       .dsh-current { color: #83d2ac; background: #1b3d31; }
+      .dsh-latest { color: #b5d0ff; background: #253b61; }
+      .dsh-badge { color: #9db0cd; background: #25344d; }
+      .dsh-badge.features { color: #83d2ac; background: #1b3d31; }
+      .dsh-badge.improvements { color: #f5c46e; background: #372a16; }
+      .dsh-badge.fixes { color: #ff9aad; background: #3d1b24; }
+      .dsh-accordion-item { border-color: rgba(170, 192, 228, .16); background: rgba(25, 39, 62, .72); }
+      .dsh-accordion-item.is-expanded, .dsh-accordion-item.is-current { border-color: rgba(93, 157, 255, .36); background: transparent; }
+      .dsh-accordion-header:hover { background: #253b61; }
+      .dsh-accordion-body { border-color: rgba(170, 192, 228, .14); }
       .dsh-release-item { color: #c0cee2; }
       .dsh-release-item strong { color: #e4edf9; }
       .dsh-release-icon { color: #9db0cd; background: #25344d; }
       .dsh-release-item code { border-color: rgba(185, 204, 235, .12); color: #b4c9e9; background: #23324b; }
-      .dsh-update-card, .dsh-status { border-color: rgba(81, 149, 255, .28); background: rgba(55, 113, 201, .16); }
-      .dsh-update-card strong { color: #9fc5ff; }
-      .dsh-update-card span, .dsh-status span { color: #9aacC5; }
+      .dsh-hero-card { border-color: rgba(81, 149, 255, .28); background: rgba(55, 113, 201, .16); }
+      .dsh-hero-card-success, .dsh-hero-card-ready { border-color: rgba(131, 210, 172, .36); background: #1b3d31; }
+      .dsh-hero-card-error { border-color: rgba(245, 100, 122, .28); background: #3d1b24; }
+      .dsh-hero-card-neutral { border-color: rgba(170, 192, 228, .16); background: #18263d; }
+      .dsh-hero-copy strong { color: #9fc5ff; }
+      .dsh-hero-card-success .dsh-hero-copy strong, .dsh-hero-card-ready .dsh-hero-copy strong { color: #83d2ac; }
+      .dsh-hero-card-error .dsh-hero-copy strong { color: #ff9aad; }
+      .dsh-hero-card-neutral .dsh-hero-copy strong { color: #dbe7fa; }
+      .dsh-hero-copy small, .dsh-progress-label { color: #9aacC5; }
       .dsh-progress-track { background: rgba(159, 193, 255, .18); }
-      .dsh-update-progress small { color: #9aacC5; }
-      .dsh-status { border-color: rgba(245, 174, 68, .28); background: rgba(159, 104, 22, .17); }
-      .dsh-status.failed { border-color: rgba(245, 100, 122, .28); background: rgba(159, 40, 66, .17); }
-      .dsh-status strong { color: #f5c46e; }
-      .dsh-status.failed strong { color: #ff9aad; }
       .dsh-about p { color: #a2b2c9; }
     }
     @media (max-width: 620px) {
@@ -804,8 +944,28 @@ if (!isSplashDocument) {
       .dsh-notice-copy span { white-space: normal; }
       .dsh-notice .dsh-button { padding-inline: 8px; }
       .dsh-notice-never { padding-inline: 6px !important; }
-      .dsh-drawer-header, .dsh-drawer-scroll { padding-left: 20px; padding-right: 20px; }
-      .dsh-drawer-tabs { padding-left: 20px; padding-right: 20px; }
+      .dsh-modal-layer { padding: 12px 10px; }
+      .dsh-modal-dialog, .dsh-modal-dialog.is-about-mode { width: calc(100vw - 20px); max-height: calc(100vh - 24px); }
+      .dsh-modal-dialog { height: calc(100vh - 24px); }
+      .dsh-modal-dialog.is-about-mode { height: min(340px, calc(100vh - 24px)); }
+      .dsh-modal-header { align-items: flex-start; padding: 16px 16px 12px; }
+      .dsh-header-controls { gap: 6px; }
+      .dsh-modal-tabs { order: 2; }
+      .dsh-modal-close-btn { order: 3; }
+      .dsh-modal-body { padding: 16px 16px 24px; }
+      .dsh-modal-footer { padding-inline: 14px; }
+      .dsh-footer-left .dsh-button:first-child { display: none; }
+      .dsh-hero-card { align-items: stretch; flex-direction: column; gap: 12px; }
+      .dsh-hero-actions { justify-content: flex-start; }
+      .dsh-release-badges { margin-left: 0; }
+      .dsh-accordion-header { align-items: flex-start; flex-wrap: wrap; }
+      .dsh-accordion-header time { margin-left: 20px; }
+    }
+    @media (max-height: 480px) {
+      .dsh-modal-dialog { min-height: 260px; }
+      .dsh-modal-header { padding-block: 10px; }
+      .dsh-modal-body { padding-block: 12px 18px; }
+      .dsh-modal-footer { min-height: 46px; padding-block: 6px; }
     }
   `
 
@@ -815,6 +975,7 @@ if (!isSplashDocument) {
 
   ipcRenderer.on('desktop:theme-changed', (_event, theme) => {
     const dark = theme?.theme === 'dark'
+    host.dataset.theme = dark ? 'dark' : 'light'
     document.documentElement.dataset.dshTheme = dark ? 'dark' : 'light'
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
     document.documentElement.style.setProperty('--dsh-titlebar-height', `${Number(theme?.titleBar?.height) || 36}px`)
@@ -841,9 +1002,9 @@ if (!isSplashDocument) {
     render()
     if (state.notice !== undefined) scheduleNoticeDismiss()
   })
-  ipcRenderer.on('desktop:release-notes:open', (_event, context) => { void openDrawer(context) })
+  ipcRenderer.on('desktop:release-notes:open', (_event, context) => { void openModal(context) })
   ipcRenderer.on('desktop:release-notes:reload', () => {
-    if (state.drawerOpen) void openDrawer(state.drawerContext)
+    if (state.modalOpen) void openModal(state.modalContext)
   })
   ipcRenderer.on('desktop:update-state', (_event, update) => {
     state.updateState = update?.label || ''
@@ -868,19 +1029,19 @@ if (!isSplashDocument) {
   function mount() {
     mountGlobalStyles()
     document.documentElement.appendChild(host)
-    shadow.innerHTML = '<style>' + SHADOW_CSS + '</style><div class="dsh-chrome"><div class="dsh-drag-region" aria-hidden="true"></div><div class="dsh-menu-host"></div><div class="dsh-health-host"></div><div class="dsh-notice-host"></div><div class="dsh-drawer-host">' + renderDrawerShell() + '</div></div>'
-    const drawerLayer = shadow.querySelector('.dsh-drawer-layer')
+    shadow.innerHTML = '<style>' + SHADOW_CSS + '</style><div class="dsh-chrome"><div class="dsh-drag-region" aria-hidden="true"></div><div class="dsh-menu-host"></div><div class="dsh-health-host"></div><div class="dsh-notice-host"></div><div class="dsh-modal-host">' + renderModalShell() + '</div></div>'
+    const modalLayer = shadow.querySelector('.dsh-modal-layer')
     chromeRefs = {
       menuHost: shadow.querySelector('.dsh-menu-host'),
       healthHost: shadow.querySelector('.dsh-health-host'),
       noticeHost: shadow.querySelector('.dsh-notice-host'),
-      drawerLayer,
-      drawer: drawerLayer.querySelector('.dsh-drawer'),
-      drawerTitle: drawerLayer.querySelector('.dsh-drawer-title'),
-      drawerSubtitle: drawerLayer.querySelector('.dsh-subtitle'),
-      notesTab: drawerLayer.querySelector('.dsh-notes-tab'),
-      aboutTab: drawerLayer.querySelector('.dsh-about-tab'),
-      drawerScroll: drawerLayer.querySelector('.dsh-drawer-scroll'),
+      modalLayer,
+      modalDialog: modalLayer.querySelector('.dsh-modal-dialog'),
+      modalTitle: modalLayer.querySelector('.dsh-modal-title'),
+      modalSubtitle: modalLayer.querySelector('.dsh-subtitle'),
+      notesTab: modalLayer.querySelector('.dsh-notes-tab'),
+      aboutTab: modalLayer.querySelector('.dsh-about-tab'),
+      modalBody: modalLayer.querySelector('.dsh-modal-body'),
     }
     render()
     ipcRenderer.send('desktop:renderer-ready')
@@ -921,11 +1082,11 @@ if (!isSplashDocument) {
     render()
   })
   window.addEventListener('keydown', event => {
+    if (trapModalFocus(event)) return
     if (event.key === 'Escape') {
-      if (state.drawerOpen) {
+      if (state.modalOpen) {
         event.preventDefault()
-        state.drawerOpen = false
-        render()
+        closeModal()
         return
       }
       if (state.menuOpen) {
