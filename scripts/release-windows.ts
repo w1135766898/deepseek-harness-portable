@@ -4,7 +4,7 @@ import { execFileSync, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { createRequire } from 'node:module'
-import { readFile, rm, writeFile } from 'node:fs/promises'
+import { copyFile, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { existsSync, readFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 
@@ -285,6 +285,62 @@ async function verifyDesktopRuntimeSources(buildRoot: string): Promise<void> {
   console.log(`Portable runtime source validation passed: ${DESKTOP_RUNTIME_SOURCE_FILES.length} files`)
 }
 
+async function syncPortablePayload(buildRoot: string): Promise<void> {
+  const packagedSourceRoot = join(buildRoot, 'runtime', 'resources', 'app', 'src')
+  await mkdir(packagedSourceRoot, { recursive: true })
+  for (const file of DESKTOP_RUNTIME_SOURCE_FILES) {
+    const sourcePath = join(root, 'apps', 'desktop', 'src', file)
+    const packagedPath = join(packagedSourceRoot, file)
+    if (existsSync(sourcePath)) {
+      await copyFile(sourcePath, packagedPath)
+    }
+  }
+  const extraSrcFiles = ['release-notes.json', 'splash.html', 'apply-icon.mjs']
+  for (const file of extraSrcFiles) {
+    const sourcePath = join(root, 'apps', 'desktop', 'src', file)
+    const packagedPath = join(packagedSourceRoot, file)
+    if (existsSync(sourcePath)) {
+      await copyFile(sourcePath, packagedPath)
+    }
+  }
+  await copyFile(desktopManifest, join(buildRoot, 'runtime', 'resources', 'app', 'package.json'))
+
+  const updaterSource = join(root, 'apps', 'desktop', 'updater')
+  if (existsSync(updaterSource)) {
+    const updaterDest = join(buildRoot, 'updater')
+    await cp(updaterSource, updaterDest, { recursive: true })
+  }
+
+  const rootFiles = [
+    'LICENSE',
+    'THIRD_PARTY_NOTICES.md',
+    'smoke-native.cjs',
+    'apps/desktop/start-web.cmd',
+    'apps/desktop/start-desktop.cmd',
+    'apps/desktop/update.cmd',
+    'apps/desktop/update.ps1',
+    'apps/desktop/setup-shortcuts.ps1',
+    'apps/desktop/dsh.cmd',
+    'apps/desktop/使用说明.txt',
+    'apps/desktop/使用说明.en.txt',
+    'apps/desktop/启动网页版.bat',
+    'apps/desktop/启动桌面窗口.bat',
+    'apps/desktop/启动桌面版.bat',
+    'apps/desktop/在线更新.bat',
+    'apps/desktop/创建桌面快捷方式.bat',
+    'apps/desktop/一键解除拦截(自签名信任).bat',
+    'uninstall.cmd',
+    'uninstall.ps1',
+  ]
+  for (const relPath of rootFiles) {
+    const source = join(root, relPath)
+    if (!existsSync(source)) continue
+    const base = relPath.includes('/') ? relPath.slice(relPath.lastIndexOf('/') + 1) : relPath
+    await copyFile(source, join(buildRoot, base))
+  }
+  console.log(`Portable runtime sources and payload synchronized into ${buildRoot}`)
+}
+
 async function findIscc(): Promise<string | undefined> {
   const candidates = [
     process.env.ISCC_PATH,
@@ -339,6 +395,7 @@ async function main(): Promise<void> {
   if (!existsSync(join(buildRoot, 'runtime', 'DeepSeek Harness.exe'))) {
     throw new Error(`Portable build root is missing runtime/DeepSeek Harness.exe: ${buildRoot}`)
   }
+  await syncPortablePayload(buildRoot)
   await writeReleaseManifest(buildRoot, version, shellVersion)
   await verifyDesktopRuntimeSources(buildRoot)
   await run('tar.exe', ['-a', '-c', '-f', zipPath, '-C', dirname(buildRoot), basename(buildRoot)])
