@@ -120,6 +120,19 @@ function Remove-InstallPathEntry {
     }
 }
 
+function Assert-NotReparsePoint {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    # Remove-Item -Recurse must never follow a junction or symlink: if a user
+    # redirected DSH_HOME to a link, refuse and tell them instead of deleting
+    # the link's target tree.
+    if (-not (Test-Path -LiteralPath $Path)) { return }
+    $item = Get-Item -LiteralPath $Path -Force
+    if ($item.LinkType) {
+        throw ('Refusing to remove a symbolic link or junction: ' + $Path + ' -> ' + $item.Target)
+    }
+}
+
 function Remove-UserData {
     param(
         [Parameter(Mandatory = $true)][string]$DataRoot,
@@ -133,6 +146,7 @@ function Remove-UserData {
     if ($safeElectronRoot -ne $safeDataRoot) { $targets += $safeElectronRoot }
 
     foreach ($target in $targets) {
+        Assert-NotReparsePoint -Path $target
         if (Test-Path -LiteralPath $target) {
             Write-Host ('Removing user data: ' + $target) -ForegroundColor Yellow
             Remove-Item -LiteralPath $target -Recurse -Force
