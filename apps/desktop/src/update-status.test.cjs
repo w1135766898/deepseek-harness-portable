@@ -48,6 +48,8 @@ test('accepts the legacy version field and rejects malformed status', () => {
     updatedAt: '',
     startedAt: '',
     processId: 0,
+    packagePath: '',
+    sha256: '',
   })
 })
 
@@ -63,6 +65,7 @@ test('clears an obsolete status after a direct replacement reaches its target', 
     })
     assert.equal(isSupersededByCurrentVersion(written, '1.0.5', compareVersions), true)
     assert.equal(isSupersededByCurrentVersion({ ...written, state: 'completed' }, '1.0.5', compareVersions), false)
+    assert.equal(isSupersededByCurrentVersion({ ...written, state: 'rolled-back' }, '1.0.5', compareVersions), false)
     assert.equal(clearUpdateStatus(userData), true)
     assert.equal(readUpdateStatus(userData), undefined)
   } finally {
@@ -130,3 +133,26 @@ test('treats a prepared package as active until the app restarts', () => {
     processIsAlive: () => true,
   }), active)
 })
+
+test('normalizes and preserves packagePath and sha256 across read and write', () => {
+  const userData = mkdtempSync(join(tmpdir(), 'dsh-update-status-'))
+  try {
+    const written = writeUpdateStatus(userData, {
+      state: 'ready',
+      fromVersion: '1.0.0',
+      targetVersion: '1.0.1',
+      stage: 'ready',
+      message: 'Verified and waiting',
+      packagePath: 'C:\\temp\\DeepSeek-Harness-1.0.1.zip',
+      sha256: 'deadbeef1234',
+      processId: 5678,
+    })
+    const read = readUpdateStatus(userData)
+    assert.equal(read.packagePath, 'C:\\temp\\DeepSeek-Harness-1.0.1.zip')
+    assert.equal(read.sha256, 'deadbeef1234')
+    assert.deepEqual(read, written)
+  } finally {
+    rmSync(userData, { recursive: true, force: true })
+  }
+})
+

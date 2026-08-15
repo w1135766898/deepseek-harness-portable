@@ -30,6 +30,7 @@ function buildUpdaterArguments({
   enginePid,
   shellPid,
   rollback = false,
+  relaunchAfterRollback = false,
 } = {}) {
   const args = [
     '-NoProfile',
@@ -41,6 +42,8 @@ function buildUpdaterArguments({
 
   if (rollback) {
     args.push('-Rollback')
+    if (statusFile) args.push('-StatusFile', statusFile)
+    if (relaunchAfterRollback) args.push('-RelaunchAfterRollback')
   } else {
     args.push(
       '-StatusFile', statusFile,

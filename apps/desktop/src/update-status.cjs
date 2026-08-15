@@ -3,7 +3,7 @@ const { join } = require('node:path')
 
 const STATUS_FILE_NAME = 'update-status.json'
 const ACTIVE_STATES = new Set(['starting', 'checking', 'downloading', 'verifying', 'extracting', 'replacing', 'ready'])
-const TERMINAL_STATES = new Set(['completed', 'failed', 'interrupted'])
+const TERMINAL_STATES = new Set(['completed', 'failed', 'interrupted', 'rolled-back'])
 const DEFAULT_STALE_AFTER_MS = 10 * 60 * 1000
 
 function statusPath(userDataPath) {
@@ -33,6 +33,8 @@ function normalizeUpdateStatus(value) {
     updatedAt: textValue(value.updatedAt),
     startedAt: textValue(value.startedAt),
     processId: processIdValue(value.processId),
+    packagePath: textValue(value.packagePath),
+    sha256: textValue(value.sha256),
   }
 }
 
@@ -89,7 +91,7 @@ function writeUpdateStatus(userDataPath, status) {
 
 function isSupersededByCurrentVersion(status, currentVersion, compareVersions) {
   const normalized = normalizeUpdateStatus(status)
-  if (!normalized || normalized.state === 'completed') return false
+  if (!normalized || normalized.state === 'completed' || normalized.state === 'rolled-back') return false
   if (normalized.targetVersion === '' || typeof currentVersion !== 'string' || currentVersion.trim() === '') return false
   if (typeof compareVersions !== 'function') return false
   try {

@@ -13,7 +13,8 @@ param(
     [switch]$LaunchAfterUpdate,
     [int]$EnginePid = 0,
     [int]$ShellPid = 0,
-    [switch]$Rollback
+    [switch]$Rollback,
+    [switch]$RelaunchAfterRollback
 )
 
 $ErrorActionPreference = 'Stop'
@@ -41,4 +42,5 @@ Invoke-Updater `
     -LaunchAfterUpdate:$LaunchAfterUpdate `
     -EnginePid $EnginePid `
     -ShellPid $ShellPid `
-    -Rollback:$Rollback
+    -Rollback:$Rollback `
+    -RelaunchAfterRollback:$RelaunchAfterRollback

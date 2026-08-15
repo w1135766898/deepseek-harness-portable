@@ -42,12 +42,36 @@ test('builds portable update arguments with status, package, and process context
   ])
 })
 
-test('builds rollback arguments without update-only options', () => {
+test('builds rollback arguments with status and relaunch options', () => {
   assert.deepEqual(buildUpdaterArguments({
     scriptPath: 'C:\\portable\\update.ps1',
-    statusFile: 'ignored',
+    statusFile: 'C:\\user-data\\update-status.json',
     fromVersion: 'ignored',
     targetVersion: 'ignored',
+    rollback: true,
+    relaunchAfterRollback: true,
+    enginePid: 12,
+    shellPid: 34,
+  }), [
+    '-NoProfile',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    'C:\\portable\\update.ps1',
+    '-Rollback',
+    '-StatusFile',
+    'C:\\user-data\\update-status.json',
+    '-RelaunchAfterRollback',
+    '-EnginePid',
+    '12',
+    '-ShellPid',
+    '34',
+  ])
+})
+
+test('builds minimal rollback arguments without optional statusFile or relaunch', () => {
+  assert.deepEqual(buildUpdaterArguments({
+    scriptPath: 'C:\\portable\\update.ps1',
     rollback: true,
     enginePid: 12,
     shellPid: 34,

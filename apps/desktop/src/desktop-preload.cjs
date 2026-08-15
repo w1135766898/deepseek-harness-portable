@@ -284,6 +284,7 @@ if (!isSplashDocument) {
     if (data.error) return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.unavailableKicker')) + '</span><strong>' + escapeHtml(desktopText('release.unavailableTitle')) + '</strong><small>' + escapeHtml(data.error) + '</small></div><div class="dsh-hero-actions">' + button('retry-update', desktopText('release.retry'), 'secondary') + '</div></section>'
     if (failed) return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(rawState === 'interrupted' ? desktopText('release.failedInterrupted') : desktopText('release.transactionError')) + '</span><strong>' + escapeHtml(message || desktopText('release.failedFallback')) + '</strong><small>' + escapeHtml(desktopText('release.targetVersion', { version: versionLabel })) + '</small></div><div class="dsh-hero-actions">' + button('retry-update', desktopText('release.retry'), 'secondary') + button('desktop-rollback', desktopText('release.rollback'), 'ghost') + '</div></section>'
     if (completed && targetVersion === (data.currentVersion || '')) return '<section class="dsh-hero-card dsh-hero-card-success" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.completed')) + '</span><strong>' + escapeHtml(desktopText('release.updatedTo', { version: versionLabel })) + '</strong><small>' + escapeHtml(message || desktopText('release.healthPassed')) + '</small></div><div class="dsh-hero-actions">' + button('desktop-rollback', desktopText('release.rollback'), 'ghost') + '</div></section>'
+    if (rawState === 'rolled-back') return '<section class="dsh-hero-card dsh-hero-card-success" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.rollbackKicker')) + '</span><strong>' + escapeHtml(desktopText('release.rolledBackTo', { version: versionLabel })) + '</strong><small>' + escapeHtml(message || desktopText('release.rollbackDetail')) + '</small></div></section>'
     if (rawState === 'idle' && !data.updateAvailable) return '<section class="dsh-hero-card dsh-hero-card-neutral" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.normalKicker')) + '</span><strong>' + escapeHtml(desktopText('release.latestVersion', { version: data.currentVersion || '—' })) + '</strong><small>' + escapeHtml(data.offline ? desktopText('release.offline') : desktopText('release.noUpdate')) + '</small></div></section>'
 
     const title = ready
@@ -349,16 +350,45 @@ if (!isSplashDocument) {
     const status = notice.updateStatus || {}
     const isAvailable = notice.kind === 'available'
     const isProblem = notice.kind === 'failed' || notice.kind === 'interrupted'
-    const title = isAvailable
-      ? desktopText('release.availableTitle', { version: 'v' + (release.version || '—') })
-      : (isProblem ? (notice.kind === 'failed' ? desktopText('release.updateFailed') : desktopText('release.failedInterrupted')) : '🎉 ' + desktopText('release.updatedTo', { version: 'v' + (release.version || notice.currentVersion || '—') }))
-    const desc = isAvailable
-      ? desktopText('release.openFeaturesDescription')
-      : (isProblem ? (status.message || desktopText('release.failedFallback')) : desktopText('release.historyDescription'))
-    const actionLabel = isAvailable ? desktopText('release.openFeatures') : (isProblem ? desktopText('release.retry') : desktopText('release.openFeatures'))
-    const action = isProblem ? 'retry-update' : 'open-release-notes'
-    const version = release.version || notice.currentVersion || ''
-    return actionMarkup + '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">' + logoMarkup('dsh-notice-logo') + '</div><div class="dsh-notice-copy"><strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(desc) + '</span></div><button class="dsh-button primary" data-action="' + action + '">' + escapeHtml(actionLabel) + '</button><button class="dsh-button ghost dsh-notice-never" data-action="notice-dismiss-forever" data-version="' + escapeHtml(version) + '"' + (version ? '' : ' disabled') + '>' + escapeHtml(desktopText('release.never')) + '</button><button class="dsh-notice-dismiss" data-action="notice-dismiss" aria-label="' + escapeHtml(desktopText('release.closeNotice')) + '">×</button></section>'
+    const isRolledBack = notice.kind === 'rolled-back'
+    const isReady = notice.kind === 'ready'
+    let title
+    let desc
+    let actionLabel
+    let action
+    if (isAvailable) {
+      title = desktopText('release.availableTitle', { version: 'v' + (release.version || '—') })
+      desc = desktopText('release.openFeaturesDescription')
+      actionLabel = desktopText('release.openFeatures')
+      action = 'open-release-notes'
+    } else if (isProblem) {
+      title = notice.kind === 'failed' ? desktopText('release.updateFailed') : desktopText('release.failedInterrupted')
+      desc = status.message || desktopText('release.failedFallback')
+      actionLabel = desktopText('release.retry')
+      action = 'retry-update'
+    } else if (isReady) {
+      const readyVersion = status.targetVersion || release.version || notice.currentVersion || '—'
+      title = desktopText('release.readyTitle', { version: 'v' + readyVersion })
+      desc = status.message || desktopText('release.readyDetail')
+      actionLabel = desktopText('release.restartUpdate')
+      action = 'update'
+    } else if (isRolledBack) {
+      const rollbackVersion = status.targetVersion || release.version || notice.currentVersion || '—'
+      title = '↺ ' + desktopText('release.rolledBackTo', { version: 'v' + rollbackVersion })
+      desc = status.message || desktopText('release.rollbackDetail')
+      actionLabel = desktopText('release.openFeatures')
+      action = 'open-release-notes'
+    } else {
+      title = '🎉 ' + desktopText('release.updatedTo', { version: 'v' + (release.version || notice.currentVersion || '—') })
+      desc = desktopText('release.historyDescription')
+      actionLabel = desktopText('release.openFeatures')
+      action = 'open-release-notes'
+    }
+    const version = status.targetVersion || release.version || notice.currentVersion || ''
+    const neverButton = isReady
+      ? ''
+      : '<button class="dsh-button ghost dsh-notice-never" data-action="notice-dismiss-forever" data-version="' + escapeHtml(version) + '"' + (version ? '' : ' disabled') + '>' + escapeHtml(desktopText('release.never')) + '</button>'
+    return actionMarkup + '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">' + logoMarkup('dsh-notice-logo') + '</div><div class="dsh-notice-copy"><strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(desc) + '</span></div><button class="dsh-button primary" data-action="' + action + '">' + escapeHtml(actionLabel) + '</button>' + neverButton + '<button class="dsh-notice-dismiss" data-action="notice-dismiss" aria-label="' + escapeHtml(desktopText('release.closeNotice')) + '">×</button></section>'
   }
 
   function showActionMessage(message) {

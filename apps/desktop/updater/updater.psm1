@@ -816,7 +816,8 @@ function Invoke-Rollback {
         [string]$BackupDir = '',
         [string]$StatusFile = '',
         [string]$FromVersion = '',
-        [string]$TargetVersion = ''
+        [string]$TargetVersion = '',
+        [switch]$RelaunchAfterRollback
     )
 
     $backupsBase = Join-Path $AppRoot $BACKUPS_DIR_NAME
@@ -852,10 +853,26 @@ function Invoke-Rollback {
         updatedAt = [DateTime]::UtcNow.ToString('o')
     }
     Write-JsonAtomic -Path $transactionPath -Data $transactionState
+    $restoredVersion = ''
+    try {
+        $restoredManifest = Read-JsonIfPresent (Join-Path $AppRoot $RELEASE_MANIFEST_NAME)
+        if ($restoredManifest -and $restoredManifest.distributionVersion) {
+            $restoredVersion = Normalize-Version ([string]$restoredManifest.distributionVersion)
+        }
+    } catch {}
     if ($StatusFile) {
-        Write-UpdateStatus -StatusFile $StatusFile -State 'failed' -Stage 'rollback' -Message 'Rolled back to previous version.' -From $FromVersion -Target $TargetVersion
+        Write-UpdateStatus -StatusFile $StatusFile -State 'rolled-back' -Stage 'rollback' `
+            -Message ('Rolled back to ' + $restoredVersion + '.') `
+            -From $FromVersion -Target $restoredVersion
     }
     Write-Host 'Rollback complete: previous version runtime and manifests restored.' -ForegroundColor Green
+
+    if ($RelaunchAfterRollback) {
+        $desktopExe = Join-Path $AppRoot 'runtime\DeepSeek Harness.exe'
+        if (Test-Path -LiteralPath $desktopExe) {
+            Start-Process -FilePath $desktopExe -WorkingDirectory $AppRoot | Out-Null
+        }
+    }
 }
 
 function Recover-PendingTransaction {
@@ -885,7 +902,8 @@ function Invoke-Updater {
         [switch]$LaunchAfterUpdate,
         [int]$EnginePid = 0,
         [int]$ShellPid = 0,
-        [switch]$Rollback
+        [switch]$Rollback,
+        [switch]$RelaunchAfterRollback
     )
 
     $SCRIPT_ROOT = $PSScriptRoot
@@ -903,7 +921,10 @@ function Invoke-Updater {
     if ($Rollback) {
         Write-Banner
         Write-Host 'Executing manual rollback to previous version ...' -ForegroundColor Yellow
-        Invoke-Rollback -AppRoot $APP_ROOT -StatusFile $StatusFile
+        $localInfo = Get-LocalReleaseInfo -AppRoot $APP_ROOT
+        Invoke-Rollback -AppRoot $AppRoot -StatusFile $StatusFile `
+            -FromVersion $localInfo.distributionVersion `
+            -RelaunchAfterRollback:$RelaunchAfterRollback
         return
     }
 
