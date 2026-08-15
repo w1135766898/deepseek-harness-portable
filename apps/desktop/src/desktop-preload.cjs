@@ -881,7 +881,7 @@ if (!isSplashDocument) {
       .dsh-modal-dialog { transition: none; }
       .dsh-progress-fill, .dsh-progress-fill.indeterminate { animation: none; transition: none; }
     }
-    @media (prefers-color-scheme: dark) {
+    :host([data-theme="dark"]) {
       .dsh-chrome { color: #e8eef9; }
       .dsh-notice-icon, .dsh-about-logo { border-color: rgba(93, 157, 255, .36); background: #edf4ff; }
       .dsh-menu-popover { border-color: rgba(170, 192, 228, .16); background: rgba(17, 26, 42, .98); box-shadow: 0 16px 40px rgba(0, 0, 0, .4); }
@@ -971,11 +971,13 @@ if (!isSplashDocument) {
 
   const host = document.createElement('div')
   host.id = 'deepseek-harness-desktop-chrome'
+  host.dataset.theme = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   const shadow = host.attachShadow({ mode: 'open' })
 
   ipcRenderer.on('desktop:theme-changed', (_event, theme) => {
     const dark = theme?.theme === 'dark'
     host.dataset.theme = dark ? 'dark' : 'light'
+    host.style.colorScheme = dark ? 'dark' : 'light'
     document.documentElement.dataset.dshTheme = dark ? 'dark' : 'light'
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
     document.documentElement.style.setProperty('--dsh-titlebar-height', `${Number(theme?.titleBar?.height) || 36}px`)
