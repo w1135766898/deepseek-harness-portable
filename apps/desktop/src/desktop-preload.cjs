@@ -170,7 +170,6 @@ if (!isSplashDocument) {
         -webkit-user-select: none;
         user-select: none;
         -webkit-app-region: no-drag !important;
-        pointer-events: auto !important;
       }
       button:has(${NATIVE_BRAND_LOGO_SELECTOR}) {
         color: #307bf0 !important;

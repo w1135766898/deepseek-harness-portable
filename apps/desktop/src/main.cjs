@@ -1274,6 +1274,9 @@ async function buildReleaseNotesData(context = {}, options = {}) {
   }
 
   const update = context.update === undefined ? undefined : normalizePortableRelease(context.update)
+  const checkError = typeof context.checkError === 'string' && context.checkError.trim() !== ''
+    ? context.checkError.trim()
+    : undefined
   const history = sortReleaseHistory([update, ...remote, ...cached, localRelease])
   const latestRelease = history[0] || localRelease
   const currentRelease = history.find(item => item.version === localInfo.distributionVersion) || localRelease
@@ -1291,6 +1294,7 @@ async function buildReleaseNotesData(context = {}, options = {}) {
     currentRelease,
     latestRelease: updateAvailable || context.mode === 'update' ? latestRelease : undefined,
     updateAvailable,
+    error: checkError,
     updateStatus: getCurrentUpdateStatus(),
     selectedVersion: context.selectedVersion
       || (context.mode === 'update' ? latestRelease.version : currentRelease.version),
@@ -1812,14 +1816,8 @@ async function checkForUpdates(manual = true) {
     }
   } catch (error) {
     if (manual) {
-      const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible() ? window : undefined
-      await dialog.showMessageBox(parentWindow, {
-        type: 'warning',
-        title: desktopText('update.checkFailedTitle'),
-        message: desktopText('update.checkFailedMessage'),
-        detail: desktopText('update.checkFailedDetail', { error: error.message }),
-        buttons: [desktopText('workspace.ok')],
-      })
+      const detail = error instanceof Error ? error.message : String(error)
+      openInAppReleaseNotes({ mode: 'history', selectedVersion: current, checkError: detail })
     }
   }
 }
