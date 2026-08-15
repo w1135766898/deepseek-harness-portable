@@ -1,21 +1,21 @@
 {
-  "version": "1.1.0",
-  "name": "DeepSeek Harness for Win v1.1.0",
+  "version": "1.1.2",
+  "name": "DeepSeek Harness for Win v1.1.2",
   "publishedAt": "2026-08-15",
   "sections": [
     {
-      "key": "features",
-      "titleEn": "Features",
-      "titleZh": "主要更新",
+      "key": "fixes",
+      "titleEn": "Bug Fixes",
+      "titleZh": "修复",
       "itemsEn": [
-        "Replaced the release-notes drawer with a centered card-style Update Hub with fixed Header/Footer and a locally scrolling Body.",
-        "Added transaction-aware update states, SemVer-sorted accordion history, release badge summaries, and a compact About view.",
-        "Unified SemVer 2.0 parser and precedence comparator across JavaScript runtime, CLI, and PowerShell updater scripts."
+        "Unified the Update Hub modal to a stable 620 × 660 px base size across Release Notes and About.",
+        "Removed modal width/height transitions and keyword-size interpolation so tab changes no longer move the close button, footer actions, or visual focus.",
+        "Kept narrow-window sizing responsive through shared modal variables and prevented header titles and tabs from wrapping unexpectedly."
       ],
       "itemsZh": [
-        "将更新日志侧滑抽屉升级为居中卡片式更新中心，采用固定 Header/Footer 与局部滚动 Body。",
-        "新增事务状态更新卡、SemVer 倒序手风琴时间线、改动徽标统计和精简关于页。",
-        "在 JavaScript 运行时、CLI 与 PowerShell 更新脚本中统一实现了 SemVer 2.0 解析器与优先级比较器。"
+        "将更新日志和关于统一到稳定的 620 × 660 px 弹窗基础尺寸。",
+        "移除弹窗宽高过渡动画和关键字尺寸插值，切换 Tab 时关闭按钮、底部操作栏和视觉焦点不再发生跳跃位移。",
+        "使用共享弹窗变量保持窄窗口自适应，并避免头部标题和 Tab 意外换行。"
       ]
     },
     {
@@ -23,29 +23,16 @@
       "titleEn": "Improvements",
       "titleZh": "优化提升",
       "itemsEn": [
-        "Preserved live and persisted update status when the Update Hub is closed and reopened, including progress and rollback availability.",
-        "Added Escape/backdrop dismissal, focus trapping, responsive narrow-window sizing, reduced-motion handling, and runtime light/dark theme synchronization.",
-        "Kept cached release history and update actions available while remote release data refreshes in the background."
+        "Synchronized the desktop shell locale with the Harness setting for consistent menus, release notes, and About content.",
+        "Hardened the updater launcher and post-update loopback health probe with safer process handling and reliable exit-status reporting.",
+        "Kept strict portable-runtime source consistency checks, release manifests, archive layout validation, and generated SHA-256 checksums in the release gate."
       ],
       "itemsZh": [
-        "关闭并重新打开更新中心时保留实时与持久化更新状态，包括进度和回滚入口。",
-        "新增 Escape/遮罩关闭、焦点陷阱、窄窗口自适应、减少动态效果支持与运行时深浅主题同步。",
-        "远端发布数据后台刷新期间继续使用缓存版本历史，并保持更新操作可用。"
-      ]
-    },
-    {
-      "key": "fixes",
-      "titleEn": "Bug Fixes",
-      "titleZh": "修复",
-      "itemsEn": [
-        "Wired the Update Hub rollback action to the existing transactional rollback entry point.",
-        "Kept release packaging guarded by strict runtime source-consistency checks and generated checksums."
-      ],
-      "itemsZh": [
-        "修复更新中心回滚按钮未接入事务回滚入口的问题。",
-        "保留发布前运行时源码一致性校验与校验和生成门禁。"
+        "桌面外壳与 Harness 设置同步语言，使菜单、更新日志和关于页面保持一致。",
+        "加固更新器启动器与更新后回环健康探针，改善进程处理安全性并可靠传递退出状态。",
+        "发布门禁继续执行便携运行时源码一致性、发布清单、压缩包布局和 SHA-256 校验和校验。"
       ]
     }
   ],
-  "body": "## Features / 主要更新\n\n- Replaced the release-notes drawer with a centered card-style Update Hub with fixed Header/Footer and a locally scrolling Body. / 将更新日志侧滑抽屉升级为居中卡片式更新中心，采用固定 Header/Footer 与局部滚动 Body。\n- Added transaction-aware update states, SemVer-sorted accordion history, release badge summaries, and a compact About view. / 新增事务状态更新卡、SemVer 倒序手风琴时间线、改动徽标统计和精简关于页。\n- Unified SemVer 2.0 parser and precedence comparator across JavaScript runtime, CLI, and PowerShell updater scripts. / 在 JavaScript 运行时、CLI 与 PowerShell 更新脚本中统一实现了 SemVer 2.0 解析器与优先级比较器。\n\n## Improvements / 优化提升\n\n- Preserved live and persisted update status when the Update Hub is closed and reopened, including progress and rollback availability. / 关闭并重新打开更新中心时保留实时与持久化更新状态，包括进度和回滚入口。\n- Added Escape/backdrop dismissal, focus trapping, responsive narrow-window sizing, reduced-motion handling, and runtime light/dark theme synchronization. / 新增 Escape/遮罩关闭、焦点陷阱、窄窗口自适应、减少动态效果支持与运行时深浅主题同步。\n- Kept cached release history and update actions available while remote release data refreshes in the background. / 远端发布数据后台刷新期间继续使用缓存版本历史，并保持更新操作可用。\n\n## Fixes / 修复\n\n- Wired the Update Hub rollback action to the existing transactional rollback entry point. / 修复更新中心回滚按钮未接入事务回滚入口的问题。\n- Kept release packaging guarded by strict runtime source-consistency checks and generated checksums. / 保留发布前运行时源码一致性校验与校验和生成门禁。"
+  "body": "## Fixes / 修复\n\n- Unified the Update Hub modal to a stable 620 × 660 px base size across Release Notes and About. / 将更新日志和关于统一到稳定的 620 × 660 px 弹窗基础尺寸。\n- Removed modal width/height transitions and keyword-size interpolation so tab changes no longer move the close button, footer actions, or visual focus. / 移除弹窗宽高过渡动画和关键字尺寸插值，切换 Tab 时关闭按钮、底部操作栏和视觉焦点不再发生跳跃位移。\n- Kept narrow-window sizing responsive through shared modal variables and prevented header titles and tabs from wrapping unexpectedly. / 使用共享弹窗变量保持窄窗口自适应，并避免头部标题和 Tab 意外换行。\n\n## Improvements / 优化提升\n\n- Synchronized the desktop shell locale with the Harness setting for consistent menus, release notes, and About content. / 桌面外壳与 Harness 设置同步语言，使菜单、更新日志和关于页面保持一致。\n- Hardened the updater launcher and post-update loopback health probe with safer process handling and reliable exit-status reporting. / 加固更新器启动器与更新后回环健康探针，改善进程处理安全性并可靠传递退出状态。\n- Kept strict portable-runtime source consistency checks, release manifests, archive layout validation, and generated SHA-256 checksums in the release gate. / 发布门禁继续执行便携运行时源码一致性、发布清单、压缩包布局和 SHA-256 校验和校验。"
 }
