@@ -21,6 +21,7 @@ const { messageForLocale, localeFromSystem, normalizePreference } = require('./d
 const { readLocalePreference } = require('./desktop-locale-store.cjs')
 const { countSectionBadges, mergeReleaseHistory, normalizeReleaseNotes } = require('./release-notes.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
+const { buildUpdaterArguments, launchDetachedPowerShell } = require('./update-launcher.cjs')
 const { ensureUnifiedDshHome } = require('./workspace-service.cjs')
 const { readConfigStore, updateConfigStore } = require('./config-store.cjs')
 const { terminateProcessTree } = require('./process-tree.cjs')
@@ -818,6 +819,7 @@ async function restartHarness() {
       await probeHarnessHealth(url)
       if (controller.signal.aborted) throw makeStartupError('Harness startup was cancelled.', lastStartupLog, 'ABORTED')
       setHarnessHealth({ state: 'connected', consecutiveFailures: 0, message: '' })
+      writeUpdateProbeIfRequested()
       sendSplashStatus('interface')
       if (window !== undefined && !window.isDestroyed()) {
         await window.loadURL(url)
@@ -1730,51 +1732,43 @@ function triggerPortableUpdate(targetVersion, packagePath, expectedSha256) {
       processId: 0,
     })
     try {
-      const updaterArgs = [
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-File',
-        updatePs1,
-        '-StatusFile',
-        statusPath(userDataPath),
-        '-FromVersion',
+      const updaterArgs = buildUpdaterArguments({
+        scriptPath: updatePs1,
+        statusFile: statusPath(userDataPath),
         fromVersion,
-        '-TargetVersion',
         targetVersion,
-      ]
-      if (harness && typeof harness.pid === 'number' && harness.pid > 0) {
-        updaterArgs.push('-EnginePid', String(harness.pid))
-      }
-      if (typeof process.pid === 'number' && process.pid > 0) {
-        updaterArgs.push('-ShellPid', String(process.pid))
-      }
-      if (packagePath) {
-        updaterArgs.push('-PackagePath', packagePath)
-        if (expectedSha256) updaterArgs.push('-ExpectedSha256', expectedSha256)
-      }
-      updaterArgs.push('-LaunchAfterUpdate')
-      const updater = spawn('powershell.exe', updaterArgs, {
-        cwd: root,
-        detached: true,
-        stdio: 'ignore',
-        windowsHide: true,
+        packagePath,
+        expectedSha256,
+        enginePid: harness?.pid,
+        shellPid: process.pid,
       })
-      updater.once('error', error => {
-        writeUpdateStatus(userDataPath, {
-          state: 'failed',
+      const launchResult = launchDetachedPowerShell({
+        root,
+        scriptPath: updatePs1,
+        args: updaterArgs,
+        onLaunch: processId => writeUpdateStatus(userDataPath, {
+          state: 'starting',
           fromVersion,
           targetVersion,
           stage: 'launch',
-          message: errorMessage(error),
-          processId: 0,
-        })
+          message: 'Portable updater started.',
+          processId,
+        }),
+        onError: error => {
+          writeUpdateStatus(userDataPath, {
+            state: 'failed',
+            fromVersion,
+            targetVersion,
+            stage: 'launch',
+            message: errorMessage(error),
+            processId: 0,
+          })
+        },
+        quit: () => {
+          if (!quitting) app.quit()
+        },
       })
-      updater.unref()
-      setTimeout(() => {
-        if (!quitting) app.quit()
-      }, 350).unref()
-      return true
+      return launchResult.started
     } catch (error) {
       writeUpdateStatus(userDataPath, {
         state: 'failed',
@@ -1862,29 +1856,23 @@ async function triggerRollback() {
   if (result.response !== 0) return
 
   try {
-    const updaterArgs = [
-      '-NoProfile',
-      '-ExecutionPolicy',
-      'Bypass',
-      '-File',
-      updatePs1,
-      '-Rollback',
-      '-ShellPid',
-      String(process.pid),
-    ]
-    if (harness && typeof harness.pid === 'number') {
-      updaterArgs.push('-EnginePid', String(harness.pid))
-    }
-    const updater = spawn('powershell.exe', updaterArgs, {
-      cwd: root,
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: true,
+    const launchResult = launchDetachedPowerShell({
+      root,
+      scriptPath: updatePs1,
+      args: buildUpdaterArguments({
+        scriptPath: updatePs1,
+        rollback: true,
+        enginePid: harness?.pid,
+        shellPid: process.pid,
+      }),
+      onError: error => console.error('Failed to launch rollback updater:', error),
+      quit: () => {
+        if (!quitting) app.quit()
+      },
     })
-    updater.unref()
-    setTimeout(() => {
-      if (!quitting) app.quit()
-    }, 500)
+    if (!launchResult.started) {
+      throw launchResult.error || new Error('Rollback updater did not start.')
+    }
   } catch (error) {
     void dialog.showMessageBox(visibleDialogParent(), {
       type: 'error',
@@ -2036,8 +2024,7 @@ async function createApp() {
     await createSplashWindow()
     showSplashWindow()
     sendSplashStatus('engine')
-    const startupReady = await restartHarness()
-    if (startupReady) writeUpdateProbeIfRequested()
+    await restartHarness()
   } catch (error) {
     if (splashWindow !== undefined && !splashWindow.isDestroyed()) sendSplashState(startupStateForError(error))
     else await dialog.showMessageBox(window, {

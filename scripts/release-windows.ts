@@ -21,10 +21,13 @@ const RELEASE_MANIFEST_NAME = 'release-manifest.json'
 const RELEASE_NOTES_SOURCE = join(root, 'apps', 'desktop', 'src', 'release-notes.json')
 const DESKTOP_RUNTIME_SOURCE_FILES = [
   'main.cjs',
+  'desktop-locale.cjs',
+  'desktop-locale-store.cjs',
   'desktop-preload.cjs',
   'ready-url.cjs',
   'release-notes.cjs',
   'update-client.cjs',
+  'update-launcher.cjs',
   'update-path.cjs',
   'update-status.cjs',
   'window-state.cjs',
@@ -45,15 +48,19 @@ const DESKTOP_TEST_FILES = [
   'config-store.test.cjs',
   'process-tree.test.cjs',
   'semver.test.cjs',
+  'update-launcher.test.cjs',
 ]
 const DESKTOP_SYNTAX_FILES = [
   'main.cjs',
+  'desktop-locale.cjs',
+  'desktop-locale-store.cjs',
   'desktop-preload.cjs',
   'ready-url.cjs',
   'update-path.cjs',
   'release-notes.cjs',
   'update-status.cjs',
   'update-client.cjs',
+  'update-launcher.cjs',
   'workspace-service.cjs',
   'config-store.cjs',
   'process-tree.cjs',
@@ -241,6 +248,9 @@ async function verifyPortableArchive(zipPath: string, buildRoot: string): Promis
     'runtime/DeepSeek Harness.exe',
     'runtime/resources/app/package.json',
     'runtime/resources/app/lib/packaged-bin.js',
+    'runtime/resources/app/src/update-launcher.cjs',
+    'runtime/resources/app/src/desktop-locale.cjs',
+    'runtime/resources/app/src/desktop-locale-store.cjs',
     'runtime/resources/app/src/semver.cjs',
     'runtime/resources/app/src/semver-cli.cjs',
   ]

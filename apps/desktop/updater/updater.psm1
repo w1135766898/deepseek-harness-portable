@@ -12,6 +12,7 @@ $DISTRIBUTION_REPO = 'wsnxxxs/deepseek-harness-portable'
 $RELEASE_MANIFEST_NAME = 'release-manifest.json'
 $TRANSACTION_FILE_NAME = '.update-transaction.json'
 $BACKUPS_DIR_NAME = '.update-backups'
+$UPDATE_PROBE_TIMEOUT_SECONDS = 90
 
 $GITHUB_MIRROR_PREFIXES = @(
     '',
@@ -752,7 +753,7 @@ function Install-ReleaseWithTransaction {
                     '--update-transaction', $transactionId
                 ) -WorkingDirectory $AppRoot -WindowStyle Hidden -PassThru
 
-                $deadline = (Get-Date).AddSeconds(30)
+                $deadline = (Get-Date).AddSeconds($UPDATE_PROBE_TIMEOUT_SECONDS)
                 $healthy = $false
                 while ((Get-Date) -lt $deadline) {
                     if ($process.HasExited) {
