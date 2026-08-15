@@ -17,63 +17,17 @@ const GITHUB_MIRROR_PREFIXES = Object.freeze([
   'https://gh.ddlc.top/',
 ])
 
-function normalizeVersion(value) {
-  return String(value || '').trim().replace(/^v/i, '')
-}
-
-function parseSemver(value) {
-  const normalized = normalizeVersion(value)
-  const match = normalized.match(/^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/)
-  if (!match) return undefined
-  return {
-    major: match[1],
-    minor: match[2],
-    patch: match[3],
-    prerelease: match[4] ? match[4].split('.') : [],
-  }
-}
-
-function compareNumericIdentifiers(left, right) {
-  const normalizedLeft = left.replace(/^0+(?=\d)/, '')
-  const normalizedRight = right.replace(/^0+(?=\d)/, '')
-  if (normalizedLeft.length !== normalizedRight.length) return normalizedLeft.length < normalizedRight.length ? -1 : 1
-  if (normalizedLeft === normalizedRight) return 0
-  return normalizedLeft < normalizedRight ? -1 : 1
-}
-
-function comparePrereleaseIdentifiers(left, right) {
-  const leftNumeric = /^\d+$/.test(left)
-  const rightNumeric = /^\d+$/.test(right)
-  if (leftNumeric && rightNumeric) return compareNumericIdentifiers(left, right)
-  if (leftNumeric !== rightNumeric) return leftNumeric ? -1 : 1
-  if (left === right) return 0
-  return left < right ? -1 : 1
-}
-
-function compareSemverValues(left, right) {
-  for (const key of ['major', 'minor', 'patch']) {
-    const comparison = compareNumericIdentifiers(left[key], right[key])
-    if (comparison !== 0) return comparison
-  }
-
-  if (left.prerelease.length === 0 && right.prerelease.length === 0) return 0
-  if (left.prerelease.length === 0) return 1
-  if (right.prerelease.length === 0) return -1
-
-  for (let index = 0; index < Math.max(left.prerelease.length, right.prerelease.length); index += 1) {
-    if (index >= left.prerelease.length) return -1
-    if (index >= right.prerelease.length) return 1
-    const comparison = comparePrereleaseIdentifiers(left.prerelease[index], right.prerelease[index])
-    if (comparison !== 0) return comparison
-  }
-  return 0
-}
+const {
+  compareSemver,
+  isValidSemver,
+  normalizeVersion,
+  parseSemver,
+  tryCompareSemver,
+} = require('./semver.cjs')
 
 function compareVersions(left, right) {
-  const parsedLeft = parseSemver(left)
-  const parsedRight = parseSemver(right)
-  if (parsedLeft && parsedRight) return compareSemverValues(parsedLeft, parsedRight)
-
+  const result = tryCompareSemver(left, right)
+  if (result !== undefined) return result
   const normalizedLeft = normalizeVersion(left)
   const normalizedRight = normalizeVersion(right)
   if (normalizedLeft === normalizedRight) return 0

@@ -23,6 +23,11 @@ const DESKTOP_RUNTIME_SOURCE_FILES = [
   'update-path.cjs',
   'update-status.cjs',
   'window-state.cjs',
+  'workspace-service.cjs',
+  'config-store.cjs',
+  'process-tree.cjs',
+  'semver.cjs',
+  'semver-cli.cjs',
 ]
 
 type Options = {
