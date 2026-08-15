@@ -53,3 +53,34 @@ test('follows HTTP redirects when fetching update metadata', async () => {
     await new Promise(resolve => server.close(resolve))
   }
 })
+
+test('extractStagingPackage passes safe arguments to spawn and captures output', async () => {
+  const { extractStagingPackage } = require('./update-client.cjs')
+  const { EventEmitter } = require('node:events')
+
+  const fakeChild = new EventEmitter()
+  fakeChild.stdout = new EventEmitter()
+  fakeChild.stderr = new EventEmitter()
+  let captured = {}
+
+  const spawnImpl = (executable, args, options) => {
+    captured = { executable, args, options }
+    setImmediate(() => {
+      fakeChild.stdout.emit('data', 'C:\\temp\\staging-1.2.3\n')
+      fakeChild.emit('close', 0)
+    })
+    return fakeChild
+  }
+
+  const result = await extractStagingPackage({
+    zipPath: 'C:\\temp\\update.zip',
+    stagingDestination: 'C:\\temp\\staging-1.2.3',
+    expectedVersion: '1.2.3',
+    appRoot: 'C:\\app',
+    spawnImpl,
+  })
+
+  assert.equal(result, 'C:\\temp\\staging-1.2.3')
+  assert.ok(captured.args.includes('-Command'))
+  assert.equal(captured.options.windowsHide, true)
+})

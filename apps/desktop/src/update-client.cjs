@@ -255,11 +255,77 @@ function parseSha256Sums(text, assetName) {
   return ''
 }
 
+function extractStagingPackage({
+  zipPath,
+  stagingDestination,
+  expectedVersion = '',
+  appRoot = '',
+  spawnImpl,
+  timeoutMs = 60_000,
+} = {}) {
+  const { spawn: defaultSpawn } = require('node:child_process')
+  const { resolvePowerShellExecutable } = require('./update-launcher.cjs')
+  const runSpawn = spawnImpl || defaultSpawn
+
+  return new Promise((resolve, reject) => {
+    const executable = resolvePowerShellExecutable()
+    const safeAppRoot = (appRoot || '').replace(/'/g, "''")
+    const moduleScript = safeAppRoot
+      ? `Join-Path '${safeAppRoot}' 'updater\\updater.psm1'`
+      : `Join-Path (Get-Location).Path 'updater\\updater.psm1'`
+    const script = [
+      "$ErrorActionPreference = 'Stop'",
+      '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
+      `$mod = ${moduleScript}`,
+      "if (-not (Test-Path -LiteralPath $mod)) { $mod = Join-Path (Split-Path -Parent $mod) 'updater.psm1' }",
+      'Import-Module -Name $mod -Force',
+      `$res = Extract-ReleaseSafe -ZipPath '${zipPath.replace(/'/g, "''")}' -Destination '${stagingDestination.replace(/'/g, "''")}' -ExpectedDistributionVersion '${(expectedVersion || '').replace(/'/g, "''")}'`,
+      '[Console]::Out.Write($res)',
+    ].join('\n')
+
+    let child
+    try {
+      child = runSpawn(executable, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+      })
+    } catch (error) {
+      reject(error)
+      return
+    }
+
+    let stdout = ''
+    let stderr = ''
+    child.stdout?.on('data', chunk => { stdout += chunk })
+    child.stderr?.on('data', chunk => { stderr += chunk })
+
+    let timer = setTimeout(() => {
+      try { child.kill() } catch {}
+      reject(new Error('Staging package extraction timed out.'))
+    }, timeoutMs)
+    if (typeof timer.unref === 'function') timer.unref()
+
+    child.on('error', error => {
+      clearTimeout(timer)
+      reject(error)
+    })
+    child.on('close', code => {
+      clearTimeout(timer)
+      if (code === 0) {
+        resolve(stdout.trim() || stagingDestination)
+      } else {
+        reject(new Error(stderr.trim() || stdout.trim() || `Extraction failed with code ${code}`))
+      }
+    })
+  })
+}
+
 module.exports = {
   GITHUB_MIRROR_PREFIXES,
   compareVersions,
   downloadFile,
   downloadWithFallback,
+  extractStagingPackage,
   fetchJson,
   fetchText,
   hashFile,

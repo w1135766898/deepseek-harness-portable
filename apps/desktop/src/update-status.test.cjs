@@ -49,6 +49,7 @@ test('accepts the legacy version field and rejects malformed status', () => {
     startedAt: '',
     processId: 0,
     packagePath: '',
+    stagingPath: '',
     sha256: '',
   })
 })
@@ -134,7 +135,7 @@ test('treats a prepared package as active until the app restarts', () => {
   }), active)
 })
 
-test('normalizes and preserves packagePath and sha256 across read and write', () => {
+test('normalizes and preserves packagePath, stagingPath and sha256 across read and write', () => {
   const userData = mkdtempSync(join(tmpdir(), 'dsh-update-status-'))
   try {
     const written = writeUpdateStatus(userData, {
@@ -144,11 +145,13 @@ test('normalizes and preserves packagePath and sha256 across read and write', ()
       stage: 'ready',
       message: 'Verified and waiting',
       packagePath: 'C:\\temp\\DeepSeek-Harness-1.0.1.zip',
+      stagingPath: 'C:\\temp\\staging-1.0.1',
       sha256: 'deadbeef1234',
       processId: 5678,
     })
     const read = readUpdateStatus(userData)
     assert.equal(read.packagePath, 'C:\\temp\\DeepSeek-Harness-1.0.1.zip')
+    assert.equal(read.stagingPath, 'C:\\temp\\staging-1.0.1')
     assert.equal(read.sha256, 'deadbeef1234')
     assert.deepEqual(read, written)
   } finally {

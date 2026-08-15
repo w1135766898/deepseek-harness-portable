@@ -946,6 +946,7 @@ function Invoke-Updater {
         [string]$TargetVersion,
         [string]$PackagePath,
         [string]$ExpectedSha256,
+        [string]$StagingPath,
         [switch]$LaunchAfterUpdate,
         [int]$EnginePid = 0,
         [int]$ShellPid = 0,
@@ -991,6 +992,39 @@ function Invoke-Updater {
         Write-Host ('  Local distribution: ' + $localInfo.distributionVersion) -ForegroundColor White
         Write-Host ('  Local desktop:      ' + $localInfo.desktopVersion) -ForegroundColor Gray
         Write-Host ('  Local kernel:       ' + $localInfo.kernelVersion) -ForegroundColor Gray
+
+        $usingStaging = $false
+        if (-not [string]::IsNullOrWhiteSpace($StagingPath) -and (Test-Path -LiteralPath $StagingPath -PathType Container)) {
+            try {
+                $stagingTargetVersion = if (-not [string]::IsNullOrWhiteSpace($TargetVersion)) { $TargetVersion } else { '' }
+                Test-PortableLayout -Root $StagingPath -ExpectedDistributionVersion $stagingTargetVersion
+                $usingStaging = $true
+            } catch {
+                $usingStaging = $false
+            }
+        }
+
+        if ($usingStaging) {
+            if ([string]::IsNullOrWhiteSpace($TargetVersion)) {
+                $stagedManifest = Read-JsonIfPresent (Join-Path $StagingPath $RELEASE_MANIFEST_NAME)
+                if ($stagedManifest -and $stagedManifest.distributionVersion) {
+                    $TargetVersion = [string]$stagedManifest.distributionVersion
+                }
+            }
+            $TargetVersion = Normalize-Version $TargetVersion
+            Write-UpdateStatus -StatusFile $StatusFile -State 'replacing' -Stage 'swap' -Message 'Applying pre-extracted update package.' -From $FromVersion -Target $TargetVersion
+            Write-Host ('  Using pre-extracted update staging: ' + $StagingPath) -ForegroundColor Green
+            $currentStage = 'swap'
+            try {
+                Install-ReleaseWithTransaction -AppRoot $APP_ROOT -SourceRoot $StagingPath -FromVersion $FromVersion -TargetVersion $TargetVersion -StatusFile $StatusFile -EnginePid $EnginePid -ShellPid $ShellPid -LaunchAfterUpdate:$LaunchAfterUpdate
+            } finally {
+                Remove-Item -LiteralPath $StagingPath -Recurse -Force -ErrorAction SilentlyContinue
+                if (-not [string]::IsNullOrWhiteSpace($PackagePath)) {
+                    Remove-Item -LiteralPath $PackagePath -Force -ErrorAction SilentlyContinue
+                }
+            }
+            return
+        }
 
         $usingPreparedPackage = -not [string]::IsNullOrWhiteSpace($PackagePath)
         if ($usingPreparedPackage) {

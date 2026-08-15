@@ -10,6 +10,7 @@ param(
     [string]$TargetVersion,
     [string]$PackagePath,
     [string]$ExpectedSha256,
+    [string]$StagingPath,
     [switch]$LaunchAfterUpdate,
     [int]$EnginePid = 0,
     [int]$ShellPid = 0,
@@ -98,6 +99,7 @@ try {
         -TargetVersion $TargetVersion `
         -PackagePath $PackagePath `
         -ExpectedSha256 $ExpectedSha256 `
+        -StagingPath $StagingPath `
         -LaunchAfterUpdate:$LaunchAfterUpdate `
         -EnginePid $EnginePid `
         -ShellPid $ShellPid `

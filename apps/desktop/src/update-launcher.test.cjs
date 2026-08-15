@@ -42,6 +42,43 @@ test('builds portable update arguments with status, package, and process context
   ])
 })
 
+test('builds portable update arguments with pre-extracted stagingPath', () => {
+  assert.deepEqual(buildUpdaterArguments({
+    scriptPath: 'C:\\portable\\update.ps1',
+    statusFile: 'C:\\user-data\\update-status.json',
+    fromVersion: '1.0.7',
+    targetVersion: '1.1.0',
+    stagingPath: 'C:\\temp\\staging-1.1.0',
+    packagePath: 'C:\\temp\\update.zip',
+    expectedSha256: 'abc123',
+    enginePid: 12,
+    shellPid: 34,
+  }), [
+    '-NoProfile',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    'C:\\portable\\update.ps1',
+    '-StatusFile',
+    'C:\\user-data\\update-status.json',
+    '-FromVersion',
+    '1.0.7',
+    '-TargetVersion',
+    '1.1.0',
+    '-StagingPath',
+    'C:\\temp\\staging-1.1.0',
+    '-PackagePath',
+    'C:\\temp\\update.zip',
+    '-ExpectedSha256',
+    'abc123',
+    '-LaunchAfterUpdate',
+    '-EnginePid',
+    '12',
+    '-ShellPid',
+    '34',
+  ])
+})
+
 test('builds rollback arguments with status and relaunch options', () => {
   assert.deepEqual(buildUpdaterArguments({
     scriptPath: 'C:\\portable\\update.ps1',

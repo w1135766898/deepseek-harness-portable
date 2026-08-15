@@ -117,4 +117,30 @@ Describe "Transaction backup, install and rollback" {
             }
         }
     }
+
+    It "installs directly from pre-extracted staging directory and cleans up staging" {
+        $root = Join-Path $env:TEMP ('pester-staging-' + [Guid]::NewGuid().ToString('N'))
+        $app = Join-Path $root 'app'
+        $staging = Join-Path $root 'staging'
+        New-Item -ItemType Directory -Path (Join-Path $app 'runtime') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $staging 'runtime') -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $app 'runtime\marker.txt'), 'old', [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText((Join-Path $app 'dsh.cmd'), 'old script', [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText((Join-Path $app 'release-manifest.json'), '{"distributionVersion":"1.0.0"}', [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText((Join-Path $staging 'runtime\marker.txt'), 'staged-new', [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText((Join-Path $staging 'dsh.cmd'), 'new script', [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText((Join-Path $staging 'release-manifest.json'), '{"distributionVersion":"1.0.1"}', [Text.Encoding]::UTF8)
+
+        Mock -ModuleName updater Test-PortableLayout {}
+        Mock -ModuleName updater Sync-ReleasePayload {}
+        try {
+            Invoke-Updater -AppRoot $app -StagingPath $staging -FromVersion '1.0.0' -TargetVersion '1.0.1' -Force
+            [IO.File]::ReadAllText((Join-Path $app 'runtime\marker.txt')) | Should Be 'staged-new'
+            (Test-Path -LiteralPath $staging) | Should Be $false
+        } finally {
+            if (Test-Path -LiteralPath $root) {
+                Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
 }

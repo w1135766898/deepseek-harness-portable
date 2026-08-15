@@ -27,6 +27,7 @@ function buildUpdaterArguments({
   targetVersion,
   packagePath,
   expectedSha256,
+  stagingPath,
   enginePid,
   shellPid,
   rollback = false,
@@ -50,6 +51,9 @@ function buildUpdaterArguments({
       '-FromVersion', fromVersion,
       '-TargetVersion', targetVersion,
     )
+    if (stagingPath) {
+      args.push('-StagingPath', stagingPath)
+    }
     if (packagePath) {
       args.push('-PackagePath', packagePath)
       if (expectedSha256) args.push('-ExpectedSha256', expectedSha256)

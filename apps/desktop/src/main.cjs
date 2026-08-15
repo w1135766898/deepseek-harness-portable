@@ -30,6 +30,7 @@ const {
   GITHUB_MIRROR_PREFIXES,
   compareVersions,
   downloadWithFallback,
+  extractStagingPackage,
   fetchJson,
   fetchText,
   hashFile,
@@ -1404,6 +1405,9 @@ async function getCurrentUpdateStatus() {
     if (current.packagePath) {
       try { rmSync(current.packagePath, { force: true }) } catch {}
     }
+    if (current.stagingPath) {
+      try { rmSync(current.stagingPath, { recursive: true, force: true }) } catch {}
+    }
     if (typeof clearUpdateStatus === 'function') clearUpdateStatus(userDataPath)
     return undefined
   }
@@ -1418,8 +1422,10 @@ async function getCurrentUpdateStatus() {
       valid = false
     }
     if (valid) {
+      const stagingValid = Boolean(current.stagingPath && existsSync(current.stagingPath))
       preparedPortableUpdate = {
         packagePath: current.packagePath,
+        stagingPath: stagingValid ? current.stagingPath : '',
         sha256: current.sha256,
         targetVersion: current.targetVersion,
         release: undefined,
@@ -1556,7 +1562,7 @@ async function promptPortableUpdateRestart(prepared) {
     return
   }
   sendUpdateState({ state: 'replacing', stage: 'launch', label: desktopText('update.replacing'), targetVersion: prepared.targetVersion })
-  if (!triggerPortableUpdate(prepared.targetVersion, prepared.packagePath, prepared.sha256)) {
+  if (!triggerPortableUpdate(prepared.targetVersion, prepared.packagePath, prepared.sha256, prepared.stagingPath)) {
     sendUpdateState({ state: 'ready', stage: 'ready', label: desktopText('update.updaterUnavailable'), progress: 100, targetVersion: prepared.targetVersion })
   }
 }
@@ -1569,6 +1575,7 @@ async function preparePortableUpdate(targetVersion, release) {
   const fromVersion = getLocalVersion()
   const effectiveTarget = normalizedRelease.version || targetVersion || 'latest'
   let packagePath
+  let stagingPath = ''
   let completed = false
   let currentStage = 'check'
 
@@ -1639,8 +1646,38 @@ async function preparePortableUpdate(targetVersion, release) {
       throw new Error(desktopText('update.checksumFailed', { expected: sha256, actual: actualSha256 }))
     }
 
+    currentStage = 'extract'
+    writeDesktopUpdateStatus({
+      state: 'extracting',
+      stage: 'extract',
+      message: desktopText('release.processing'),
+      fromVersion,
+      targetVersion: effectiveTarget,
+    })
+    sendUpdateState({
+      state: 'extracting',
+      stage: 'extract',
+      label: desktopText('release.processing'),
+      progress: undefined,
+      targetVersion: effectiveTarget,
+    })
+
+    const stagingRoot = join(tempRoot, `staging-${safeVersion}-${Date.now()}`)
+    try {
+      stagingPath = await extractStagingPackage({
+        zipPath: packagePath,
+        stagingDestination: stagingRoot,
+        expectedVersion: effectiveTarget,
+        appRoot: root,
+      })
+    } catch (stagingError) {
+      console.warn('Pre-extraction into staging directory skipped, will extract during restart:', stagingError)
+      stagingPath = ''
+    }
+
     preparedPortableUpdate = {
       packagePath,
+      stagingPath,
       sha256,
       targetVersion: effectiveTarget,
       release: normalizedRelease,
@@ -1653,6 +1690,7 @@ async function preparePortableUpdate(targetVersion, release) {
       fromVersion,
       targetVersion: effectiveTarget,
       packagePath,
+      stagingPath,
       sha256,
     })
     sendUpdateState({ state: 'ready', stage: 'ready', label: desktopText('update.readyWaiting'), progress: 100, targetVersion: effectiveTarget })
@@ -1660,6 +1698,9 @@ async function preparePortableUpdate(targetVersion, release) {
   } catch (error) {
     if (packagePath && !completed) {
       try { rmSync(packagePath, { force: true }) } catch {}
+    }
+    if (stagingPath && !completed) {
+      try { rmSync(stagingPath, { recursive: true, force: true }) } catch {}
     }
     const message = errorMessage(error)
     writeDesktopUpdateStatus({
@@ -1957,7 +1998,7 @@ async function showUpdateNoticeIfNeeded() {
   })
 }
 
-function triggerPortableUpdate(targetVersion, packagePath, expectedSha256) {
+function triggerPortableUpdate(targetVersion, packagePath, expectedSha256, stagingPath) {
   const root = findPortableRoot(__dirname)
   if (root !== undefined) {
     const updatePs1 = join(root, 'update.ps1')
@@ -1982,6 +2023,7 @@ function triggerPortableUpdate(targetVersion, packagePath, expectedSha256) {
         targetVersion,
         packagePath,
         expectedSha256,
+        stagingPath,
         enginePid: harness?.pid,
         shellPid: process.pid,
       })

@@ -34,6 +34,7 @@ function normalizeUpdateStatus(value) {
     startedAt: textValue(value.startedAt),
     processId: processIdValue(value.processId),
     packagePath: textValue(value.packagePath),
+    stagingPath: textValue(value.stagingPath),
     sha256: textValue(value.sha256),
   }
 }
