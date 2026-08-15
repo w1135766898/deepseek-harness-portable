@@ -16,7 +16,7 @@ const {
 const { homedir } = require('node:os')
 const { basename, join, resolve } = require('node:path')
 const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
-const { mergeReleaseHistory, normalizeReleaseNotes } = require('./release-notes.cjs')
+const { countSectionBadges, mergeReleaseHistory, normalizeReleaseNotes } = require('./release-notes.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
 const { ensureUnifiedDshHome } = require('./workspace-service.cjs')
 const { readConfigStore, updateConfigStore } = require('./config-store.cjs')
@@ -1100,6 +1100,7 @@ function sortReleaseHistory(history) {
     .filter(release => isValidSemver(release.version))
     .sort((left, right) => compareVersions(right.version, left.version))
     .slice(0, RELEASE_HISTORY_LIMIT)
+    .map(release => ({ ...release, badgeSummary: countSectionBadges(release) }))
 }
 
 function cachedReleaseHistory() {
