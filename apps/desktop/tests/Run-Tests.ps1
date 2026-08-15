@@ -9,6 +9,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+Import-Module Microsoft.PowerShell.Utility -ErrorAction SilentlyContinue
 
 $testDir = $PSScriptRoot
 
