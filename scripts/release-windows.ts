@@ -193,7 +193,7 @@ async function run(command: string, args: string[]): Promise<void> {
       cwd: root,
       stdio: 'inherit',
       shell: process.platform === 'win32' && command.toLowerCase().endsWith('.cmd'),
-      env: { ...process.env, CI: 'true' },
+      env: { ...process.env, CI: 'false', HUSKY: '0', LEFTHOOK: '0' },
     })
     child.once('error', reject)
     child.once('exit', (code, signal) => {
@@ -404,9 +404,17 @@ async function main(): Promise<void> {
   await verifyReleaseTests()
 
   if (!options.input && !options.skipBuild) {
-    const buildArgs = ['exec', 'tsx', 'scripts/build-desktop-web-exe.ts', '--electron']
-    if (options.pruneSources) buildArgs.push('--prune-sources')
-    await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', buildArgs)
+    const tsxBin = join(root, 'node_modules', '.pnpm', 'node_modules', '.bin', process.platform === 'win32' ? 'tsx.CMD' : 'tsx')
+    const buildScript = join(root, 'scripts', 'build-desktop-web-exe.ts')
+    if (existsSync(tsxBin)) {
+      const buildArgs = [buildScript, '--electron']
+      if (options.pruneSources) buildArgs.push('--prune-sources')
+      await run(tsxBin, buildArgs)
+    } else {
+      const buildArgs = ['exec', 'tsx', 'scripts/build-desktop-web-exe.ts', '--electron']
+      if (options.pruneSources) buildArgs.push('--prune-sources')
+      await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', buildArgs)
+    }
   }
 
   const buildRoot = options.input ?? defaultBuildRoot

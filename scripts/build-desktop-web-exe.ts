@@ -624,18 +624,21 @@ class DesktopExeBuild {
     // without the ICU, Chromium, and GPU runtime files beside it. Running the
     // wrapper first makes the missing distribution download itself and fails
     // before a partial portable directory can be presented as a product.
-    await this.run('prepare Electron runtime', pnpmBin(), [
-      '--filter',
-      DEPLOY_ROOT_PACKAGE,
-      'exec',
-      'electron',
-      '--version',
-    ])
-    await this.run(`Electron ${ELECTRON_APP_NAME} win32-x64`, pnpmBin(), [
-      '--filter',
-      DEPLOY_ROOT_PACKAGE,
-      'exec',
-      'electron-packager',
+    const electronBin = join(root, 'node_modules', '.pnpm', 'node_modules', '.bin', process.platform === 'win32' ? 'electron.CMD' : 'electron')
+    if (existsSync(electronBin)) {
+      await this.run('prepare Electron runtime', electronBin, ['--version'])
+    } else {
+      await this.run('prepare Electron runtime', pnpmBin(), [
+        '--filter',
+        DEPLOY_ROOT_PACKAGE,
+        'exec',
+        'electron',
+        '--version',
+      ])
+    }
+
+    const electronPackagerBin = join(root, 'node_modules', '.pnpm', 'node_modules', '.bin', process.platform === 'win32' ? 'electron-packager.CMD' : 'electron-packager')
+    const packagerArgs = [
       this.staging,
       ELECTRON_APP_NAME,
       '--platform',
@@ -649,7 +652,19 @@ class DesktopExeBuild {
       '--overwrite',
       '--no-asar',
       '--no-prune',
-    ])
+    ]
+    if (existsSync(electronPackagerBin)) {
+      await this.run(`Electron ${ELECTRON_APP_NAME} win32-x64`, electronPackagerBin, packagerArgs)
+    } else {
+      await this.run(`Electron ${ELECTRON_APP_NAME} win32-x64`, pnpmBin(), [
+        '--filter',
+        DEPLOY_ROOT_PACKAGE,
+        'exec',
+        'electron-packager',
+        ...packagerArgs,
+      ])
+    }
+
     if (!this.cli.dryRun) {
       if (!existsSync(packagedProduct)) {
         throw new Error(`build-desktop-web-exe: Electron product ${packagedProduct} is missing after packaging.`)
@@ -662,20 +677,29 @@ class DesktopExeBuild {
   }
 
   /** Embed the same icon used by the Electron shell into the portable exe. */
- private async applyIcon(product: string): Promise<void> {
-   if (!existsSync(DESKTOP_ICON)) {
-     throw new Error(`build-desktop-web-exe: Windows icon is missing: ${DESKTOP_ICON}.`)
-   }
-   await this.run('apply Windows icon', pnpmBin(), [
-     '--filter',
-     DEPLOY_ROOT_PACKAGE,
-     'exec',
-     'node',
-     'src/apply-icon.mjs',
-     product,
-     DESKTOP_ICON,
-   ])
- }
+  private async applyIcon(product: string): Promise<void> {
+    if (!existsSync(DESKTOP_ICON)) {
+      throw new Error(`build-desktop-web-exe: Windows icon is missing: ${DESKTOP_ICON}.`)
+    }
+    const applyIconScript = join(root, 'apps', 'desktop', 'src', 'apply-icon.mjs')
+    if (existsSync(applyIconScript)) {
+      await this.run('apply Windows icon', process.execPath, [
+        applyIconScript,
+        product,
+        DESKTOP_ICON,
+      ])
+    } else {
+      await this.run('apply Windows icon', pnpmBin(), [
+        '--filter',
+        DEPLOY_ROOT_PACKAGE,
+        'exec',
+        'node',
+        'src/apply-icon.mjs',
+        product,
+        DESKTOP_ICON,
+      ])
+    }
+  }
 
   /**
    * Apply the icon to pkg's extracted Node base before SEA injection.
@@ -807,12 +831,12 @@ class DesktopExeBuild {
       // On Windows, .cmd shims (pnpm.cmd) cannot spawn directly; route the
       // whole command line through the shell.
       const child = process.platform === 'win32'
-        ? spawn(printable, { cwd: root, stdio: 'inherit', env: { ...process.env, CI: 'true' }, shell: true })
+        ? spawn(printable, { cwd: root, stdio: 'inherit', env: { ...process.env, CI: 'false', HUSKY: '0', LEFTHOOK: '0' }, shell: true })
         : spawn(command, args, {
           cwd: root,
           stdio: 'inherit',
           // Artifact builds must not mutate or validate a developer's Git hooks.
-          env: { ...process.env, CI: 'true' },
+          env: { ...process.env, CI: 'false', HUSKY: '0', LEFTHOOK: '0' },
         })
       child.once('error', (error) => {
         reject(new Error(`build-desktop-web-exe: ${label} failed to spawn: ${error.message} (${printable})`))
