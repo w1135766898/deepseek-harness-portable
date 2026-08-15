@@ -87,6 +87,10 @@ try {
         throw ("Updater module not found at: " + $modulePath)
     }
 
+    # update.ps1 ships at the portable distribution root, so its own directory
+    # IS the AppRoot; pass it explicitly instead of letting updater.psm1
+    # infer from its module location. A caller that relocates this script
+    # must pass a real root here.
     Invoke-Updater `
         -Force:$Force `
         -StatusFile $StatusFile `

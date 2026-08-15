@@ -859,7 +859,7 @@ if (!isSplashDocument) {
     if (action === 'retry-update') {
       dismissNotice()
       state.updateProgress = undefined
-      state.modalLoading = true
+      state.updateState = desktopText('update.prepareDownload')
       render()
       sendAction('retry-update')
       return

@@ -1182,6 +1182,27 @@ function writeDesktopUpdateStatus({ state, stage, message, fromVersion, targetVe
   return status
 }
 
+/**
+ * Drop a stale failed/interrupted update status before a fresh update,
+ * retry, or manual check, so the next status write starts clean. The retry
+ * action clears unconditionally (it restarts the whole flow); the other
+ * actions only clear terminal failures, leaving a ready/verifying status
+ * alone. Best-effort by design: a status read or remove failure must never
+ * block the update action it precedes.
+ * @param force - clear any status, not only failed/interrupted states.
+ */
+function clearUpdateStatusForRetry(force = false) {
+  try {
+    const userDataPath = app.getPath('userData')
+    const currentStatus = readUpdateStatus(userDataPath)
+    if (force || currentStatus?.state === 'failed' || currentStatus?.state === 'interrupted') {
+      clearUpdateStatus(userDataPath)
+    }
+  } catch {
+    // Swallow status I/O failures: cleanup is best-effort and the update action must proceed regardless.
+  }
+}
+
 async function queryLatestVersion() {
   const apiUrl = `https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases/latest`
   const channels = GITHUB_MIRROR_PREFIXES.map((prefix, index) => ({
@@ -1743,13 +1764,7 @@ function registerReleaseNotesIpc() {
     }
 
     if (action.type === 'update') {
-      try {
-        const userDataPath = app.getPath('userData')
-        const currentStatus = readUpdateStatus(userDataPath)
-        if (currentStatus?.state === 'failed' || currentStatus?.state === 'interrupted') {
-          clearUpdateStatus(userDataPath)
-        }
-      } catch {}
+      clearUpdateStatusForRetry()
       const targetVersion = typeof action.targetVersion === 'string' && action.targetVersion.trim() !== ''
         ? action.targetVersion.trim()
         : (releaseNotesContext.update?.version || inAppNotice?.release?.version || '')
@@ -1758,9 +1773,7 @@ function registerReleaseNotesIpc() {
     }
 
     if (action.type === 'retry-update') {
-      try {
-        clearUpdateStatus(app.getPath('userData'))
-      } catch {}
+      clearUpdateStatusForRetry(true)
       preparedPortableUpdate = undefined
       resumedPortableUpdate = false
       void checkForUpdates(true)
@@ -1917,15 +1930,7 @@ async function checkForUpdates(manual = true) {
     const hasUpdate = compareVersions(latestInfo.version, current) > 0
 
     if (hasUpdate) {
-      if (manual) {
-        try {
-          const userDataPath = app.getPath('userData')
-          const currentStatus = readUpdateStatus(userDataPath)
-          if (currentStatus?.state === 'failed' || currentStatus?.state === 'interrupted') {
-            clearUpdateStatus(userDataPath)
-          }
-        } catch {}
-      }
+      if (manual) clearUpdateStatusForRetry()
       showAvailableUpdateNotice(latestInfo, current, manual)
       if (manual) openInAppReleaseNotes({ mode: 'update', currentVersion: current, update: latestInfo })
       return
