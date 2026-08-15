@@ -77,6 +77,9 @@ const ZOOM_STEP = 0.1
 const HARNESS_HEALTH_INTERVAL_MS = 10_000
 const HARNESS_HEALTH_TIMEOUT_MS = 3_000
 const HARNESS_HEALTH_FAILURE_THRESHOLD = 3
+// Automatic background update checks are throttled to once per day; manual
+// checks from the menu are never throttled.
+const AUTO_UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 let window
 let splashWindow
@@ -2247,6 +2250,12 @@ async function createApp() {
     void (async () => {
       await showUpdateNoticeIfNeeded()
       sweepStaleUpdateArtifacts()
+      const config = readConfig()
+      const lastCheckAt = Date.parse(config.lastAutoUpdateCheckAt)
+      if (Number.isFinite(lastCheckAt) && Date.now() - lastCheckAt < AUTO_UPDATE_CHECK_INTERVAL_MS) return
+      // Record the attempt regardless of the outcome so an offline launch
+      // does not retry the API on every subsequent startup.
+      updateConfig({ lastAutoUpdateCheckAt: new Date().toISOString() })
       await checkForUpdates(false)
     })()
   }, 4000).unref()

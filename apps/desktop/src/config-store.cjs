@@ -25,6 +25,7 @@ const DEFAULT_CONFIG = Object.freeze({
   lastSeenVersion: '',
   lastAcknowledgedUpdateStatus: '',
   lastNotifiedAvailableVersion: '',
+  lastAutoUpdateCheckAt: '',
   releaseHistory: [],
 })
 
