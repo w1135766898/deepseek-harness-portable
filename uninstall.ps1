@@ -136,7 +136,9 @@ function Schedule-InstallRemoval {
     param([Parameter(Mandatory = $true)][string]$InstallRoot)
 
     $cleanupPath = Join-Path $env:TEMP ('dsh-uninstall-' + [Guid]::NewGuid().ToString('N') + '.cmd')
-    $quotedRoot = '"' + $InstallRoot.Replace('"', '""') + '"'
+    # Escape % as %% so a path containing a percent sign survives cmd.exe
+    # variable expansion, and double quotes for the quoted argument.
+    $quotedRoot = '"' + $InstallRoot.Replace('%', '%%').Replace('"', '""') + '"'
     $contents = @(
         '@echo off',
         'timeout /t 2 /nobreak >nul',
