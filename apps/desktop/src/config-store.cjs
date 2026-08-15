@@ -29,13 +29,6 @@ const DEFAULT_CONFIG = Object.freeze({
   releaseHistory: [],
 })
 
-function sanitizeConfig(config) {
-  if (!config || typeof config !== 'object' || Array.isArray(config)) {
-    return { ...DEFAULT_CONFIG }
-  }
-  return { ...config }
-}
-
 function migrateConfig(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return { ...DEFAULT_CONFIG }
