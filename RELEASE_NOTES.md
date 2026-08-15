@@ -1,29 +1,24 @@
-# DeepSeek Harness for Win v1.2.0
+# DeepSeek Harness for Win v1.2.1
 
 [中文](RELEASE_NOTES.zh.md)
 
 Windows x64 portable release · 2026-08-16
 
-This is the v1.2.0 release of this Windows distribution, delivering native WSL Linux Bash support for the Minimal Agent Preset to achieve complete alignment with the official DeepSeek RL training environment, alongside integrated environment diagnostics and error recovery guidance.
+This is the v1.2.1 release of this Windows distribution, fundamentally redesigning the in-app update lifecycle with transparent pre-extraction staging, 1–2 second instant atomic restarts, and startup script mutex protection.
 
-## New Features
+## New Features & Improvements
 
-- **Minimal Agent Preset on Windows via WSL Linux Bash**: Full alignment with the official DeepSeek RL training distribution (Linux, Bash, stty, PS1, and marker protocol), executing seamlessly on Windows via `wsl.exe`.
-- **Win32 ProcessInspector Stub & Full Access Isolation**: Injected a dedicated Win32 process inspector stub to prevent `signalForeground` session tear-downs, and isolated the `danger-full-access` sandbox policy within the minimal preset to bypass restricted-token barriers on Hyper-V and user directories.
-- **Desktop WSL Environment Diagnostic & Guide**: Direct visibility into the host WSL readiness status from the desktop menu, with a one-click dialog to copy the `wsl --install` command.
-- **Runtime Launch Error Translation**: Intercepts terminal launch errors and presents structured bilingual troubleshooting suggestions with recommendations for standard mode (PowerShell).
-
-## Improvements
-
-- **Hardened WSL Availability Probing**: Strips UTF-16 Byte Order Marks (BOM) and verifies non-empty distribution lists to prevent false positives when WSL is enabled without distributions.
-- **On-Demand Menu Freshness**: Re-probes WSL status on menu interaction in milliseconds, updating without requiring an application restart after WSL installation.
+- **In-App Pre-Extraction Staging**: Update downloads, SHA-256 verification, and ZIP decompression now run transparently in the background while the application stays fully usable with zero interruption.
+- **1–2 Second Instant Atomic Swap**: Replaced the previous 30+ second silent extraction waiting period with a near-instant directory swap on restart, eliminating anxiety over whether the application crashed or hung.
+- **Transparent User Control**: The update interface clearly displays update status and gives users full control with explicit "Restart and Update Now" and "Later" options.
+- **Launcher Mutex Protection**: `启动桌面版.bat`, `start-desktop.cmd`, and `启动桌面窗口.bat` now detect active update transactions and wait safely, preventing Windows file-lock collisions.
 
 ## Components
 
-- Distribution: 1.2.0
+- Distribution: 1.2.1
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.0-rc.5 (@deepseek-ai/dsh-web-app)
-- Tag: v1.2.0
+- Tag: v1.2.1
 
 ## Checksums and security
 

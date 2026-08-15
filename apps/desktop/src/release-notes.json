@@ -1,41 +1,65 @@
 {
-  "version": "1.2.0",
-  "name": "DeepSeek Harness for Win v1.2.0",
+  "version": "1.2.1",
+  "name": "DeepSeek Harness for Win v1.2.1",
   "publishedAt": "2026-08-16",
   "sections": [
     {
       "key": "features",
-      "titleEn": "New Features",
-      "titleZh": "新功能",
+      "titleEn": "New Features & Improvements",
+      "titleZh": "新功能与体验优化",
       "itemsEn": [
-        "Supported the Minimal Agent Preset on Windows through native WSL Linux Bash aligned with official DeepSeek RL training distribution.",
-        "Injected a dedicated Win32 ProcessInspector stub and isolated danger-full-access sandbox policy for WSL persistent shell sessions.",
-        "Added WSL environment diagnostic and guidance dialog in the desktop menu with one-click 'wsl --install' command copy.",
-        "Implemented runtime launch error interception and actionable bilingual troubleshooting guidance for missing WSL environments."
+        "Implemented in-app pre-extraction staging for portable updates: downloading, SHA-256 integrity verification, and decompression now run transparently in the background while the application stays fully usable.",
+        "Reduced post-exit restart replacement downtime from 30+ seconds to 1–2 seconds via instant atomic directory swapping.",
+        "Provided transparent update status and user control with explicit 'Restart and Update Now' and 'Later' options.",
+        "Added update transaction mutex protection in startup scripts (启动桌面版.bat, start-desktop.cmd) to eliminate file lock collisions."
       ],
       "itemsZh": [
-        "在 Windows 平台通过 WSL Linux 原生 Bash 正式支持极简模式（Minimal Preset），完美对齐 DeepSeek 官方 RL 训练环境。",
-        "引入 Win32 终端进程检查器桩，并在极简预设中启用 danger-full-access 隔离沙箱策略，彻底解决持久终端会话与 Hyper-V 权限问题。",
-        "在桌面菜单中新增 WSL 运行环境状态显示与自检入口，支持一键复制 'wsl --install' 安装命令。",
-        "实现运行时启动错误拦截与中英文双语友好排错指引，清晰提示标准模式（PowerShell）与极简模式差异。"
-      ]
-    },
-    {
-      "key": "improvements",
-      "titleEn": "Improvements",
-      "titleZh": "体验优化",
-      "itemsEn": [
-        "Hardened WSL availability probe by stripping UTF-16 BOM and validating installed Linux distributions.",
-        "Added automatic background re-probing when opening desktop menus for real-time environment refresh."
-      ],
-      "itemsZh": [
-        "强化 WSL 可用性探测逻辑，自动剥离 UTF-16 BOM 并校验有效发行版列表，杜绝误判。",
-        "在展开桌面菜单时引入毫秒级动态重探测机制，用户安装 WSL 后免重启即刻刷新状态。"
+        "重构便携版更新生命周期：引入运行时后台预解压（Staging）机制，下载、SHA-256 完整性校验与解压布局检查在软件运行期间透明完成，重活前置处理。",
+        "退出后的重启替换耗时从 30+ 秒黑盒等待缩短至 1~2 秒极速原子切换，彻底消除更新卡死或崩溃疑虑。",
+        "更新控制权全面透明化，界面明确提供【立即重启更新】与【稍后】选项，支持在方便时自主重启。",
+        "在启动脚本（启动桌面版.bat、start-desktop.cmd）中增加事务锁互斥保护与友好提示，杜绝用户在替换瞬间双击启动导致的 Windows 文件占用冲突与损坏。"
       ]
     }
   ],
-  "body": "## New Features / 新功能\n\n- Supported Minimal Agent Preset on Windows via WSL Linux Bash. / 在 Windows 平台通过 WSL 原生 Bash 正式支持极简模式。\n- Injected Win32 ProcessInspector stub and full-access policy for WSL sessions. / 引入 Win32 终端检查器桩并启用 Full Access 沙箱策略。\n- Added WSL diagnostic & guidance entry in desktop menu with 1-click install command copy. / 桌面菜单新增 WSL 状态自检与一键复制安装命令。\n- Intercepted runtime launch errors with actionable bilingual guidance. / 运行时启动失败拦截并提供中英文双语排错引导。\n\n## Improvements / 体验优化\n\n- Hardened WSL probe with BOM stripping and distribution checks. / 修复 WSL 探测 BOM 剥离与发行版校验。\n- Added on-demand re-probing on menu open. / 菜单展开时支持毫秒级重探测保鲜。",
+  "body": "## New Features & Improvements / 新功能与体验优化\n\n- Transparent In-App Pre-Extraction Staging / 运行时后台透明预解压与完整性校验。\n- 1–2 Second Instant Atomic Swap / 退出后 1~2 秒极速原子对调替换，消除黑盒等待。\n- Full User Control with Explicit Restart / 明确的【立即重启更新】与【稍后】选项，控制权完全交给用户。\n- Launcher Mutex Protection / 启动脚本互斥锁保护，杜绝双击文件占用冲突。",
   "history": [
+    {
+      "version": "1.2.0",
+      "name": "DeepSeek Harness for Win v1.2.0",
+      "publishedAt": "2026-08-16",
+      "sections": [
+        {
+          "key": "features",
+          "titleEn": "New Features",
+          "titleZh": "新功能",
+          "itemsEn": [
+            "Supported the Minimal Agent Preset on Windows through native WSL Linux Bash aligned with official DeepSeek RL training distribution.",
+            "Injected a dedicated Win32 ProcessInspector stub and isolated danger-full-access sandbox policy for WSL persistent shell sessions.",
+            "Added WSL environment diagnostic and guidance dialog in the desktop menu with one-click 'wsl --install' command copy.",
+            "Implemented runtime launch error interception and actionable bilingual troubleshooting guidance for missing WSL environments."
+          ],
+          "itemsZh": [
+            "在 Windows 平台通过 WSL Linux 原生 Bash 正式支持极简模式（Minimal Preset），完美对齐 DeepSeek 官方 RL 训练环境。",
+            "引入 Win32 终端进程检查器桩，并在极简预设中启用 danger-full-access 隔离沙箱策略，彻底解决持久终端会话与 Hyper-V 权限问题。",
+            "在桌面菜单中新增 WSL 运行环境状态显示与自检入口，支持一键复制 'wsl --install' 安装命令。",
+            "实现运行时启动错误拦截与中英文双语友好排错指引，清晰提示标准模式（PowerShell）与极简模式差异。"
+          ]
+        },
+        {
+          "key": "improvements",
+          "titleEn": "Improvements",
+          "titleZh": "体验优化",
+          "itemsEn": [
+            "Hardened WSL availability probe by stripping UTF-16 BOM and validating installed Linux distributions.",
+            "Added automatic background re-probing when opening desktop menus for real-time environment refresh."
+          ],
+          "itemsZh": [
+            "强化 WSL 可用性探测逻辑，自动剥离 UTF-16 BOM 并校验有效发行版列表，杜绝误判。",
+            "在展开桌面菜单时引入毫秒级动态重探测机制，用户安装 WSL 后免重启即刻刷新状态。"
+          ]
+        }
+      ]
+    },
     {
       "version": "1.1.3",
       "name": "DeepSeek Harness for Win v1.1.3",
