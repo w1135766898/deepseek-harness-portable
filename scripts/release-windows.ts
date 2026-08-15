@@ -274,6 +274,11 @@ async function main(): Promise<void> {
   await rm(zipPath, { force: true })
 
   if (!options.input && !options.skipBuild) {
+    const testRunner = join(root, 'apps', 'desktop', 'tests', 'Run-Tests.ps1')
+    if (existsSync(testRunner)) {
+      console.log('Verifying updater tests before release packaging...')
+      await run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', testRunner])
+    }
     const buildArgs = ['exec', 'tsx', 'scripts/build-desktop-web-exe.ts', '--electron']
     if (options.pruneSources) buildArgs.push('--prune-sources')
     await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', buildArgs)

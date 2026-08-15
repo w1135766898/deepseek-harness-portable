@@ -4,9 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "pnpm run desktop:test && pnpm run desktop:updater:test",
     "build": "pnpm --filter dsh-desktop-web-pkg run build",
     "desktop:dev": "pnpm --filter dsh-desktop-web-pkg start",
     "desktop:test": "pnpm --filter dsh-desktop-web-pkg test",
+    "desktop:updater:test": "powershell -NoProfile -ExecutionPolicy Bypass -File apps/desktop/tests/Run-Tests.ps1",
     "desktop:package:win": "pnpm exec tsx scripts/build-desktop-web-exe.ts --electron",
     "desktop:make:win": "pnpm exec tsx scripts/build-desktop-web-exe.ts --electron",
     "desktop:release:win": "pnpm exec tsx scripts/release-windows.ts",
