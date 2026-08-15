@@ -52,12 +52,16 @@
           * Please run long lived commands in the background, e.g. 'sleep 10 &' or start a server in the background.
 
 # On Windows the shell tool is `pwsh`, consuming the host `shell` registry
-# (the pwsh-sandbox executor) exactly as `standard`/`code`/`cordis` do, so a
-# plain Windows box — Windows PowerShell 5.1 always exists — gets a working
-# shell without Git Bash or WSL. It publishes nothing, so it needs no realm.
+# (the pwsh-sandbox executor) as `standard`/`code`/`cordis` do, so a plain
+# Windows box — Windows PowerShell 5.1 always exists — gets a working shell
+# without Git Bash or WSL. It publishes nothing, so it needs no realm.
+# Background jobs stay disabled: the minimal preset mounts no `tool-jobs`
+# controls, so a started job could never be collected or stopped.
 - id: tool-pwsh
   name: '@deepseek-ai/dsh-tool-pwsh'
   disabled: !!js process.platform !== 'win32'
+  config:
+    enableRunInBackground: false
 
 # The bare local filesystem shadows the host's sandboxed provider only for this
 # preset. The editor shares that realm and requires absolute paths.

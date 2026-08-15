@@ -63,6 +63,14 @@ test('minimal preset mounts the pwsh tool only on win32', () => {
   assert.equal(disabledOn(row(entries, 'tool-pwsh'), 'linux'), true)
 })
 
+test('minimal preset disables pwsh background jobs on win32', () => {
+  const entries = loadPreset()
+  const pwsh = row(entries, 'tool-pwsh')
+  // The minimal preset mounts no `tool-jobs` controls, so a started job could
+  // never be collected or stopped; the schema must not expose the parameter.
+  assert.equal(pwsh.config.enableRunInBackground, false)
+})
+
 test('minimal preset keeps str_replace_editor and the persona on every platform', () => {
   const entries = loadPreset()
   assert.equal(disabledOn(row(entries, 'str-replace-editor'), 'win32'), false)
