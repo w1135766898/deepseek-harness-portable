@@ -180,6 +180,38 @@ if (!isSplashDocument) {
         user-select: none;
         -webkit-app-region: no-drag !important;
       }
+
+      /* Desktop Layout: Frameless Scheme B with breathing room */
+      [class*="SidebarRoot_root"],
+      [class*="sidebarCol"] > div {
+        padding-top: calc(var(--dsh-titlebar-height, 36px) + 6px) !important;
+        box-sizing: border-box !important;
+      }
+      [class*="SidebarRoot_root"][class*="collapsed"],
+      [class*="sidebarCol"] > div[class*="collapsed"] {
+        padding-top: calc(var(--dsh-titlebar-height, 36px) + 18px) !important;
+      }
+
+      [class*="ConversationRoot_root"] > header,
+      [class*="centerCol"] header:not([class*="dsh-"]) {
+        padding-top: calc(var(--dsh-titlebar-height, 36px) + 12px) !important;
+        box-sizing: border-box !important;
+      }
+
+      [class*="detailsCol"] header:not([class*="dsh-"]),
+      [class*="DetailsPanel_header"],
+      [class*="DetailsPanel_root"] > header {
+        padding-top: calc(var(--dsh-titlebar-height, 36px) + 14px) !important;
+        box-sizing: border-box !important;
+      }
+
+      [class*="logoRow"],
+      [class*="titleCluster"],
+      [class*="headerUtilities"],
+      [class*="sessionLogButton"] {
+        -webkit-app-region: no-drag !important;
+      }
+
       button.dsh-native-brand-trigger,
       button.dsh-native-brand-trigger svg,
       .dsh-native-brand-trigger {
@@ -856,7 +888,7 @@ if (!isSplashDocument) {
     :host { all: initial; color-scheme: light dark; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
     .dsh-chrome, .dsh-chrome * { box-sizing: border-box; }
     .dsh-chrome { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; color: #182235; font: 13px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif; }
-    .dsh-drag-region { position: fixed; inset: 0 140px auto 0; height: var(--dsh-titlebar-height); pointer-events: none; -webkit-app-region: drag; }
+    .dsh-drag-region { position: fixed; inset: 0 140px auto 0; height: var(--dsh-titlebar-height); pointer-events: auto; -webkit-app-region: drag; }
     .dsh-notice, .dsh-modal-layer { pointer-events: auto; }
     .dsh-menu-popover { position: fixed; top: var(--dsh-menu-top, 42px); left: var(--dsh-menu-left, 8px); z-index: 6; display: grid; min-width: 236px; max-height: calc(100vh - 16px); overflow-y: auto; padding: 6px; border: 1px solid rgba(116, 138, 171, .24); border-radius: 12px; background: rgba(250, 252, 255, .98); box-shadow: 0 16px 40px rgba(23, 43, 72, .2); pointer-events: auto; -webkit-app-region: no-drag; }
     .dsh-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 7px 9px; border: 0; border-radius: 7px; color: #263a5a; background: transparent; cursor: pointer; text-align: left; font: 12px/1.2 inherit; -webkit-app-region: no-drag; }
