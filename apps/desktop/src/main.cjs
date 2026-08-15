@@ -1408,7 +1408,6 @@ async function preparePortableUpdate(targetVersion, release) {
     packagePath = join(tempRoot, `DeepSeek-Harness-${safeVersion}-${Date.now()}.zip`)
     const downloadUrls = releaseDownloadUrls(normalizedRelease)
     let lastProgressAt = 0
-    currentStage = 'verify'
     writeDesktopUpdateStatus({
       state: 'downloading',
       stage: 'download',
@@ -1447,6 +1446,7 @@ async function preparePortableUpdate(targetVersion, release) {
       },
     })
 
+    currentStage = 'verify'
     writeDesktopUpdateStatus({
       state: 'verifying',
       stage: 'verify',
