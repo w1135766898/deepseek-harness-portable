@@ -37,6 +37,28 @@ test('normalizes GitHub release fields and keeps only https URLs', () => {
   assert.equal(normalizeReleaseNotes({ url: 'javascript:alert(1)' }).releaseUrl, undefined)
 })
 
+test('preserves localized release sections and bodies', () => {
+  const release = normalizeReleaseNotes({
+    version: '1.2.0',
+    bodyEn: 'English body',
+    bodyZh: '中文正文',
+    sections: [{
+      key: 'features',
+      titleEn: 'Features',
+      titleZh: '主要更新',
+      itemsEn: ['Added an English item'],
+      itemsZh: ['新增中文条目'],
+    }],
+  })
+
+  assert.equal(release.bodyEn, 'English body')
+  assert.equal(release.bodyZh, '中文正文')
+  assert.equal(release.sections[0].titleEn, 'Features')
+  assert.equal(release.sections[0].titleZh, '主要更新')
+  assert.deepEqual(release.sections[0].itemsEn, ['Added an English item'])
+  assert.deepEqual(release.sections[0].itemsZh, ['新增中文条目'])
+})
+
 test('deduplicates history while preferring the copy with a body', () => {
   const merged = mergeReleaseHistory(
     [{ version: '1.0.0', body: '' }],

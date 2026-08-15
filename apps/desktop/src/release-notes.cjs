@@ -69,7 +69,15 @@ function parseReleaseBody(body) {
   const ensureSection = () => {
     if (current === undefined) {
       const meta = CATEGORY_META.other
-      current = { ...meta, title: meta.label, items: [] }
+      current = {
+        ...meta,
+        title: meta.label,
+        titleEn: meta.label,
+        titleZh: meta.labelZh,
+        items: [],
+        itemsEn: [],
+        itemsZh: [],
+      }
       sections.push(current)
     }
     return current
@@ -79,7 +87,12 @@ function parseReleaseBody(body) {
     if (paragraph.length === 0) return
     const text = paragraph.join(' ').trim()
     paragraph = []
-    if (text) ensureSection().items.push(text)
+    if (text) {
+      const section = ensureSection()
+      section.items.push(text)
+      section.itemsEn.push(text)
+      section.itemsZh.push(text)
+    }
   }
 
   for (const rawLine of source.split('\n')) {
@@ -99,14 +112,26 @@ function parseReleaseBody(body) {
       flushParagraph()
       const title = heading[1].replace(/^\[|\]$/g, '').trim()
       const meta = CATEGORY_META[categoryKey(title)]
-      current = { ...meta, title: title || meta.label, items: [] }
+      current = {
+        ...meta,
+        title: title || meta.label,
+        titleEn: title || meta.label,
+        titleZh: title || meta.labelZh,
+        items: [],
+        itemsEn: [],
+        itemsZh: [],
+      }
       sections.push(current)
       continue
     }
 
     if (/^\s*(?:[-*+]\s+|\d+[.)]\s+)/.test(rawLine)) {
       flushParagraph()
-      ensureSection().items.push(cleanMarkdownText(rawLine))
+      const item = cleanMarkdownText(rawLine)
+      const section = ensureSection()
+      section.items.push(item)
+      section.itemsEn.push(item)
+      section.itemsZh.push(item)
       continue
     }
 
@@ -120,24 +145,39 @@ function parseReleaseBody(body) {
   flushParagraph()
 
   return sections
-    .map(section => ({ ...section, items: section.items.filter(Boolean) }))
+    .map(section => ({
+      ...section,
+      items: section.items.filter(Boolean),
+      itemsEn: section.itemsEn.filter(Boolean),
+      itemsZh: section.itemsZh.filter(Boolean),
+    }))
     .filter(section => section.items.length > 0)
 }
 
 function normalizeReleaseNotes(input, fallbackVersion = '0.0.0') {
   const source = input && typeof input === 'object' ? input : {}
   const version = normalizeVersion(source.version || source.tag_name, fallbackVersion)
-  const body = asText(source.body).slice(0, MAX_BODY_LENGTH)
+  const bodyEn = asText(source.bodyEn).slice(0, MAX_BODY_LENGTH)
+  const bodyZh = asText(source.bodyZh).slice(0, MAX_BODY_LENGTH)
+  const body = (asText(source.body) || bodyEn || bodyZh).slice(0, MAX_BODY_LENGTH)
   const suppliedSections = Array.isArray(source.sections)
     ? source.sections.map(section => {
       if (!section || typeof section !== 'object') return undefined
-      const items = Array.isArray(section.items) ? section.items.filter(item => typeof item === 'string').map(item => item.trim()).filter(Boolean) : []
+      const rawItems = Array.isArray(section.items) ? section.items.filter(item => typeof item === 'string').map(item => item.trim()).filter(Boolean) : []
+      const itemsEn = Array.isArray(section.itemsEn) ? section.itemsEn.filter(item => typeof item === 'string').map(item => item.trim()).filter(Boolean) : rawItems
+      const itemsZh = Array.isArray(section.itemsZh) ? section.itemsZh.filter(item => typeof item === 'string').map(item => item.trim()).filter(Boolean) : rawItems
+      const items = rawItems.length > 0 ? rawItems : (itemsEn.length > 0 ? itemsEn : itemsZh)
       if (items.length === 0) return undefined
       const meta = CATEGORY_META[asText(section.key)] || CATEGORY_META.other
+      const title = asText(section.title)
       return {
         ...meta,
-        title: asText(section.title) || meta.label,
+        title: title || meta.label,
+        titleEn: asText(section.titleEn) || title || meta.label,
+        titleZh: asText(section.titleZh) || title || meta.labelZh,
         items,
+        itemsEn,
+        itemsZh,
       }
     }).filter(Boolean)
     : []
@@ -146,6 +186,8 @@ function normalizeReleaseNotes(input, fallbackVersion = '0.0.0') {
     version,
     name: asText(source.name) || `DeepSeek Harness for Win v${version}`,
     body,
+    bodyEn: bodyEn || body,
+    bodyZh: bodyZh || body,
     sections,
     publishedAt: normalizeDate(source.publishedAt || source.published_at || source.createdAt || source.created_at),
     releaseUrl: normalizeUrl(source.releaseUrl || source.html_url || source.url),

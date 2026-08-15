@@ -2,5 +2,50 @@
   "version": "1.1.0",
   "name": "DeepSeek Harness for Win v1.1.0",
   "publishedAt": "2026-08-15",
+  "sections": [
+    {
+      "key": "features",
+      "titleEn": "Features",
+      "titleZh": "主要更新",
+      "itemsEn": [
+        "Replaced the release-notes drawer with a centered card-style Update Hub with fixed Header/Footer and a locally scrolling Body.",
+        "Added transaction-aware update states, SemVer-sorted accordion history, release badge summaries, and a compact About view.",
+        "Unified SemVer 2.0 parser and precedence comparator across JavaScript runtime, CLI, and PowerShell updater scripts."
+      ],
+      "itemsZh": [
+        "将更新日志侧滑抽屉升级为居中卡片式更新中心，采用固定 Header/Footer 与局部滚动 Body。",
+        "新增事务状态更新卡、SemVer 倒序手风琴时间线、改动徽标统计和精简关于页。",
+        "在 JavaScript 运行时、CLI 与 PowerShell 更新脚本中统一实现了 SemVer 2.0 解析器与优先级比较器。"
+      ]
+    },
+    {
+      "key": "improvements",
+      "titleEn": "Improvements",
+      "titleZh": "优化提升",
+      "itemsEn": [
+        "Preserved live and persisted update status when the Update Hub is closed and reopened, including progress and rollback availability.",
+        "Added Escape/backdrop dismissal, focus trapping, responsive narrow-window sizing, reduced-motion handling, and runtime light/dark theme synchronization.",
+        "Kept cached release history and update actions available while remote release data refreshes in the background."
+      ],
+      "itemsZh": [
+        "关闭并重新打开更新中心时保留实时与持久化更新状态，包括进度和回滚入口。",
+        "新增 Escape/遮罩关闭、焦点陷阱、窄窗口自适应、减少动态效果支持与运行时深浅主题同步。",
+        "远端发布数据后台刷新期间继续使用缓存版本历史，并保持更新操作可用。"
+      ]
+    },
+    {
+      "key": "fixes",
+      "titleEn": "Bug Fixes",
+      "titleZh": "修复",
+      "itemsEn": [
+        "Wired the Update Hub rollback action to the existing transactional rollback entry point.",
+        "Kept release packaging guarded by strict runtime source-consistency checks and generated checksums."
+      ],
+      "itemsZh": [
+        "修复更新中心回滚按钮未接入事务回滚入口的问题。",
+        "保留发布前运行时源码一致性校验与校验和生成门禁。"
+      ]
+    }
+  ],
   "body": "## Features / 主要更新\n\n- Replaced the release-notes drawer with a centered card-style Update Hub with fixed Header/Footer and a locally scrolling Body. / 将更新日志侧滑抽屉升级为居中卡片式更新中心，采用固定 Header/Footer 与局部滚动 Body。\n- Added transaction-aware update states, SemVer-sorted accordion history, release badge summaries, and a compact About view. / 新增事务状态更新卡、SemVer 倒序手风琴时间线、改动徽标统计和精简关于页。\n- Unified SemVer 2.0 parser and precedence comparator across JavaScript runtime, CLI, and PowerShell updater scripts. / 在 JavaScript 运行时、CLI 与 PowerShell 更新脚本中统一实现了 SemVer 2.0 解析器与优先级比较器。\n\n## Improvements / 优化提升\n\n- Preserved live and persisted update status when the Update Hub is closed and reopened, including progress and rollback availability. / 关闭并重新打开更新中心时保留实时与持久化更新状态，包括进度和回滚入口。\n- Added Escape/backdrop dismissal, focus trapping, responsive narrow-window sizing, reduced-motion handling, and runtime light/dark theme synchronization. / 新增 Escape/遮罩关闭、焦点陷阱、窄窗口自适应、减少动态效果支持与运行时深浅主题同步。\n- Kept cached release history and update actions available while remote release data refreshes in the background. / 远端发布数据后台刷新期间继续使用缓存版本历史，并保持更新操作可用。\n\n## Fixes / 修复\n\n- Wired the Update Hub rollback action to the existing transactional rollback entry point. / 修复更新中心回滚按钮未接入事务回滚入口的问题。\n- Kept release packaging guarded by strict runtime source-consistency checks and generated checksums. / 保留发布前运行时源码一致性校验与校验和生成门禁。"
 }

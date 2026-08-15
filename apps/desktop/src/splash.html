@@ -54,11 +54,34 @@
   </main>
   <script>
     (() => {
-      const labels = {
-        engine: '正在拉起后台引擎…',
-        workspace: '正在准备工作区…',
-        interface: '正在加载界面…',
+      const messages = {
+        en: {
+          engine: 'Starting the background engine…',
+          workspace: 'Preparing the workspace…',
+          interface: 'Loading the interface…',
+          startupSlow: 'Startup is taking longer than expected',
+          startupFailed: 'Background startup failed',
+          noLog: 'No startup log available.',
+          showLog: 'View Startup Log',
+          hideLog: 'Hide Startup Log',
+          retry: 'Retry',
+          chooseWorkspace: 'Switch Workspace',
+        },
+        zh: {
+          engine: '正在拉起后台引擎…',
+          workspace: '正在准备工作区…',
+          interface: '正在加载界面…',
+          startupSlow: '启动时间较长',
+          startupFailed: '后台启动失败',
+          noLog: '暂无启动日志。',
+          showLog: '查看启动日志',
+          hideLog: '收起启动日志',
+          retry: '重试',
+          chooseWorkspace: '切换工作区',
+        },
       }
+      let locale = /^zh(?:[-_]|$)/i.test(navigator.language || '') ? 'zh' : 'en'
+      let labels = messages[locale]
       const status = document.getElementById('status')
       const progress = document.querySelector('.progress')
       const errorPanel = document.getElementById('error-panel')
@@ -69,7 +92,17 @@
       const showLog = document.getElementById('show-log')
       const retry = document.getElementById('retry')
       const chooseWorkspace = document.getElementById('choose-workspace')
+      const applyLocale = value => {
+        locale = value === 'zh' ? 'zh' : 'en'
+        labels = messages[locale]
+        retry.textContent = labels.retry
+        chooseWorkspace.textContent = labels.chooseWorkspace
+        if (log.hidden) showLog.textContent = labels.showLog
+        else showLog.textContent = labels.hideLog
+      }
       const setStatus = value => { if (labels[value]) status.textContent = labels[value] }
+      applyLocale(locale)
+      setStatus('engine')
       const setState = value => {
         const kind = value?.kind
         if (kind === 'loading' || kind === 'ready') {
@@ -80,23 +113,24 @@
         if (kind !== 'slow' && kind !== 'error') return
         errorPanel.hidden = false
         progress.hidden = true
-        errorTitle.textContent = value.title || (kind === 'slow' ? '启动时间较长' : '后台启动失败')
+        errorTitle.textContent = value.title || (kind === 'slow' ? labels.startupSlow : labels.startupFailed)
         errorMessage.textContent = value.message || ''
         errorDetail.textContent = value.detail || ''
-        log.textContent = value.log || '暂无启动日志。'
+        log.textContent = value.log || labels.noLog
         log.hidden = true
-        showLog.textContent = '查看启动日志'
+        showLog.textContent = labels.showLog
       }
       if (window.deepSeekSplash) {
         window.deepSeekSplash.onStatus(setStatus)
         window.deepSeekSplash.onState(setState)
+        window.deepSeekSplash.onLocale(applyLocale)
         window.deepSeekSplash.onTransition(value => {
           if (value === 'hide') document.body.classList.add('is-hidden')
         })
       }
       showLog.addEventListener('click', () => {
         log.hidden = !log.hidden
-        showLog.textContent = log.hidden ? '查看启动日志' : '收起启动日志'
+        showLog.textContent = log.hidden ? labels.showLog : labels.hideLog
       })
       retry.addEventListener('click', () => {
         setState({ kind: 'loading' })

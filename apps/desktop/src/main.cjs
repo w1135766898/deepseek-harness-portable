@@ -11,11 +11,14 @@ const {
   rmSync,
   statSync,
   unlinkSync,
+  watch,
   writeFileSync,
 } = require('node:fs')
 const { homedir } = require('node:os')
-const { basename, join, resolve } = require('node:path')
+const { basename, dirname, join, resolve } = require('node:path')
 const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
+const { messageForLocale, localeFromSystem, normalizePreference } = require('./desktop-locale.cjs')
+const { readLocalePreference } = require('./desktop-locale-store.cjs')
 const { countSectionBadges, mergeReleaseHistory, normalizeReleaseNotes } = require('./release-notes.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
 const { ensureUnifiedDshHome } = require('./workspace-service.cjs')
@@ -96,10 +99,118 @@ let boundsSaveTimer
 let healthTimer
 let healthProbePromise
 let healthGeneration = 0
+let unifiedDshHome
+let desktopLocale = 'en'
+let desktopLocaleSettingsPath
+let desktopLocaleWatcher
+let desktopLocaleReloadTimer
 let harnessHealth = {
   state: 'starting',
   consecutiveFailures: 0,
-  message: '正在启动后台引擎…',
+  message: messageForLocale(desktopLocale, 'health.starting'),
+}
+
+function desktopText(key, values = {}) {
+  return messageForLocale(desktopLocale, key, { appName: APP_NAME, ...values })
+}
+
+function systemDesktopLocale() {
+  const candidates = []
+  try {
+    if (typeof app.getSystemLocale === 'function') candidates.push(app.getSystemLocale())
+  } catch {}
+  try {
+    if (typeof app.getPreferredSystemLanguages === 'function') candidates.push(app.getPreferredSystemLanguages()[0])
+  } catch {}
+  try {
+    if (typeof app.getLocale === 'function') candidates.push(app.getLocale())
+  } catch {}
+  return localeFromSystem(candidates.find(value => typeof value === 'string' && value.trim() !== '') || 'en')
+}
+
+function resolveDesktopLocale() {
+  const result = readLocalePreference(desktopLocaleSettingsPath)
+  if (result.error) {
+    console.warn('Failed to read DeepSeek Harness locale settings:', result.error)
+    return systemDesktopLocale()
+  }
+  if (result.invalidPreference) {
+    console.warn('Ignoring unsupported DeepSeek Harness locale preference:', result.preference)
+  }
+  return normalizePreference(result.preference) || systemDesktopLocale()
+}
+
+function sendDesktopLocaleState() {
+  sendRenderer('desktop:locale-changed', { locale: desktopLocale })
+  if (splashWindow !== undefined && !splashWindow.isDestroyed()) {
+    splashWindow.webContents.send('desktop:splash-locale', { locale: desktopLocale })
+  }
+}
+
+function applyDesktopLocale(nextLocale, { force = false } = {}) {
+  const normalized = normalizePreference(nextLocale) || systemDesktopLocale()
+  if (!force && normalized === desktopLocale) return false
+  const previousLocale = desktopLocale
+  desktopLocale = normalized
+  if (harnessHealth.state === 'starting'
+    && harnessHealth.message === messageForLocale(previousLocale, 'health.starting')) {
+    harnessHealth = { ...harnessHealth, message: desktopText('health.starting') }
+  }
+  if (tray !== undefined) rebuildMenus()
+  sendDesktopLocaleState()
+  sendHarnessHealthState()
+  return true
+}
+
+function reloadDesktopLocale() {
+  if (desktopLocaleSettingsPath === undefined) return
+  const result = readLocalePreference(desktopLocaleSettingsPath)
+  if (result.error) {
+    console.warn('Failed to reload DeepSeek Harness locale settings:', result.error)
+    return
+  }
+  if (result.invalidPreference) {
+    console.warn('Ignoring unsupported DeepSeek Harness locale preference:', result.preference)
+  }
+  applyDesktopLocale(normalizePreference(result.preference) || systemDesktopLocale())
+}
+
+function scheduleDesktopLocaleReload() {
+  if (desktopLocaleReloadTimer !== undefined) clearTimeout(desktopLocaleReloadTimer)
+  desktopLocaleReloadTimer = setTimeout(() => {
+    desktopLocaleReloadTimer = undefined
+    reloadDesktopLocale()
+  }, 240)
+  desktopLocaleReloadTimer.unref()
+}
+
+function startDesktopLocaleWatcher() {
+  if (desktopLocaleSettingsPath === undefined || desktopLocaleWatcher !== undefined) return
+  const settingsDirectory = dirname(desktopLocaleSettingsPath)
+  const settingsName = basename(desktopLocaleSettingsPath).toLowerCase()
+  try {
+    desktopLocaleWatcher = watch(settingsDirectory, { persistent: false }, (_eventType, filename) => {
+      if (filename !== null && filename !== undefined
+        && basename(String(filename)).toLowerCase() !== settingsName) return
+      scheduleDesktopLocaleReload()
+    })
+    desktopLocaleWatcher.on('error', error => {
+      console.warn('DeepSeek Harness locale settings watcher stopped:', error)
+      try { desktopLocaleWatcher.close() } catch {}
+      desktopLocaleWatcher = undefined
+    })
+  } catch (error) {
+    console.warn('Failed to watch DeepSeek Harness locale settings:', error)
+  }
+}
+
+function stopDesktopLocaleWatcher() {
+  if (desktopLocaleReloadTimer !== undefined) clearTimeout(desktopLocaleReloadTimer)
+  desktopLocaleReloadTimer = undefined
+  if (desktopLocaleWatcher !== undefined) {
+    try { desktopLocaleWatcher.close() } catch {}
+    desktopLocaleWatcher = undefined
+  }
 }
 
 function errorMessage(error) {
@@ -278,6 +389,7 @@ async function createSplashWindow() {
     splashWindow = undefined
   })
   await splashWindow.loadFile(join(__dirname, SPLASH_PAGE_NAME))
+  splashWindow.webContents.send('desktop:splash-locale', { locale: desktopLocale })
 }
 
 function waitForRendererFirstPaint() {
@@ -316,7 +428,7 @@ function startupLog(error) {
 }
 
 function recentLogLines(value, limit = 200) {
-  return String(value || '').split(/\r?\n/).slice(-limit).join('\n') || '暂无启动日志。'
+  return String(value || '').split(/\r?\n/).slice(-limit).join('\n') || desktopText('startup.noLog')
 }
 
 function diagnosticsText() {
@@ -346,18 +458,18 @@ function sendDiagnosticsResult(sender, payload) {
 
 function exportDiagnostics(sender) {
   clipboard.writeText(diagnosticsText())
-  sendDiagnosticsResult(sender, { kind: 'success', message: '排障信息已复制到剪贴板。' })
+  sendDiagnosticsResult(sender, { kind: 'success', message: desktopText('diagnostics.copied') })
 }
 
 async function clearDesktopStorage(sender) {
   const result = await dialog.showMessageBox(visibleDialogParent(), {
     type: 'warning',
-    buttons: ['清理并重启', '取消'],
+    buttons: [desktopText('storage.confirm'), desktopText('storage.cancel')],
     defaultId: 1,
     cancelId: 1,
-    title: '清理本地缓存与存储',
-    message: '将清理 Web UI 的本地缓存、IndexedDB 和 LocalStorage。',
-    detail: '登录 cookies 会保留，但本地界面状态和缓存数据会被删除，应用随后重启。是否继续？',
+    title: desktopText('storage.title'),
+    message: desktopText('storage.message'),
+    detail: desktopText('storage.detail'),
   })
   if (result.response !== 0) return
   try {
@@ -365,10 +477,10 @@ async function clearDesktopStorage(sender) {
       storages: ['appcache', 'filesystem', 'indexdb', 'localstorage', 'shadercache', 'websql', 'serviceworkers', 'cachestorage'],
     })
     await session.defaultSession.clearCache()
-    sendDiagnosticsResult(sender, { kind: 'success', message: '本地存储已清理，正在重启应用…' })
+    sendDiagnosticsResult(sender, { kind: 'success', message: desktopText('storage.success') })
     await requestHarnessRestart()
   } catch (error) {
-    sendDiagnosticsResult(sender, { kind: 'error', message: `清理失败：${errorMessage(error)}` })
+    sendDiagnosticsResult(sender, { kind: 'error', message: desktopText('storage.failure', { error: errorMessage(error) }) })
   }
 }
 
@@ -382,12 +494,12 @@ function startupStateForError(error) {
   const log = startupLog(error) || errorMessage(error)
   return {
     kind: 'error',
-    title: portInUse ? '启动端口被占用' : '后台启动失败',
+    title: desktopText(portInUse ? 'startup.portInUseTitle' : 'startup.startupFailedTitle'),
     message: portInUse
-      ? '本地服务端口已被其他程序占用。请关闭占用程序后重试，或切换工作区。'
-      : '后台引擎没有成功启动，请查看启动日志后重试。',
+      ? desktopText('startup.portInUseMessage')
+      : desktopText('startup.startupFailedMessage'),
     detail: portInUse
-      ? '如果问题持续存在，请确认没有其他 DeepSeek Harness 实例正在运行。'
+      ? desktopText('startup.portInUseDetail')
       : errorMessage(error),
     log,
   }
@@ -489,14 +601,14 @@ function recentWorkspaceMenuItems() {
   const current = workspace()
   const entries = recentWorkspaces()
   const items = entries.length === 0
-    ? [{ label: '暂无最近工作区', enabled: false }]
+    ? [{ label: desktopText('menu.noRecentWorkspaces'), enabled: false }]
     : entries.map(path => ({
       label: `${path === current ? '✓ ' : ''}${basename(path)} — ${path}`,
       click: () => { void switchWorkspace(path) },
     }))
   items.push({ type: 'separator' })
   items.push({
-    label: '清空最近工作区 / Clear Recent Workspaces',
+    label: desktopText('menu.clearRecentWorkspaces'),
     enabled: entries.length > 0,
     click: () => {
       clearRecentWorkspaces()
@@ -561,12 +673,21 @@ function stopHarness() {
 }
 
 function resolveUnifiedDshHome() {
-  return ensureUnifiedDshHome({
-    env: process.env,
-    userHome: process.env.USERPROFILE || homedir(),
-    userDataPath: app.getPath('userData'),
-    logger: console,
-  })
+  if (unifiedDshHome === undefined) {
+    unifiedDshHome = ensureUnifiedDshHome({
+      env: process.env,
+      userHome: process.env.USERPROFILE || homedir(),
+      userDataPath: app.getPath('userData'),
+      logger: console,
+    })
+  }
+  return unifiedDshHome
+}
+
+function initializeDesktopLocale() {
+  desktopLocaleSettingsPath = join(resolveUnifiedDshHome(), 'settings.yaml')
+  applyDesktopLocale(resolveDesktopLocale(), { force: true })
+  startDesktopLocaleWatcher()
 }
 
 function startHarness(cwd, signal) {
@@ -619,18 +740,18 @@ function startHarness(cwd, signal) {
         .finally(() => fail(message, code))
     }
     const onAbort = () => {
-      failAfterTermination('Harness startup was cancelled.', 'ABORTED')
+      failAfterTermination(desktopText('startup.cancelled'), 'ABORTED')
     }
     timeout = setTimeout(() => {
-      failAfterTermination('Harness startup timed out.', 'TIMEOUT')
+      failAfterTermination(desktopText('startup.timedOut'), 'TIMEOUT')
     }, STARTUP_TIMEOUT_MS)
     timeout.unref()
     slowTimer = setTimeout(() => {
       if (portIssueShown) return
       sendSplashState({
         kind: 'slow',
-        title: '启动时间较长',
-        message: '后台仍在启动中，可以查看日志、重试，或切换工作区。',
+        title: desktopText('startup.slowTitle'),
+        message: desktopText('startup.slowMessage'),
         log: output,
       })
     }, SLOW_STARTUP_MS)
@@ -663,14 +784,14 @@ function startHarness(cwd, signal) {
     child.once('error', error => fail(`Harness failed to start: ${error.message}`, error.code || 'SPAWN_ERROR'))
     child.once('exit', code => {
       if (harness === child) {
-        stopHarnessHealthMonitor('disconnected', `后台引擎已退出（code ${code ?? 'unknown'}）`)
+        stopHarnessHealthMonitor('disconnected', desktopText('health.exited', { code: code ?? 'unknown' }))
         harness = undefined
         harnessUrl = undefined
         if (!quitting && !restarting && ready) {
           void dialog.showMessageBox({
             type: 'error',
-            title: `${APP_NAME} stopped`,
-            message: `Harness exited unexpectedly (code ${code}).\n\n${output}`,
+            title: desktopText('startup.exitedTitle'),
+            message: desktopText('startup.exitedMessage', { code, output }),
           })
         }
       }
@@ -797,7 +918,7 @@ async function probeHarnessHealth(url) {
   })
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   const body = await response.json()
-  if (!body?.result?.ok) throw new Error(body?.result?.error?.message || '后台引擎未响应 settings.describe')
+  if (!body?.result?.ok) throw new Error(body?.result?.error?.message || desktopText('health.settingsDescribeFailed'))
 }
 
 function runHarnessHealthProbe() {
@@ -823,7 +944,7 @@ function runHarnessHealthProbe() {
   })()
 }
 
-function stopHarnessHealthMonitor(state = 'starting', message = '正在启动后台引擎…') {
+function stopHarnessHealthMonitor(state = 'starting', message = desktopText('health.starting')) {
   healthGeneration += 1
   if (healthTimer !== undefined) clearInterval(healthTimer)
   healthTimer = undefined
@@ -832,7 +953,7 @@ function stopHarnessHealthMonitor(state = 'starting', message = '正在启动后
   sendHarnessHealthState()
 }
 
-function startHarnessHealthMonitor({ initialState = 'checking', initialMessage = '正在检查后台引擎连接…' } = {}) {
+function startHarnessHealthMonitor({ initialState = 'checking', initialMessage = desktopText('health.checking') } = {}) {
   if (harnessUrl === undefined) return
   stopHarnessHealthMonitor(initialState, initialMessage)
   healthTimer = setInterval(runHarnessHealthProbe, HARNESS_HEALTH_INTERVAL_MS)
@@ -845,9 +966,9 @@ async function openWebUiInBrowser() {
   if (harnessUrl === undefined) {
     await dialog.showMessageBox({
       type: 'error',
-      title: `${APP_NAME} Web UI unavailable`,
-      message: 'The Web UI is not ready yet.',
-      detail: 'Please try again after the desktop client finishes starting.',
+      title: desktopText('web.unavailableTitle'),
+      message: desktopText('web.unavailableMessage'),
+      detail: desktopText('web.unavailableDetail'),
     })
     return
   }
@@ -864,12 +985,12 @@ async function confirmWorkspaceSwitch(targetPath, parentWindow = visibleDialogPa
   if (targetPath === workspace()) return true
   const result = await dialog.showMessageBox(parentWindow, {
     type: 'warning',
-    buttons: ['立即切换', '取消'],
+    buttons: [desktopText('workspace.confirm'), desktopText('workspace.cancel')],
     defaultId: 1,
     cancelId: 1,
-    title: '切换工作区确认',
-    message: '切换工作区将重新启动后台服务。',
-    detail: '当前会话或正在运行的后台任务可能被中断，是否继续？',
+    title: desktopText('workspace.switchTitle'),
+    message: desktopText('workspace.switchMessage'),
+    detail: desktopText('workspace.switchDetail'),
   })
   return result.response === 0
 }
@@ -879,9 +1000,9 @@ async function switchWorkspace(path, parentWindow = visibleDialogParent()) {
   if (targetPath === undefined || !isWorkspaceDirectory(targetPath)) {
     await dialog.showMessageBox(parentWindow, {
       type: 'error',
-      title: '工作区不可用',
-      message: '所选工作区不存在或不是文件夹。',
-      buttons: ['确定'],
+      title: desktopText('workspace.unavailableTitle'),
+      message: desktopText('workspace.unavailableMessage'),
+      buttons: [desktopText('workspace.ok')],
     })
     return false
   }
@@ -895,7 +1016,7 @@ async function switchWorkspace(path, parentWindow = visibleDialogParent()) {
 async function chooseWorkspace() {
   const parentWindow = visibleDialogParent()
   const result = await dialog.showOpenDialog(parentWindow, {
-    title: 'Choose workspace',
+    title: desktopText('workspace.choose'),
     defaultPath: workspace(),
     properties: ['openDirectory'],
   })
@@ -995,7 +1116,7 @@ async function resolvePortableChecksum(release) {
   const normalized = normalizePortableRelease(release)
   const fromAsset = normalizeSha256(normalized.assetDigest)
   if (fromAsset) return fromAsset
-  if (!normalized.assetName) throw new Error('更新包缺少可验证的文件名。')
+  if (!normalized.assetName) throw new Error(desktopText('update.missingAssetName'))
 
   const tag = encodeURIComponent(normalized.tagName)
   const checksumUrls = [
@@ -1212,33 +1333,33 @@ async function promptPortableUpdateRestart(prepared) {
   if (!prepared || prepared !== preparedPortableUpdate) return
   const result = await dialog.showMessageBox(visibleDialogParent(), {
     type: 'question',
-    buttons: ['立即重启更新', '稍后'],
+    buttons: [desktopText('update.restartNow'), desktopText('update.later')],
     defaultId: 0,
     cancelId: 1,
-    title: '更新包已准备就绪',
-    message: `DeepSeek Harness v${prepared.targetVersion} 已下载并完成校验。`,
-    detail: '应用现在仍保持打开。确认后应用会退出并快速替换运行时，然后自动重新启动。',
+    title: desktopText('update.readyTitle'),
+    message: desktopText('update.readyMessage', { version: prepared.targetVersion }),
+    detail: desktopText('update.readyDetail'),
   })
   if (prepared !== preparedPortableUpdate) return
   if (result.response !== 0) {
     sendUpdateState({
       state: 'ready',
       stage: 'ready',
-      label: '更新包已就绪，等待重启。',
+      label: desktopText('update.readyWaiting'),
       progress: 100,
       targetVersion: prepared.targetVersion,
     })
     return
   }
-  sendUpdateState({ state: 'replacing', stage: 'launch', label: '正在安全退出应用并安装更新…', targetVersion: prepared.targetVersion })
+  sendUpdateState({ state: 'replacing', stage: 'launch', label: desktopText('update.replacing'), targetVersion: prepared.targetVersion })
   if (!triggerPortableUpdate(prepared.targetVersion, prepared.packagePath, prepared.sha256)) {
-    sendUpdateState({ state: 'ready', stage: 'ready', label: '无法启动更新器，请稍后重试。', progress: 100, targetVersion: prepared.targetVersion })
+    sendUpdateState({ state: 'ready', stage: 'ready', label: desktopText('update.updaterUnavailable'), progress: 100, targetVersion: prepared.targetVersion })
   }
 }
 
 async function preparePortableUpdate(targetVersion, release) {
   const root = findPortableRoot(__dirname)
-  if (root === undefined) throw new Error('未找到便携版安装目录。')
+  if (root === undefined) throw new Error(desktopText('update.portableRootMissing'))
 
   const normalizedRelease = normalizePortableRelease(release)
   const fromVersion = getLocalVersion()
@@ -1251,7 +1372,7 @@ async function preparePortableUpdate(targetVersion, release) {
     writeDesktopUpdateStatus({
       state: 'checking',
       stage: 'check',
-      message: '正在准备更新包并读取完整性校验信息…',
+      message: desktopText('update.preparing'),
       fromVersion,
       targetVersion: effectiveTarget,
     })
@@ -1267,7 +1388,7 @@ async function preparePortableUpdate(targetVersion, release) {
     writeDesktopUpdateStatus({
       state: 'downloading',
       stage: 'download',
-      message: '正在下载更新包…',
+      message: desktopText('update.downloading'),
       fromVersion,
       targetVersion: effectiveTarget,
     })
@@ -1279,7 +1400,7 @@ async function preparePortableUpdate(targetVersion, release) {
         sendUpdateState({
           state: 'downloading',
           stage: 'download',
-          label: `正在从 ${host} 下载更新包…`,
+          label: desktopText('update.downloadingFrom', { host }),
           targetVersion: effectiveTarget,
         })
       },
@@ -1293,7 +1414,9 @@ async function preparePortableUpdate(targetVersion, release) {
         sendUpdateState({
           state: 'downloading',
           stage: 'download',
-          label: progress === undefined ? '正在下载更新包…' : `正在下载更新包… ${progress}%`,
+          label: progress === undefined
+            ? desktopText('update.downloading')
+            : desktopText('update.downloadingProgress', { progress }),
           progress,
           targetVersion: effectiveTarget,
         })
@@ -1303,13 +1426,13 @@ async function preparePortableUpdate(targetVersion, release) {
     writeDesktopUpdateStatus({
       state: 'verifying',
       stage: 'verify',
-      message: '正在校验更新包的 SHA-256…',
+      message: desktopText('update.verifying'),
       fromVersion,
       targetVersion: effectiveTarget,
     })
     const actualSha256 = await hashFile(packagePath)
     if (actualSha256 !== sha256) {
-      throw new Error(`SHA-256 校验失败：期望 ${sha256}，实际 ${actualSha256}。`)
+      throw new Error(desktopText('update.checksumFailed', { expected: sha256, actual: actualSha256 }))
     }
 
     preparedPortableUpdate = {
@@ -1322,11 +1445,11 @@ async function preparePortableUpdate(targetVersion, release) {
     writeDesktopUpdateStatus({
       state: 'ready',
       stage: 'ready',
-      message: '更新包已下载并完成校验，等待确认重启。',
+      message: desktopText('update.verifiedWaiting'),
       fromVersion,
       targetVersion: effectiveTarget,
     })
-    sendUpdateState({ state: 'ready', stage: 'ready', label: '更新包已就绪，等待重启。', progress: 100, targetVersion: effectiveTarget })
+    sendUpdateState({ state: 'ready', stage: 'ready', label: desktopText('update.readyWaiting'), progress: 100, targetVersion: effectiveTarget })
     await promptPortableUpdateRestart(preparedPortableUpdate)
   } catch (error) {
     if (packagePath && !completed) {
@@ -1356,7 +1479,7 @@ async function confirmAndStartPortableUpdate(sender, targetVersion) {
     return
   }
   if (isActiveUpdateStatus(currentStatus)) {
-    sendUpdateState({ state: currentStatus.state, stage: currentStatus.stage, label: currentStatus.message || '更新已在进行中…', targetVersion: currentStatus.targetVersion })
+    sendUpdateState({ state: currentStatus.state, stage: currentStatus.stage, label: currentStatus.message || desktopText('update.inProgress'), targetVersion: currentStatus.targetVersion })
     return
   }
 
@@ -1365,7 +1488,7 @@ async function confirmAndStartPortableUpdate(sender, targetVersion) {
     try {
       release = await queryLatestVersion()
     } catch (error) {
-      sendUpdateState({ state: 'failed', stage: 'check', label: `无法读取更新信息：${errorMessage(error)}`, targetVersion })
+      sendUpdateState({ state: 'failed', stage: 'check', label: desktopText('update.informationFailed', { error: errorMessage(error) }), targetVersion })
       return
     }
   }
@@ -1373,19 +1496,19 @@ async function confirmAndStartPortableUpdate(sender, targetVersion) {
   const effectiveTarget = release.version || targetVersion || 'latest'
   const result = await dialog.showMessageBox(visibleDialogParent(), {
     type: 'question',
-    buttons: ['开始下载', '取消'],
+    buttons: [desktopText('update.confirmDownload'), desktopText('storage.cancel')],
     defaultId: 0,
     cancelId: 1,
-    title: '确认更新',
-    message: `即将下载 DeepSeek Harness v${effectiveTarget}。`,
-    detail: '应用会保持打开并显示下载与校验进度。更新包准备好后，再由您确认是否重启替换。',
+    title: desktopText('update.confirmTitle'),
+    message: desktopText('update.confirmMessage', { version: effectiveTarget }),
+    detail: desktopText('update.confirmDetail'),
   })
   if (result.response !== 0) {
     sendUpdateState({ state: 'idle', stage: '', label: '', targetVersion: effectiveTarget })
     return
   }
   if (portableUpdateTask !== undefined) return
-  sendUpdateState({ state: 'checking', stage: 'check', label: '正在准备下载…', targetVersion: effectiveTarget })
+  sendUpdateState({ state: 'checking', stage: 'check', label: desktopText('update.prepareDownload'), targetVersion: effectiveTarget })
   portableUpdateTask = preparePortableUpdate(effectiveTarget, release)
     .finally(() => { portableUpdateTask = undefined })
   void portableUpdateTask
@@ -1396,6 +1519,7 @@ function registerReleaseNotesIpc() {
     if (!isMainRenderer(event.sender)) return
     rendererReady = true
     event.sender.send('desktop:theme-changed', themePayload())
+    event.sender.send('desktop:locale-changed', { locale: desktopLocale })
     event.sender.send('desktop:workspace:recents', recentWorkspacePayload())
     restoreRendererZoom()
     event.sender.send('desktop:harness-status', harnessHealth)
@@ -1697,10 +1821,10 @@ async function checkForUpdates(manual = true) {
       const parentWindow = window !== undefined && !window.isDestroyed() && window.isVisible() ? window : undefined
       await dialog.showMessageBox(parentWindow, {
         type: 'warning',
-        title: '检查更新失败',
-        message: '无法连接到更新服务器',
-        detail: `错误详情: ${error.message}\n如果网络受到限制，您也可以直接运行目录下的【在线更新.bat】进行国内镜像换源更新。`,
-        buttons: ['确定'],
+        title: desktopText('update.checkFailedTitle'),
+        message: desktopText('update.checkFailedMessage'),
+        detail: desktopText('update.checkFailedDetail', { error: error.message }),
+        buttons: [desktopText('workspace.ok')],
       })
     }
   }
@@ -1711,8 +1835,8 @@ async function triggerRollback() {
   if (root === undefined) {
     void dialog.showMessageBox(visibleDialogParent(), {
       type: 'warning',
-      title: '回滚失败',
-      message: '未找到便携版安装目录，无法执行回滚。',
+      title: desktopText('update.rollbackFailedTitle'),
+      message: desktopText('update.rollbackMissingRoot'),
     })
     return
   }
@@ -1720,20 +1844,20 @@ async function triggerRollback() {
   if (!existsSync(updatePs1)) {
     void dialog.showMessageBox(visibleDialogParent(), {
       type: 'warning',
-      title: '回滚失败',
-      message: '未找到更新脚本 update.ps1。',
+      title: desktopText('update.rollbackFailedTitle'),
+      message: desktopText('update.rollbackMissingScript'),
     })
     return
   }
 
   const result = await dialog.showMessageBox(visibleDialogParent(), {
     type: 'question',
-    buttons: ['确认回滚', '取消'],
+    buttons: [desktopText('update.confirmRollback'), desktopText('storage.cancel')],
     defaultId: 0,
     cancelId: 1,
-    title: '确认回滚',
-    message: '确认要回滚到上一版本吗？',
-    detail: '此操作将关闭当前应用，并恢复更新前备份的运行环境与清单。',
+    title: desktopText('update.confirmRollbackTitle'),
+    message: desktopText('update.confirmRollbackMessage'),
+    detail: desktopText('update.confirmRollbackDetail'),
   })
   if (result.response !== 0) return
 
@@ -1764,7 +1888,7 @@ async function triggerRollback() {
   } catch (error) {
     void dialog.showMessageBox(visibleDialogParent(), {
       type: 'error',
-      title: '启动回滚失败',
+      title: desktopText('update.rollbackStartFailedTitle'),
       message: errorMessage(error),
     })
   }
@@ -1798,30 +1922,30 @@ function writeUpdateProbeIfRequested() {
 
 function menuItems() {
   return [
-    { label: `Show ${APP_NAME}`, click: showWindow },
-    { label: 'Check for Updates / 检查更新', click: () => { void checkForUpdates(true) } },
-    { label: 'Rollback to Previous Version / 回滚到上一版本', click: () => { void triggerRollback() } },
-    { label: 'Release Notes / 更新日志', click: () => { openInAppReleaseNotes({ mode: 'history' }) } },
-    { label: 'About DeepSeek Harness / 关于', click: () => { openInAppReleaseNotes({ mode: 'about' }) } },
-    { label: 'Open Web UI in Browser', click: () => { void openWebUiInBrowser() } },
+    { label: desktopText('menu.showApp'), click: showWindow },
+    { label: desktopText('menu.checkUpdates'), click: () => { void checkForUpdates(true) } },
+    { label: desktopText('menu.rollback'), click: () => { void triggerRollback() } },
+    { label: desktopText('menu.releaseNotes'), click: () => { openInAppReleaseNotes({ mode: 'history' }) } },
+    { label: desktopText('menu.about'), click: () => { openInAppReleaseNotes({ mode: 'about' }) } },
+    { label: desktopText('menu.openBrowser'), click: () => { void openWebUiInBrowser() } },
     { type: 'separator' },
-    { label: 'Choose Workspace / 选择工作区', click: () => { void chooseWorkspace() } },
-    { label: 'Recent Workspaces / 最近工作区', submenu: recentWorkspaceMenuItems() },
-    { label: `Open Workspace (${workspace()})`, click: () => { void shell.openPath(workspace()) } },
+    { label: desktopText('menu.chooseWorkspace'), click: () => { void chooseWorkspace() } },
+    { label: desktopText('menu.recentWorkspaces'), submenu: recentWorkspaceMenuItems() },
+    { label: desktopText('menu.openWorkspace', { path: workspace() }), click: () => { void shell.openPath(workspace()) } },
     {
-      label: 'Use Home as Workspace',
+      label: desktopText('menu.useHomeWorkspace'),
       enabled: workspace() !== homedir(),
       click: async () => {
         await switchWorkspace(homedir())
       },
     },
-    { label: 'Refresh Interface / 刷新界面', accelerator: 'CmdOrCtrl+R', click: reloadRenderer },
-    { label: 'Restart Harness / 完全重启服务', accelerator: 'CmdOrCtrl+Shift+R', click: () => { void requestHarnessRestart() } },
+    { label: desktopText('menu.refreshInterface'), accelerator: 'CmdOrCtrl+R', click: reloadRenderer },
+    { label: desktopText('menu.restartHarness'), accelerator: 'CmdOrCtrl+Shift+R', click: () => { void requestHarnessRestart() } },
     { type: 'separator' },
-    { label: 'Copy Diagnostics / 复制排障信息', click: () => { exportDiagnostics({ send: () => {} }) } },
-    { label: 'Clear Web Storage / 清理本地缓存与存储', click: () => { void clearDesktopStorage({ send: () => {} }) } },
+    { label: desktopText('menu.copyDiagnostics'), click: () => { exportDiagnostics({ send: () => {} }) } },
+    { label: desktopText('menu.clearWebStorage'), click: () => { void clearDesktopStorage({ send: () => {} }) } },
     { type: 'separator' },
-    { label: 'Quit', accelerator: process.platform === 'darwin' ? 'Command+Q' : 'Alt+F4', click: () => app.quit() },
+    { label: desktopText('menu.quit'), accelerator: process.platform === 'darwin' ? 'Command+Q' : 'Alt+F4', click: () => app.quit() },
   ]
 }
 
@@ -1939,6 +2063,7 @@ if (!gotLock) {
   nativeTheme.on('updated', syncNativeTheme)
   app.on('before-quit', () => {
     quitting = true
+    stopDesktopLocaleWatcher()
     persistWindowBounds()
   })
   app.on('will-quit', event => {
@@ -1953,5 +2078,10 @@ if (!gotLock) {
       })
     }
   })
-  app.whenReady().then(createApp).catch(error => dialog.showErrorBox(APP_NAME, errorMessage(error)))
+  app.whenReady()
+    .then(() => {
+      initializeDesktopLocale()
+      return createApp()
+    })
+    .catch(error => dialog.showErrorBox(APP_NAME, errorMessage(error)))
 }

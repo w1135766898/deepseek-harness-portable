@@ -1,4 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron')
+const { getLocaleMessages, localeFromSystem, messageForLocale, normalizePreference } = require('./desktop-locale.cjs')
 
 const DEEPSEEK_LOGO_DATA_URI = 'data:image/png;base64,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'
 
@@ -8,6 +9,7 @@ const isSplashDocument = window.location.protocol === 'file:'
 const splashListeners = new Set()
 const splashStateListeners = new Set()
 const splashTransitionListeners = new Set()
+const splashLocaleListeners = new Set()
 ipcRenderer.on('desktop:splash-status', (_event, value) => {
   const status = value && typeof value === 'object' ? value.status : value
   if (!SPLASH_STATUSES.has(status)) return
@@ -18,6 +20,10 @@ ipcRenderer.on('desktop:splash-state', (_event, value) => {
 })
 ipcRenderer.on('desktop:splash-transition', (_event, value) => {
   splashTransitionListeners.forEach(listener => listener(value))
+})
+ipcRenderer.on('desktop:splash-locale', (_event, value) => {
+  const locale = normalizePreference(value?.locale) || localeFromSystem(typeof navigator === 'object' ? navigator.language : 'en')
+  splashLocaleListeners.forEach(listener => listener(locale))
 })
 
 contextBridge.exposeInMainWorld('deepSeekSplash', {
@@ -36,6 +42,11 @@ contextBridge.exposeInMainWorld('deepSeekSplash', {
     splashTransitionListeners.add(callback)
     return () => splashTransitionListeners.delete(callback)
   },
+  onLocale: callback => {
+    if (typeof callback !== 'function') return () => {}
+    splashLocaleListeners.add(callback)
+    return () => splashLocaleListeners.delete(callback)
+  },
   retry: () => ipcRenderer.send('desktop:splash-action', { type: 'retry' }),
   chooseWorkspace: () => ipcRenderer.send('desktop:splash-action', { type: 'choose-workspace' }),
 })
@@ -51,6 +62,7 @@ if (!isSplashDocument) {
   const DESKTOP_MENU_WIDTH = 248
 
   const state = {
+    locale: localeFromSystem(typeof navigator === 'object' ? navigator.language : 'en'),
     data: undefined,
     modalContext: { mode: 'history' },
     modalOpen: false,
@@ -72,6 +84,14 @@ if (!isSplashDocument) {
     modalReturnFocus: undefined,
     updateState: '',
     updateProgress: undefined,
+  }
+
+  function desktopText(key, values = {}) {
+    return messageForLocale(state.locale, key, values)
+  }
+
+  function desktopMessages() {
+    return getLocaleMessages(state.locale)
   }
 
   let chromeRefs
@@ -99,7 +119,7 @@ if (!isSplashDocument) {
     if (!value) return ''
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) return escapeHtml(value)
-    return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(date)
+    return new Intl.DateTimeFormat(state.locale === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date)
   }
 
   function inlineMarkdown(value) {
@@ -172,28 +192,31 @@ if (!isSplashDocument) {
 
   function renderReleaseSections(release) {
     const sections = release?.sections || []
-    if (sections.length === 0 && release?.body) {
-      return '<div class="dsh-release-item"><span class="dsh-release-icon other">•</span><div>' + inlineMarkdown(release.body) + '</div></div>'
+    const body = state.locale === 'zh' ? (release?.bodyZh || release?.body) : (release?.bodyEn || release?.body)
+    if (sections.length === 0 && body) {
+      return '<div class="dsh-release-item"><span class="dsh-release-icon other">•</span><div>' + inlineMarkdown(body) + '</div></div>'
     }
-    if (sections.length === 0) return '<div class="dsh-empty-copy">常规维护与性能提升</div>'
+    if (sections.length === 0) return '<div class="dsh-empty-copy">' + escapeHtml(desktopText('release.maintenance')) + '</div>'
     return sections.map(section => (
-      '<section class="dsh-release-section"><h3><span class="dsh-section-icon ' + escapeHtml(section.key || 'other') + '">' + releaseIcon(section.key) + '</span>' + escapeHtml(section.title || section.label || 'Other') + '</h3>' +
-      (section.items || []).map(item => '<div class="dsh-release-item"><span class="dsh-release-icon ' + escapeHtml(section.key || 'other') + '">' + releaseIcon(section.key) + '</span><div>' + inlineMarkdown(item) + '</div></div>').join('') +
+      '<section class="dsh-release-section"><h3><span class="dsh-section-icon ' + escapeHtml(section.key || 'other') + '">' + releaseIcon(section.key) + '</span>' + escapeHtml(state.locale === 'zh' ? (section.titleZh || section.title || section.labelZh || section.label || '其他') : (section.titleEn || section.title || section.label || 'Other')) + '</h3>' +
+      ((state.locale === 'zh'
+        ? (Array.isArray(section.itemsZh) && section.itemsZh.length > 0 ? section.itemsZh : section.items)
+        : (Array.isArray(section.itemsEn) && section.itemsEn.length > 0 ? section.itemsEn : section.items)) || []).map(item => '<div class="dsh-release-item"><span class="dsh-release-icon ' + escapeHtml(section.key || 'other') + '">' + releaseIcon(section.key) + '</span><div>' + inlineMarkdown(item) + '</div></div>').join('') +
       '</section>'
     )).join('')
   }
 
   function renderTimeline(releases) {
-    if (!Array.isArray(releases) || releases.length === 0) return '<div class="dsh-empty-copy">暂无更新记录</div>'
+    if (!Array.isArray(releases) || releases.length === 0) return '<div class="dsh-empty-copy">' + escapeHtml(desktopText('release.noHistory')) + '</div>'
     ensureExpandedVersions(releases)
-    return '<div class="dsh-timeline" aria-label="版本时间线">' + releases.map((release, index) => {
+    return '<div class="dsh-timeline" aria-label="' + escapeHtml(desktopText('release.timelineAria')) + '">' + releases.map((release, index) => {
       const version = String(release.version || '')
       const current = version === state.data?.currentVersion
       const expanded = state.expandedVersions.has(version)
       const itemId = releaseElementId(version)
       const bodyId = itemId + '-body'
       const badges = renderReleaseBadges(release)
-      return '<article class="dsh-accordion-item ' + (current ? 'is-current ' : '') + (expanded ? 'is-expanded' : '') + '"><div class="dsh-release-node" aria-hidden="true"></div><button class="dsh-accordion-header" type="button" data-action="toggle-release" data-version="' + escapeHtml(version) + '" id="' + escapeHtml(itemId) + '" aria-expanded="' + (expanded ? 'true' : 'false') + '" aria-controls="' + escapeHtml(bodyId) + '"><span class="dsh-accordion-chevron" aria-hidden="true">' + (expanded ? '▼' : '▶') + '</span><span class="dsh-release-heading"><span class="dsh-version">v' + escapeHtml(version) + '</span><span class="dsh-type">' + escapeHtml(release.releaseType || 'Patch') + '</span>' + (current ? '<span class="dsh-current">当前安装</span>' : (index === 0 ? '<span class="dsh-latest">最新发布</span>' : '')) + '</span><span class="dsh-release-badges">' + badges + '</span><time datetime="' + escapeHtml(release.publishedAt || '') + '">' + formatDate(release.publishedAt) + '</time></button><div class="dsh-accordion-body" id="' + escapeHtml(bodyId) + '" role="region" aria-labelledby="' + escapeHtml(itemId) + '"' + (expanded ? '' : ' hidden') + '>' + renderReleaseSections(release) + '</div></article>'
+      return '<article class="dsh-accordion-item ' + (current ? 'is-current ' : '') + (expanded ? 'is-expanded' : '') + '"><div class="dsh-release-node" aria-hidden="true"></div><button class="dsh-accordion-header" type="button" data-action="toggle-release" data-version="' + escapeHtml(version) + '" id="' + escapeHtml(itemId) + '" aria-expanded="' + (expanded ? 'true' : 'false') + '" aria-controls="' + escapeHtml(bodyId) + '"><span class="dsh-accordion-chevron" aria-hidden="true">' + (expanded ? '▼' : '▶') + '</span><span class="dsh-release-heading"><span class="dsh-version">v' + escapeHtml(version) + '</span><span class="dsh-type">' + escapeHtml(releaseTypeLabel(release.releaseType)) + '</span>' + (current ? '<span class="dsh-current">' + escapeHtml(desktopText('release.current')) + '</span>' : (index === 0 ? '<span class="dsh-latest">' + escapeHtml(desktopText('release.latest')) + '</span>' : '')) + '</span><span class="dsh-release-badges">' + badges + '</span><time datetime="' + escapeHtml(release.publishedAt || '') + '">' + formatDate(release.publishedAt) + '</time></button><div class="dsh-accordion-body" id="' + escapeHtml(bodyId) + '" role="region" aria-labelledby="' + escapeHtml(itemId) + '"' + (expanded ? '' : ' hidden') + '>' + renderReleaseSections(release) + '</div></article>'
     }).join('') + '</div>'
   }
 
@@ -203,7 +226,14 @@ if (!isSplashDocument) {
 
   function renderReleaseBadges(release) {
     const badges = Array.isArray(release?.badgeSummary) ? release.badgeSummary : []
-    return badges.map(badge => '<span class="dsh-badge ' + escapeHtml(badge.key || 'other') + '" title="' + escapeHtml(badge.labelZh || badge.label || '') + '">' + escapeHtml(badge.icon || '•') + ' ' + escapeHtml(badge.count) + '</span>').join('')
+    return badges.map(badge => '<span class="dsh-badge ' + escapeHtml(badge.key || 'other') + '" title="' + escapeHtml(state.locale === 'zh' ? (badge.labelZh || badge.label || '') : (badge.label || badge.labelZh || '')) + '">' + escapeHtml(badge.icon || '•') + ' ' + escapeHtml(badge.count) + '</span>').join('')
+  }
+
+  function releaseTypeLabel(value) {
+    if (value === 'Major') return desktopText('release.releaseTypeMajor')
+    if (value === 'Minor') return desktopText('release.releaseTypeMinor')
+    if (value === 'Patch' || !value) return desktopText('release.releaseTypePatch')
+    return String(value)
   }
 
   function ensureExpandedVersions(releases) {
@@ -226,7 +256,7 @@ if (!isSplashDocument) {
 
   function renderProgress(status) {
     const value = Number.isFinite(status?.progress) ? Math.max(0, Math.min(100, Number(status.progress))) : undefined
-    return '<div class="dsh-update-progress" role="group" aria-label="更新进度"><div class="dsh-progress-track"><span class="dsh-progress-fill' + (value === undefined ? ' indeterminate' : '') + '"' + (value === undefined ? '' : ' style="width:' + value + '%"') + '></span></div><span class="dsh-progress-label" role="status">' + (value === undefined ? '正在处理…' : value + '%') + '</span></div>'
+    return '<div class="dsh-update-progress" role="group" aria-label="' + escapeHtml(desktopText('release.progressAria')) + '"><div class="dsh-progress-track"><span class="dsh-progress-fill' + (value === undefined ? ' indeterminate' : '') + '"' + (value === undefined ? '' : ' style="width:' + value + '%"') + '></span></div><span class="dsh-progress-label" role="status">' + (value === undefined ? escapeHtml(desktopText('release.processing')) : value + '%') + '</span></div>'
   }
 
   function renderHeroCard() {
@@ -242,44 +272,56 @@ if (!isSplashDocument) {
     const failed = rawState === 'failed' || rawState === 'interrupted'
     const completed = rawState === 'completed' || rawState === 'updated'
     const size = formatBytes(update.assetSize)
-    const versionLabel = targetVersion ? 'v' + escapeHtml(targetVersion) : '当前版本'
+    const versionLabel = targetVersion ? 'v' + escapeHtml(targetVersion) : escapeHtml(desktopText('release.currentVersion'))
     const button = (action, label, kind = 'primary', extra = '') => '<button class="dsh-button ' + kind + '" type="button" data-action="' + action + '"' + extra + '>' + escapeHtml(label) + '</button>'
 
-    if (state.modalLoading) return '<div class="dsh-loading">正在读取本地更新记录…</div>'
-    if (data.error) return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">更新中心暂不可用</span><strong>无法读取更新记录</strong><small>' + escapeHtml(data.error) + '</small></div><div class="dsh-hero-actions">' + button('retry-update', '重新检查', 'secondary') + '</div></section>'
-    if (failed) return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + (rawState === 'interrupted' ? '上次更新未完成' : '更新事务异常') + '</span><strong>' + escapeHtml(message || '当前安装仍可使用，可以重新检查更新。') + '</strong><small>目标版本 ' + versionLabel + '</small></div><div class="dsh-hero-actions">' + button('retry-update', '重新检查', 'secondary') + button('desktop-rollback', '回滚到备份', 'ghost') + '</div></section>'
-    if (completed) return '<section class="dsh-hero-card dsh-hero-card-success" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">更新完成</span><strong>已更新至 ' + versionLabel + '</strong><small>' + escapeHtml(message || '启动健康检查已通过，上一版本备份仍可用于回滚。') + '</small></div><div class="dsh-hero-actions">' + button('desktop-rollback', '回滚到备份', 'ghost') + '</div></section>'
-    if (rawState === 'idle' && !data.updateAvailable) return '<section class="dsh-hero-card dsh-hero-card-neutral" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">运行状态正常</span><strong>当前已是最新版本 v' + escapeHtml(data.currentVersion || '—') + '</strong><small>' + escapeHtml(data.offline ? '使用本地缓存的版本记录。' : '暂时没有可用更新。') + '</small></div></section>'
+    if (state.modalLoading) return '<div class="dsh-loading">' + escapeHtml(desktopText('release.loadingLocal')) + '</div>'
+    if (data.error) return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.unavailableKicker')) + '</span><strong>' + escapeHtml(desktopText('release.unavailableTitle')) + '</strong><small>' + escapeHtml(data.error) + '</small></div><div class="dsh-hero-actions">' + button('retry-update', desktopText('release.retry'), 'secondary') + '</div></section>'
+    if (failed) return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(rawState === 'interrupted' ? desktopText('release.failedInterrupted') : desktopText('release.transactionError')) + '</span><strong>' + escapeHtml(message || desktopText('release.failedFallback')) + '</strong><small>' + escapeHtml(desktopText('release.targetVersion', { version: versionLabel })) + '</small></div><div class="dsh-hero-actions">' + button('retry-update', desktopText('release.retry'), 'secondary') + button('desktop-rollback', desktopText('release.rollback'), 'ghost') + '</div></section>'
+    if (completed) return '<section class="dsh-hero-card dsh-hero-card-success" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.completed')) + '</span><strong>' + escapeHtml(desktopText('release.updatedTo', { version: versionLabel })) + '</strong><small>' + escapeHtml(message || desktopText('release.healthPassed')) + '</small></div><div class="dsh-hero-actions">' + button('desktop-rollback', desktopText('release.rollback'), 'ghost') + '</div></section>'
+    if (rawState === 'idle' && !data.updateAvailable) return '<section class="dsh-hero-card dsh-hero-card-neutral" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.normalKicker')) + '</span><strong>' + escapeHtml(desktopText('release.latestVersion', { version: data.currentVersion || '—' })) + '</strong><small>' + escapeHtml(data.offline ? desktopText('release.offline') : desktopText('release.noUpdate')) + '</small></div></section>'
 
-    const title = ready ? '新版本 ' + versionLabel + ' 已准备就绪' : (busy ? '正在准备 ' + versionLabel : '发现新版本 ' + versionLabel)
-    const detail = ready ? '更新包已下载并校验，确认后将重启应用完成替换。' : (busy ? (message || '更新事务正在安全执行…') : '基于事务型安全更新，支持自动备份与健康回滚。' + (size ? ' · 约 ' + size : ''))
-    const action = ready ? button('update', '立即重启更新') : (busy ? button('update', '更新进行中…', 'secondary', ' disabled') : button('update', '立即下载'))
-    return '<section class="dsh-hero-card ' + (ready ? 'dsh-hero-card-ready' : (busy ? 'dsh-hero-card-progress' : 'dsh-hero-card-available')) + '" role="status" aria-live="polite"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + (ready ? '✓ 更新包已校验' : (busy ? '事务更新引擎' : '🚀 发现新版本')) + '</span><strong>' + title + '</strong><small>' + escapeHtml(detail) + '</small>' + (busy ? renderProgress({ ...persisted, ...live }) : '') + '</div><div class="dsh-hero-actions">' + action + '</div></section>'
+    const title = ready
+      ? desktopText('release.readyTitle', { version: versionLabel })
+      : (busy ? desktopText('release.busyTitle', { version: versionLabel }) : desktopText('release.availableTitle', { version: versionLabel }))
+    const detail = ready
+      ? desktopText('release.readyDetail')
+      : (busy ? (message || desktopText('release.busyDetail')) : desktopText('release.availableDetail') + (size ? ' · ' + size : ''))
+    const action = ready
+      ? button('update', desktopText('release.restartUpdate'))
+      : (busy ? button('update', desktopText('release.updating'), 'secondary', ' disabled') : button('update', desktopText('release.downloadNow')))
+    return '<section class="dsh-hero-card ' + (ready ? 'dsh-hero-card-ready' : (busy ? 'dsh-hero-card-progress' : 'dsh-hero-card-available')) + '" role="status" aria-live="polite"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(ready ? desktopText('release.verifiedKicker') : (busy ? desktopText('release.transactionEngine') : desktopText('release.foundNew'))) + '</span><strong>' + escapeHtml(title) + '</strong><small>' + escapeHtml(detail) + '</small>' + (busy ? renderProgress({ ...persisted, ...live }) : '') + '</div><div class="dsh-hero-actions">' + action + '</div></section>'
   }
 
   function renderModalContent() {
     const data = state.data
-    const refreshing = state.modalRefreshing ? '<div class="dsh-refreshing" role="status">正在后台同步最新更新记录…</div>' : ''
-    if (state.modalLoading) return '<div class="dsh-loading">正在读取本地更新记录…</div>'
+    const refreshing = state.modalRefreshing ? '<div class="dsh-refreshing" role="status">' + escapeHtml(desktopText('release.syncing')) + '</div>' : ''
+    if (state.modalLoading) return '<div class="dsh-loading">' + escapeHtml(desktopText('release.loadingLocal')) + '</div>'
     return refreshing + (state.modalContext.mode === 'about'
-      ? '<div class="dsh-about"><div class="dsh-about-logo">' + logoMarkup('dsh-about-logo-image', 'DeepSeek') + '</div><div class="dsh-status-kicker">DEEPSEEK HARNESS</div><h3>DeepSeek Harness</h3><p>面向 Windows 的 DeepSeek Harness 桌面外壳。</p><p class="dsh-muted">内核 v' + escapeHtml(data?.localInfo?.kernelVersion || 'unknown') + ' · 外壳 v' + escapeHtml(data?.localInfo?.desktopVersion || 'unknown') + '</p></div>'
+      ? '<div class="dsh-about"><div class="dsh-about-logo">' + logoMarkup('dsh-about-logo-image', 'DeepSeek') + '</div><div class="dsh-status-kicker">DEEPSEEK HARNESS</div><h3>DeepSeek Harness</h3><p>' + escapeHtml(desktopText('release.aboutDescription')) + '</p><p class="dsh-muted">' + escapeHtml(desktopText('release.kernelVersion', { version: data?.localInfo?.kernelVersion || 'unknown' })) + ' · ' + escapeHtml(desktopText('release.desktopVersion', { version: data?.localInfo?.desktopVersion || 'unknown' })) + '</p></div>'
       : renderHeroCard() + renderTimeline(data?.history || []))
   }
 
   function renderModalShell() {
-    return '<div class="dsh-modal-layer" aria-hidden="true"><button class="dsh-modal-backdrop" data-action="modal-close" aria-hidden="true" tabindex="-1"></button><section class="dsh-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="dsh-modal-title" aria-describedby="dsh-modal-subtitle"><header class="dsh-modal-header"><div class="dsh-header-brand"><div class="dsh-brand-badge">' + logoMarkup('dsh-brand-logo', 'DeepSeek') + '</div><div><div class="dsh-eyebrow">DEEPSEEK HARNESS</div><h2 class="dsh-modal-title" id="dsh-modal-title">更新日志</h2><span class="dsh-subtitle" id="dsh-modal-subtitle"></span></div></div><div class="dsh-header-controls"><nav class="dsh-modal-tabs" role="tablist" aria-label="更新中心页面"><button class="dsh-tab dsh-notes-tab active" type="button" data-action="show-notes" role="tab" id="dsh-notes-tab" aria-selected="true" aria-controls="dsh-modal-scroll">版本动态</button><button class="dsh-tab dsh-about-tab" type="button" data-action="show-about" role="tab" id="dsh-about-tab" aria-selected="false" aria-controls="dsh-modal-scroll">关于</button></nav><button class="dsh-modal-close-btn" type="button" data-action="modal-close" aria-label="关闭">×</button></div></header><main class="dsh-modal-body" id="dsh-modal-scroll" role="tabpanel" tabindex="-1" aria-labelledby="dsh-notes-tab"></main><footer class="dsh-modal-footer"><div class="dsh-footer-left"><button class="dsh-button ghost" type="button" data-action="open-github">GitHub 仓库 ↗</button><button class="dsh-button ghost" type="button" data-action="desktop-export-diagnostics">复制排障信息</button></div><div class="dsh-footer-right"><button class="dsh-button secondary" type="button" data-action="modal-close">完成</button></div></footer></section></div>'
+    return '<div class="dsh-modal-layer" aria-hidden="true"><button class="dsh-modal-backdrop" data-action="modal-close" aria-hidden="true" tabindex="-1"></button><section class="dsh-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="dsh-modal-title" aria-describedby="dsh-modal-subtitle"><header class="dsh-modal-header"><div class="dsh-header-brand"><div class="dsh-brand-badge">' + logoMarkup('dsh-brand-logo', 'DeepSeek') + '</div><div><div class="dsh-eyebrow">DEEPSEEK HARNESS</div><h2 class="dsh-modal-title" id="dsh-modal-title">' + escapeHtml(desktopText('release.modalTitle')) + '</h2><span class="dsh-subtitle" id="dsh-modal-subtitle"></span></div></div><div class="dsh-header-controls"><nav class="dsh-modal-tabs" role="tablist" aria-label="' + escapeHtml(desktopText('release.modalTitle')) + '"><button class="dsh-tab dsh-notes-tab active" type="button" data-action="show-notes" role="tab" id="dsh-notes-tab" aria-selected="true" aria-controls="dsh-modal-scroll">' + escapeHtml(desktopText('release.versionActivity')) + '</button><button class="dsh-tab dsh-about-tab" type="button" data-action="show-about" role="tab" id="dsh-about-tab" aria-selected="false" aria-controls="dsh-modal-scroll">' + escapeHtml(desktopText('release.about')) + '</button></nav><button class="dsh-modal-close-btn" type="button" data-action="modal-close" aria-label="' + escapeHtml(desktopText('release.close')) + '">×</button></div></header><main class="dsh-modal-body" id="dsh-modal-scroll" role="tabpanel" tabindex="-1" aria-labelledby="dsh-notes-tab"></main><footer class="dsh-modal-footer"><div class="dsh-footer-left"><button class="dsh-button ghost" type="button" data-action="open-github">' + escapeHtml(desktopText('release.githubRepository')) + '</button><button class="dsh-button ghost" type="button" data-action="desktop-export-diagnostics">' + escapeHtml(desktopText('menu.copyDiagnostics')) + '</button></div><div class="dsh-footer-right"><button class="dsh-button secondary" type="button" data-action="modal-close">' + escapeHtml(desktopText('release.complete')) + '</button></div></footer></section></div>'
   }
 
   function syncModal() {
     if (chromeRefs === undefined) return
     const isAbout = state.modalContext.mode === 'about'
-    const title = isAbout ? '关于 DeepSeek Harness' : '更新日志'
+    const title = isAbout ? desktopText('release.aboutTitle', { appName: 'DeepSeek Harness' }) : desktopText('release.modalTitle')
     const version = state.data?.currentVersion || '—'
     chromeRefs.modalLayer.classList.toggle('is-open', state.modalOpen)
     chromeRefs.modalLayer.setAttribute('aria-hidden', state.modalOpen ? 'false' : 'true')
     chromeRefs.modalDialog.classList.toggle('is-about-mode', isAbout)
     chromeRefs.modalTitle.textContent = title
-    chromeRefs.modalSubtitle.textContent = '当前安装 v' + version
+    chromeRefs.modalSubtitle.textContent = desktopText('release.installedVersion', { version })
+    chromeRefs.notesTab.textContent = desktopText('release.versionActivity')
+    chromeRefs.aboutTab.textContent = desktopText('release.about')
+    chromeRefs.modalCloseButton.setAttribute('aria-label', desktopText('release.close'))
+    chromeRefs.githubButton.textContent = desktopText('release.githubRepository')
+    chromeRefs.diagnosticsButton.textContent = desktopText('menu.copyDiagnostics')
+    chromeRefs.completeButton.textContent = desktopText('release.complete')
     chromeRefs.notesTab.classList.toggle('active', !isAbout)
     chromeRefs.aboutTab.classList.toggle('active', isAbout)
     chromeRefs.notesTab.setAttribute('aria-selected', isAbout ? 'false' : 'true')
@@ -303,15 +345,15 @@ if (!isSplashDocument) {
     const isAvailable = notice.kind === 'available'
     const isProblem = notice.kind === 'failed' || notice.kind === 'interrupted'
     const title = isAvailable
-      ? '发现新版本 v' + escapeHtml(release.version || '—')
-      : (isProblem ? (notice.kind === 'failed' ? '更新失败' : '上次更新未完成') : '🎉 DeepSeek Harness 已更新至 v' + escapeHtml(release.version || notice.currentVersion || '—'))
+      ? desktopText('release.availableTitle', { version: 'v' + (release.version || '—') })
+      : (isProblem ? (notice.kind === 'failed' ? desktopText('release.updateFailed') : desktopText('release.failedInterrupted')) : '🎉 ' + desktopText('release.updatedTo', { version: 'v' + (release.version || notice.currentVersion || '—') }))
     const desc = isAvailable
-      ? '新版本已准备就绪，打开更新日志了解详细变化。'
-      : (isProblem ? escapeHtml(status.message || '当前安装仍可使用，可以重新检查更新。') : '查看新特性与完整更新记录。')
-    const actionLabel = isAvailable ? '查看新特性' : (isProblem ? '重新检查' : '查看新特性')
+      ? desktopText('release.openFeaturesDescription')
+      : (isProblem ? (status.message || desktopText('release.failedFallback')) : desktopText('release.historyDescription'))
+    const actionLabel = isAvailable ? desktopText('release.openFeatures') : (isProblem ? desktopText('release.retry') : desktopText('release.openFeatures'))
     const action = isProblem ? 'retry-update' : 'open-release-notes'
     const version = release.version || notice.currentVersion || ''
-    return actionMarkup + '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">' + logoMarkup('dsh-notice-logo') + '</div><div class="dsh-notice-copy"><strong>' + title + '</strong><span>' + desc + '</span></div><button class="dsh-button primary" data-action="' + action + '">' + actionLabel + '</button><button class="dsh-button ghost dsh-notice-never" data-action="notice-dismiss-forever" data-version="' + escapeHtml(version) + '"' + (version ? '' : ' disabled') + '>不再提示</button><button class="dsh-notice-dismiss" data-action="notice-dismiss" aria-label="关闭通知">×</button></section>'
+    return actionMarkup + '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">' + logoMarkup('dsh-notice-logo') + '</div><div class="dsh-notice-copy"><strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(desc) + '</span></div><button class="dsh-button primary" data-action="' + action + '">' + escapeHtml(actionLabel) + '</button><button class="dsh-button ghost dsh-notice-never" data-action="notice-dismiss-forever" data-version="' + escapeHtml(version) + '"' + (version ? '' : ' disabled') + '>' + escapeHtml(desktopText('release.never')) + '</button><button class="dsh-notice-dismiss" data-action="notice-dismiss" aria-label="' + escapeHtml(desktopText('release.closeNotice')) + '">×</button></section>'
   }
 
   function showActionMessage(message) {
@@ -330,17 +372,17 @@ if (!isSplashDocument) {
   function renderHealthBanner() {
     const status = state.harnessStatus || {}
     if (status.state !== 'disconnected') return ''
-    return '<section class="dsh-disconnect-banner" role="alert"><div class="dsh-disconnect-copy"><strong>与后台引擎连接中断</strong><span>' + escapeHtml(status.message || '暂时无法访问后台引擎。') + '</span></div><button class="dsh-button" data-action="health-reconnect">重新连接</button><button class="dsh-button primary" data-action="health-restart">重启引擎</button></section>'
+    return '<section class="dsh-disconnect-banner" role="alert"><div class="dsh-disconnect-copy"><strong>' + escapeHtml(desktopText('health.disconnected')) + '</strong><span>' + escapeHtml(status.message || desktopText('health.unavailable')) + '</span></div><button class="dsh-button" data-action="health-reconnect">' + escapeHtml(desktopText('health.reconnect')) + '</button><button class="dsh-button primary" data-action="health-restart">' + escapeHtml(desktopText('health.restart')) + '</button></section>'
   }
 
   function renderRecentWorkspaceItems() {
     const entries = Array.isArray(state.recentWorkspaces) ? state.recentWorkspaces : []
     const items = entries.length === 0
-      ? '<button class="dsh-menu-item" type="button" disabled><span>·</span><strong>暂无最近工作区</strong></button>'
+      ? '<button class="dsh-menu-item" type="button" disabled><span>·</span><strong>' + escapeHtml(desktopText('menu.noRecentWorkspaces')) + '</strong></button>'
       : entries.map(path => (
         '<button class="dsh-menu-item" type="button" data-action="desktop-recent-workspace" data-path="' + escapeHtml(path) + '" role="menuitem"><span>' + (path === state.currentWorkspace ? '✓' : '↪') + '</span><strong>' + escapeHtml(path) + '</strong></button>'
       )).join('')
-    return items + '<button class="dsh-menu-item" type="button" data-action="desktop-clear-recent-workspaces" role="menuitem"' + (entries.length === 0 ? ' disabled' : '') + '><span>×</span><strong>清空最近工作区</strong></button>'
+    return items + '<button class="dsh-menu-item" type="button" data-action="desktop-clear-recent-workspaces" role="menuitem"' + (entries.length === 0 ? ' disabled' : '') + '><span>×</span><strong>' + escapeHtml(desktopText('menu.clearRecentWorkspaces')) + '</strong></button>'
   }
 
   function isNativeBrandButton(button) {
@@ -389,8 +431,8 @@ if (!isSplashDocument) {
     if (!brandButton) return
     brandButton.setAttribute('aria-haspopup', 'menu')
     brandButton.setAttribute('aria-expanded', state.menuOpen ? 'true' : 'false')
-    brandButton.setAttribute('aria-label', '桌面菜单')
-    brandButton.title = '桌面菜单'
+    brandButton.setAttribute('aria-label', desktopText('menu.desktopMenu'))
+    brandButton.title = desktopText('menu.desktopMenu')
   }
 
   function openMenuAt(anchor) {
@@ -415,21 +457,21 @@ if (!isSplashDocument) {
     if (!state.menuOpen) return ''
     const position = state.menuPosition || defaultMenuPosition()
     const positionMarkup = ' style="--dsh-menu-left:' + escapeHtml(position.left) + 'px;--dsh-menu-top:' + escapeHtml(position.top) + 'px"'
-    return '<div class="dsh-menu-popover" role="menu" aria-label="桌面菜单"' + positionMarkup + '>' +
-      '<button class="dsh-menu-item" data-action="desktop-check-updates" role="menuitem"><span>↻</span><strong>检查更新</strong></button>' +
-      '<button class="dsh-menu-item" data-action="desktop-release-notes" role="menuitem"><span>☷</span><strong>更新日志</strong></button>' +
-      '<button class="dsh-menu-item" data-action="desktop-about" role="menuitem"><span>ⓘ</span><strong>关于 DeepSeek Harness</strong></button>' +
+    return '<div class="dsh-menu-popover" role="menu" aria-label="' + escapeHtml(desktopText('menu.desktopMenu')) + '"' + positionMarkup + '>' +
+      '<button class="dsh-menu-item" data-action="desktop-check-updates" role="menuitem"><span>↻</span><strong>' + escapeHtml(desktopText('menu.checkUpdates')) + '</strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-release-notes" role="menuitem"><span>☷</span><strong>' + escapeHtml(desktopText('menu.releaseNotes')) + '</strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-about" role="menuitem"><span>ⓘ</span><strong>' + escapeHtml(desktopText('menu.about', { appName: 'DeepSeek Harness' })) + '</strong></button>' +
       '<div class="dsh-menu-separator"></div>' +
-      '<button class="dsh-menu-item" data-action="desktop-choose-workspace" role="menuitem"><span>⌂</span><strong>选择工作区</strong></button>' +
-      '<div class="dsh-menu-heading">最近工作区</div>' +
+      '<button class="dsh-menu-item" data-action="desktop-choose-workspace" role="menuitem"><span>⌂</span><strong>' + escapeHtml(desktopText('menu.chooseWorkspace')) + '</strong></button>' +
+      '<div class="dsh-menu-heading">' + escapeHtml(desktopText('menu.recentWorkspaces')) + '</div>' +
       renderRecentWorkspaceItems() +
       '<div class="dsh-menu-separator"></div>' +
-      '<button class="dsh-menu-item" data-action="desktop-reload-ui" role="menuitem"><span>⟳</span><strong>刷新界面 <kbd>Ctrl+R</kbd></strong></button>' +
-      '<button class="dsh-menu-item" data-action="desktop-restart" role="menuitem"><span>↺</span><strong>完全重启服务 <kbd>Ctrl+Shift+R</kbd></strong></button>' +
-      '<button class="dsh-menu-item" data-action="desktop-open-browser" role="menuitem"><span>↗</span><strong>在浏览器打开 Web UI</strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-reload-ui" role="menuitem"><span>⟳</span><strong>' + escapeHtml(desktopText('menu.refreshInterface')) + ' <kbd>Ctrl+R</kbd></strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-restart" role="menuitem"><span>↺</span><strong>' + escapeHtml(desktopText('menu.restartHarness')) + ' <kbd>Ctrl+Shift+R</kbd></strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-open-browser" role="menuitem"><span>↗</span><strong>' + escapeHtml(desktopText('menu.openBrowser')) + '</strong></button>' +
       '<div class="dsh-menu-separator"></div>' +
-      '<button class="dsh-menu-item" data-action="desktop-export-diagnostics" role="menuitem"><span>⇩</span><strong>复制排障信息</strong></button>' +
-      '<button class="dsh-menu-item" data-action="desktop-clear-storage" role="menuitem"><span>⌫</span><strong>清理本地缓存与存储</strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-export-diagnostics" role="menuitem"><span>⇩</span><strong>' + escapeHtml(desktopText('menu.copyDiagnostics')) + '</strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-clear-storage" role="menuitem"><span>⌫</span><strong>' + escapeHtml(desktopText('menu.clearWebStorage')) + '</strong></button>' +
       '</div>'
   }
 
@@ -728,7 +770,7 @@ if (!isSplashDocument) {
     if (action === 'update') {
       const version = state.data?.latestRelease?.version || state.notice?.release?.version || ''
       const ready = state.updateProgress?.state === 'ready' || state.data?.updateStatus?.state === 'ready'
-      state.updateState = ready ? '正在请求重启确认…' : '正在准备下载…'
+      state.updateState = ready ? desktopText('release.restartUpdate') : desktopText('update.prepareDownload')
       render()
       sendAction('update', { targetVersion: version })
       return
@@ -987,6 +1029,16 @@ if (!isSplashDocument) {
     document.documentElement.style.setProperty('--dsh-titlebar-height', `${Number(theme?.titleBar?.height) || 36}px`)
     document.documentElement.style.setProperty('--dsh-window-surface', theme?.surface || (dark ? '#0c1220' : '#f4f7fb'))
   })
+  ipcRenderer.on('desktop:locale-changed', (_event, payload) => {
+    const nextLocale = normalizePreference(payload?.locale) || localeFromSystem(typeof navigator === 'object' ? navigator.language : 'en')
+    if (nextLocale === state.locale) return
+    state.locale = nextLocale
+    menuMarkup = undefined
+    noticeMarkup = undefined
+    healthMarkup = undefined
+    modalContentMarkup = undefined
+    render()
+  })
   ipcRenderer.on('desktop:workspace:recents', (_event, payload) => {
     state.currentWorkspace = typeof payload?.current === 'string' ? payload.current : ''
     state.recentWorkspaces = Array.isArray(payload?.workspaces) ? payload.workspaces.filter(value => typeof value === 'string') : []
@@ -1047,6 +1099,10 @@ if (!isSplashDocument) {
       modalSubtitle: modalLayer.querySelector('.dsh-subtitle'),
       notesTab: modalLayer.querySelector('.dsh-notes-tab'),
       aboutTab: modalLayer.querySelector('.dsh-about-tab'),
+      modalCloseButton: modalLayer.querySelector('.dsh-modal-close-btn'),
+      githubButton: modalLayer.querySelector('[data-action="open-github"]'),
+      diagnosticsButton: modalLayer.querySelector('[data-action="desktop-export-diagnostics"]'),
+      completeButton: Array.from(modalLayer.querySelectorAll('[data-action="modal-close"]')).pop(),
       modalBody: modalLayer.querySelector('.dsh-modal-body'),
     }
     render()
