@@ -55,6 +55,14 @@ The updater verifies the prepared portable ZIP again, validates the release mani
 
 Requirements: Windows x64, Node.js ^22.19.0 or >=24, and pnpm.
 
+This repository includes the matching DeepSeek Harness source workspace as a pinned Git submodule at `vendor/deepseek-harness`. It supplies the `@deepseek-ai/*` packages and builds the embedded Web runtime locally; the release process does not need an existing portable ZIP as its build input.
+
+On a fresh clone, initialize the source workspace once:
+
+    pnpm run desktop:bootstrap
+
+After that, the normal build and release commands are:
+
     pnpm install
     pnpm run build
     pnpm run desktop:test
@@ -66,7 +74,9 @@ The desktop package keeps three version identities:
 - desktop shell version: the Electron shell package version.
 - kernel version: the packaged @deepseek-ai/dsh-web-app version.
 
-The release command writes release-manifest.json and writes SHA256SUMS.txt last. When preparing a release, update RELEASE_NOTES.md, RELEASE_NOTES.zh.md, and apps/desktop/src/release-notes.json together.
+The release command builds the upstream Web runtime, builds the desktop shell, writes release-manifest.json, and writes SHA256SUMS.txt last. When preparing a release, update RELEASE_NOTES.md, RELEASE_NOTES.zh.md, and apps/desktop/src/release-notes.json together.
+
+`dist-desktop/` is a generated build directory and may be deleted after a release. The source needed for the next build remains in `vendor/deepseek-harness`; do not commit `node_modules/` or a portable ZIP as a substitute for the source workspace.
 
 The portable package includes a Chinese quick guide at 使用说明.txt and an English quick guide at 使用说明.en.txt.
 

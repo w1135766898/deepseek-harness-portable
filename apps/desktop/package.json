@@ -214,6 +214,7 @@
     "node-addon-require-builtin": "^0.1.4"
   },
   "devDependencies": {
+    "@types/node": "^22.20.0",
     "@electron/packager": "20.0.4",
     "electron": "43.4.0",
     "rcedit": "5.0.2"

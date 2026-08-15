@@ -20,6 +20,10 @@
 
 使用 Node.js ^22.19.0 或 >=24，以及 pnpm。
 
+首次 clone 后运行一次 `pnpm run desktop:bootstrap`，初始化固定版本的
+`vendor/deepseek-harness` 源码 workspace；它提供构建所需的 `@deepseek-ai/*`
+包。之后构建和打包会在本地编译 Web runtime，不依赖已有便携 ZIP。
+
     pnpm install
     pnpm run build
     pnpm run desktop:test

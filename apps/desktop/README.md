@@ -20,6 +20,11 @@ This workspace package builds the native Electron desktop shell for DeepSeek Har
 
 Use Node.js ^22.19.0 or >=24 and pnpm.
 
+On a fresh clone, run `pnpm run desktop:bootstrap` once to initialize the pinned
+`vendor/deepseek-harness` source workspace that provides the `@deepseek-ai/*`
+packages. The build and packaging commands then compile the Web runtime locally;
+they do not depend on an existing portable ZIP.
+
     pnpm install
     pnpm run build
     pnpm run desktop:test

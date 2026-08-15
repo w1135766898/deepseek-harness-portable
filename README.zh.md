@@ -55,6 +55,14 @@ DeepSeek Harness for Win 是 DeepSeek Harness 的社区 Windows x64 分发版，
 
 环境要求：Windows x64、Node.js ^22.19.0 或 >=24、pnpm。
 
+仓库通过固定 Git submodule `vendor/deepseek-harness` 内置匹配版本的 DeepSeek Harness 源码 workspace。它提供桌面外壳所需的 `@deepseek-ai/*` 包，并在本地构建嵌入式 Web runtime；发布流程不再需要把已有便携 ZIP 作为构建输入。
+
+首次 clone 后只需初始化一次：
+
+    pnpm run desktop:bootstrap
+
+之后使用常规构建与发布命令：
+
     pnpm install
     pnpm run build
     pnpm run desktop:test
@@ -66,9 +74,11 @@ DeepSeek Harness for Win 是 DeepSeek Harness 的社区 Windows x64 分发版，
 - desktop shell version：Electron 外壳包版本。
 - kernel version：打包进来的 @deepseek-ai/dsh-web-app 内核版本。
 
-发布命令会生成 release-manifest.json，并最后写入 SHA256SUMS.txt。准备新版本时，请同步更新 RELEASE_NOTES.md、RELEASE_NOTES.zh.md 和 apps/desktop/src/release-notes.json。
+发布命令会先构建上游 Web runtime，再构建桌面外壳，生成 release-manifest.json，并最后写入 SHA256SUMS.txt。准备新版本时，请同步更新 RELEASE_NOTES.md、RELEASE_NOTES.zh.md 和 apps/desktop/src/release-notes.json。
 
 便携包会同时包含中文说明 使用说明.txt 和英文说明 使用说明.en.txt，需要时可按语言打开对应文件。
+
+`dist-desktop/` 是可重建的临时构建目录，发布后可以删除。下一次构建所需的源码保存在 `vendor/deepseek-harness` 中；不要用 `node_modules/` 或便携 ZIP 替代源码提交到仓库。
 
 ## 安全与限制
 

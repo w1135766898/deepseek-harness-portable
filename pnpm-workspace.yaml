@@ -1,2 +1,28 @@
 packages:
+  # The pinned upstream source supplies the @deepseek-ai/* workspace packages
+  # required by the desktop shell and builds the embedded Web runtime.
+  - 'vendor/deepseek-harness'
+  - 'vendor/deepseek-harness/vendor/*'
+  - 'vendor/deepseek-harness/packages/*/*'
+  - 'vendor/deepseek-harness/apps/cli'
+  - 'vendor/deepseek-harness/apps/web'
+  - 'vendor/deepseek-harness/examples'
+  - 'vendor/deepseek-harness/website'
+  - 'vendor/deepseek-harness/native/landlock-run'
+  - 'vendor/deepseek-harness/native/landlock-run/packages/*'
   - 'apps/*'
+
+linkWorkspacePackages: true
+
+overrides:
+  '@deepseek-ai/cosmokit': 'link:vendor/deepseek-harness/vendor/cosmokit'
+  '@deepseek-ai/schemastery': 'link:vendor/deepseek-harness/vendor/schemastery'
+
+allowBuilds:
+  esbuild: true
+  lefthook: true
+  node-pty: true
+  koffi: true
+  '@google/genai': false
+  protobufjs: false
+  node-addon-require-builtin: false

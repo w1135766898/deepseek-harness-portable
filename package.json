@@ -4,8 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "preinstall": "node scripts/prepare-upstream-submodule.cjs",
     "test": "pnpm run desktop:test && pnpm run desktop:updater:test",
-    "build": "pnpm --filter dsh-desktop-web-pkg run build",
+    "build": "pnpm --filter @deepseek-ai/dsh-root run build && pnpm --filter dsh-desktop-web-pkg run build",
+    "desktop:bootstrap": "git submodule update --init --recursive && pnpm install",
     "desktop:dev": "pnpm --filter dsh-desktop-web-pkg start",
     "desktop:test": "pnpm --filter dsh-desktop-web-pkg test",
     "desktop:updater:test": "powershell -NoProfile -ExecutionPolicy Bypass -File apps/desktop/tests/Run-Tests.ps1",
