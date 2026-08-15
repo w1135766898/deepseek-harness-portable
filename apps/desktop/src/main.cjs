@@ -58,6 +58,7 @@ const APP_NAME = 'DeepSeek Harness'
 const PORTABLE_RELEASE_REPO = 'wsnxxxs/deepseek-harness-portable'
 const RELEASE_MANIFEST_NAME = 'release-manifest.json'
 const RELEASE_NOTES_FILE_NAME = 'release-notes.json'
+const RELEASE_HISTORY_FILE_NAME = 'release-history.json'
 const DESKTOP_PRELOAD_NAME = 'desktop-preload.cjs'
 const SPLASH_PAGE_NAME = 'splash.html'
 const RELEASE_HISTORY_LIMIT = 20
@@ -1295,16 +1296,32 @@ function sortReleaseHistory(history) {
     .map(release => ({ ...release, badgeSummary: countSectionBadges(release) }))
 }
 
+function releaseHistoryPath() {
+  return join(app.getPath('userData'), RELEASE_HISTORY_FILE_NAME)
+}
+
+// Release history is a disposable cache: it lives in its own file so that
+// config.json (rewritten atomically on every update) stays small and a
+// corrupt cache can never take the user's settings down with it.
 function cachedReleaseHistory() {
-  const cached = readConfig().releaseHistory
-  return Array.isArray(cached) ? cached.map(item => normalizeReleaseNotes(item)).filter(item => item.version !== '0.0.0' && isValidSemver(item.version)) : []
+  const fileCached = readJsonIfPresent(releaseHistoryPath())
+  const source = Array.isArray(fileCached) ? fileCached : readConfig().releaseHistory
+  return Array.isArray(source) ? source.map(item => normalizeReleaseNotes(item)).filter(item => item.version !== '0.0.0' && isValidSemver(item.version)) : []
 }
 
 function saveReleaseHistory(history) {
-  updateConfig({
-    releaseHistory: sortReleaseHistory(history),
-    releaseHistoryFetchedAt: new Date().toISOString(),
-  })
+  const sorted = sortReleaseHistory(history)
+  try {
+    mkdirSync(app.getPath('userData'), { recursive: true })
+    writeAtomicTextFile(releaseHistoryPath(), `${JSON.stringify(sorted, null, 2)}\n`)
+    // The dedicated cache file is now authoritative; drop the legacy config
+    // entry so config.json stops carrying the full history payload.
+    updateConfig({ releaseHistory: [], releaseHistoryFetchedAt: new Date().toISOString() })
+  } catch (error) {
+    // Keep the in-memory history for this session; a cache write failure is
+    // not worth failing the release-notes request over.
+    console.warn('Failed to persist release history cache:', error)
+  }
 }
 
 async function getCurrentUpdateStatus() {
