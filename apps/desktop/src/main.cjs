@@ -310,7 +310,9 @@ function isNoticeDismissed(notice) {
 
 function showInAppNotice(notice) {
   const nextNotice = notice && typeof notice === 'object' ? notice : undefined
-  if (nextNotice !== undefined && isNoticeDismissed(nextNotice)) {
+  // The ready notice is an actionable prompt (its "never" button is hidden),
+  // so a previous dismissal of the same version must not suppress it.
+  if (nextNotice !== undefined && nextNotice.kind !== 'ready' && isNoticeDismissed(nextNotice)) {
     inAppNotice = undefined
     return false
   }
