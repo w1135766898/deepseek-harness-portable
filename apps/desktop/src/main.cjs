@@ -7,6 +7,7 @@ const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 const { mergeReleaseHistory, normalizeReleaseNotes } = require('./release-notes.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
 const { ensureUnifiedDshHome } = require('./workspace-service.cjs')
+const { readConfigStore, updateConfigStore } = require('./config-store.cjs')
 const {
   GITHUB_MIRROR_PREFIXES,
   compareVersions,
@@ -96,17 +97,11 @@ function configPath() {
 }
 
 function readConfig() {
-  try {
-    const value = JSON.parse(readFileSync(configPath(), 'utf8'))
-    return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
-  } catch {
-    return {}
-  }
+  return readConfigStore(configPath(), { logger: console })
 }
 
 function updateConfig(patch) {
-  mkdirSync(app.getPath('userData'), { recursive: true })
-  writeFileSync(configPath(), `${JSON.stringify({ ...readConfig(), ...patch }, null, 2)}\n`)
+  return updateConfigStore(configPath(), patch, { logger: console })
 }
 
 function themePayload() {
