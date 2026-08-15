@@ -171,18 +171,15 @@ if (!isSplashDocument) {
         user-select: none;
         -webkit-app-region: no-drag !important;
       }
-      button:has(${NATIVE_BRAND_LOGO_SELECTOR}) {
+      button.dsh-native-brand-trigger,
+      button.dsh-native-brand-trigger svg,
+      .dsh-native-brand-trigger {
         color: #307bf0 !important;
+        transition: color .15s ease;
       }
-      button:has(${NATIVE_BRAND_LOGO_SELECTOR}) ${NATIVE_BRAND_LOGO_SELECTOR},
-      button:has(${NATIVE_FISH_LOGO_SELECTOR}) ${NATIVE_FISH_LOGO_SELECTOR} {
-        color: #307bf0 !important;
-      }
-      button:has(${NATIVE_BRAND_LOGO_SELECTOR}):hover {
-        color: #3a8bff !important;
-      }
-      button:has(${NATIVE_BRAND_LOGO_SELECTOR}):hover ${NATIVE_BRAND_LOGO_SELECTOR},
-      button:has(${NATIVE_FISH_LOGO_SELECTOR}):hover ${NATIVE_FISH_LOGO_SELECTOR} {
+      button.dsh-native-brand-trigger:hover,
+      button.dsh-native-brand-trigger:hover svg,
+      .dsh-native-brand-trigger:hover {
         color: #3a8bff !important;
       }
     `
@@ -385,30 +382,45 @@ if (!isSplashDocument) {
   }
 
   function isNativeBrandButton(button) {
-    return button instanceof Element && button.querySelector(NATIVE_BRAND_LOGO_SELECTOR) !== null
+    return button instanceof Element && (
+      button.classList.contains('dsh-native-brand-trigger') ||
+      button.querySelector(NATIVE_BRAND_LOGO_SELECTOR) !== null
+    )
   }
 
   function isNativeFishButton(button) {
-    return button instanceof Element && button.querySelector(NATIVE_FISH_LOGO_SELECTOR) !== null
+    return button instanceof Element && (
+      button.classList.contains('dsh-native-brand-trigger') ||
+      button.querySelector(NATIVE_FISH_LOGO_SELECTOR) !== null
+    )
+  }
+
+  function isNativeMenuTrigger(button) {
+    return button instanceof Element && (
+      button.classList.contains('dsh-native-brand-trigger') ||
+      button.querySelector(NATIVE_BRAND_LOGO_SELECTOR) !== null ||
+      button.querySelector(NATIVE_FISH_LOGO_SELECTOR) !== null
+    )
   }
 
   function nativeButtonFromTarget(target) {
     if (!(target instanceof Element)) return undefined
     const button = target.closest('button')
-    if (isNativeBrandButton(button) || isNativeFishButton(button)) return button
+    if (!button) return undefined
+    if (isNativeMenuTrigger(button)) return button
     return undefined
   }
 
   function findNativeBrandButton() {
-    return Array.from(document.querySelectorAll('button')).find(isNativeBrandButton)
+    return Array.from(document.querySelectorAll('button')).find(button => button.querySelector(NATIVE_BRAND_LOGO_SELECTOR) !== null)
   }
 
   function findNativeFishButton() {
-    return Array.from(document.querySelectorAll('button')).find(isNativeFishButton)
+    return Array.from(document.querySelectorAll('button')).find(button => button.querySelector(NATIVE_FISH_LOGO_SELECTOR) !== null)
   }
 
   function findNativeMenuAnchor() {
-    return findNativeBrandButton() || findNativeFishButton()
+    return document.querySelector('button.dsh-native-brand-trigger') || findNativeBrandButton() || findNativeFishButton()
   }
 
   function defaultMenuPosition() {
@@ -425,9 +437,21 @@ if (!isSplashDocument) {
     return { left, top: Math.max(8, Math.round(rect.bottom + 6)) }
   }
 
+  let brandObserver
+  function observeBrandTrigger() {
+    if (brandObserver || typeof MutationObserver !== 'function') return
+    brandObserver = new MutationObserver(() => {
+      syncNativeMenuTrigger()
+    })
+    brandObserver.observe(document.documentElement, { childList: true, subtree: true })
+  }
+
   function syncNativeMenuTrigger() {
-    const brandButton = findNativeBrandButton()
+    const brandButton = findNativeMenuAnchor()
     if (!brandButton) return
+    if (!brandButton.classList.contains('dsh-native-brand-trigger')) {
+      brandButton.classList.add('dsh-native-brand-trigger')
+    }
     brandButton.setAttribute('aria-haspopup', 'menu')
     brandButton.setAttribute('aria-expanded', state.menuOpen ? 'true' : 'false')
     brandButton.setAttribute('aria-label', desktopText('menu.desktopMenu'))
@@ -1102,6 +1126,8 @@ if (!isSplashDocument) {
       modalBody: modalLayer.querySelector('.dsh-modal-body'),
     }
     render()
+    observeBrandTrigger()
+    syncNativeMenuTrigger()
     ipcRenderer.send('desktop:renderer-ready')
     const reportFirstPaint = () => {
       if (typeof requestAnimationFrame !== 'function') {
@@ -1115,17 +1141,16 @@ if (!isSplashDocument) {
 
   document.addEventListener('click', event => {
     const button = nativeButtonFromTarget(event.target)
-    if (isNativeBrandButton(button)) {
+    if (button && isNativeMenuTrigger(button)) {
       event.preventDefault()
       event.stopPropagation()
       toggleMenu(button)
       return
     }
-    if (isNativeFishButton(button) && state.menuOpen) closeMenu()
   }, true)
   document.addEventListener('contextmenu', event => {
     const button = nativeButtonFromTarget(event.target)
-    if (!isNativeFishButton(button)) return
+    if (!button || !isNativeMenuTrigger(button)) return
     event.preventDefault()
     event.stopPropagation()
     openMenuAt(button)
@@ -1139,6 +1164,13 @@ if (!isSplashDocument) {
     state.menuPosition = menuPositionForButton(findNativeMenuAnchor())
     render()
   })
+  window.addEventListener('unload', () => {
+    if (brandObserver) {
+      brandObserver.disconnect()
+      brandObserver = undefined
+    }
+  }, { once: true })
+
   window.addEventListener('keydown', event => {
     if (trapModalFocus(event)) return
     if (event.key === 'Escape') {

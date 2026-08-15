@@ -1276,7 +1276,7 @@ async function buildReleaseNotesData(context = {}, options = {}) {
   const update = context.update === undefined ? undefined : normalizePortableRelease(context.update)
   const checkError = typeof context.checkError === 'string' && context.checkError.trim() !== ''
     ? context.checkError.trim()
-    : undefined
+    : (typeof context.error === 'string' && context.error.trim() !== '' ? context.error.trim() : undefined)
   const history = sortReleaseHistory([update, ...remote, ...cached, localRelease])
   const latestRelease = history[0] || localRelease
   const currentRelease = history.find(item => item.version === localInfo.distributionVersion) || localRelease
@@ -1817,7 +1817,7 @@ async function checkForUpdates(manual = true) {
   } catch (error) {
     if (manual) {
       const detail = error instanceof Error ? error.message : String(error)
-      openInAppReleaseNotes({ mode: 'history', selectedVersion: current, checkError: detail })
+      openInAppReleaseNotes({ mode: 'update', currentVersion: current, selectedVersion: current, checkError: detail, error: detail })
     }
   }
 }
