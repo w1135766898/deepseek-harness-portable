@@ -1406,6 +1406,10 @@ function registerReleaseNotesIpc() {
       openInAppReleaseNotes({ mode: 'about' })
       return
     }
+    if (action.type === 'rollback') {
+      void triggerRollback()
+      return
+    }
     if (action.type === 'choose-workspace') {
       void chooseWorkspace()
       return
@@ -1652,10 +1656,97 @@ async function checkForUpdates(manual = true) {
   }
 }
 
+async function triggerRollback() {
+  const root = findPortableRoot(__dirname)
+  if (root === undefined) {
+    void dialog.showMessageBox(visibleDialogParent(), {
+      type: 'warning',
+      title: '回滚失败',
+      message: '未找到便携版安装目录，无法执行回滚。',
+    })
+    return
+  }
+  const updatePs1 = join(root, 'update.ps1')
+  if (!existsSync(updatePs1)) {
+    void dialog.showMessageBox(visibleDialogParent(), {
+      type: 'warning',
+      title: '回滚失败',
+      message: '未找到更新脚本 update.ps1。',
+    })
+    return
+  }
+
+  const result = await dialog.showMessageBox(visibleDialogParent(), {
+    type: 'question',
+    buttons: ['确认回滚', '取消'],
+    defaultId: 0,
+    cancelId: 1,
+    title: '确认回滚',
+    message: '确认要回滚到上一版本吗？',
+    detail: '此操作将关闭当前应用，并恢复更新前备份的运行环境与清单。',
+  })
+  if (result.response !== 0) return
+
+  try {
+    const updaterArgs = [
+      '-NoProfile',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-File',
+      updatePs1,
+      '-Rollback',
+      '-ShellPid',
+      String(process.pid),
+    ]
+    if (harness && typeof harness.pid === 'number') {
+      updaterArgs.push('-EnginePid', String(harness.pid))
+    }
+    const updater = spawn('powershell.exe', updaterArgs, {
+      cwd: root,
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+    })
+    updater.unref()
+    setTimeout(() => {
+      if (!quitting) app.quit()
+    }, 500)
+  } catch (error) {
+    void dialog.showMessageBox(visibleDialogParent(), {
+      type: 'error',
+      title: '启动回滚失败',
+      message: errorMessage(error),
+    })
+  }
+}
+
+function writeUpdateProbeIfRequested() {
+  try {
+    const probeIndex = process.argv.indexOf('--update-probe-file')
+    const transactionIndex = process.argv.indexOf('--update-transaction')
+    if (probeIndex !== -1 && process.argv[probeIndex + 1]) {
+      const probePath = process.argv[probeIndex + 1]
+      const transactionId = transactionIndex !== -1 ? process.argv[transactionIndex + 1] : ''
+      const probePayload = {
+        state: 'ready',
+        transactionId,
+        version: getLocalVersion(),
+        pid: process.pid,
+        harnessUrl: harnessUrl || '',
+        timestamp: new Date().toISOString(),
+      }
+      writeFileSync(probePath, `${JSON.stringify(probePayload, null, 2)}\n`, 'utf8')
+    }
+  } catch (error) {
+    console.warn('Failed to write update probe file:', error)
+  }
+}
+
 function menuItems() {
   return [
     { label: `Show ${APP_NAME}`, click: showWindow },
     { label: 'Check for Updates / 检查更新', click: () => { void checkForUpdates(true) } },
+    { label: 'Rollback to Previous Version / 回滚到上一版本', click: () => { void triggerRollback() } },
     { label: 'Release Notes / 更新日志', click: () => { openInAppReleaseNotes({ mode: 'history' }) } },
     { label: 'About DeepSeek Harness / 关于', click: () => { openInAppReleaseNotes({ mode: 'about' }) } },
     { label: 'Open Web UI in Browser', click: () => { void openWebUiInBrowser() } },
@@ -1768,6 +1859,7 @@ async function createApp() {
     showSplashWindow()
     sendSplashStatus('engine')
     await restartHarness()
+    writeUpdateProbeIfRequested()
   } catch (error) {
     if (splashWindow !== undefined && !splashWindow.isDestroyed()) sendSplashState(startupStateForError(error))
     else await dialog.showMessageBox(window, {

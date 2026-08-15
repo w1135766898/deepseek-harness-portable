@@ -775,6 +775,17 @@ class DesktopExeBuild {
           console.log(`build-desktop-web-exe: staged ${basename} into ${dest}`)
         }
       }
+
+      const updaterSource = join(root, 'apps', 'desktop', 'updater')
+      if (existsSync(updaterSource)) {
+        const updaterDest = join(rootDir, 'updater')
+        if (this.cli.dryRun) {
+          console.log(`build-desktop-web-exe: [dry-run] cp -r ${updaterSource} ${updaterDest}`)
+        } else {
+          await cp(updaterSource, updaterDest, { recursive: true })
+          console.log(`build-desktop-web-exe: staged updater module into ${updaterDest}`)
+        }
+      }
     }
   }
 
