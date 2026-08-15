@@ -314,7 +314,13 @@ if (!isSplashDocument) {
 
     if (state.modalLoading) return '<div class="dsh-loading">' + escapeHtml(desktopText('release.loadingLocal')) + '</div>'
     if (data.error) return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.unavailableKicker')) + '</span><strong>' + escapeHtml(desktopText('release.unavailableTitle')) + '</strong><small>' + escapeHtml(data.error) + '</small></div><div class="dsh-hero-actions">' + button('retry-update', desktopText('release.retry'), 'secondary') + '</div></section>'
-    if (failed) return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(rawState === 'interrupted' ? desktopText('release.failedInterrupted') : desktopText('release.transactionError')) + '</span><strong>' + escapeHtml(message || desktopText('release.failedFallback')) + '</strong><small>' + escapeHtml(desktopText('release.targetVersion', { version: versionLabel })) + '</small></div><div class="dsh-hero-actions">' + button('retry-update', desktopText('release.retry'), 'secondary') + button('desktop-rollback', desktopText('release.rollback'), 'ghost') + '</div></section>'
+    if (failed) {
+      const retryButtons = (data.updateAvailable
+        ? button('update', desktopText('release.downloadNow'), 'primary') + button('retry-update', desktopText('release.retry'), 'secondary')
+        : button('retry-update', desktopText('release.retry'), 'secondary')
+      ) + button('desktop-rollback', desktopText('release.rollback'), 'ghost')
+      return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(rawState === 'interrupted' ? desktopText('release.failedInterrupted') : desktopText('release.transactionError')) + '</span><strong>' + escapeHtml(message || desktopText('release.failedFallback')) + '</strong><small>' + escapeHtml(desktopText('release.targetVersion', { version: versionLabel })) + '</small></div><div class="dsh-hero-actions">' + retryButtons + '</div></section>'
+    }
     if (completed && targetVersion === (data.currentVersion || '')) return '<section class="dsh-hero-card dsh-hero-card-success" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.completed')) + '</span><strong>' + escapeHtml(desktopText('release.updatedTo', { version: versionLabel })) + '</strong><small>' + escapeHtml(message || desktopText('release.healthPassed')) + '</small></div><div class="dsh-hero-actions">' + button('desktop-rollback', desktopText('release.rollback'), 'ghost') + '</div></section>'
     if (rawState === 'rolled-back') return '<section class="dsh-hero-card dsh-hero-card-success" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.rollbackKicker')) + '</span><strong>' + escapeHtml(desktopText('release.rolledBackTo', { version: versionLabel })) + '</strong><small>' + escapeHtml(message || desktopText('release.rollbackDetail')) + '</small></div></section>'
     if (rawState === 'idle' && !data.updateAvailable) return '<section class="dsh-hero-card dsh-hero-card-neutral" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.normalKicker')) + '</span><strong>' + escapeHtml(desktopText('release.latestVersion', { version: data.currentVersion || '—' })) + '</strong><small>' + escapeHtml(data.offline ? desktopText('release.offline') : desktopText('release.noUpdate')) + '</small></div></section>'
@@ -852,6 +858,9 @@ if (!isSplashDocument) {
     }
     if (action === 'retry-update') {
       dismissNotice()
+      state.updateProgress = undefined
+      state.modalLoading = true
+      render()
       sendAction('retry-update')
       return
     }

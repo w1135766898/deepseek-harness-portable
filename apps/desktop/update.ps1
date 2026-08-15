@@ -20,6 +20,19 @@ param(
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
+# Resolve the portable distribution root from the script file itself. In normal
+# operation $PSScriptRoot is available, but a small number of Windows PowerShell
+# 5.1 launch environments report it as an empty string; falling back to
+# $MyInvocation (and finally the current directory) prevents the updater from
+# receiving an empty -AppRoot and failing before it starts.
+$scriptRoot = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+    $PSScriptRoot
+} elseif ($MyInvocation.MyCommand -and -not [string]::IsNullOrWhiteSpace($MyInvocation.MyCommand.Path)) {
+    Split-Path -Parent $MyInvocation.MyCommand.Path
+} else {
+    (Get-Location).Path
+}
+
 # Bootstrap failure reporter. Runs before the updater module is imported so a
 # launch that dies early (module missing, parameter errors, pending-transaction
 # recovery failure) still records a terminal status instead of leaving the
@@ -62,10 +75,10 @@ function Write-BootstrapFailureStatus {
 }
 
 try {
-    $modulePath = Join-Path $PSScriptRoot 'updater\updater.psm1'
+    $modulePath = Join-Path $scriptRoot 'updater\updater.psm1'
     if (-not (Test-Path -LiteralPath $modulePath)) {
         # If installed in root without updater subdir, check beside script
-        $modulePath = Join-Path $PSScriptRoot 'updater.psm1'
+        $modulePath = Join-Path $scriptRoot 'updater.psm1'
     }
 
     if (Test-Path -LiteralPath $modulePath) {
@@ -85,7 +98,8 @@ try {
         -EnginePid $EnginePid `
         -ShellPid $ShellPid `
         -Rollback:$Rollback `
-        -RelaunchAfterRollback:$RelaunchAfterRollback
+        -RelaunchAfterRollback:$RelaunchAfterRollback `
+        -AppRoot $scriptRoot
 } catch {
     Write-BootstrapFailureStatus -StatusFile $StatusFile -FromVersion $FromVersion -TargetVersion $TargetVersion -Message $_.Exception.Message
     Write-Host ('Update failed: ' + $_.Exception.Message) -ForegroundColor Red

@@ -1743,6 +1743,13 @@ function registerReleaseNotesIpc() {
     }
 
     if (action.type === 'update') {
+      try {
+        const userDataPath = app.getPath('userData')
+        const currentStatus = readUpdateStatus(userDataPath)
+        if (currentStatus?.state === 'failed' || currentStatus?.state === 'interrupted') {
+          clearUpdateStatus(userDataPath)
+        }
+      } catch {}
       const targetVersion = typeof action.targetVersion === 'string' && action.targetVersion.trim() !== ''
         ? action.targetVersion.trim()
         : (releaseNotesContext.update?.version || inAppNotice?.release?.version || '')
@@ -1751,6 +1758,11 @@ function registerReleaseNotesIpc() {
     }
 
     if (action.type === 'retry-update') {
+      try {
+        clearUpdateStatus(app.getPath('userData'))
+      } catch {}
+      preparedPortableUpdate = undefined
+      resumedPortableUpdate = false
       void checkForUpdates(true)
       return
     }
@@ -1905,6 +1917,15 @@ async function checkForUpdates(manual = true) {
     const hasUpdate = compareVersions(latestInfo.version, current) > 0
 
     if (hasUpdate) {
+      if (manual) {
+        try {
+          const userDataPath = app.getPath('userData')
+          const currentStatus = readUpdateStatus(userDataPath)
+          if (currentStatus?.state === 'failed' || currentStatus?.state === 'interrupted') {
+            clearUpdateStatus(userDataPath)
+          }
+        } catch {}
+      }
       showAvailableUpdateNotice(latestInfo, current, manual)
       if (manual) openInAppReleaseNotes({ mode: 'update', currentVersion: current, update: latestInfo })
       return

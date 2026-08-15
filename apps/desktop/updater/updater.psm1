@@ -22,6 +22,7 @@ $GITHUB_MIRROR_PREFIXES = @(
     'https://gh.ddlc.top/'
 )
 
+$MODULE_ROOT = $PSScriptRoot
 $payloadScript = Join-Path $PSScriptRoot 'release-payload.ps1'
 if (Test-Path -LiteralPath $payloadScript) {
     . $payloadScript
@@ -949,15 +950,19 @@ function Invoke-Updater {
         [int]$EnginePid = 0,
         [int]$ShellPid = 0,
         [switch]$Rollback,
-        [switch]$RelaunchAfterRollback
+        [switch]$RelaunchAfterRollback,
+        [string]$AppRoot = ''
     )
 
-    $SCRIPT_ROOT = $PSScriptRoot
-    $APP_ROOT = if ((Split-Path -Leaf $SCRIPT_ROOT) -ieq 'runtime' -or (Split-Path -Leaf $SCRIPT_ROOT) -ieq 'updater') {
-        Split-Path -Parent $SCRIPT_ROOT
-    } else {
-        $SCRIPT_ROOT
+    if ([string]::IsNullOrWhiteSpace($AppRoot)) {
+        $SCRIPT_ROOT = if ($PSScriptRoot) { $PSScriptRoot } elseif ($MODULE_ROOT) { $MODULE_ROOT } else { $PWD.Path }
+        $AppRoot = if ((Split-Path -Leaf $SCRIPT_ROOT) -ieq 'runtime' -or (Split-Path -Leaf $SCRIPT_ROOT) -ieq 'updater') {
+            Split-Path -Parent $SCRIPT_ROOT
+        } else {
+            $SCRIPT_ROOT
+        }
     }
+    $APP_ROOT = [System.IO.Path]::GetFullPath($AppRoot)
     if ([string]::IsNullOrWhiteSpace($StatusFile) -and $env:APPDATA) {
         $StatusFile = Join-Path $env:APPDATA 'DeepSeek Harness\update-status.json'
     }
@@ -968,7 +973,7 @@ function Invoke-Updater {
         Write-Banner
         Write-Host 'Executing manual rollback to previous version ...' -ForegroundColor Yellow
         $localInfo = Get-LocalReleaseInfo -AppRoot $APP_ROOT
-        Invoke-Rollback -AppRoot $AppRoot -StatusFile $StatusFile `
+        Invoke-Rollback -AppRoot $APP_ROOT -StatusFile $StatusFile `
             -FromVersion $localInfo.distributionVersion `
             -RelaunchAfterRollback:$RelaunchAfterRollback
         return
