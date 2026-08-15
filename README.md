@@ -6,12 +6,14 @@ DeepSeek Harness for Win is a community Windows x64 distribution of DeepSeek Har
 
 ## Latest release
 
-- Release: DeepSeek Harness for Win v1.1.3
-- Tag: v1.1.3
-- Download: [GitHub Release](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.1.3)
-- Distribution version: 1.1.3
+- Release: DeepSeek Harness for Win v1.0.0
+- Tag: v1.0.0
+- Download: [GitHub Release](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.0.0)
+- Distribution version: 1.0.0
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.0-rc.5
+
+This is the first formal release of this Windows distribution.
 
 Read the [English release notes](RELEASE_NOTES.md) or open Release Notes from the desktop tray menu.
 

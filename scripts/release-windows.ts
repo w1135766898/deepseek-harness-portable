@@ -150,10 +150,16 @@ function bundledReleaseNotes(version: string): Record<string, unknown> {
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) source = parsed as Record<string, unknown>
   }
   const body = typeof source.body === 'string' ? source.body : ''
+  const bodyEn = typeof source.bodyEn === 'string' ? source.bodyEn : ''
+  const bodyZh = typeof source.bodyZh === 'string' ? source.bodyZh : ''
+  const sections = Array.isArray(source.sections) ? source.sections : []
   return {
     version,
     name: typeof source.name === 'string' && source.name.trim() ? source.name : `DeepSeek Harness for Win v${version}`,
     ...(typeof source.publishedAt === 'string' && source.publishedAt.trim() ? { publishedAt: source.publishedAt } : {}),
+    ...(bodyEn.trim() ? { bodyEn } : {}),
+    ...(bodyZh.trim() ? { bodyZh } : {}),
+    ...(sections.length > 0 ? { sections } : {}),
     body,
   }
 }
