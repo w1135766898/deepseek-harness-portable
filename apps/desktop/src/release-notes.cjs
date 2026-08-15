@@ -156,6 +156,25 @@ function normalizeReleaseNotes(input, fallbackVersion = '0.0.0') {
   }
 }
 
+function countSectionBadges(release) {
+  const counts = new Map()
+  const sections = release && Array.isArray(release.sections) ? release.sections : []
+
+  for (const section of sections) {
+    if (!section || typeof section !== 'object') continue
+    const key = CATEGORY_META[asText(section.key)] === undefined ? 'other' : asText(section.key)
+    const items = Array.isArray(section.items)
+      ? section.items.filter(item => typeof item === 'string' && item.trim() !== '')
+      : []
+    if (items.length === 0) continue
+    counts.set(key, (counts.get(key) || 0) + items.length)
+  }
+
+  return [...counts.entries()]
+    .map(([key, count]) => ({ ...CATEGORY_META[key], count }))
+    .filter(badge => badge.count > 0)
+}
+
 function mergeReleaseHistory(...lists) {
   const byVersion = new Map()
   for (const list of lists) {
@@ -174,6 +193,7 @@ function mergeReleaseHistory(...lists) {
 module.exports = {
   CATEGORY_META,
   MAX_BODY_LENGTH,
+  countSectionBadges,
   mergeReleaseHistory,
   normalizeReleaseNotes,
   normalizeUrl,
