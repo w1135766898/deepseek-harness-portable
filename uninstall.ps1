@@ -77,8 +77,16 @@ function Stop-RunningApp {
     }
     if ($processes) {
         Write-Host 'Stopping running DeepSeek Harness processes...' -ForegroundColor Yellow
-        $processes | Stop-Process -Force -ErrorAction SilentlyContinue
+        # Kill the full process tree (engine children included), not just the
+        # top-level shells, then fall back to Stop-Process for survivors.
+        try { & taskkill.exe /IM 'DeepSeek Harness*.exe' /T /F 2>$null | Out-Null } catch {}
         Start-Sleep -Milliseconds 750
+        $survivors = Get-Process -ErrorAction SilentlyContinue | Where-Object {
+            $_.ProcessName -like 'DeepSeek Harness*'
+        }
+        if ($survivors) {
+            $survivors | Stop-Process -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 
