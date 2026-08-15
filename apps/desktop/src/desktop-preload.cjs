@@ -175,7 +175,7 @@ if (!isSplashDocument) {
       *::-webkit-scrollbar-track { background: transparent; }
       *::-webkit-scrollbar-thumb { background: rgba(128, 138, 156, .42); border: 2px solid transparent; border-radius: 999px; background-clip: padding-box; }
       *::-webkit-scrollbar-thumb:hover { background: rgba(128, 138, 156, .7); border: 1px solid transparent; background-clip: padding-box; }
-      button, a, input, textarea, select, [role="button"] {
+      button, button *, a, a *, input, textarea, select, [role="button"], [role="button"] * {
         -webkit-user-select: none;
         user-select: none;
         -webkit-app-region: no-drag !important;

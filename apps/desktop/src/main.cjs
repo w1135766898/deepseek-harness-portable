@@ -395,7 +395,7 @@ async function createSplashWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      sandbox: false,
       preload: join(__dirname, DESKTOP_PRELOAD_NAME),
     },
   })
@@ -1991,7 +1991,7 @@ async function createApp() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      sandbox: false,
       preload: join(__dirname, DESKTOP_PRELOAD_NAME),
     },
   })
