@@ -835,20 +835,19 @@ if (!isSplashDocument) {
     .dsh-modal-layer { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px 16px; background: rgba(10, 18, 30, .48); backdrop-filter: blur(14px) saturate(150%); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s ease, visibility 0s linear .22s; }
     .dsh-modal-layer.is-open { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
     .dsh-modal-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: default; }
-    .dsh-modal-dialog { position: relative; z-index: 1; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; width: min(620px, calc(100vw - 32px)); min-height: 320px; height: min(660px, calc(100vh - 48px)); max-height: calc(100vh - 48px); overflow: hidden; border: 1px solid rgba(116, 138, 171, .24); border-radius: 14px; background: rgba(250, 252, 255, .98); box-shadow: 0 24px 60px rgba(15, 30, 54, .26), 0 2px 8px rgba(18, 38, 68, .06); opacity: 0; transform: scale(.96) translateY(10px); transition: opacity .2s ease, transform .22s cubic-bezier(.16, 1, .3, 1), width .25s ease, height .25s ease; interpolate-size: allow-keywords; will-change: opacity, transform; }
+    .dsh-modal-dialog { --dsh-modal-width: min(620px, calc(100vw - 32px)); --dsh-modal-height: min(660px, calc(100vh - 48px)); position: relative; z-index: 1; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; width: var(--dsh-modal-width); min-height: 320px; height: var(--dsh-modal-height); max-height: var(--dsh-modal-height); overflow: hidden; border: 1px solid rgba(116, 138, 171, .24); border-radius: 14px; background: rgba(250, 252, 255, .98); box-shadow: 0 24px 60px rgba(15, 30, 54, .26), 0 2px 8px rgba(18, 38, 68, .06); opacity: 0; transform: scale(.96) translateY(10px); transition: opacity .2s ease, transform .22s cubic-bezier(.16, 1, .3, 1); will-change: opacity, transform; }
     .dsh-modal-layer.is-open .dsh-modal-dialog { opacity: 1; transform: scale(1) translateY(0); }
-    .dsh-modal-dialog.is-about-mode { width: min(440px, calc(100vw - 32px)); height: min(340px, calc(100vh - 48px)); min-height: 0; max-height: min(420px, calc(100vh - 48px)); }
     .dsh-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 24px 16px; border-bottom: 1px solid rgba(42, 61, 92, .1); }
     .dsh-header-brand, .dsh-header-controls, .dsh-modal-tabs, .dsh-footer-left, .dsh-footer-right, .dsh-hero-actions { display: flex; align-items: center; }
-    .dsh-header-brand { min-width: 0; gap: 10px; }
+    .dsh-header-brand { flex: 1 1 auto; min-width: 0; gap: 10px; }
     .dsh-brand-badge { display: grid; flex: 0 0 34px; place-items: center; width: 34px; height: 34px; border: 1px solid rgba(72, 112, 190, .16); border-radius: 10px; background: #f7faff; box-shadow: 0 5px 14px rgba(47, 117, 238, .18); }
     .dsh-brand-logo { width: 28px; height: 28px; object-fit: contain; pointer-events: none; }
     .dsh-eyebrow { margin-bottom: 4px; color: #6e85a8; font: 700 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .12em; }
     .dsh-modal-title { margin: 0; color: #18263d; font-size: 20px; letter-spacing: -.02em; }
     .dsh-subtitle { display: block; margin-top: 3px; color: #7e8da4; font-size: 11px; }
-    .dsh-header-controls { gap: 12px; }
+    .dsh-header-controls { flex: 0 0 auto; gap: 12px; }
     .dsh-modal-tabs { gap: 4px; padding: 3px; border: 1px solid rgba(116, 138, 171, .18); border-radius: 9px; background: rgba(235, 241, 249, .72); }
-    .dsh-tab { min-height: 28px; padding: 5px 10px; border: 0; border-radius: 7px; color: #7c8ba1; background: transparent; cursor: pointer; font: 600 12px/1.3 inherit; }
+    .dsh-tab { min-height: 28px; padding: 5px 10px; border: 0; border-radius: 7px; color: #7c8ba1; background: transparent; cursor: pointer; font: 600 12px/1.3 inherit; white-space: nowrap; }
     .dsh-tab.active, .dsh-tab[aria-selected="true"] { color: #245db1; background: #fff; box-shadow: 0 1px 3px rgba(31, 50, 83, .12); }
     .dsh-modal-close-btn { width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; color: #7b8aa3; background: transparent; cursor: pointer; font-size: 22px; line-height: 1; }
     .dsh-modal-close-btn:hover { color: #18263d; background: #e4ebf6; }
@@ -910,7 +909,7 @@ if (!isSplashDocument) {
     .dsh-link { padding: 0; border: 0; color: #2672dc; background: transparent; cursor: pointer; font: inherit; }
     .dsh-empty-copy, .dsh-loading { padding: 42px 8px; color: #8a99ae; text-align: center; }
     .dsh-refreshing { margin: -8px 0 14px; color: #8191a8; font-size: 11px; }
-    .dsh-about { padding: 48px 10px; text-align: center; }
+    .dsh-about { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; padding: 32px 10px; text-align: center; }
     .dsh-about-logo { width: 64px; height: 64px; display: grid; place-items: center; margin: 0 auto 16px; border: 1px solid rgba(72, 112, 190, .16); border-radius: 20px; background: #f7faff; box-shadow: 0 10px 28px rgba(47, 117, 238, .26); }
     .dsh-about-logo-image { width: 54px; height: 54px; object-fit: contain; }
     .dsh-about h3 { margin: 0 0 8px; color: #1e2d44; font-size: 18px; }
@@ -991,9 +990,7 @@ if (!isSplashDocument) {
       .dsh-notice .dsh-button { padding-inline: 8px; }
       .dsh-notice-never { padding-inline: 6px !important; }
       .dsh-modal-layer { padding: 12px 10px; }
-      .dsh-modal-dialog, .dsh-modal-dialog.is-about-mode { width: calc(100vw - 20px); max-height: calc(100vh - 24px); }
-      .dsh-modal-dialog { height: calc(100vh - 24px); }
-      .dsh-modal-dialog.is-about-mode { height: min(340px, calc(100vh - 24px)); }
+      .dsh-modal-dialog { --dsh-modal-width: calc(100vw - 20px); --dsh-modal-height: calc(100vh - 24px); width: var(--dsh-modal-width); height: var(--dsh-modal-height); max-height: var(--dsh-modal-height); }
       .dsh-modal-header { align-items: flex-start; padding: 16px 16px 12px; }
       .dsh-header-controls { gap: 6px; }
       .dsh-modal-tabs { order: 2; }
