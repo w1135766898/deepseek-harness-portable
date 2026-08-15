@@ -6,6 +6,7 @@ const { basename, join, resolve } = require('node:path')
 const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 const { mergeReleaseHistory, normalizeReleaseNotes } = require('./release-notes.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
+const { ensureUnifiedDshHome } = require('./workspace-service.cjs')
 const {
   GITHUB_MIRROR_PREFIXES,
   compareVersions,
@@ -537,39 +538,12 @@ function stopHarness() {
 }
 
 function resolveUnifiedDshHome() {
-  let targetHome
-  if (process.env.DSH_HOME && process.env.DSH_HOME.trim() !== '') {
-    targetHome = process.env.DSH_HOME.trim()
-  } else {
-    const userHome = process.env.USERPROFILE || homedir()
-    targetHome = join(userHome, '.dsh')
-  }
-
-  // Ensure target directories exist before spawning engine child process
-  try {
-    mkdirSync(targetHome, { recursive: true })
-    mkdirSync(join(targetHome, 'sessions'), { recursive: true })
-    mkdirSync(app.getPath('userData'), { recursive: true })
-  } catch {}
-
-  // Seamless legacy data migration: if AppData\Roaming\DeepSeek Harness\dsh has sessions, migrate to ~/.dsh
-  try {
-    const legacyDsh = join(app.getPath('userData'), 'dsh')
-    if (existsSync(legacyDsh) && legacyDsh !== targetHome) {
-      const { cpSync } = require('node:fs')
-      const legacySessions = join(legacyDsh, 'sessions')
-      const targetSessions = join(targetHome, 'sessions')
-      if (existsSync(legacySessions) && !existsSync(targetSessions)) {
-        if (typeof cpSync === 'function') {
-          cpSync(legacySessions, targetSessions, { recursive: true })
-        }
-      }
-    }
-  } catch {
-    // Non-blocking fallback
-  }
-
-  return targetHome
+  return ensureUnifiedDshHome({
+    env: process.env,
+    userHome: process.env.USERPROFILE || homedir(),
+    userDataPath: app.getPath('userData'),
+    logger: console,
+  })
 }
 
 function startHarness(cwd, signal) {
