@@ -467,21 +467,60 @@ function probeWslAvailability() {
     child.stdout.on('data', chunk => { stdout += chunk.toString('utf16le') })
     child.on('error', () => {
       wslState = { probed: true, available: false, distros: [] }
+      sendWslState()
       resolve(wslState)
     })
     child.on('close', code => {
-      if (code !== 0) {
-        wslState = { probed: true, available: false, distros: [] }
-        return resolve(wslState)
-      }
       const distros = stdout
+        .replace(/^\uFEFF/, '')
         .split(/[\r\n]+/)
         .map(s => s.replace(/\0/g, '').trim())
         .filter(Boolean)
-      wslState = { probed: true, available: true, distros }
+      const isAvailable = code === 0 && distros.length > 0
+      wslState = { probed: true, available: isAvailable, distros }
+      sendWslState()
       resolve(wslState)
     })
   })
+}
+
+function sendWslState(sender) {
+  if (sender !== undefined) {
+    try { sender.send('desktop:wsl-state', wslState) } catch {}
+  } else {
+    sendRenderer('desktop:wsl-state', wslState)
+  }
+}
+
+async function showWslGuideDialog(sender) {
+  await probeWslAvailability().catch(() => {})
+  const isInstalled = wslState.available
+  const title = desktopText('wsl.dialogTitle')
+  const message = isInstalled
+    ? desktopText('wsl.readyMessage')
+    : desktopText('wsl.missingMessage')
+  const detail = isInstalled
+    ? desktopText('wsl.readyDetail', { distros: wslState.distros.join(', ') || 'Default' })
+    : desktopText('wsl.missingDetail')
+
+  const buttons = isInstalled
+    ? [desktopText('wsl.ok')]
+    : [desktopText('wsl.copyInstallCmd'), desktopText('wsl.ok')]
+
+  const result = await dialog.showMessageBox(visibleDialogParent(), {
+    type: isInstalled ? 'info' : 'warning',
+    title,
+    message,
+    detail,
+    buttons,
+    defaultId: 0,
+    cancelId: isInstalled ? 0 : 1,
+  })
+
+  if (!isInstalled && result.response === 0) {
+    clipboard.writeText('wsl --install')
+    sendDiagnosticsResult(sender, { kind: 'success', message: desktopText('wsl.cmdCopied') })
+  }
 }
 
 function diagnosticsText() {
@@ -1703,6 +1742,7 @@ function registerReleaseNotesIpc() {
     event.sender.send('desktop:theme-changed', themePayload())
     event.sender.send('desktop:locale-changed', { locale: desktopLocale })
     event.sender.send('desktop:workspace:recents', recentWorkspacePayload())
+    event.sender.send('desktop:wsl-state', wslState)
     restoreRendererZoom()
     event.sender.send('desktop:harness-status', harnessHealth)
     if (inAppNotice !== undefined) event.sender.send('desktop:notice', inAppNotice)
@@ -1783,6 +1823,10 @@ function registerReleaseNotesIpc() {
       exportDiagnostics(event.sender)
       return
     }
+    if (action.type === 'wsl-guide') {
+      void showWslGuideDialog(event.sender)
+      return
+    }
     if (action.type === 'clear-storage') {
       void clearDesktopStorage(event.sender)
       return
@@ -1794,6 +1838,11 @@ function registerReleaseNotesIpc() {
     if (action.type === 'open-browser') {
       void openWebUiInBrowser()
     }
+  })
+
+  ipcMain.on('desktop:wsl:probe', event => {
+    if (!isMainRenderer(event.sender)) return
+    void probeWslAvailability().then(() => sendWslState(event.sender)).catch(() => {})
   })
 
   ipcMain.on('desktop:zoom', (event, action = {}) => {
