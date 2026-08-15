@@ -14,6 +14,16 @@ const defaultBuildRoot = join(root, 'dist-desktop', 'electron', 'DeepSeek Harnes
 const KERNEL_PACKAGE = '@deepseek-ai/dsh-web-app'
 const RELEASE_MANIFEST_NAME = 'release-manifest.json'
 const RELEASE_NOTES_SOURCE = join(root, 'apps', 'desktop', 'src', 'release-notes.json')
+const DESKTOP_RUNTIME_SOURCE_FILES = [
+  'main.cjs',
+  'desktop-preload.cjs',
+  'ready-url.cjs',
+  'release-notes.cjs',
+  'update-client.cjs',
+  'update-path.cjs',
+  'update-status.cjs',
+  'window-state.cjs',
+]
 
 type Options = {
   input?: string
@@ -192,6 +202,30 @@ function hashFile(path: string): Promise<string> {
   })
 }
 
+async function verifyDesktopRuntimeSources(buildRoot: string): Promise<void> {
+  const packagedSourceRoot = join(buildRoot, 'runtime', 'resources', 'app', 'src')
+  const mismatches: string[] = []
+
+  for (const file of DESKTOP_RUNTIME_SOURCE_FILES) {
+    const sourcePath = join(root, 'apps', 'desktop', 'src', file)
+    const packagedPath = join(packagedSourceRoot, file)
+    if (!existsSync(packagedPath)) {
+      mismatches.push(`${file} is missing from the portable runtime`)
+      continue
+    }
+    const [sourceHash, packagedHash] = await Promise.all([hashFile(sourcePath), hashFile(packagedPath)])
+    if (sourceHash !== packagedHash) mismatches.push(`${file} differs from the current desktop source`)
+  }
+
+  if (mismatches.length > 0) {
+    throw new Error([
+      'Portable runtime source validation failed. Rebuild the desktop runtime before creating the release archive.',
+      ...mismatches.map(item => `- ${item}`),
+    ].join('\n'))
+  }
+  console.log(`Portable runtime source validation passed: ${DESKTOP_RUNTIME_SOURCE_FILES.length} files`)
+}
+
 async function findIscc(): Promise<string | undefined> {
   const candidates = [
     process.env.ISCC_PATH,
@@ -245,6 +279,7 @@ async function main(): Promise<void> {
     throw new Error(`Portable build root is missing runtime/DeepSeek Harness.exe: ${buildRoot}`)
   }
   await writeReleaseManifest(buildRoot, version, shellVersion)
+  await verifyDesktopRuntimeSources(buildRoot)
   await run('tar.exe', ['-a', '-c', '-f', zipPath, '-C', dirname(buildRoot), basename(buildRoot)])
   await verifyPortableArchive(zipPath, buildRoot)
 
