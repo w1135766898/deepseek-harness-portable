@@ -1113,8 +1113,10 @@ function getCurrentUpdateStatus() {
   const userDataPath = app.getPath('userData')
   const current = readUpdateStatus(userDataPath)
   if (current === undefined) return undefined
-  if (isSupersededByCurrentVersion(current, getLocalVersion(), compareVersions)) {
-    clearUpdateStatus(userDataPath)
+  const superseded = typeof isSupersededByCurrentVersion === 'function'
+    && isSupersededByCurrentVersion(current, getLocalVersion(), compareVersions)
+  if (superseded) {
+    if (typeof clearUpdateStatus === 'function') clearUpdateStatus(userDataPath)
     return undefined
   }
   const reconciled = reconcileUpdateStatus(current)
