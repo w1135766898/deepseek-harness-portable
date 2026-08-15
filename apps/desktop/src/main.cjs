@@ -451,8 +451,37 @@ function startupLog(error) {
   return lastStartupLog
 }
 
-function recentLogLines(value, limit = 200) {
-  return String(value || '').split(/\r?\n/).slice(-limit).join('\n') || desktopText('startup.noLog')
+let wslState = { probed: false, available: false, distros: [] }
+
+function probeWslAvailability() {
+  if (process.platform !== 'win32') {
+    wslState = { probed: true, available: true, distros: [] }
+    return Promise.resolve(wslState)
+  }
+  return new Promise((resolve) => {
+    const child = spawn('wsl.exe', ['-l', '-q'], {
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    let stdout = ''
+    child.stdout.on('data', chunk => { stdout += chunk.toString('utf16le') })
+    child.on('error', () => {
+      wslState = { probed: true, available: false, distros: [] }
+      resolve(wslState)
+    })
+    child.on('close', code => {
+      if (code !== 0) {
+        wslState = { probed: true, available: false, distros: [] }
+        return resolve(wslState)
+      }
+      const distros = stdout
+        .split(/[\r\n]+/)
+        .map(s => s.replace(/\0/g, '').trim())
+        .filter(Boolean)
+      wslState = { probed: true, available: true, distros }
+      resolve(wslState)
+    })
+  })
 }
 
 function diagnosticsText() {
@@ -468,6 +497,7 @@ function diagnosticsText() {
     `Chrome: ${process.versions.chrome || 'unknown'}`,
     `Node: ${process.versions.node || 'unknown'}`,
     `Platform: ${process.platform} ${process.arch}`,
+    `WSL available: ${wslState.available ? `yes (${wslState.distros.join(', ') || 'default'})` : 'no'}`,
     `Workspace: ${workspace()}`,
     `Harness URL: ${harnessUrl || 'unavailable'}`,
     '',
@@ -2323,6 +2353,7 @@ if (!gotLock) {
   })
   app.whenReady()
     .then(() => {
+      void probeWslAvailability().catch(() => {})
       initializeDesktopLocale()
       return createApp()
     })
