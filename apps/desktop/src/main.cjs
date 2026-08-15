@@ -1234,7 +1234,7 @@ async function queryReleaseHistory() {
 
 function sortReleaseHistory(history) {
   return mergeReleaseHistory(history)
-    .filter(release => isValidSemver(release.version))
+    .filter(release => isValidSemver(release.version) && release.version !== '0.0.0')
     .sort((left, right) => compareVersions(right.version, left.version))
     .slice(0, RELEASE_HISTORY_LIMIT)
     .map(release => ({ ...release, badgeSummary: countSectionBadges(release) }))
@@ -1242,7 +1242,7 @@ function sortReleaseHistory(history) {
 
 function cachedReleaseHistory() {
   const cached = readConfig().releaseHistory
-  return Array.isArray(cached) ? cached.map(item => normalizeReleaseNotes(item)).filter(item => item.version !== '0.0.0') : []
+  return Array.isArray(cached) ? cached.map(item => normalizeReleaseNotes(item)).filter(item => item.version !== '0.0.0' && isValidSemver(item.version)) : []
 }
 
 function saveReleaseHistory(history) {
@@ -1256,9 +1256,10 @@ function getCurrentUpdateStatus() {
   const userDataPath = app.getPath('userData')
   const current = readUpdateStatus(userDataPath)
   if (current === undefined) return undefined
+  const localVersion = getLocalVersion()
   const superseded = typeof isSupersededByCurrentVersion === 'function'
-    && isSupersededByCurrentVersion(current, getLocalVersion(), compareVersions)
-  if (superseded) {
+    && isSupersededByCurrentVersion(current, localVersion, compareVersions)
+  if (superseded || (current.targetVersion && current.targetVersion !== localVersion && (current.state === 'completed' || current.state === 'updated'))) {
     if (typeof clearUpdateStatus === 'function') clearUpdateStatus(userDataPath)
     return undefined
   }
@@ -1291,7 +1292,10 @@ async function buildReleaseNotesData(context = {}, options = {}) {
   const checkError = typeof context.checkError === 'string' && context.checkError.trim() !== ''
     ? context.checkError.trim()
     : (typeof context.error === 'string' && context.error.trim() !== '' ? context.error.trim() : undefined)
-  const history = sortReleaseHistory([update, ...remote, ...cached, localRelease])
+  const historySource = remote.length > 0
+    ? [update, ...remote, localRelease]
+    : [update, ...cached, localRelease]
+  const history = sortReleaseHistory(historySource)
   const latestRelease = history[0] || localRelease
   const currentRelease = history.find(item => item.version === localInfo.distributionVersion) || localRelease
   const updateAvailable = Boolean(
