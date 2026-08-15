@@ -3,12 +3,7 @@
 # The persona is the complete system prompt, so global identity, Web orientation,
 # tool guidance, and later assembly listeners cannot add prompt text. Runtime
 # context snapshots are suppressed for this preset, and the model composes only
-# one shell tool plus `str_replace_editor`. Context compaction is absent.
-#
-# The shell tool is the platform's native one: persistent `bash` on POSIX hosts,
-# where the PTY backend spawns `/bin/bash`, and the `pwsh` tool on Windows,
-# where no POSIX shell is guaranteed. This mirrors how the `standard`, `code`,
-# and `cordis` presets gate their shell rows by platform.
+# persistent `bash` and `str_replace_editor`. Context compaction is absent.
 
 - id: persona
   name: '@deepseek-ai/dsh-persona'
@@ -20,14 +15,11 @@
 # The PTY registry is an agent-owned service, so it lives in an entry-local
 # realm. The backend still consumes the host sandbox policy and subprocess
 # implementation, while the tool registers into this agent's scoped catalog.
-# On Windows the stack is disabled: it spawns `/bin/bash`, which no vanilla
-# Windows host provides, so the `tool-pwsh` row below takes over there.
 - id: persistent-shell
   name: cordis:group
   group: true
   isolate:
     terminals: true
-  disabled: !!js process.platform === 'win32'
   config:
     - id: pty
       name: '@deepseek-ai/dsh-terminal'
@@ -50,18 +42,6 @@
           * To inspect a particular line range of a file, e.g. lines 10-25, try 'sed -n 10,25p /path/to/the/file'.
           * Please avoid commands that may produce a very large amount of output.
           * Please run long lived commands in the background, e.g. 'sleep 10 &' or start a server in the background.
-
-# On Windows the shell tool is `pwsh`, consuming the host `shell` registry
-# (the pwsh-sandbox executor) as `standard`/`code`/`cordis` do, so a plain
-# Windows box — Windows PowerShell 5.1 always exists — gets a working shell
-# without Git Bash or WSL. It publishes nothing, so it needs no realm.
-# Background jobs stay disabled: the minimal preset mounts no `tool-jobs`
-# controls, so a started job could never be collected or stopped.
-- id: tool-pwsh
-  name: '@deepseek-ai/dsh-tool-pwsh'
-  disabled: !!js process.platform !== 'win32'
-  config:
-    enableRunInBackground: false
 
 # The bare local filesystem shadows the host's sandboxed provider only for this
 # preset. The editor shares that realm and requires absolute paths.
