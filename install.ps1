@@ -174,6 +174,43 @@ function Test-PortableLayout {
     }
 }
 
+function Test-ZipEntrySafety {
+    param(
+        [Parameter(Mandatory = $true)][string]$ZipPath,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+
+    # The ZIP is digest-verified, but the digest and the archive come from the
+    # same release source. Validate every entry before extraction so a hostile
+    # archive can never write outside the destination (same policy as the
+    # portable updater's Extract-ReleaseSafe).
+    Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($ZipPath)
+    try {
+        $fullDestination = [System.IO.Path]::GetFullPath($Destination).TrimEnd('\') + '\'
+        foreach ($entry in $archive.Entries) {
+            $entryName = ([string]$entry.FullName).Replace('/', '\')
+            if ([string]::IsNullOrWhiteSpace($entryName)) { continue }
+            $isRooted = [System.IO.Path]::IsPathRooted($entryName)
+            $hasColon = $entryName -match ':'
+            if ($isRooted -or $hasColon -or $entryName.StartsWith('\\')) {
+                throw ('Unsafe ZIP entry path: ' + $entry.FullName)
+            }
+            foreach ($segment in $entryName.Split('\')) {
+                if ($segment -eq '..') {
+                    throw ('Unsafe ZIP entry path: ' + $entry.FullName)
+                }
+            }
+            $target = [System.IO.Path]::GetFullPath((Join-Path $Destination $entryName))
+            if (-not $target.StartsWith($fullDestination, [System.StringComparison]::OrdinalIgnoreCase)) {
+                throw ('Unsafe ZIP entry path: ' + $entry.FullName)
+            }
+        }
+    } finally {
+        $archive.Dispose()
+    }
+}
+
 function Extract-And-Install {
     param(
         [Parameter(Mandatory = $true)][string]$ZipPath,
@@ -185,6 +222,7 @@ function Extract-And-Install {
     $extractTemp = Join-Path $env:TEMP ('dsh-extract-' + $guid)
     New-Item -ItemType Directory -Path $extractTemp -Force | Out-Null
     try {
+        Test-ZipEntrySafety -ZipPath $ZipPath -Destination $extractTemp
         $tar = Get-Command tar.exe -ErrorAction SilentlyContinue
         if ($tar) {
             & tar.exe -xf $ZipPath -C $extractTemp
