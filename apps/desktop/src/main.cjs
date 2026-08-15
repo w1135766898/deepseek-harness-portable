@@ -678,8 +678,10 @@ function stopHarness() {
       return
     }
     const child = harness
-    harness = undefined
     terminateProcessTree(child.pid, { timeoutMs: STOP_TIMEOUT_MS, logger: console }).then(stopped => {
+      // Only forget the child once its tree is actually gone; clearing the
+      // reference earlier would let a crash in this window orphan the engine.
+      if (harness === child) harness = undefined
       if (!stopped) {
         const error = new Error(`Harness process tree did not exit within ${STOP_TIMEOUT_MS}ms (pid ${child.pid}).`)
         console.error(error.message)
