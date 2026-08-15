@@ -1,4 +1,4 @@
-const { execFile, execFileSync } = require('node:child_process')
+const { execFile } = require('node:child_process')
 
 function isProcessAlive(pid) {
   if (!pid || typeof pid !== 'number' || pid <= 0) return false
@@ -12,17 +12,20 @@ function isProcessAlive(pid) {
 
 function terminateProcessTree(pid, { timeoutMs = 5000, logger = console } = {}) {
   if (!pid || typeof pid !== 'number' || pid <= 0) {
-    return Promise.resolve()
+    return Promise.resolve(true)
   }
 
   if (!isProcessAlive(pid)) {
-    return Promise.resolve()
+    return Promise.resolve(true)
   }
 
   return new Promise(resolve => {
     if (process.platform === 'win32') {
       // Windows: use taskkill /PID <pid> /T /F to kill entire process tree recursively
-      execFile('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, (error) => {
+      execFile('taskkill.exe', ['/PID', String(pid), '/T', '/F'], {
+        windowsHide: true,
+        timeout: Math.max(1000, timeoutMs),
+      }, (error) => {
         if (error && logger && typeof logger.debug === 'function') {
           logger.debug(`taskkill on PID ${pid}: ${error.message}`)
         }
@@ -30,9 +33,12 @@ function terminateProcessTree(pid, { timeoutMs = 5000, logger = console } = {}) 
         // Verify exit or wait up to timeoutMs
         const start = Date.now()
         const checkInterval = setInterval(() => {
-          if (!isProcessAlive(pid) || Date.now() - start >= timeoutMs) {
+          if (!isProcessAlive(pid)) {
             clearInterval(checkInterval)
-            resolve()
+            resolve(true)
+          } else if (Date.now() - start >= timeoutMs) {
+            clearInterval(checkInterval)
+            resolve(false)
           }
         }, 100)
       })
@@ -46,7 +52,7 @@ function terminateProcessTree(pid, { timeoutMs = 5000, logger = console } = {}) 
       const checkInterval = setInterval(() => {
         if (!isProcessAlive(pid)) {
           clearInterval(checkInterval)
-          resolve()
+          resolve(true)
           return
         }
         if (Date.now() - start >= timeoutMs) {
@@ -58,7 +64,7 @@ function terminateProcessTree(pid, { timeoutMs = 5000, logger = console } = {}) 
               process.kill(pid, 'SIGKILL')
             } catch {}
           }
-          resolve()
+          resolve(!isProcessAlive(pid))
         }
       }, 100)
     }

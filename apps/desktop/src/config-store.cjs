@@ -59,7 +59,7 @@ function migrateConfig(raw) {
   return result
 }
 
-function writeAtomic(filePath, data) {
+function writeAtomic(filePath, data, { preserveBackup = true } = {}) {
   const dir = resolve(join(filePath, '..'))
   mkdirSync(dir, { recursive: true })
 
@@ -75,7 +75,7 @@ function writeAtomic(filePath, data) {
   }
 
   const bakPath = `${filePath}.bak`
-  if (existsSync(filePath)) {
+  if (preserveBackup && existsSync(filePath)) {
     try {
       copyFileSync(filePath, bakPath)
     } catch {}
@@ -91,25 +91,57 @@ function writeAtomic(filePath, data) {
   }
 }
 
+function nextCorruptPath(configPath) {
+  const base = `${configPath}.corrupt-${Date.now()}`
+  let candidate = base
+  let suffix = 1
+  while (existsSync(candidate)) {
+    candidate = `${base}-${suffix}`
+    suffix += 1
+  }
+  return candidate
+}
+
 function readConfigStore(configPath, { logger = console } = {}) {
   const bakPath = `${configPath}.bak`
 
-  if (!existsSync(configPath)) {
-    if (existsSync(bakPath)) {
-      try {
-        const bakRaw = JSON.parse(readFileSync(bakPath, 'utf8'))
-        const validBak = migrateConfig(bakRaw)
-        writeAtomic(configPath, validBak)
-        return validBak
-      } catch {}
+  const recoverFromBackup = () => {
+    if (!existsSync(bakPath)) return undefined
+    try {
+      const bakRaw = JSON.parse(readFileSync(bakPath, 'utf8'))
+      const validBak = migrateConfig(bakRaw)
+      // The current config may be corrupt. Do not copy it over the known-good
+      // backup while restoring the primary file.
+      writeAtomic(configPath, validBak, { preserveBackup: false })
+      if (logger && typeof logger.info === 'function') {
+        logger.info(`Successfully restored config from ${bakPath}`)
+      }
+      return validBak
+    } catch {
+      return undefined
     }
+  }
+
+  if (!existsSync(configPath)) {
+    const recovered = recoverFromBackup()
+    if (recovered !== undefined) return recovered
     return { ...DEFAULT_CONFIG }
   }
 
   try {
     const text = readFileSync(configPath, 'utf8')
     const raw = JSON.parse(text)
-    return migrateConfig(raw)
+    const migrated = migrateConfig(raw)
+    if (raw && typeof raw === 'object' && raw.schemaVersion !== migrated.schemaVersion) {
+      try {
+        writeAtomic(configPath, migrated)
+      } catch (error) {
+        if (logger && typeof logger.warn === 'function') {
+          logger.warn(`Failed to persist config schema migration for ${configPath}: ${error.message}`)
+        }
+      }
+    }
+    return migrated
   } catch (error) {
     if (logger && typeof logger.warn === 'function') {
       logger.warn(`Failed to parse config file ${configPath}: ${error.message}`)
@@ -117,24 +149,22 @@ function readConfigStore(configPath, { logger = console } = {}) {
 
     // Preserve corrupted file
     try {
-      const corruptPath = `${configPath}.corrupt-${Date.now()}`
-      copyFileSync(configPath, corruptPath)
-    } catch {}
-
-    // Attempt recovery from backup
-    if (existsSync(bakPath)) {
+      renameSync(configPath, nextCorruptPath(configPath))
+    } catch {
       try {
-        const bakRaw = JSON.parse(readFileSync(bakPath, 'utf8'))
-        const validBak = migrateConfig(bakRaw)
-        writeAtomic(configPath, validBak)
-        if (logger && typeof logger.info === 'function') {
-          logger.info(`Successfully restored config from ${bakPath}`)
-        }
-        return validBak
+        copyFileSync(configPath, nextCorruptPath(configPath))
       } catch {}
     }
 
-    return { ...DEFAULT_CONFIG }
+    // Attempt recovery from backup
+    const recovered = recoverFromBackup()
+    if (recovered !== undefined) return recovered
+
+    const defaults = { ...DEFAULT_CONFIG }
+    try {
+      writeAtomic(configPath, defaults, { preserveBackup: false })
+    } catch {}
+    return defaults
   }
 }
 

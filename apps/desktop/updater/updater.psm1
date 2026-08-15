@@ -4,6 +4,9 @@
 
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+foreach ($compressionAssembly in @('System.IO.Compression', 'System.IO.Compression.FileSystem', 'System.IO.Compression.ZipFile')) {
+    try { Add-Type -AssemblyName $compressionAssembly -ErrorAction Stop } catch {}
+}
 
 $DISTRIBUTION_REPO = 'wsnxxxs/deepseek-harness-portable'
 $RELEASE_MANIFEST_NAME = 'release-manifest.json'
@@ -26,7 +29,8 @@ if (Test-Path -LiteralPath $payloadScript) {
         'release-manifest.json', 'dsh.cmd', 'uninstall.cmd', 'uninstall.ps1', 'update.ps1', 'update.cmd',
         'setup-shortcuts.ps1', 'start-web.cmd', 'start-desktop.cmd', '启动网页版.bat', '启动桌面窗口.bat',
         '启动桌面版.bat', '在线更新.bat', '创建桌面快捷方式.bat', '一键解除拦截(自签名信任).bat',
-        '使用说明.txt', '使用说明.en.txt', 'smoke-native.cjs'
+        '使用说明.txt', '使用说明.en.txt', 'smoke-native.cjs',
+        'updater\updater.psm1', 'updater\release-payload.ps1'
     )
 }
 
@@ -74,9 +78,143 @@ function Write-JsonAtomic {
     }
 }
 
+function Ensure-ParentDirectory {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $parent = Split-Path -Parent $Path
+    if ($parent -and -not (Test-Path -LiteralPath $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+}
+
+function Get-ReleasePayloadPresent {
+    param([Parameter(Mandatory = $true)][string]$Root)
+    $present = @()
+    foreach ($item in $global:RELEASE_PAYLOAD) {
+        $path = Join-Path $Root $item
+        if (Test-Path -LiteralPath $path -PathType Leaf) {
+            $present += $item
+        }
+    }
+    return $present
+}
+
+function Write-ReleasePayloadState {
+    param(
+        [Parameter(Mandatory = $true)][string]$BackupDir,
+        [Parameter(Mandatory = $true)][string[]]$Present
+    )
+    Write-JsonAtomic -Path (Join-Path $BackupDir '.payload-state.json') -Data ([ordered]@{
+        schemaVersion = 1
+        files = @($Present)
+    })
+}
+
+function Get-ReleasePayloadState {
+    param([Parameter(Mandatory = $true)][string]$BackupDir)
+    $state = Read-JsonIfPresent (Join-Path $BackupDir '.payload-state.json')
+    if ($state -and $null -ne $state.files) {
+        return @($state.files | ForEach-Object { [string]$_ })
+    }
+    return @(Get-ReleasePayloadPresent -Root $BackupDir)
+}
+
+function Backup-ReleasePayload {
+    param(
+        [Parameter(Mandatory = $true)][string]$SourceRoot,
+        [Parameter(Mandatory = $true)][string]$BackupDir
+    )
+    $present = @(Get-ReleasePayloadPresent -Root $SourceRoot)
+    foreach ($item in $present) {
+        $source = Join-Path $SourceRoot $item
+        $destination = Join-Path $BackupDir $item
+        Ensure-ParentDirectory -Path $destination
+        Copy-Item -LiteralPath $source -Destination $destination -Force
+    }
+    Write-ReleasePayloadState -BackupDir $BackupDir -Present $present
+    return $present
+}
+
+function Sync-ReleasePayload {
+    param(
+        [Parameter(Mandatory = $true)][string]$SourceRoot,
+        [Parameter(Mandatory = $true)][string]$DestinationRoot
+    )
+    foreach ($item in $global:RELEASE_PAYLOAD) {
+        $source = Join-Path $SourceRoot $item
+        $destination = Join-Path $DestinationRoot $item
+        if (Test-Path -LiteralPath $source -PathType Leaf) {
+            if (Test-Path -LiteralPath $destination -PathType Container) {
+                Remove-Item -LiteralPath $destination -Recurse -Force
+            }
+            Ensure-ParentDirectory -Path $destination
+            Copy-Item -LiteralPath $source -Destination $destination -Force
+        } elseif (Test-Path -LiteralPath $destination) {
+            Remove-Item -LiteralPath $destination -Recurse -Force
+        }
+    }
+}
+
+function Restore-ReleasePayload {
+    param(
+        [Parameter(Mandatory = $true)][string]$BackupDir,
+        [Parameter(Mandatory = $true)][string]$DestinationRoot
+    )
+    $statePath = Join-Path $BackupDir '.payload-state.json'
+    if (Test-Path -LiteralPath $statePath -PathType Leaf) {
+        foreach ($item in $global:RELEASE_PAYLOAD) {
+            $destination = Join-Path $DestinationRoot $item
+            if (Test-Path -LiteralPath $destination) {
+                Remove-Item -LiteralPath $destination -Recurse -Force
+            }
+        }
+    }
+    foreach ($item in @(Get-ReleasePayloadState -BackupDir $BackupDir)) {
+        $source = Join-Path $BackupDir $item
+        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw ('Rollback backup is missing release payload file: ' + $item)
+        }
+        $destination = Join-Path $DestinationRoot $item
+        Ensure-ParentDirectory -Path $destination
+        Copy-Item -LiteralPath $source -Destination $destination -Force
+    }
+}
+
 function Normalize-Version {
     param([Parameter(Mandatory = $true)][string]$Version)
     return ($Version -replace '^v', '').Trim()
+}
+
+function Resolve-SemverCli {
+    param([string]$AppRoot = '')
+
+    $roots = @()
+    if (-not [string]::IsNullOrWhiteSpace($AppRoot)) {
+        $roots += [System.IO.Path]::GetFullPath($AppRoot)
+    }
+    $roots += [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+
+    $nodeCommand = Get-Command -Name @('node.exe', 'node') -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    $nodePath = if ($nodeCommand) { [string]$nodeCommand.Source } else { '' }
+
+    foreach ($root in @($roots | Select-Object -Unique)) {
+        $cliCandidates = @(
+            (Join-Path $root 'runtime\resources\app\src\semver-cli.cjs'),
+            (Join-Path $root 'src\semver-cli.cjs')
+        )
+        foreach ($cliPath in $cliCandidates) {
+            if (-not (Test-Path -LiteralPath $cliPath -PathType Leaf)) { continue }
+
+            $portableNode = Join-Path $root 'runtime\DeepSeek Harness.exe'
+            if (Test-Path -LiteralPath $portableNode -PathType Leaf) {
+                return [PSCustomObject]@{ executable = $portableNode; cli = $cliPath; electron = $true }
+            }
+            if (-not [string]::IsNullOrWhiteSpace($nodePath)) {
+                return [PSCustomObject]@{ executable = $nodePath; cli = $cliPath; electron = $false }
+            }
+        }
+    }
+
+    throw 'The canonical semver-cli.cjs implementation is unavailable.'
 }
 
 function Compare-Version {
@@ -86,85 +224,46 @@ function Compare-Version {
         [string]$AppRoot = ''
     )
 
-    # 1. If AppRoot provides a node/runtime with semver-cli.cjs, prefer calling it
-    if (-not [string]::IsNullOrWhiteSpace($AppRoot)) {
-        $cliPath = Join-Path $AppRoot 'runtime\resources\app\src\semver-cli.cjs'
-        $nodeExe = Join-Path $AppRoot 'runtime\DeepSeek Harness.exe'
-        if ((Test-Path -LiteralPath $cliPath) -and (Test-Path -LiteralPath $nodeExe)) {
-            try {
-                $pinfo = New-Object System.Diagnostics.ProcessStartInfo
-                $pinfo.FileName = $nodeExe
-                $pinfo.Arguments = '"' + $cliPath + '" compare "' + $Left + '" "' + $Right + '"'
-                $pinfo.EnvironmentVariables['ELECTRON_RUN_AS_NODE'] = '1'
-                $pinfo.UseShellExecute = $false
-                $pinfo.RedirectStandardOutput = $true
-                $pinfo.RedirectStandardError = $true
-                $pinfo.CreateNoWindow = $true
-                $proc = [System.Diagnostics.Process]::Start($pinfo)
-                $output = $proc.StandardOutput.ReadToEnd().Trim()
-                $proc.WaitForExit(3000)
-                if ($proc.ExitCode -eq 0 -and ($output -match '^(-1|0|1)$')) {
-                    return [int]$output
-                }
-            } catch {}
+    $invocation = Resolve-SemverCli -AppRoot $AppRoot
+    $previousElectronRunAsNode = $env:ELECTRON_RUN_AS_NODE
+    try {
+        if ($invocation.electron) { $env:ELECTRON_RUN_AS_NODE = '1' }
+        $output = @(& $invocation.executable $invocation.cli 'compare' $Left $Right 2>&1)
+        $exitCode = $LASTEXITCODE
+    } catch {
+        throw ('SemVer comparison failed: ' + $_.Exception.Message)
+    } finally {
+        if ($invocation.electron) {
+            if ($null -eq $previousElectronRunAsNode) {
+                Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
+            } else {
+                $env:ELECTRON_RUN_AS_NODE = $previousElectronRunAsNode
+            }
         }
     }
 
-    # 2. Strict SemVer 2.0.0 parsing in PowerShell
-    $semverRegex = '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$'
-    $leftNorm = Normalize-Version $Left
-    $rightNorm = Normalize-Version $Right
-
-    $leftMatch = [regex]::Match($leftNorm, $semverRegex)
-    $rightMatch = [regex]::Match($rightNorm, $semverRegex)
-
-    if (-not $leftMatch.Success) { throw "Invalid SemVer: '$Left'" }
-    if (-not $rightMatch.Success) { throw "Invalid SemVer: '$Right'" }
-
-    for ($i = 1; $i -le 3; $i++) {
-        $lNum = [int64]$leftMatch.Groups[$i].Value
-        $rNum = [int64]$rightMatch.Groups[$i].Value
-        if ($lNum -lt $rNum) { return -1 }
-        if ($lNum -gt $rNum) { return 1 }
+    $text = (($output | ForEach-Object { [string]$_ }) -join "`n").Trim()
+    if ($exitCode -ne 0) {
+        throw ('Invalid SemVer: ' + $text)
     }
-
-    $leftPre = $leftMatch.Groups[4].Value
-    $rightPre = $rightMatch.Groups[4].Value
-
-    if ($leftPre -eq $rightPre) { return 0 }
-    if ([string]::IsNullOrEmpty($leftPre)) { return 1 }
-    if ([string]::IsNullOrEmpty($rightPre)) { return -1 }
-
-    $leftFields = $leftPre.Split('.')
-    $rightFields = $rightPre.Split('.')
-    $maxCount = [Math]::Max($leftFields.Count, $rightFields.Count)
-
-    for ($i = 0; $i -lt $maxCount; $i++) {
-        if ($i -ge $leftFields.Count) { return -1 }
-        if ($i -ge $rightFields.Count) { return 1 }
-
-        $lField = $leftFields[$i]
-        $rField = $rightFields[$i]
-        if ($lField -eq $rField) { continue }
-
-        $lIsNum = $lField -match '^\d+$'
-        $rIsNum = $rField -match '^\d+$'
-
-        if ($lIsNum -and $rIsNum) {
-            $lVal = [int64]$lField
-            $rVal = [int64]$rField
-            if ($lVal -lt $rVal) { return -1 }
-            if ($lVal -gt $rVal) { return 1 }
-            continue
-        }
-        if ($lIsNum -and -not $rIsNum) { return -1 }
-        if (-not $lIsNum -and $rIsNum) { return 1 }
-
-        $cmp = [string]::CompareOrdinal($lField, $rField)
-        if ($cmp -ne 0) { return $(if ($cmp -lt 0) { -1 } else { 1 }) }
+    if ($text -notmatch '^(-1|0|1)$') {
+        throw ('Canonical semver-cli returned an invalid comparison result: ' + $text)
     }
+    return [int]$text
+}
 
-    return 0
+function Assert-ValidVersion {
+    param(
+        [Parameter(Mandatory = $true)][string]$Version,
+        [string]$AppRoot = ''
+    )
+    $normalized = Normalize-Version $Version
+    try {
+        $null = Compare-Version -Left $normalized -Right $normalized -AppRoot $AppRoot
+    } catch {
+        throw ('Invalid SemVer: ' + $Version)
+    }
+    return $normalized
 }
 
 function Get-MirrorUrls {
@@ -180,7 +279,7 @@ function Get-MirrorUrls {
 
 function Write-UpdateStatus {
     param(
-        [Parameter(Mandatory = $true)][string]$StatusFile,
+        [string]$StatusFile = '',
         [Parameter(Mandatory = $true)][string]$State,
         [Parameter(Mandatory = $true)][string]$Stage,
         [string]$Message,
@@ -280,7 +379,7 @@ function Get-RemoteRelease {
         try {
             $headers = @{ 'User-Agent' = 'DeepSeek-Harness-Portable-Updater' }
             $candidate = Invoke-RestMethod -Uri $url -Headers $headers -MaximumRedirection 5 -TimeoutSec 8
-            $version = ([string]$candidate.tag_name -replace '^v', '')
+            try { $version = Assert-ValidVersion -Version ([string]$candidate.tag_name) } catch { continue }
             $candidateAsset = @($candidate.assets | Where-Object {
                 $_.name -match ('^DeepSeek-Harness-' + [regex]::Escape($version) + '-win32-x64\.zip$')
             } | Select-Object -First 1)
@@ -307,7 +406,7 @@ function Get-RemoteRelease {
 
 function Get-RemoteReleaseByVersion {
     param([Parameter(Mandatory = $true)][string]$Version)
-    $normalizedVersion = Normalize-Version $Version
+    $normalizedVersion = Assert-ValidVersion -Version $Version
     $tag = 'v' + $normalizedVersion
     $assetName = 'DeepSeek-Harness-' + $normalizedVersion + '-win32-x64.zip'
     $zipAsset = [PSCustomObject]@{
@@ -386,10 +485,34 @@ function Test-PathSafety {
     )
 
     $fullTarget = [System.IO.Path]::GetFullPath($TargetPath)
-    $fullRoot = ([System.IO.Path]::GetFullPath($AllowedRoot)).TrimEnd('\') + '\'
-    if (-not $fullTarget.StartsWith($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $fullRoot = [System.IO.Path]::GetFullPath($AllowedRoot).TrimEnd('\')
+    $rootPrefix = $fullRoot + '\'
+    if ($fullTarget -ne $fullRoot -and -not $fullTarget.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw ('Path traversal violation: ' + $TargetPath + ' is outside ' + $AllowedRoot)
     }
+}
+
+function Test-ZipEntrySafety {
+    param(
+        [Parameter(Mandatory = $true)]$Entry,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+    $entryName = ([string]$Entry.FullName).Replace('/', '\')
+    if ([string]::IsNullOrWhiteSpace($entryName)) { return }
+    $isRooted = [System.IO.Path]::IsPathRooted($entryName)
+    $hasDrivePrefix = $entryName -match '^[A-Za-z]:'
+    $isUncPath = $entryName.StartsWith('\\')
+    $hasColon = $entryName -match ':'
+    if ($isRooted -or $hasDrivePrefix -or $isUncPath -or $hasColon) {
+        throw ('Unsafe ZIP entry path: ' + $Entry.FullName)
+    }
+    foreach ($segment in $entryName.Split('\')) {
+        if ($segment -eq '..') {
+            throw ('Unsafe ZIP entry path: ' + $Entry.FullName)
+        }
+    }
+    $target = [System.IO.Path]::GetFullPath((Join-Path $Destination $entryName))
+    Test-PathSafety -TargetPath $target -AllowedRoot $Destination
 }
 
 function Extract-ReleaseSafe {
@@ -400,6 +523,14 @@ function Extract-ReleaseSafe {
     )
 
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($ZipPath)
+    try {
+        foreach ($entry in $archive.Entries) {
+            Test-ZipEntrySafety -Entry $entry -Destination $Destination
+        }
+    } finally {
+        $archive.Dispose()
+    }
     [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $Destination)
 
     # Validate extracted files bounds
@@ -425,10 +556,15 @@ function Test-PortableLayout {
         'uninstall.cmd',
         'uninstall.ps1',
         'update.ps1',
+        'update.cmd',
         'setup-shortcuts.ps1',
+        'updater\updater.psm1',
+        'updater\release-payload.ps1',
         'runtime\DeepSeek Harness.exe',
         'runtime\resources\app\package.json',
         'runtime\resources\app\lib\packaged-bin.js',
+        'runtime\resources\app\src\semver.cjs',
+        'runtime\resources\app\src\semver-cli.cjs',
         'runtime\resources\app\node_modules\node-pty\prebuilds\win32-x64\pty.node',
         'runtime\resources\app\node_modules\@koromix\koffi-win32-x64\win32_x64\koffi.node'
     )
@@ -467,6 +603,20 @@ function Test-PortableLayout {
     }
 }
 
+function Test-ProcessPathUnderRoot {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProcessPath,
+        [Parameter(Mandatory = $true)][string]$Root
+    )
+    try {
+        $fullPath = [System.IO.Path]::GetFullPath($ProcessPath)
+        $fullRoot = [System.IO.Path]::GetFullPath($Root).TrimEnd('\')
+        return $fullPath -eq $fullRoot -or $fullPath.StartsWith($fullRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)
+    } catch {
+        return $false
+    }
+}
+
 function Stop-ProcessTree {
     param(
         [int]$EnginePid = 0,
@@ -475,32 +625,35 @@ function Stop-ProcessTree {
         [int]$TimeoutSeconds = 15
     )
 
-    if ($EnginePid -gt 0) {
-        try {
-            & taskkill.exe /PID $EnginePid /T /F | Out-Null
-        } catch {}
-    }
-    if ($ShellPid -gt 0) {
-        try {
-            & taskkill.exe /PID $ShellPid /T /F | Out-Null
-        } catch {}
+    $requestedPids = @($EnginePid, $ShellPid) | Where-Object { $_ -gt 0 } | Select-Object -Unique
+    foreach ($pidToStop in $requestedPids) {
+        try { & taskkill.exe /PID $pidToStop /T /F | Out-Null } catch {}
     }
 
-    # Stop any lingering process rooted in AppRoot
-    if (-not [string]::IsNullOrWhiteSpace($AppRoot)) {
-        $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-        while ((Get-Date) -lt $deadline) {
-            $running = @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
-                try {
-                    $_.Path -and $_.Path.StartsWith($AppRoot, [System.StringComparison]::OrdinalIgnoreCase)
-                } catch { $false }
-            })
-            if ($running.Count -eq 0) { return }
-            foreach ($p in $running) {
-                try { & taskkill.exe /PID $p.Id /T /F | Out-Null } catch {}
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ($true) {
+        $running = @()
+        foreach ($pidToCheck in $requestedPids) {
+            if (Get-Process -Id $pidToCheck -ErrorAction SilentlyContinue) {
+                $running += $pidToCheck
             }
-            Start-Sleep -Milliseconds 500
         }
+        if (-not [string]::IsNullOrWhiteSpace($AppRoot)) {
+            $running += @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
+                try {
+                    $_.Path -and (Test-ProcessPathUnderRoot -ProcessPath $_.Path -Root $AppRoot)
+                } catch { $false }
+            } | ForEach-Object { $_.Id })
+        }
+        $running = @($running | Select-Object -Unique)
+        if ($running.Count -eq 0) { return $true }
+        if ((Get-Date) -ge $deadline) {
+            throw ('Processes did not exit before the timeout: ' + ($running -join ', '))
+        }
+        foreach ($pidToStop in $running) {
+            try { & taskkill.exe /PID $pidToStop /T /F | Out-Null } catch {}
+        }
+        Start-Sleep -Milliseconds 500
     }
 }
 
@@ -516,49 +669,50 @@ function Install-ReleaseWithTransaction {
         [switch]$LaunchAfterUpdate
     )
 
+    $normalizedFromVersion = Assert-ValidVersion -Version $FromVersion -AppRoot $AppRoot
+    $normalizedTargetVersion = Assert-ValidVersion -Version $TargetVersion -AppRoot $AppRoot
+    $FromVersion = $normalizedFromVersion
+    $TargetVersion = $normalizedTargetVersion
     $transactionId = [Guid]::NewGuid().ToString('N')
     $backupsBase = Join-Path $AppRoot $BACKUPS_DIR_NAME
-    New-Item -ItemType Directory -Path $backupsBase -Force | Out-Null
-    $backupDir = Join-Path $backupsBase ($FromVersion + '-' + $transactionId)
-
+    $backupDir = Join-Path $backupsBase ($normalizedFromVersion + '-' + $transactionId)
     $transactionPath = Join-Path $AppRoot $TRANSACTION_FILE_NAME
     $runtimeDir = Join-Path $AppRoot 'runtime'
-
-    Write-UpdateStatus -StatusFile $StatusFile -State 'replacing' -Stage 'swap' -Message 'Stopping running processes and backing up existing runtime.' -From $FromVersion -Target $TargetVersion
-    Stop-ProcessTree -EnginePid $EnginePid -ShellPid $ShellPid -AppRoot $AppRoot
-
-    # 1. Create complete backup of runtime and root payload
-    New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
-    if (Test-Path -LiteralPath $runtimeDir) {
-        Move-Item -LiteralPath $runtimeDir -Destination (Join-Path $backupDir 'runtime')
-    }
-    foreach ($item in $global:RELEASE_PAYLOAD) {
-        $sourceFile = Join-Path $AppRoot $item
-        if (Test-Path -LiteralPath $sourceFile) {
-            Copy-Item -LiteralPath $sourceFile -Destination (Join-Path $backupDir $item) -Force
-        }
-    }
+    $mutationStarted = $false
+    $probeFile = ''
 
     $transactionState = [ordered]@{
         schemaVersion = 1
         transactionId = $transactionId
         fromVersion = $FromVersion
         targetVersion = $TargetVersion
-        phase = 'backed-up'
+        phase = 'preparing'
         backupPath = $backupDir
         startedAt = [DateTime]::UtcNow.ToString('o')
     }
-    Write-JsonAtomic -Path $transactionPath -Data $transactionState
 
     try {
-        # 2. Swap new runtime and copy root files
-        Move-Item -LiteralPath (Join-Path $SourceRoot 'runtime') -Destination $runtimeDir
-        foreach ($item in $global:RELEASE_PAYLOAD) {
-            $sourceFile = Join-Path $SourceRoot $item
-            if (Test-Path -LiteralPath $sourceFile) {
-                Copy-Item -LiteralPath $sourceFile -Destination (Join-Path $AppRoot $item) -Force
-            }
+        Write-UpdateStatus -StatusFile $StatusFile -State 'replacing' -Stage 'swap' -Message 'Stopping running processes and backing up existing runtime.' -From $FromVersion -Target $TargetVersion
+        Stop-ProcessTree -EnginePid $EnginePid -ShellPid $ShellPid -AppRoot $AppRoot
+
+        # Copy the old runtime instead of moving it so the rollback slot stays
+        # complete even if the replacement is interrupted.
+        New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
+        if (Test-Path -LiteralPath $runtimeDir -PathType Container) {
+            Copy-Item -LiteralPath $runtimeDir -Destination (Join-Path $backupDir 'runtime') -Recurse -Force
         }
+        $presentPayload = @(Backup-ReleasePayload -SourceRoot $AppRoot -BackupDir $backupDir)
+        $transactionState['payloadFiles'] = $presentPayload
+        $transactionState.phase = 'backed-up'
+        Write-JsonAtomic -Path $transactionPath -Data $transactionState
+        $mutationStarted = $true
+
+        # Swap the runtime and synchronise every release-owned root file.
+        if (Test-Path -LiteralPath $runtimeDir) {
+            Remove-Item -LiteralPath $runtimeDir -Recurse -Force
+        }
+        Move-Item -LiteralPath (Join-Path $SourceRoot 'runtime') -Destination $runtimeDir
+        Sync-ReleasePayload -SourceRoot $SourceRoot -DestinationRoot $AppRoot
 
         # 3. Verify static layout
         Test-PortableLayout -Root $AppRoot -ExpectedDistributionVersion $TargetVersion
@@ -575,7 +729,6 @@ function Install-ReleaseWithTransaction {
                     '--update-transaction', $transactionId
                 ) -WorkingDirectory $AppRoot -WindowStyle Hidden -PassThru
 
-                # Poll probe file for up to 30s
                 $deadline = (Get-Date).AddSeconds(30)
                 $healthy = $false
                 while ((Get-Date) -lt $deadline) {
@@ -584,7 +737,14 @@ function Install-ReleaseWithTransaction {
                     }
                     if (Test-Path -LiteralPath $probeFile) {
                         $probe = Read-JsonIfPresent $probeFile
-                        if ($probe -and $probe.state -eq 'ready' -and $probe.transactionId -eq $transactionId) {
+                        $probeVersionMatches = $false
+                        if ($probe -and $probe.version) {
+                            try {
+                                $probeVersionMatches = (Compare-Version -Left ([string]$probe.version) -Right $TargetVersion -AppRoot $AppRoot) -eq 0
+                            } catch { $probeVersionMatches = $false }
+                        }
+                        $probeIsValid = $probe -and $probe.state -eq 'ready' -and $probe.transactionId -eq $transactionId -and $probeVersionMatches -and ([int]$probe.pid -eq $process.Id) -and -not [string]::IsNullOrWhiteSpace([string]$probe.harnessUrl)
+                        if ($probeIsValid) {
                             $healthy = $true
                             break
                         }
@@ -592,7 +752,7 @@ function Install-ReleaseWithTransaction {
                     Start-Sleep -Milliseconds 500
                 }
                 if (-not $healthy) {
-                    throw 'Health check probe timed out after 30 seconds.'
+                    throw 'Health check probe timed out or reported an invalid updated process.'
                 }
             } finally {
                 Remove-Item -LiteralPath $probeFile -Force -ErrorAction SilentlyContinue
@@ -613,7 +773,15 @@ function Install-ReleaseWithTransaction {
     } catch {
         $err = $_.Exception.Message
         Write-Host ('Update failed: ' + $err + '. Initiating rollback ...') -ForegroundColor Red
-        Invoke-Rollback -AppRoot $AppRoot -BackupDir $backupDir -StatusFile $StatusFile -FromVersion $FromVersion -TargetVersion $TargetVersion
+        if (-not $mutationStarted) {
+            Remove-Item -LiteralPath $backupDir -Recurse -Force -ErrorAction SilentlyContinue
+            throw
+        }
+        try {
+            Invoke-Rollback -AppRoot $AppRoot -BackupDir $backupDir -StatusFile $StatusFile -FromVersion $FromVersion -TargetVersion $TargetVersion
+        } catch {
+            throw ('Update failed and automatic rollback failed: ' + $_.Exception.Message)
+        }
         throw
     }
 }
@@ -640,22 +808,17 @@ function Invoke-Rollback {
     }
 
     Test-PathSafety -TargetPath $BackupDir -AllowedRoot $AppRoot
+    if (-not (Test-Path -LiteralPath (Join-Path $BackupDir 'runtime') -PathType Container)) {
+        throw 'Rollback backup is missing the runtime directory.'
+    }
     Stop-ProcessTree -AppRoot $AppRoot
 
     $runtimeDir = Join-Path $AppRoot 'runtime'
     if (Test-Path -LiteralPath $runtimeDir) {
-        Remove-Item -LiteralPath $runtimeDir -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $runtimeDir -Recurse -Force
     }
-    if (Test-Path -LiteralPath (Join-Path $BackupDir 'runtime')) {
-        Move-Item -LiteralPath (Join-Path $BackupDir 'runtime') -Destination $runtimeDir
-    }
-
-    foreach ($item in $global:RELEASE_PAYLOAD) {
-        $bakFile = Join-Path $BackupDir $item
-        if (Test-Path -LiteralPath $bakFile) {
-            Copy-Item -LiteralPath $bakFile -Destination (Join-Path $AppRoot $item) -Force
-        }
-    }
+    Copy-Item -LiteralPath (Join-Path $BackupDir 'runtime') -Destination $runtimeDir -Recurse -Force
+    Restore-ReleasePayload -BackupDir $BackupDir -DestinationRoot $AppRoot
 
     $transactionPath = Join-Path $AppRoot $TRANSACTION_FILE_NAME
     $transactionState = [ordered]@{
@@ -669,6 +832,22 @@ function Invoke-Rollback {
         Write-UpdateStatus -StatusFile $StatusFile -State 'failed' -Stage 'rollback' -Message 'Rolled back to previous version.' -From $FromVersion -Target $TargetVersion
     }
     Write-Host 'Rollback complete: previous version runtime and manifests restored.' -ForegroundColor Green
+}
+
+function Recover-PendingTransaction {
+    param(
+        [Parameter(Mandatory = $true)][string]$AppRoot,
+        [string]$StatusFile = ''
+    )
+    $transactionPath = Join-Path $AppRoot $TRANSACTION_FILE_NAME
+    $state = Read-JsonIfPresent $transactionPath
+    if (-not $state -or $state.phase -in @('committed', 'rolled-back')) { return }
+    $backupPath = [string]$state.backupPath
+    if ([string]::IsNullOrWhiteSpace($backupPath) -or -not (Test-Path -LiteralPath $backupPath -PathType Container)) {
+        throw 'An incomplete update transaction has no usable rollback backup.'
+    }
+    Write-Host 'Recovering an incomplete update transaction before continuing ...' -ForegroundColor Yellow
+    Invoke-Rollback -AppRoot $AppRoot -BackupDir $backupPath -StatusFile $StatusFile -From ([string]$state.fromVersion) -TargetVersion ([string]$state.targetVersion)
 }
 
 function Invoke-Updater {
@@ -694,6 +873,8 @@ function Invoke-Updater {
     if ([string]::IsNullOrWhiteSpace($StatusFile) -and $env:APPDATA) {
         $StatusFile = Join-Path $env:APPDATA 'DeepSeek Harness\update-status.json'
     }
+
+    Recover-PendingTransaction -AppRoot $APP_ROOT -StatusFile $StatusFile
 
     if ($Rollback) {
         Write-Banner
@@ -808,4 +989,5 @@ Export-ModuleMember -Function `
     Extract-ReleaseSafe, `
     Install-ReleaseWithTransaction, `
     Invoke-Rollback, `
+    Recover-PendingTransaction, `
     Invoke-Updater

@@ -34,6 +34,19 @@ test('readConfigStore returns defaults when no file exists', () => {
   }
 })
 
+test('readConfigStore persists a v0-to-v1 schema upgrade', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-cfg-'))
+  try {
+    const configPath = join(dir, 'config.json')
+    writeFileSync(configPath, JSON.stringify({ workspace: 'C:\\legacy' }), 'utf8')
+    const config = readConfigStore(configPath)
+    assert.equal(config.schemaVersion, CURRENT_SCHEMA_VERSION)
+    assert.equal(JSON.parse(readFileSync(configPath, 'utf8')).schemaVersion, CURRENT_SCHEMA_VERSION)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('updateConfigStore atomically writes configuration and creates backup', () => {
   const dir = mkdtempSync(join(tmpdir(), 'dsh-cfg-'))
   try {
@@ -78,6 +91,8 @@ test('readConfigStore recovers from .bak and preserves corrupt file when config.
     const corruptFile = files.find(f => f.startsWith('config.json.corrupt-'))
     assert.ok(corruptFile, 'Corrupted config file should be preserved')
     assert.equal(readFileSync(join(dir, corruptFile), 'utf8'), '{ invalid json corrupted truncation...')
+    const restoredBackup = JSON.parse(readFileSync(bakPath, 'utf8'))
+    assert.equal(restoredBackup.workspace, 'C:\\saved-good', 'Known-good backup must remain intact after recovery')
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

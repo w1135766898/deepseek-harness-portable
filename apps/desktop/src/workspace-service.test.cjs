@@ -52,13 +52,19 @@ test('migrateLegacySessions merges non-conflicting files when target sessions ex
     mkdirSync(targetSessions, { recursive: true })
     writeFileSync(join(targetSessions, 'conflict.json'), '{"version":"target"}', 'utf8')
 
-    const result = migrateLegacySessions({ targetHome, legacyUserDataPath: userData })
+    const logs = []
+    const result = migrateLegacySessions({
+      targetHome,
+      legacyUserDataPath: userData,
+      logger: { info: message => logs.push(message) },
+    })
     assert.equal(result, true)
 
     // Legacy file copied
     assert.equal(existsSync(join(targetSessions, 'legacy-only.json')), true)
     // Conflict preserved target version
     assert.equal(readFileSync(join(targetSessions, 'conflict.json'), 'utf8'), '{"version":"target"}')
+    assert.equal(logs.length, 1)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
@@ -78,6 +84,24 @@ test('migrateLegacySessions is idempotent and respects marker file', () => {
 
     // Second run should return false (already migrated)
     assert.equal(migrateLegacySessions({ targetHome, legacyUserDataPath: userData }), false)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('migrateLegacySessions does not seal migration before the legacy source exists', () => {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-test-mig-'))
+  try {
+    const userData = join(root, 'userData')
+    const targetHome = join(root, 'targetHome')
+    assert.equal(migrateLegacySessions({ targetHome, legacyUserDataPath: userData }), false)
+    assert.equal(existsSync(join(targetHome, MIGRATION_MARKER)), false)
+
+    const legacySessions = join(userData, 'dsh', 'sessions')
+    mkdirSync(legacySessions, { recursive: true })
+    writeFileSync(join(legacySessions, 'session-late.json'), '{"late":true}', 'utf8')
+    assert.equal(migrateLegacySessions({ targetHome, legacyUserDataPath: userData }), true)
+    assert.equal(existsSync(join(targetHome, 'sessions', 'session-late.json')), true)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

@@ -1,6 +1,18 @@
 const { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme, screen, session, shell, Tray } = require('electron')
 const { spawn } = require('node:child_process')
-const { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } = require('node:fs')
+const {
+  closeSync,
+  existsSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} = require('node:fs')
 const { homedir } = require('node:os')
 const { basename, join, resolve } = require('node:path')
 const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
@@ -16,6 +28,7 @@ const {
   fetchJson,
   fetchText,
   hashFile,
+  isValidSemver,
   mirrorUrls,
   normalizeSha256,
   parseSha256Sums,
@@ -509,8 +522,24 @@ function appendOutput(current, chunk) {
   return output.length > 32_768 ? output.slice(-32_768) : output
 }
 
+function writeAtomicTextFile(filePath, content) {
+  const temporaryPath = `${filePath}.${process.pid}.${Date.now()}.tmp`
+  const fd = openSync(temporaryPath, 'w')
+  try {
+    writeFileSync(fd, content, 'utf8')
+    fsyncSync(fd)
+  } finally {
+    closeSync(fd)
+  }
+  try {
+    renameSync(temporaryPath, filePath)
+  } finally {
+    try { unlinkSync(temporaryPath) } catch {}
+  }
+}
+
 function stopHarness() {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     stopHarnessHealthMonitor()
     harnessUrl = undefined
     if (harness === undefined) {
@@ -519,7 +548,15 @@ function stopHarness() {
     }
     const child = harness
     harness = undefined
-    terminateProcessTree(child.pid, { timeoutMs: STOP_TIMEOUT_MS, logger: console }).then(resolve)
+    terminateProcessTree(child.pid, { timeoutMs: STOP_TIMEOUT_MS, logger: console }).then(stopped => {
+      if (!stopped) {
+        const error = new Error(`Harness process tree did not exit within ${STOP_TIMEOUT_MS}ms (pid ${child.pid}).`)
+        console.error(error.message)
+        reject(error)
+        return
+      }
+      resolve()
+    }, reject)
   })
 }
 
@@ -577,13 +614,15 @@ function startHarness(cwd, signal) {
       lastStartupLog = output
       reject(makeStartupError(message, output, code))
     })
+    const failAfterTermination = (message, code) => {
+      void terminateProcessTree(child.pid, { timeoutMs: STOP_TIMEOUT_MS, logger: console })
+        .finally(() => fail(message, code))
+    }
     const onAbort = () => {
-      child.kill()
-      fail('Harness startup was cancelled.', 'ABORTED')
+      failAfterTermination('Harness startup was cancelled.', 'ABORTED')
     }
     timeout = setTimeout(() => {
-      child.kill()
-      fail('Harness startup timed out.', 'TIMEOUT')
+      failAfterTermination('Harness startup timed out.', 'TIMEOUT')
     }, STARTUP_TIMEOUT_MS)
     timeout.unref()
     slowTimer = setTimeout(() => {
@@ -614,8 +653,7 @@ function startHarness(cwd, signal) {
             finish(() => resolve(url))
           },
           error => {
-            child.kill()
-            fail(`Harness host was not ready: ${error instanceof Error ? error.message : String(error)}`, 'NOT_READY')
+            failAfterTermination(`Harness host was not ready: ${error instanceof Error ? error.message : String(error)}`, 'NOT_READY')
           },
         )
       }
@@ -656,7 +694,9 @@ async function restartHarness() {
       const url = await startHarness(workspace(), controller.signal)
       if (controller.signal.aborted) throw makeStartupError('Harness startup was cancelled.', lastStartupLog, 'ABORTED')
       harnessUrl = url
-      startHarnessHealthMonitor()
+      await probeHarnessHealth(url)
+      if (controller.signal.aborted) throw makeStartupError('Harness startup was cancelled.', lastStartupLog, 'ABORTED')
+      setHarnessHealth({ state: 'connected', consecutiveFailures: 0, message: '' })
       sendSplashStatus('interface')
       if (window !== undefined && !window.isDestroyed()) {
         await window.loadURL(url)
@@ -668,10 +708,14 @@ async function restartHarness() {
         showWindow()
         await hideSplashWindow()
       }
+      startHarnessHealthMonitor({ initialState: 'connected', initialMessage: '' })
       return true
     } catch (error) {
       harnessUrl = undefined
-      if (!controller.signal.aborted) stopHarnessHealthMonitor('disconnected', errorMessage(error))
+      if (!controller.signal.aborted) {
+        stopHarnessHealthMonitor('disconnected', errorMessage(error))
+        if (harness !== undefined) await stopHarness()
+      }
       if (!controller.signal.aborted && !quitting) sendSplashState(startupStateForError(error))
       return false
     } finally {
@@ -788,9 +832,9 @@ function stopHarnessHealthMonitor(state = 'starting', message = '正在启动后
   sendHarnessHealthState()
 }
 
-function startHarnessHealthMonitor() {
+function startHarnessHealthMonitor({ initialState = 'checking', initialMessage = '正在检查后台引擎连接…' } = {}) {
   if (harnessUrl === undefined) return
-  stopHarnessHealthMonitor('checking', '正在检查后台引擎连接…')
+  stopHarnessHealthMonitor(initialState, initialMessage)
   healthTimer = setInterval(runHarnessHealthProbe, HARNESS_HEALTH_INTERVAL_MS)
   healthTimer.unref()
   runHarnessHealthProbe()
@@ -1000,7 +1044,7 @@ async function queryLatestVersion() {
   return Promise.any(channels.map(async c => {
     const data = await fetchJson(c.url)
     const version = (data.tag_name || '').replace(/^v/i, '')
-    if (!version) throw new Error('No version tag found')
+    if (!isValidSemver(version)) throw new Error(`Invalid release version: ${version || '(empty)'}`)
     const zipAsset = Array.isArray(data.assets)
       ? data.assets.find(asset => asset?.name === `DeepSeek-Harness-${version}-win32-x64.zip`)
       : undefined
@@ -1044,7 +1088,7 @@ async function queryReleaseHistory() {
           ? release.assets.find(asset => asset?.name === `DeepSeek-Harness-${String(release.tag_name || '').replace(/^v/, '')}-win32-x64.zip`)?.name
           : undefined,
       }))
-      .filter(release => release.version !== '0.0.0')
+      .filter(release => release.version !== '0.0.0' && isValidSemver(release.version))
     if (releases.length === 0) throw new Error('Release history response was empty')
     return releases
   }))
@@ -1053,6 +1097,7 @@ async function queryReleaseHistory() {
 
 function sortReleaseHistory(history) {
   return mergeReleaseHistory(history)
+    .filter(release => isValidSemver(release.version))
     .sort((left, right) => compareVersions(right.version, left.version))
     .slice(0, RELEASE_HISTORY_LIMIT)
 }
@@ -1529,6 +1574,10 @@ async function showUpdateNoticeIfNeeded() {
     markVersionSeen(current)
     return
   }
+  if (!isValidSemver(current) || !isValidSemver(lastSeen)) {
+    markVersionSeen(current)
+    return
+  }
   if (compareVersions(current, lastSeen) <= 0) return
   markVersionSeen(current)
   showInAppNotice({
@@ -1724,7 +1773,9 @@ function writeUpdateProbeIfRequested() {
   try {
     const probeIndex = process.argv.indexOf('--update-probe-file')
     const transactionIndex = process.argv.indexOf('--update-transaction')
-    if (probeIndex !== -1 && process.argv[probeIndex + 1]) {
+    if (probeIndex !== -1 && process.argv[probeIndex + 1]
+      && harnessUrl
+      && harnessHealth.state === 'connected') {
       const probePath = process.argv[probeIndex + 1]
       const transactionId = transactionIndex !== -1 ? process.argv[transactionIndex + 1] : ''
       const probePayload = {
@@ -1735,11 +1786,13 @@ function writeUpdateProbeIfRequested() {
         harnessUrl: harnessUrl || '',
         timestamp: new Date().toISOString(),
       }
-      writeFileSync(probePath, `${JSON.stringify(probePayload, null, 2)}\n`, 'utf8')
+      writeAtomicTextFile(probePath, `${JSON.stringify(probePayload, null, 2)}\n`)
+      return true
     }
   } catch (error) {
     console.warn('Failed to write update probe file:', error)
   }
+  return false
 }
 
 function menuItems() {
@@ -1858,8 +1911,8 @@ async function createApp() {
     await createSplashWindow()
     showSplashWindow()
     sendSplashStatus('engine')
-    await restartHarness()
-    writeUpdateProbeIfRequested()
+    const startupReady = await restartHarness()
+    if (startupReady) writeUpdateProbeIfRequested()
   } catch (error) {
     if (splashWindow !== undefined && !splashWindow.isDestroyed()) sendSplashState(startupStateForError(error))
     else await dialog.showMessageBox(window, {
@@ -1894,7 +1947,9 @@ if (!gotLock) {
     destroySplashWindow()
     if (harness !== undefined) {
       event.preventDefault()
-      void stopHarness().then(() => app.quit())
+      void stopHarness().then(() => app.quit()).catch(error => {
+        console.error('Failed to stop the Harness process tree during quit:', error)
+      })
     }
   })
   app.whenReady().then(createApp).catch(error => dialog.showErrorBox(APP_NAME, errorMessage(error)))

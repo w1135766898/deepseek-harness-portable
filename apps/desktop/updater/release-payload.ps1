@@ -20,5 +20,7 @@ $global:RELEASE_PAYLOAD = @(
     '一键解除拦截(自签名信任).bat',
     '使用说明.txt',
     '使用说明.en.txt',
-    'smoke-native.cjs'
+    'smoke-native.cjs',
+    'updater\updater.psm1',
+    'updater\release-payload.ps1'
 )

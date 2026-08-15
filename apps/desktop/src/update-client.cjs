@@ -22,16 +22,10 @@ const {
   isValidSemver,
   normalizeVersion,
   parseSemver,
-  tryCompareSemver,
 } = require('./semver.cjs')
 
 function compareVersions(left, right) {
-  const result = tryCompareSemver(left, right)
-  if (result !== undefined) return result
-  const normalizedLeft = normalizeVersion(left)
-  const normalizedRight = normalizeVersion(right)
-  if (normalizedLeft === normalizedRight) return 0
-  return normalizedLeft < normalizedRight ? -1 : 1
+  return compareSemver(left, right)
 }
 
 function mirrorUrls(url, prefixes = GITHUB_MIRROR_PREFIXES) {
@@ -269,6 +263,7 @@ module.exports = {
   fetchJson,
   fetchText,
   hashFile,
+  isValidSemver,
   mirrorUrls,
   normalizeSha256,
   normalizeVersion,

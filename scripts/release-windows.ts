@@ -3,11 +3,16 @@
 import { execFileSync, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
+import { createRequire } from 'node:module'
 import { readFile, rm, writeFile } from 'node:fs/promises'
 import { existsSync, readFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
+const require = createRequire(import.meta.url)
+const { isValidSemver } = require(join(root, 'apps', 'desktop', 'src', 'semver.cjs')) as {
+  isValidSemver(value: unknown): boolean
+}
 const releaseDir = join(root, 'release')
 const desktopManifest = join(root, 'apps', 'desktop', 'package.json')
 const defaultBuildRoot = join(root, 'dist-desktop', 'electron', 'DeepSeek Harness-win32-x64')
@@ -23,6 +28,32 @@ const DESKTOP_RUNTIME_SOURCE_FILES = [
   'update-path.cjs',
   'update-status.cjs',
   'window-state.cjs',
+  'workspace-service.cjs',
+  'config-store.cjs',
+  'process-tree.cjs',
+  'semver.cjs',
+  'semver-cli.cjs',
+]
+const DESKTOP_TEST_FILES = [
+  'ready-url.test.cjs',
+  'update-path.test.cjs',
+  'release-notes.test.cjs',
+  'update-status.test.cjs',
+  'update-client.test.cjs',
+  'window-state.test.cjs',
+  'workspace-service.test.cjs',
+  'config-store.test.cjs',
+  'process-tree.test.cjs',
+  'semver.test.cjs',
+]
+const DESKTOP_SYNTAX_FILES = [
+  'main.cjs',
+  'desktop-preload.cjs',
+  'ready-url.cjs',
+  'update-path.cjs',
+  'release-notes.cjs',
+  'update-status.cjs',
+  'update-client.cjs',
   'workspace-service.cjs',
   'config-store.cjs',
   'process-tree.cjs',
@@ -70,7 +101,7 @@ function readDesktopManifest(): { version?: unknown; distributionVersion?: unkno
 }
 
 function validateVersion(value: unknown, label: string): string {
-  if (typeof value !== 'string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value)) {
+  if (typeof value !== 'string' || !isValidSemver(value)) {
     throw new Error(`Invalid ${label}: ${String(value)}`)
   }
   return value
@@ -157,6 +188,24 @@ async function run(command: string, args: string[]): Promise<void> {
   })
 }
 
+async function verifyReleaseTests(): Promise<void> {
+  const desktopDir = join(root, 'apps', 'desktop')
+  console.log('Verifying desktop Node.js tests before release packaging...')
+  await run(process.execPath, [
+    '--test',
+    ...DESKTOP_TEST_FILES.map(file => join(desktopDir, 'src', file)),
+  ])
+  for (const file of DESKTOP_SYNTAX_FILES) {
+    await run(process.execPath, ['--check', join(desktopDir, 'src', file)])
+  }
+
+  const testRunner = join(root, 'apps', 'desktop', 'tests', 'Run-Tests.ps1')
+  if (existsSync(testRunner)) {
+    console.log('Verifying updater Pester tests before release packaging...')
+    await run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', testRunner])
+  }
+}
+
 async function listArchiveEntries(path: string): Promise<Set<string>> {
   return await new Promise((resolvePromise, reject) => {
     const child = spawn('tar.exe', ['-tf', path], {
@@ -185,10 +234,15 @@ async function verifyPortableArchive(zipPath: string, buildRoot: string): Promis
     'uninstall.cmd',
     'uninstall.ps1',
     'update.ps1',
+    'update.cmd',
     'setup-shortcuts.ps1',
+    'updater/updater.psm1',
+    'updater/release-payload.ps1',
     'runtime/DeepSeek Harness.exe',
     'runtime/resources/app/package.json',
     'runtime/resources/app/lib/packaged-bin.js',
+    'runtime/resources/app/src/semver.cjs',
+    'runtime/resources/app/src/semver-cli.cjs',
   ]
   const missing = required.filter(relative => !entries.has(`${prefix}${relative}`))
   if (missing.length > 0) {
@@ -273,12 +327,9 @@ async function main(): Promise<void> {
   const zipPath = join(releaseDir, zipName)
   await rm(zipPath, { force: true })
 
+  await verifyReleaseTests()
+
   if (!options.input && !options.skipBuild) {
-    const testRunner = join(root, 'apps', 'desktop', 'tests', 'Run-Tests.ps1')
-    if (existsSync(testRunner)) {
-      console.log('Verifying updater tests before release packaging...')
-      await run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', testRunner])
-    }
     const buildArgs = ['exec', 'tsx', 'scripts/build-desktop-web-exe.ts', '--electron']
     if (options.pruneSources) buildArgs.push('--prune-sources')
     await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', buildArgs)

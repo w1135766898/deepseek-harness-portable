@@ -44,7 +44,7 @@ test('terminateProcessTree terminates child and its grandchildren', async () => 
   assert.equal(isProcessAlive(subPid), true)
 
   // Terminate root child process tree
-  await terminateProcessTree(childPid, { timeoutMs: 3000 })
+  assert.equal(await terminateProcessTree(childPid, { timeoutMs: 3000 }), true)
 
   // Allow a short moment for OS cleanup
   await new Promise(r => setTimeout(r, 300))

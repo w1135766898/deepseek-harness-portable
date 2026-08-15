@@ -27,4 +27,20 @@ Describe "Path safety and Zip Slip prevention" {
         $otherDrive = "C:\Windows\System32\cmd.exe"
         { Test-PathSafety -TargetPath $otherDrive -AllowedRoot $script:tempDir } | Should Throw "Path traversal violation"
     }
+
+    It "rejects a malicious ZIP before extracting any entry" {
+        $zipPath = Join-Path $script:tempDir 'malicious.zip'
+        $extractPath = Join-Path $script:tempDir 'extract'
+        $archive = [System.IO.Compression.ZipFile]::Open($zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
+        try {
+            $entry = $archive.CreateEntry('..\escape.txt')
+            $writer = New-Object System.IO.StreamWriter($entry.Open())
+            try { $writer.Write('escape') } finally { $writer.Dispose() }
+        } finally {
+            $archive.Dispose()
+        }
+
+        { Extract-ReleaseSafe -ZipPath $zipPath -Destination $extractPath -ExpectedDistributionVersion '1.0.0' } | Should Throw 'Unsafe ZIP entry path'
+        (Test-Path -LiteralPath (Join-Path $script:tempDir 'escape.txt')) | Should Be $false
+    }
 }

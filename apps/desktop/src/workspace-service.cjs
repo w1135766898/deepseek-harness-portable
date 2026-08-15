@@ -27,10 +27,9 @@ function migrateLegacySessions({ targetHome, legacyUserDataPath, logger = consol
 
     const legacySessions = join(legacyDsh, 'sessions')
     if (!existsSync(legacySessions)) {
-      try {
-        mkdirSync(normalizedTarget, { recursive: true })
-        writeFileSync(markerFile, `${new Date().toISOString()}\n`, 'utf8')
-      } catch {}
+      // Do not mark migration complete while the legacy source is absent. A
+      // pre-existing user-data directory may create sessions later, and the
+      // next startup must still have a chance to migrate them.
       return false
     }
 
@@ -50,6 +49,8 @@ function migrateLegacySessions({ targetHome, legacyUserDataPath, logger = consol
           if (typeof cpSync === 'function') {
             cpSync(srcPath, dstPath, { recursive: true })
           }
+        } else if (logger && typeof logger.info === 'function') {
+          logger.info(`Skipped legacy session because the target already exists: ${dstPath}`)
         }
       }
     }

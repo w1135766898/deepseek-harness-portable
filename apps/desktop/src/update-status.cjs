@@ -92,7 +92,11 @@ function isSupersededByCurrentVersion(status, currentVersion, compareVersions) {
   if (!normalized || normalized.state === 'completed') return false
   if (normalized.targetVersion === '' || typeof currentVersion !== 'string' || currentVersion.trim() === '') return false
   if (typeof compareVersions !== 'function') return false
-  return compareVersions(currentVersion.trim(), normalized.targetVersion) >= 0
+  try {
+    return compareVersions(currentVersion.trim(), normalized.targetVersion) >= 0
+  } catch {
+    return false
+  }
 }
 
 function updateStatusKey(status) {

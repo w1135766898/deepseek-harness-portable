@@ -16,6 +16,11 @@ test('compares stable and prerelease versions according to SemVer precedence', (
   assert.equal(compareVersions('1.0.0+build.1', '1.0.0+build.2'), 0)
 })
 
+test('rejects invalid versions instead of falling back to lexical ordering', () => {
+  assert.throws(() => compareVersions('1.0.0-01', '1.0.0'), /Invalid SemVer/)
+  assert.throws(() => compareVersions('1.0.0', 'bad'), /Invalid SemVer/)
+})
+
 test('builds unique direct and mirror URLs', () => {
   assert.deepEqual(mirrorUrls('https://example.test/release.zip', ['', 'https://mirror.test/']), [
     'https://example.test/release.zip',
