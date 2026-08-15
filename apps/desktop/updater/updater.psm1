@@ -469,6 +469,43 @@ function Verify-LocalPackage {
     }
 }
 
+function Find-CachedUpdatePackage {
+    param(
+        [Parameter(Mandatory = $true)][string]$TargetVersion,
+        [Parameter(Mandatory = $true)][string]$ExpectedDigest
+    )
+
+    # Look for a ZIP the desktop shell already downloaded into
+    # %TEMP%\deepseek-harness-updates (e.g. left behind by a failed in-app
+    # restart flow). Only a package whose SHA-256 matches the published digest
+    # for the target release is reused, so a tampered or partial download can
+    # never be applied.
+    if ([string]::IsNullOrWhiteSpace($env:TEMP)) { return '' }
+    $tempRoot = [System.IO.Path]::GetFullPath($env:TEMP).TrimEnd('\') + '\'
+    $updateDir = Join-Path $tempRoot 'deepseek-harness-updates'
+    if (-not (Test-Path -LiteralPath $updateDir -PathType Container)) { return '' }
+
+    $expected = ($ExpectedDigest -replace '^sha256:', '').Trim().ToUpperInvariant()
+    if ($expected -notmatch '^[0-9A-F]{64}$') { return '' }
+
+    $pattern = '^DeepSeek-Harness-' + [regex]::Escape($TargetVersion) + '-\d+\.zip$'
+    $candidates = @(
+        Get-ChildItem -LiteralPath $updateDir -Filter 'DeepSeek-Harness-*.zip' -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match $pattern } |
+            Sort-Object LastWriteTime -Descending
+    )
+    foreach ($candidate in $candidates) {
+        try {
+            $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $candidate.FullName).Hash.ToUpperInvariant()
+            if ($actual -eq $expected) {
+                Write-Host ('  -> Reusing previously downloaded update package: ' + $candidate.Name) -ForegroundColor Green
+                return $candidate.FullName
+            }
+        } catch {}
+    }
+    return ''
+}
+
 function Download-And-Verify {
     param(
         [Parameter(Mandatory = $true)]$Release,
@@ -649,11 +686,16 @@ function Stop-ProcessTree {
         [int]$TimeoutSeconds = 15
     )
 
-    $requestedPids = @($EnginePid, $ShellPid) | Where-Object { $_ -gt 0 } | Select-Object -Unique
-    foreach ($pidToStop in $requestedPids) {
-        try { & taskkill.exe /PID $pidToStop /T /F | Out-Null } catch {}
+    if ($EnginePid -gt 0 -and $EnginePid -ne $PID) {
+        try { & taskkill.exe /PID $EnginePid /T /F | Out-Null } catch {}
+    }
+    if ($ShellPid -gt 0 -and $ShellPid -ne $PID) {
+        # Do NOT use /T on ShellPid: the updater PowerShell process was spawned by the
+        # desktop shell, so taskkill /T on ShellPid would kill the updater itself.
+        try { & taskkill.exe /PID $ShellPid /F | Out-Null } catch {}
     }
 
+    $requestedPids = @($EnginePid, $ShellPid) | Where-Object { $_ -gt 0 -and $_ -ne $PID } | Select-Object -Unique
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     while ($true) {
         $running = @()
@@ -665,17 +707,21 @@ function Stop-ProcessTree {
         if (-not [string]::IsNullOrWhiteSpace($AppRoot)) {
             $running += @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
                 try {
-                    $_.Path -and (Test-ProcessPathUnderRoot -ProcessPath $_.Path -Root $AppRoot)
+                    $_.Id -ne $PID -and $_.Path -and (Test-ProcessPathUnderRoot -ProcessPath $_.Path -Root $AppRoot)
                 } catch { $false }
             } | ForEach-Object { $_.Id })
         }
-        $running = @($running | Select-Object -Unique)
+        $running = @($running | Where-Object { $_ -ne $PID } | Select-Object -Unique)
         if ($running.Count -eq 0) { return $true }
         if ((Get-Date) -ge $deadline) {
             throw ('Processes did not exit before the timeout: ' + ($running -join ', '))
         }
         foreach ($pidToStop in $running) {
-            try { & taskkill.exe /PID $pidToStop /T /F | Out-Null } catch {}
+            if ($pidToStop -eq $ShellPid) {
+                try { & taskkill.exe /PID $pidToStop /F | Out-Null } catch {}
+            } else {
+                try { & taskkill.exe /PID $pidToStop /T /F | Out-Null } catch {}
+            }
         }
         Start-Sleep -Milliseconds 500
     }
@@ -751,7 +797,7 @@ function Install-ReleaseWithTransaction {
                 $process = Start-Process -FilePath $desktopExe -ArgumentList @(
                     '--update-probe-file', $probeFile,
                     '--update-transaction', $transactionId
-                ) -WorkingDirectory $AppRoot -WindowStyle Hidden -PassThru
+                ) -WorkingDirectory $AppRoot -PassThru
 
                 $deadline = (Get-Date).AddSeconds($UPDATE_PROBE_TIMEOUT_SECONDS)
                 $healthy = $false
@@ -979,6 +1025,21 @@ function Invoke-Updater {
             return
         }
 
+        # Reuse a package the desktop shell already downloaded and verified
+        # (e.g. left in %TEMP%\deepseek-harness-updates by a failed in-app
+        # restart), so a console update after a failed in-app flow does not
+        # re-download the same ZIP. The digest check makes reuse safe.
+        if (-not $usingPreparedPackage) {
+            $cachedPackage = Find-CachedUpdatePackage -TargetVersion $release.version -ExpectedDigest $release.sha256
+            if (-not [string]::IsNullOrWhiteSpace($cachedPackage)) {
+                $PackagePath = $cachedPackage
+                $ExpectedSha256 = $release.sha256
+                $usingPreparedPackage = $true
+                Write-UpdateStatus -StatusFile $StatusFile -State 'verifying' -Stage 'verify' -Message 'Verifying the previously downloaded update package.' -From $FromVersion -Target $TargetVersion
+                Verify-LocalPackage -Path $PackagePath -ExpectedDigest $ExpectedSha256
+            }
+        }
+
         $zipPath = if ($usingPreparedPackage) {
             [System.IO.Path]::GetFullPath($PackagePath)
         } else {
@@ -1027,6 +1088,7 @@ Export-ModuleMember -Function `
     Get-RemoteRelease, `
     Get-RemoteReleaseByVersion, `
     Verify-LocalPackage, `
+    Find-CachedUpdatePackage, `
     Download-And-Verify, `
     Test-PathSafety, `
     Test-PortableLayout, `
