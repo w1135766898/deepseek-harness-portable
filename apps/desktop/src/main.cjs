@@ -2270,6 +2270,10 @@ if (!gotLock) {
       event.preventDefault()
       void stopHarness().then(() => app.quit()).catch(error => {
         console.error('Failed to stop the Harness process tree during quit:', error)
+        // Do not leave a hidden, tray-resident shell running after the user
+        // asked to quit. The engine may survive briefly as an orphan, but the
+        // shell itself must exit.
+        app.exit(1)
       })
     }
   })
