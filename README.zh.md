@@ -10,6 +10,7 @@ DeepSeek Harness for Win 是 [DeepSeek Harness](https://github.com/deepseek-ai/d
 
 ## 目录
 
+- [为什么选择我们？（Why Us）](#为什么选择我们why-us)
 - [快速开始](#快速开始)
 - [功能特性](#功能特性)
 - [最新发布](#最新发布)
@@ -21,6 +22,27 @@ DeepSeek Harness for Win 是 [DeepSeek Harness](https://github.com/deepseek-ai/d
 - [构建与发布](#构建与发布)
 - [安全与限制](#安全与限制)
 - [许可证](#许可证)
+
+## 为什么选择我们？（Why Us）
+
+DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 主要面向 Linux/macOS 命令行与容器环境。Windows 用户直接使用时常面临终端兼容性、工具调用分歧与繁琐的环境配置。**DeepSeek Harness for Win** 为 Windows 平台量身打造，在保持 100% 原生微内核纯净的同时提供开箱即用的卓越桌面与 Agent 体验：
+
+1. **原生 WSL 深度融合与 "We need / Let's" 思维链复现**：
+   - **强化学习环境对齐**：DeepSeek 官方模型（如 DeepSeek-R1、DeepSeek-V3 Agent 循环）的强化学习（RL）训练基于标准 Linux Bash 环境，模型形成了鲜明的链式规划与分步推理模式（标志性的 *"We need to...", "Let's check...", "Let's run..."* 思考链）。
+   - **规避 Windows PowerShell 差异**：在 Windows 原生环境下，PowerShell 的语法规则、路径反斜杠（`\`）、参数格式及别名机制容易打破模型的 Token 概率分布，导致指令幻觉、语法报错或思维链中断。
+   - **深度桥接方案**：本项目通过 WSL 原生 Linux Bash 桥接、Win32 终端检查器桩与 `danger-full-access` 隔离沙箱策略，在 Windows 上完整运行官方极简预设（Minimal Preset），完美复现 DeepSeek 原生 "We need / Let's" 链式推理（CoT）与工具执行流。
+2. **开箱即用便携桌面版**：
+   - 内置独立 Node.js 与 Electron 桌面外壳，免装 Node/pnpm 等开发环境，双击即开即用。
+   - 用户数据严格隔离于 `%USERPROFILE%\.dsh`（`$DSH_HOME`），支持便携目录整体移动或放入 U 盘随身携带。
+   - 深度适配 Windows 11 Mica 质感、原生标题栏、侧边栏 Logo 融合菜单、系统深浅色同步与分阶段启动过渡。
+3. **视觉辅助多模态外挂（`@dsh-portable/vision-bridge`）**：
+   - 为纯文本大模型（如 DeepSeek-V3 / R1）接入外部 OpenAI 兼容的视觉大模型（GPT-4o、Qwen-VL、GLM-4V、本地 Ollama 等），赋予模型看图、UI分析与图表识别能力。
+   - 全局 `view_image` 工具无缝集成至官方【设置 → 插件】槽位，支持服务商预设一键切换、即时测试与 API Key 纯写脱敏保护。
+4. **无感极速原子化更新**：
+   - 引入运行时后台预解压（Staging）机制，在软件运行期间透明完成下载、SHA-256 完整性校验与解压布局检查。
+   - 重启替换耗时仅 1~2 秒，配备完善的事务备份与异常自动回滚保障。
+5. **零侵入微内核架构**：
+   - 所有 Windows 适配与功能插件均通过 Cordis 微内核插件机制与运行时 Overlay 动态挂载，保持 upstream `vendor/deepseek-harness` 100% 原生纯净，无缝跟随官方上游迭代。
 
 ## 快速开始
 
@@ -40,8 +62,8 @@ DeepSeek Harness for Win 是 [DeepSeek Harness](https://github.com/deepseek-ai/d
 
 | 项目 | 版本 |
 | --- | --- |
-| 发布 | DeepSeek Harness for Win **v1.2.2**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.2.2)) |
-| 分发版本 | 1.2.2 |
+| 发布 | DeepSeek Harness for Win **v1.2.3**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.2.3)) |
+| 分发版本 | 1.2.3 |
 | 桌面外壳 | 0.1.0-shell.2 |
 | 内核 | 0.1.0-rc.5 |
 
@@ -147,7 +169,7 @@ Smart App Control 可能直接阻止未签名的应用。如果设备已启用�
 - 不要把 API key 放入仓库或发布目录。
 - 如果组织要求可信可执行文件，请使用受认可的 CA、Microsoft Artifact Signing 或企业代码签名策略。
 
-参考 [Smart App Control](https://learn.microsoft.com/en-us/windows/apps/develop/smart-app-control/overview) 和 [SmartScreen reputation guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation)。
+参考 [Smart App Control](https://learn.microsoft.com/en-us/windows/apps/develop/smart-app-control/overview) 和 [SmartScreen reputation guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation).
 
 ## 许可证
 

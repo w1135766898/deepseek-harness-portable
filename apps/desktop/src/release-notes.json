@@ -1,6 +1,6 @@
 {
-  "version": "1.2.2",
-  "name": "DeepSeek Harness for Win v1.2.2",
+  "version": "1.2.3",
+  "name": "DeepSeek Harness for Win v1.2.3",
   "publishedAt": "2026-08-16",
   "sections": [
     {
@@ -8,22 +8,46 @@
       "titleEn": "New Features & Improvements",
       "titleZh": "新功能与体验优化",
       "itemsEn": [
-        "Added Vision Bridge plugin (@dsh-portable/vision-bridge): equips text-only models with multimodal visual inspection capabilities via OpenAI-compatible vision models (GPT-4o, Qwen-VL, GLM-4V, local Ollama, etc.).",
-        "Introduced the global 'view_image' tool: automatically inspects PNG, JPEG, WebP, and GIF images, resolves workspace paths against session cwd, enforces file bounds, and securely streams base64 Data URLs.",
-        "Seamless Settings integration: mounts a dedicated Vision card into the official Settings → Plugins tab with live provider presets, configuration validation, and write-only API key protection.",
-        "Zero-modification vendor isolation: cleanly wired through Cordis microkernel plugin slots and profile overlays without altering any upstream vendor/ code."
+        "Native WSL environment bridge & RL Chain-of-Thought reproduction: seamlessly reproduces DeepSeek's native 'We need / Let's' step-by-step reasoning CoT on Windows by executing the official Minimal Preset in genuine Linux Bash.",
+        "Vision Bridge API proxy integration: dynamically exposes the vision configuration schema to the Host Web UI apiProxy, enabling seamless provider management and inspection directly in Settings.",
+        "Desktop UI interaction optimization: refined menu accordion expand animations, enhanced intuitive wording, polished SVG icons, and verified monolingual in-app release notes viewer.",
+        "Documentation & 'Why Us' value proposition: added comprehensive comparisons detailing how the Windows distribution overcomes PowerShell token divergence and terminal friction."
       ],
       "itemsZh": [
-        "新增视觉辅助外挂插件（@dsh-portable/vision-bridge）：为文本模型接入外部 OpenAI 兼容的视觉大模型（如 GPT-4o、Qwen-VL、GLM-4V、本地 Ollama 等），赋予模型看图与识图能力。",
-        "引入全局 view_image 工具：支持 PNG、JPEG、WebP 与 GIF 图片文件，根据当前会话 cwd 智能解析相对路径，自动进行大小校验与 Base64 编码，并严格遵循防凭证重定向外泄的安全规范。",
-        "无缝融入官方设置中心：在【设置 → 插件】页面官方槽位注册专属配置卡片，支持服务商预设一键切换、即时配置验证与持久化保存，API Key 采用纯写模式与 Secret 级别安全脱敏保护。",
-        "零侵入架构设计：全部通过 Cordis 微内核插件机制与运行时 Overlay 动态装配，保持 upstream vendor/deepseek-harness 100% 原生纯净。"
+        "强化 WSL 原生环境桥接与强化学习思维链复现：在 Windows 平台通过 WSL 原生 Linux Bash 完整承载官方极简模式（Minimal Preset），完美复现 DeepSeek 标志性的“We need / Let's”链式规划与分步推理思维链（CoT）。",
+        "视觉辅助外挂 API 代理层融合：动态将 vision 配置注入 Host Web UI apiProxy，实现【设置 → 插件】中视觉服务商的即时管理、参数校验与无缝调用。",
+        "桌面端交互细节与动效优化：深度优化菜单手风琴折叠展开动画、精简文案表述、升级矢量图标，并严格确保应用内更新日志单语言纯净渲染。",
+        "完善项目文档与 Why Us 核心差异说明：全面阐述 Windows 便携版本相较于官方版本在 Token 分布对齐、环境免配置与多模态扩展等方面的独特优势。"
       ]
     }
   ],
-  "bodyZh": "## 新功能与体验优化\n\n- **视觉辅助外挂插件（@dsh-portable/vision-bridge）**：为文本模型接入外部 OpenAI 兼容的视觉大模型（如 GPT-4o、Qwen-VL、GLM-4V、本地 Ollama 等），赋予模型看图与识图能力。\n- **全局 view_image 工具**：支持 PNG、JPEG、WebP 与 GIF 图片文件，根据当前会话 cwd 智能解析相对路径，自动进行大小校验与 Base64 编码，并严格遵循防凭证重定向外泄的安全规范。\n- **官方设置槽位无缝融入**：在【设置 → 插件】页面官方槽位注册专属配置卡片，支持服务商预设一键切换、即时配置验证与持久化保存，API Key 采用纯写模式与 Secret 级别安全脱敏保护。\n- **零侵入架构设计**：全部通过 Cordis 微内核插件机制与运行时 Overlay 动态装配，保持 upstream vendor/deepseek-harness 100% 原生纯净。",
-  "bodyEn": "## New Features & Improvements\n\n- **Vision Bridge plugin (@dsh-portable/vision-bridge)**: equips text-only models with multimodal visual inspection capabilities via OpenAI-compatible vision models (GPT-4o, Qwen-VL, GLM-4V, local Ollama, etc.).\n- **Global 'view_image' tool**: automatically inspects PNG, JPEG, WebP, and GIF images, resolves workspace paths against session cwd, enforces file bounds, and securely streams base64 Data URLs.\n- **Official Settings UI slot**: mounts a dedicated Vision card into the official Settings → Plugins tab with live provider presets, configuration validation, and write-only API key protection.\n- **Zero-modification architecture**: cleanly wired through Cordis microkernel plugin slots and profile overlays without altering any upstream vendor/ code.",
+  "bodyZh": "## 新功能与体验优化\n\n- **强化 WSL 原生环境桥接与强化学习思维链复现**：在 Windows 平台通过 WSL 原生 Linux Bash 完整承载官方极简模式（Minimal Preset），完美复现 DeepSeek 标志性的“We need / Let's”链式规划与分步推理思维链（CoT）。\n- **视觉辅助外挂 API 代理层融合**：动态将 vision 配置注入 Host Web UI apiProxy，实现【设置 → 插件】中视觉服务商的即时管理、参数校验与无缝调用。\n- **桌面端交互细节与动效优化**：深度优化菜单手风琴折叠展开动画、精简文案表述、升级矢量图标，并严格确保应用内更新日志单语言纯净渲染。\n- **完善项目文档与 Why Us 核心差异说明**：全面阐述 Windows 便携版本相较于官方版本在 Token 分布对齐、环境免配置与多模态扩展等方面的独特优势。",
+  "bodyEn": "## New Features & Improvements\n\n- **Native WSL environment bridge & RL Chain-of-Thought reproduction**: seamlessly reproduces DeepSeek's native 'We need / Let's' step-by-step reasoning CoT on Windows by executing the official Minimal Preset in genuine Linux Bash.\n- **Vision Bridge API proxy integration**: dynamically exposes the vision configuration schema to the Host Web UI apiProxy, enabling seamless provider management and inspection directly in Settings.\n- **Desktop UI interaction optimization**: refined menu accordion expand animations, enhanced intuitive wording, polished SVG icons, and verified monolingual in-app release notes viewer.\n- **Documentation & 'Why Us' value proposition**: added comprehensive comparisons detailing how the Windows distribution overcomes PowerShell token divergence and terminal friction.",
   "history": [
+    {
+      "version": "1.2.2",
+      "name": "DeepSeek Harness for Win v1.2.2",
+      "publishedAt": "2026-08-16",
+      "sections": [
+        {
+          "key": "features",
+          "titleEn": "New Features & Improvements",
+          "titleZh": "新功能与体验优化",
+          "itemsEn": [
+            "Added Vision Bridge plugin (@dsh-portable/vision-bridge): equips text-only models with multimodal visual inspection capabilities via OpenAI-compatible vision models (GPT-4o, Qwen-VL, GLM-4V, local Ollama, etc.).",
+            "Introduced the global 'view_image' tool: automatically inspects PNG, JPEG, WebP, and GIF images, resolves workspace paths against session cwd, enforces file bounds, and securely streams base64 Data URLs.",
+            "Seamless Settings integration: mounts a dedicated Vision card into the official Settings → Plugins tab with live provider presets, configuration validation, and write-only API key protection.",
+            "Zero-modification vendor isolation: cleanly wired through Cordis microkernel plugin slots and profile overlays without altering any upstream vendor/ code."
+          ],
+          "itemsZh": [
+            "新增视觉辅助外挂插件（@dsh-portable/vision-bridge）：为文本模型接入外部 OpenAI 兼容的视觉大模型（如 GPT-4o、Qwen-VL、GLM-4V、本地 Ollama 等），赋予模型看图与识图能力。",
+            "引入全局 view_image 工具：支持 PNG、JPEG、WebP 与 GIF 图片文件，根据当前会话 cwd 智能解析相对路径，自动进行大小校验与 Base64 编码，并严格遵循防凭证重定向外泄的安全规范。",
+            "无缝融入官方设置中心：在【设置 → 插件】页面官方槽位注册专属配置卡片，支持服务商预设一键切换、即时配置验证与持久化保存，API Key 采用纯写模式与 Secret 级别安全脱敏保护。",
+            "零侵入架构设计：全部通过 Cordis 微内核插件机制与运行时 Overlay 动态装配，保持 upstream vendor/deepseek-harness 100% 原生纯净。"
+          ]
+        }
+      ]
+    },
     {
       "version": "1.2.1",
       "name": "DeepSeek Harness for Win v1.2.1",

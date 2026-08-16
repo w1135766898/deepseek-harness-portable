@@ -10,6 +10,7 @@ DeepSeek Harness for Win is a community Windows x64 distribution of [DeepSeek Ha
 
 ## Table of contents
 
+- [Why DeepSeek Harness for Win?](#why-deepseek-harness-for-win)
 - [Quick start](#quick-start)
 - [Features](#features)
 - [Latest release](#latest-release)
@@ -21,6 +22,27 @@ DeepSeek Harness for Win is a community Windows x64 distribution of [DeepSeek Ha
 - [Build and release](#build-and-release)
 - [Security and limitations](#security-and-limitations)
 - [License](#license)
+
+## Why DeepSeek Harness for Win?
+
+Upstream [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) is engineered primarily for Linux CLI and containerized environments. Running it on Windows natively often leads to platform frictions, terminal incompatibilities, and tool-call failures. **DeepSeek Harness for Win** is built specifically for Windows to deliver an out-of-the-box native desktop experience while preserving 100% upstream architectural integrity:
+
+1. **Native WSL Linux Bash & Flawless "We need / Let's" CoT Reproduction**:
+   - **The RL Distribution Challenge**: DeepSeek's official models (DeepSeek-R1, DeepSeek-V3 Agent loops) were trained with Reinforcement Learning (RL) inside standard Linux Bash environments. The models learned structured planning behaviors and distinct step-by-step reasoning habits (the classic *"We need to...", "Let's check...", "Let's run..."* Chain-of-Thought).
+   - **Windows PowerShell Friction**: On Windows, PowerShell syntax quirks, path backslashes (`\`), parameter formatting, and shell alias behaviors alter the token distribution, frequently triggering command hallucinations, syntax errors, or broken reasoning chains.
+   - **Our Solution**: Through our deep WSL bridge, isolated `danger-full-access` sandbox policy, and Win32 ProcessInspector stub, this distribution executes the official Minimal Preset in genuine Linux Bash on Windows. This perfectly preserves the RL prompt token distribution and reproduces the model's native "We need / Let's" Chain-of-Thought (CoT) reasoning flow without execution friction.
+2. **Zero-Configuration Portable Desktop Environment**:
+   - Bundles standalone Node.js and Electron desktop shell—no manual Node/pnpm installation or build toolchains required.
+   - User data is completely isolated in `%USERPROFILE%\.dsh` (`$DSH_HOME`), making the entire directory portable and USB-drive friendly.
+   - Designed with Windows 11 Mica material, custom title bar, sidebar logo desktop menu integration, system theme sync, and smooth startup splash.
+3. **Multimodal Vision Bridge (`@dsh-portable/vision-bridge`)**:
+   - Equips text-only models with multimodal visual inspection capabilities by connecting to external OpenAI-compatible vision models (GPT-4o, Qwen-VL, GLM-4V, local Ollama, etc.).
+   - Global `view_image` tool registered directly into the official `Settings → Plugins` slot with live provider presets, connection validation, and write-only API key security protection.
+4. **Seamless In-App Atomic Updates**:
+   - Background staging download, SHA-256 integrity verification, and pre-extraction while the application remains fully usable.
+   - Near-instantaneous (1–2s) atomic swap on restart with full transactional rollback safety.
+5. **Zero-Modification Architecture**:
+   - Cleanly wired through Cordis microkernel plugin slots and profile overlays without modifying upstream `vendor/deepseek-harness` code.
 
 ## Quick start
 
@@ -40,8 +62,8 @@ DeepSeek Harness for Win is a community Windows x64 distribution of [DeepSeek Ha
 
 | Item | Version |
 | --- | --- |
-| Release | DeepSeek Harness for Win **v1.2.2** ([download](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.2.2)) |
-| Distribution | 1.2.2 |
+| Release | DeepSeek Harness for Win **v1.2.3** ([download](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.2.3)) |
+| Distribution | 1.2.3 |
 | Desktop shell | 0.1.0-shell.2 |
 | Kernel | 0.1.0-rc.5 |
 

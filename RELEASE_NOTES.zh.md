@@ -1,24 +1,24 @@
-# DeepSeek Harness for Win v1.2.2
+# DeepSeek Harness for Win v1.2.3
 
 [English](RELEASE_NOTES.md)
 
 Windows x64 便携版 · 2026-08-16
 
-这是本 Windows 分发版的 v1.2.2 版本，引入了视觉辅助外挂插件（@dsh-portable/vision-bridge），通过外部 OpenAI 兼容的视觉多模态大模型赋予文本模型看图识图能力。
+这是本 Windows 分发版的 v1.2.3 版本，强化了 WSL 原生 Linux Bash 环境桥接以完美复现 DeepSeek 官方强化学习（RL）标志性的“We need / Let's”思维链推理模式，将视觉外挂配置无缝接入 Web UI 代理，并全面优化桌面端交互体验。
 
 ## 新功能与体验优化
 
-- **视觉辅助外挂插件（`@dsh-portable/vision-bridge`）**：为纯文本大模型接入外部 OpenAI 兼容视觉模型（如 GPT-4o、Qwen-VL、GLM-4V、本地 Ollama 等），支持看图、UI分析与图表识别。
-- **全局 `view_image` 工具**：支持 PNG、JPEG、WebP 与 GIF 图片文件，根据当前会话 cwd 智能解析相对路径，自动校验大小与 Base64 编码，并严格遵循防凭证重定向外泄规范。
-- **官方设置槽位无缝融入**：在【设置 → 插件】页面官方槽位注册专属配置卡片，支持服务商预设一键切换、即时配置验证与持久化保存，API Key 采用纯写模式与 Secret 级别安全脱敏保护。
-- **零侵入架构设计**：全部通过 Cordis 微内核插件机制与运行时 Overlay 动态装配，保持 upstream `vendor/deepseek-harness` 100% 原生纯净。
+- **强化 WSL 原生环境桥接与“We need / Let's”思维链复现**：DeepSeek 官方强化学习训练基于 Linux Bash 环境。在 Windows 平台通过 WSL 原生 Linux Bash 完整承载官方极简模式（Minimal Preset），杜绝 PowerShell 语法与 Token 漂移，完美复现模型经典的“We need to... / Let's check...”分步规划与链式推理（CoT）。
+- **视觉辅助外挂 API 代理层融合**：动态将 `@dsh-portable/vision-bridge` 配置模式注入 Host Web UI `apiProxy`，支持在【设置 → 插件】中即时管理视觉服务商、测试连接并安全持久化。
+- **桌面端交互细节与动效优化**：深度优化菜单手风琴折叠展开动画、精简文案表述、升级矢量图标，并严格确保应用内更新日志单语言纯净渲染。
+- **完善项目文档与 Why Us 核心差异说明**：全面补充 Windows 便携版本相较于官方版本在 Token 分布对齐、环境免配置与多模态扩展等方面的独特价值与核心优势。
 
 ## 组件版本
 
-- 分发：1.2.2
+- 分发：1.2.3
 - 桌面外壳：0.1.0-shell.2
 - 内核：0.1.0-rc.5（@deepseek-ai/dsh-web-app）
-- 标签：v1.2.2
+- 标签：v1.2.3
 
 ## 校验和与安全
 
