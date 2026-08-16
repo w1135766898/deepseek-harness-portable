@@ -1,0 +1,74 @@
+/**
+ * Localization strings for vision-bridge client components.
+ * @module @dsh-portable/vision-bridge/client/locales
+ */
+
+export const zh = {
+  cardTitle: '视觉辅助 (Vision Bridge)',
+  cardDescription: '通过外部 OpenAI 兼容的视觉多模态大模型查看与分析图片文件',
+  enabled: '启用视觉辅助',
+  enabledHint: '开启后，模型可调用 view_image 工具查看图片',
+  provider: '服务商预设',
+  providerOpenAI: 'OpenAI 官方 (gpt-4o-mini / gpt-4o)',
+  providerOllama: '本地 Ollama (llava / minicpm-v)',
+  providerCompatible: '自定义 OpenAI 兼容接口',
+  model: '模型名称',
+  modelHint: '例如 gpt-4o-mini, qwen-vl-max, gemini-1.5-flash',
+  baseURL: '接口地址 (Base URL)',
+  baseURLHint: '兼容 OpenAI 格式的完整 API 地址',
+  apiKey: 'API 密钥',
+  apiKeyHint: '留空表示不修改或无需密钥 (如本地 Ollama)',
+  apiKeySet: '已配置 (受保护)',
+  apiKeyUnset: '未配置',
+  promptOverride: '系统提示词 (可选)',
+  promptOverrideHint: '自定义发送给视觉模型的提示词指令',
+  save: '保存配置',
+  discard: '放弃修改',
+  unsaved: '未保存',
+  overridden: '已覆盖默认值',
+  reset: '重置',
+  readOnly: '此配置当前处于只读模式',
+  saving: '正在保存...',
+  saveFailed: '保存失败，请检查网络或配置格式',
+  collapse: '折叠',
+  expand: '展开',
+}
+
+export const en = {
+  cardTitle: 'Vision Bridge',
+  cardDescription: 'Inspect and describe image files using an external OpenAI-compatible vision model',
+  enabled: 'Enable Vision Bridge',
+  enabledHint: 'Allows the model to call the view_image tool to inspect images',
+  provider: 'Provider Preset',
+  providerOpenAI: 'OpenAI Official (gpt-4o-mini / gpt-4o)',
+  providerOllama: 'Local Ollama (llava / minicpm-v)',
+  providerCompatible: 'Custom OpenAI Compatible',
+  model: 'Model Name',
+  modelHint: 'e.g. gpt-4o-mini, qwen-vl-max, gemini-1.5-flash',
+  baseURL: 'Base URL',
+  baseURLHint: 'OpenAI-compatible completions endpoint base URL',
+  apiKey: 'API Key',
+  apiKeyHint: 'Leave blank to keep unchanged or if no key required (e.g. Ollama)',
+  apiKeySet: 'Configured (Secret)',
+  apiKeyUnset: 'Not set',
+  promptOverride: 'System Prompt (Optional)',
+  promptOverrideHint: 'Custom instruction sent to the vision model',
+  save: 'Save Changes',
+  discard: 'Discard',
+  unsaved: 'Unsaved',
+  overridden: 'Overridden',
+  reset: 'Reset',
+  readOnly: 'This configuration is currently read-only',
+  saving: 'Saving...',
+  saveFailed: 'Failed to save configuration',
+  collapse: 'Collapse',
+  expand: 'Expand',
+}
+
+export type VisionLocaleKey = keyof typeof zh
+
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface LocaleNamespaceMap {
+    'vision-bridge': VisionLocaleKey
+  }
+}
