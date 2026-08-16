@@ -22,6 +22,7 @@
     "make:win": "pnpm run package:win"
   },
   "dependencies": {
+    "@dsh-portable/vision-bridge": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/cordis-plugin-group": "workspace:^",
     "@deepseek-ai/cordis-plugin-hmr": "workspace:^",

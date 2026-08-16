@@ -181,6 +181,16 @@ function composeProfile(shippedPresetRoot: string): {
       },
     })
   }
+  if (!rows.has('vision-bridge')) {
+    overlays.push({
+      insert: [
+        {
+          id: 'vision-bridge',
+          name: '@dsh-portable/vision-bridge',
+        },
+      ],
+    })
+  }
   const telemetryPatch = resolveTelemetryPatch(process.env.DSH_TELEMETRY_DISABLED, rows.has(TELEMETRY_ROW_ID))
   if (telemetryPatch !== undefined) overlays.push(telemetryPatch)
   return { profile, bundlePatches, homePatches, overlays }
