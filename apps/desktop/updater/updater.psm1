@@ -103,7 +103,7 @@ function Get-ReleasePayloadPresent {
 function Write-ReleasePayloadState {
     param(
         [Parameter(Mandatory = $true)][string]$BackupDir,
-        [Parameter(Mandatory = $true)][string[]]$Present
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$Present
     )
     Write-JsonAtomic -Path (Join-Path $BackupDir '.payload-state.json') -Data ([ordered]@{
         schemaVersion = 1
@@ -625,6 +625,7 @@ function Test-PortableLayout {
         'runtime\DeepSeek Harness.exe',
         'runtime\resources\app\package.json',
         'runtime\resources\app\lib\packaged-bin.js',
+        'runtime\resources\app\src\update-transaction.cjs',
         'runtime\resources\app\src\semver.cjs',
         'runtime\resources\app\src\semver-cli.cjs',
         'runtime\resources\app\node_modules\node-pty\prebuilds\win32-x64\pty.node',
@@ -684,16 +685,16 @@ function Stop-ProcessTree {
         [int]$EnginePid = 0,
         [int]$ShellPid = 0,
         [string]$AppRoot = '',
-        [int]$TimeoutSeconds = 15
+        [int]$TimeoutSeconds = 30
     )
 
     if ($EnginePid -gt 0 -and $EnginePid -ne $PID) {
-        try { & taskkill.exe /PID $EnginePid /T /F | Out-Null } catch {}
+        try { & taskkill.exe /PID $EnginePid /T /F 2>$null | Out-Null } catch {}
     }
     if ($ShellPid -gt 0 -and $ShellPid -ne $PID) {
         # Do NOT use /T on ShellPid: the updater PowerShell process was spawned by the
         # desktop shell, so taskkill /T on ShellPid would kill the updater itself.
-        try { & taskkill.exe /PID $ShellPid /F | Out-Null } catch {}
+        try { & taskkill.exe /PID $ShellPid /F 2>$null | Out-Null } catch {}
     }
 
     $requestedPids = @($EnginePid, $ShellPid) | Where-Object { $_ -gt 0 -and $_ -ne $PID } | Select-Object -Unique
@@ -713,15 +714,15 @@ function Stop-ProcessTree {
             } | ForEach-Object { $_.Id })
         }
         $running = @($running | Where-Object { $_ -ne $PID } | Select-Object -Unique)
-        if ($running.Count -eq 0) { return $true }
+        if ($running.Count -eq 0) { return }
         if ((Get-Date) -ge $deadline) {
             throw ('Processes did not exit before the timeout: ' + ($running -join ', '))
         }
         foreach ($pidToStop in $running) {
             if ($pidToStop -eq $ShellPid) {
-                try { & taskkill.exe /PID $pidToStop /F | Out-Null } catch {}
+                try { & taskkill.exe /PID $pidToStop /F 2>$null | Out-Null } catch {}
             } else {
-                try { & taskkill.exe /PID $pidToStop /T /F | Out-Null } catch {}
+                try { & taskkill.exe /PID $pidToStop /T /F 2>$null | Out-Null } catch {}
             }
         }
         Start-Sleep -Milliseconds 500
@@ -731,8 +732,8 @@ function Stop-ProcessTree {
 function Remove-DirectoryWithRetry {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
-        [int]$MaxRetries = 10,
-        [int]$DelayMilliseconds = 500
+        [int]$MaxRetries = 30,
+        [int]$DelayMilliseconds = 1000
     )
     if (-not (Test-Path -LiteralPath $Path)) { return }
     $retries = $MaxRetries
@@ -769,6 +770,7 @@ function Install-ReleaseWithTransaction {
     $backupDir = Join-Path $backupsBase ($normalizedFromVersion + '-' + $transactionId)
     $transactionPath = Join-Path $AppRoot $TRANSACTION_FILE_NAME
     $runtimeDir = Join-Path $AppRoot 'runtime'
+    $backupRuntimeDir = Join-Path $backupDir 'runtime'
     $mutationStarted = $false
     $probeFile = ''
 
@@ -783,23 +785,30 @@ function Install-ReleaseWithTransaction {
     }
 
     try {
-        Write-UpdateStatus -StatusFile $StatusFile -State 'replacing' -Stage 'swap' -Message 'Stopping running processes and backing up existing runtime.' -From $FromVersion -Target $TargetVersion
-        Stop-ProcessTree -EnginePid $EnginePid -ShellPid $ShellPid -AppRoot $AppRoot
-
-        # Copy the old runtime instead of moving it so the rollback slot stays
-        # complete even if the replacement is interrupted.
+        # Persist intent before the first destructive operation. Moving the
+        # existing runtime into a sibling directory is a same-volume metadata
+        # operation, avoiding the long copy/delete window in which Electron
+        # could be relaunched and keep native DLLs locked.
+        Write-UpdateStatus -StatusFile $StatusFile -State 'replacing' -Stage 'swap' -Message 'Preparing the atomic runtime swap and stopping running processes.' -From $FromVersion -Target $TargetVersion
         New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
-        if (Test-Path -LiteralPath $runtimeDir -PathType Container) {
-            Copy-Item -LiteralPath $runtimeDir -Destination (Join-Path $backupDir 'runtime') -Recurse -Force
-        }
         $presentPayload = @(Backup-ReleasePayload -SourceRoot $AppRoot -BackupDir $backupDir)
         $transactionState['payloadFiles'] = $presentPayload
+        Write-JsonAtomic -Path $transactionPath -Data $transactionState
+
+        # The pending journal is visible before process shutdown, so every
+        # supported launcher and the Electron launch gate refuse a concurrent
+        # restart during the stop-to-rename interval.
+        Stop-ProcessTree -EnginePid $EnginePid -ShellPid $ShellPid -AppRoot $AppRoot
+
+        if (-not (Test-Path -LiteralPath $runtimeDir -PathType Container)) {
+            throw 'The installed runtime directory is missing before the update swap.'
+        }
+        Move-Item -LiteralPath $runtimeDir -Destination $backupRuntimeDir
+        $mutationStarted = $true
         $transactionState.phase = 'backed-up'
         Write-JsonAtomic -Path $transactionPath -Data $transactionState
-        $mutationStarted = $true
 
         # Swap the runtime and synchronise every release-owned root file.
-        Remove-DirectoryWithRetry -Path $runtimeDir
         Move-Item -LiteralPath (Join-Path $SourceRoot 'runtime') -Destination $runtimeDir
         Sync-ReleasePayload -SourceRoot $SourceRoot -DestinationRoot $AppRoot
 
@@ -860,18 +869,22 @@ function Install-ReleaseWithTransaction {
             Remove-Item -LiteralPath $old.FullName -Recurse -Force -ErrorAction SilentlyContinue
         }
     } catch {
-        $err = $_.Exception.Message
+        $originalError = $_
+        $err = $originalError.Exception.Message
         Write-Host ('Update failed: ' + $err + '. Initiating rollback ...') -ForegroundColor Red
         if (-not $mutationStarted) {
+            $transactionState.phase = 'rolled-back'
+            $transactionState['updatedAt'] = [DateTime]::UtcNow.ToString('o')
+            try { Write-JsonAtomic -Path $transactionPath -Data $transactionState } catch {}
             Remove-Item -LiteralPath $backupDir -Recurse -Force -ErrorAction SilentlyContinue
-            throw
+            throw $originalError
         }
         try {
             Invoke-Rollback -AppRoot $AppRoot -BackupDir $backupDir -StatusFile $StatusFile -FromVersion $FromVersion -TargetVersion $TargetVersion
         } catch {
-            throw ('Update failed and automatic rollback failed: ' + $_.Exception.Message)
+            throw ('Update failed: ' + $err + ' Automatic rollback also failed: ' + $_.Exception.Message)
         }
-        throw
+        throw $originalError
     }
 }
 
@@ -904,8 +917,16 @@ function Invoke-Rollback {
     Stop-ProcessTree -AppRoot $AppRoot
 
     $runtimeDir = Join-Path $AppRoot 'runtime'
-    Remove-DirectoryWithRetry -Path $runtimeDir
-    Copy-Item -LiteralPath (Join-Path $BackupDir 'runtime') -Destination $runtimeDir -Recurse -Force
+    $backupRuntimeDir = Join-Path $BackupDir 'runtime'
+    $failedRuntimeDir = Join-Path $BackupDir ('failed-runtime-' + [Guid]::NewGuid().ToString('N'))
+    if (Test-Path -LiteralPath $runtimeDir -PathType Container) {
+        try {
+            Move-Item -LiteralPath $runtimeDir -Destination $failedRuntimeDir
+        } catch {
+            Remove-DirectoryWithRetry -Path $runtimeDir
+        }
+    }
+    Move-Item -LiteralPath $backupRuntimeDir -Destination $runtimeDir
     Restore-ReleasePayload -BackupDir $BackupDir -DestinationRoot $AppRoot
 
     $transactionPath = Join-Path $AppRoot $TRANSACTION_FILE_NAME
@@ -916,6 +937,7 @@ function Invoke-Rollback {
         updatedAt = [DateTime]::UtcNow.ToString('o')
     }
     Write-JsonAtomic -Path $transactionPath -Data $transactionState
+    Remove-DirectoryWithRetry -Path $failedRuntimeDir -MaxRetries 5 -DelayMilliseconds 500 -ErrorAction SilentlyContinue
     $restoredVersion = ''
     try {
         $restoredManifest = Read-JsonIfPresent (Join-Path $AppRoot $RELEASE_MANIFEST_NAME)
@@ -947,11 +969,33 @@ function Recover-PendingTransaction {
     $state = Read-JsonIfPresent $transactionPath
     if (-not $state -or $state.phase -in @('committed', 'rolled-back')) { return }
     $backupPath = [string]$state.backupPath
+    if ($state.phase -eq 'preparing' -and
+        (-not [string]::IsNullOrWhiteSpace($backupPath)) -and
+        -not (Test-Path -LiteralPath (Join-Path $backupPath 'runtime') -PathType Container)) {
+        # The transaction record is written immediately before the atomic
+        # directory move. If power was lost in that tiny interval, the active
+        # runtime is still untouched and recovery only needs to close the
+        # transaction rather than manufacture a rollback backup.
+        Test-PortableLayout -Root $AppRoot -ExpectedDistributionVersion ([string]$state.fromVersion)
+        $recoveredState = [ordered]@{
+            schemaVersion = 1
+            transactionId = [string]$state.transactionId
+            fromVersion = [string]$state.fromVersion
+            targetVersion = [string]$state.targetVersion
+            phase = 'rolled-back'
+            backupPath = $backupPath
+            startedAt = [string]$state.startedAt
+            updatedAt = [DateTime]::UtcNow.ToString('o')
+        }
+        Write-JsonAtomic -Path $transactionPath -Data $recoveredState
+        Remove-Item -LiteralPath $backupPath -Recurse -Force -ErrorAction SilentlyContinue
+        return
+    }
     if ([string]::IsNullOrWhiteSpace($backupPath) -or -not (Test-Path -LiteralPath $backupPath -PathType Container)) {
         throw 'An incomplete update transaction has no usable rollback backup.'
     }
     Write-Host 'Recovering an incomplete update transaction before continuing ...' -ForegroundColor Yellow
-    Invoke-Rollback -AppRoot $AppRoot -BackupDir $backupPath -StatusFile $StatusFile -From ([string]$state.fromVersion) -TargetVersion ([string]$state.targetVersion)
+    Invoke-Rollback -AppRoot $AppRoot -BackupDir $backupPath -StatusFile $StatusFile -FromVersion ([string]$state.fromVersion) -TargetVersion ([string]$state.targetVersion)
 }
 
 function Invoke-Updater {
@@ -1028,6 +1072,16 @@ function Invoke-Updater {
                 }
             }
             $TargetVersion = Normalize-Version $TargetVersion
+            $stagingComparison = Compare-Version -Left $TargetVersion -Right $localInfo.distributionVersion -AppRoot $APP_ROOT
+            if (-not $Force -and $stagingComparison -le 0) {
+                Write-UpdateStatus -StatusFile $StatusFile -State 'idle' -Stage 'check' -Message 'The prepared update is already installed.' -From $FromVersion -Target $TargetVersion
+                Write-Host '  The prepared update is already installed.' -ForegroundColor Green
+                Remove-Item -LiteralPath $StagingPath -Recurse -Force -ErrorAction SilentlyContinue
+                if (-not [string]::IsNullOrWhiteSpace($PackagePath)) {
+                    Remove-Item -LiteralPath $PackagePath -Force -ErrorAction SilentlyContinue
+                }
+                return
+            }
             Write-UpdateStatus -StatusFile $StatusFile -State 'replacing' -Stage 'swap' -Message 'Applying pre-extracted update package.' -From $FromVersion -Target $TargetVersion
             Write-Host ('  Using pre-extracted update staging: ' + $StagingPath) -ForegroundColor Green
             $currentStage = 'swap'
@@ -1129,7 +1183,7 @@ function Invoke-Updater {
         $failureMessage = $_.Exception.Message
         Write-UpdateStatus -StatusFile $StatusFile -State 'failed' -Stage $currentStage -Message $failureMessage -From $FromVersion -Target $TargetVersion
         Write-Host ('Update failed: ' + $failureMessage) -ForegroundColor Red
-        exit 1
+        throw
     }
 }
 

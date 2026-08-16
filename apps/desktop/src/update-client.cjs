@@ -278,7 +278,7 @@ function extractStagingPackage({
       "foreach ($r in $roots) { if ($r) { $candidates += (Join-Path $r 'updater\\updater.psm1'); $candidates += (Join-Path $r 'apps\\desktop\\updater\\updater.psm1'); $candidates += (Join-Path $r 'updater.psm1') } }",
       "$mod = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1",
       "if (-not $mod) { throw 'updater.psm1 module not found' }",
-      "Import-Module -Name $mod -Force -WarningAction SilentlyContinue",
+      "Import-Module -Name $mod -Force -DisableNameChecking -WarningAction SilentlyContinue",
       `$res = Extract-ReleaseSafe -ZipPath '${zipPath.replace(/'/g, "''")}' -Destination '${stagingDestination.replace(/'/g, "''")}' -ExpectedDistributionVersion '${(expectedVersion || '').replace(/'/g, "''")}'`,
       '[Console]::Out.Write($res)',
     ].join('\n')

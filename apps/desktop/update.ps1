@@ -15,7 +15,8 @@ param(
     [int]$EnginePid = 0,
     [int]$ShellPid = 0,
     [switch]$Rollback,
-    [switch]$RelaunchAfterRollback
+    [switch]$RelaunchAfterRollback,
+    [switch]$RecoverOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -83,29 +84,65 @@ try {
     }
 
     if (Test-Path -LiteralPath $modulePath) {
-        Import-Module -Name $modulePath -Force
+        # The public module keeps legacy command names for release
+        # compatibility. Suppress PowerShell's discovery-only naming warnings;
+        # updater failures still remain terminating errors.
+        Import-Module -Name $modulePath -Force -DisableNameChecking -WarningAction SilentlyContinue
     } else {
         throw ("Updater module not found at: " + $modulePath)
     }
 
-    # update.ps1 ships at the portable distribution root, so its own directory
-    # IS the AppRoot; pass it explicitly instead of letting updater.psm1
-    # infer from its module location. A caller that relocates this script
-    # must pass a real root here.
-    Invoke-Updater `
-        -Force:$Force `
-        -StatusFile $StatusFile `
-        -FromVersion $FromVersion `
-        -TargetVersion $TargetVersion `
-        -PackagePath $PackagePath `
-        -ExpectedSha256 $ExpectedSha256 `
-        -StagingPath $StagingPath `
-        -LaunchAfterUpdate:$LaunchAfterUpdate `
-        -EnginePid $EnginePid `
-        -ShellPid $ShellPid `
-        -Rollback:$Rollback `
-        -RelaunchAfterRollback:$RelaunchAfterRollback `
-        -AppRoot $scriptRoot
+    # Serialize update, rollback, and startup recovery for this installation.
+    # A process-local lock is insufficient because shortcuts and a second
+    # desktop process can start another PowerShell updater concurrently.
+    $normalizedRoot = [System.IO.Path]::GetFullPath($scriptRoot).TrimEnd('\').ToUpperInvariant()
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $digest = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($normalizedRoot))
+    } finally {
+        $sha256.Dispose()
+    }
+    $mutexName = 'Local\DeepSeekHarnessUpdater-' + ([System.BitConverter]::ToString($digest).Replace('-', '').Substring(0, 24))
+    $updateMutex = New-Object System.Threading.Mutex($false, $mutexName)
+    $mutexAcquired = $false
+    try {
+        try {
+            $mutexAcquired = $updateMutex.WaitOne([TimeSpan]::FromMinutes(3))
+        } catch [System.Threading.AbandonedMutexException] {
+            # Ownership is granted when WaitOne reports an abandoned mutex.
+            $mutexAcquired = $true
+        }
+        if (-not $mutexAcquired) {
+            throw 'Another update operation is still running after the three-minute wait timeout.'
+        }
+
+        if ($RecoverOnly) {
+            Recover-PendingTransaction -AppRoot $scriptRoot -StatusFile $StatusFile
+        } else {
+            # update.ps1 ships at the portable distribution root, so its own
+            # directory IS AppRoot; pass it explicitly instead of inferring it
+            # from the updater module directory.
+            Invoke-Updater `
+                -Force:$Force `
+                -StatusFile $StatusFile `
+                -FromVersion $FromVersion `
+                -TargetVersion $TargetVersion `
+                -PackagePath $PackagePath `
+                -ExpectedSha256 $ExpectedSha256 `
+                -StagingPath $StagingPath `
+                -LaunchAfterUpdate:$LaunchAfterUpdate `
+                -EnginePid $EnginePid `
+                -ShellPid $ShellPid `
+                -Rollback:$Rollback `
+                -RelaunchAfterRollback:$RelaunchAfterRollback `
+                -AppRoot $scriptRoot
+        }
+    } finally {
+        if ($mutexAcquired) {
+            try { $updateMutex.ReleaseMutex() } catch {}
+        }
+        $updateMutex.Dispose()
+    }
 } catch {
     Write-BootstrapFailureStatus -StatusFile $StatusFile -FromVersion $FromVersion -TargetVersion $TargetVersion -Message $_.Exception.Message
     Write-Host ('Update failed: ' + $_.Exception.Message) -ForegroundColor Red

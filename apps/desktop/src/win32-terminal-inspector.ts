@@ -24,6 +24,7 @@
  */
 
 import type { Readable } from 'node:stream'
+import { execFile } from 'node:child_process'
 import type {
   SubprocessOutcome,
   SubprocessTerminalForeground,
@@ -148,6 +149,33 @@ function mergedWslenv(): string {
  * bounded by this one-time constant.
  */
 const WSL_EARLY_EXIT_GRACE_MS = 1_000
+const WSL_TERMINATION_GRACE_MS = 5_000
+
+export type WslProcessTreeTerminator = (pid: number) => Promise<void>
+
+/** Force-stop only the Windows process tree rooted at this terminal's wsl.exe. */
+function terminateWslProcessTree(pid: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      'taskkill.exe',
+      ['/PID', String(pid), '/T', '/F'],
+      { windowsHide: true },
+      (error) => error === null ? resolve() : reject(error),
+    )
+  })
+}
+
+async function terminalExited(done: Promise<SubprocessOutcome>, graceMs: number): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      done.then(() => true, () => true),
+      new Promise<false>(resolve => { timer = setTimeout(resolve, graceMs, false) }),
+    ])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+}
 
 /**
  * Detect a WSL launch failure that does not throw at spawn: wsl.exe starts,
@@ -178,7 +206,13 @@ async function wslEarlyExit(handle: SubprocessTerminalHandle): Promise<Subproces
  * real console sends Ctrl+C.
  */
 class Win32WslTerminalHandle implements SubprocessTerminalHandle {
-  constructor(private readonly inner: SubprocessTerminalHandle) {}
+  private termination: Promise<void> | undefined
+
+  constructor(
+    private readonly inner: SubprocessTerminalHandle,
+    private readonly terminateProcessTree: WslProcessTreeTerminator,
+    private readonly terminationGraceMs: number,
+  ) {}
 
   get pid(): number {
     return this.inner.pid
@@ -212,8 +246,38 @@ class Win32WslTerminalHandle implements SubprocessTerminalHandle {
   }
 
   terminate(): Promise<void> {
-    return this.inner.terminate()
+    this.termination ??= this.terminateOnce()
+    return this.termination
   }
+
+  private async terminateOnce(): Promise<void> {
+    let treeError: unknown
+    try {
+      await this.terminateProcessTree(this.inner.pid)
+    } catch (error) {
+      treeError = error
+    }
+
+    await terminalExited(this.inner.done, this.terminationGraceMs)
+    try {
+      // Even after taskkill, delegate so LocalTerminalHandle can dispose its
+      // node-pty transport and settle internal lifecycle state.
+      await this.inner.terminate()
+    } catch (error) {
+      const treeDetail = treeError === undefined
+        ? ''
+        : `; taskkill failed: ${treeError instanceof Error ? treeError.message : String(treeError)}`
+      throw new Error(`WSL terminal cleanup failed${treeDetail}: ${error instanceof Error ? error.message : String(error)}`, { cause: error })
+    }
+
+    // A taskkill race is harmless when node-pty's own termination succeeded;
+    // the delegated cleanup above is authoritative.
+  }
+}
+
+export interface Win32SubprocessRuntimeOptions {
+  terminateProcessTree?: WslProcessTreeTerminator
+  terminationGraceMs?: number
 }
 
 /**
@@ -222,7 +286,7 @@ class Win32WslTerminalHandle implements SubprocessTerminalHandle {
  * guidance, share the terminal environment through WSLENV, and route SIGINT
  * to the WSL session as a Ctrl+C byte.
  */
-export function adaptWin32SubprocessRuntime(runtime: unknown): void {
+export function adaptWin32SubprocessRuntime(runtime: unknown, options: Win32SubprocessRuntimeOptions = {}): void {
   if (runtime === null || typeof runtime !== 'object') return
   const target = runtime as SubprocessRuntimeWithTerminal
   target.terminalInspector = createWin32TerminalInspector()
@@ -248,7 +312,11 @@ export function adaptWin32SubprocessRuntime(runtime: unknown): void {
           early,
         )
       }
-      return new Win32WslTerminalHandle(terminal)
+      return new Win32WslTerminalHandle(
+        terminal,
+        options.terminateProcessTree ?? terminateWslProcessTree,
+        Math.max(0, options.terminationGraceMs ?? WSL_TERMINATION_GRACE_MS),
+      )
     }
     wrapped.__wslWrapped = true
     target.spawnTerminal = wrapped

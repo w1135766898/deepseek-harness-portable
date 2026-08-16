@@ -22,6 +22,7 @@ const { messageForLocale, localeFromSystem, normalizePreference } = require('./d
 const { readLocalePreference } = require('./desktop-locale-store.cjs')
 const { countSectionBadges, mergeReleaseHistory, normalizeReleaseNotes, normalizeReleaseNotesHistory } = require('./release-notes.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
+const { evaluateUpdateLaunch } = require('./update-transaction.cjs')
 const { buildUpdaterArguments, launchDetachedPowerShell } = require('./update-launcher.cjs')
 const { ensureUnifiedDshHome } = require('./workspace-service.cjs')
 const { readConfigStore, updateConfigStore } = require('./config-store.cjs')
@@ -2125,13 +2126,15 @@ function triggerPortableUpdate(targetVersion, packagePath, expectedSha256, stagi
         root,
         scriptPath: updatePs1,
         args: updaterArgs,
-        onLaunch: processId => writeUpdateStatus(userDataPath, {
+        onLaunch: () => writeUpdateStatus(userDataPath, {
           state: 'starting',
           fromVersion,
           targetVersion,
           stage: 'launch',
           message: 'Portable updater started.',
-          processId,
+          // On Windows this is the transient cmd.exe bootstrap PID. update.ps1
+          // replaces it with the real PowerShell PID as soon as it starts.
+          processId: 0,
         }),
         onError: error => {
           writeUpdateStatus(userDataPath, {
@@ -2255,13 +2258,13 @@ async function triggerRollback() {
         enginePid: harness?.pid,
         shellPid: process.pid,
       }),
-      onLaunch: processId => writeUpdateStatus(userDataPath, {
+      onLaunch: () => writeUpdateStatus(userDataPath, {
         state: 'starting',
         fromVersion,
         targetVersion: '',
         stage: 'rollback',
         message: 'Rollback updater started.',
-        processId,
+        processId: 0,
       }),
       onError: error => {
         writeUpdateStatus(userDataPath, {
@@ -2497,8 +2500,19 @@ async function createApp() {
   }, 4000).unref()
 }
 
-const gotLock = app.requestSingleInstanceLock()
-if (!gotLock) {
+const portableLaunchGate = evaluateUpdateLaunch(findPortableRoot(__dirname), process.argv)
+if (!portableLaunchGate.allowed) {
+  dialog.showErrorBox(
+    `${APP_NAME} update recovery required`,
+    [
+      'DeepSeek Harness cannot start while a portable update transaction is incomplete.',
+      '请从安装目录运行 start-desktop.cmd，让启动器等待更新完成或执行安全回滚。',
+      '',
+      portableLaunchGate.reason,
+    ].join('\n'),
+  )
+  app.quit()
+} else if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   app.on('second-instance', showWindow)

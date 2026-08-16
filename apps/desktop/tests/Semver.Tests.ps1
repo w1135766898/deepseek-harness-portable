@@ -1,5 +1,5 @@
 $modulePath = Join-Path $PSScriptRoot '..\updater\updater.psm1'
-Import-Module -Name $modulePath -Force
+Import-Module -Name $modulePath -Force -DisableNameChecking -WarningAction SilentlyContinue
 
 Describe "SemVer parsing and comparison in PowerShell" {
     It "correctly orders prerelease and release versions" {

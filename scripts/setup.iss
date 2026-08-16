@@ -54,14 +54,14 @@ Source: "{#MyReleaseDir}\{#MyZipName}"; DestDir: "{tmp}"; Flags: deleteafterinst
 Source: "{#MyIconPath}"; DestDir: "{app}\assets"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}\runtime"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\start-desktop.cmd"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}"
 Name: "{group}\DeepSeek Harness (网页服务模式)"; Filename: "{app}\启动网页版.bat"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}"
 Name: "{group}\在线更新"; Filename: "{app}\在线更新.bat"; WorkingDir: "{app}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}\runtime"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\start-desktop.cmd"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; WorkingDir: "{app}\runtime"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\start-desktop.cmd"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; WorkingDir: "{app}"; Flags: shellexec nowait postinstall skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
@@ -165,44 +165,107 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
-  ZipPath, AppDir, TarExe, TaskKillExe, MainExe, PickerWorker, ReleaseManifest: String;
+  ZipPath, AppDir, StageDir, TarExe, RobocopyExe, TaskKillExe: String;
+  MainExe, SafeLauncher, TransactionGate, PickerWorker, ReleaseManifest: String;
+  OldRuntime, NewRuntime, BackupRuntime, FailedRuntime: String;
+  HadOldRuntime, RuntimeSwapped: Boolean;
 begin
   if CurStep = ssPostInstall then
   begin
-    { The payload is extracted by tar rather than [Files], so Restart Manager
-      cannot discover its locked executables. Stop any prior app tree before
-      replacing the runtime to prevent a mixed-version installation. }
-    TaskKillExe := ExpandConstant('{sys}\taskkill.exe');
-    if FileExists(TaskKillExe) then
-    begin
-      Exec(TaskKillExe, '/F /T /IM "DeepSeek Harness.exe"', '', SW_HIDE,
-        ewWaitUntilTerminated, ResultCode);
-      Sleep(500);
-    end;
-
     ZipPath := ExpandConstant('{tmp}\{#MyZipName}');
     AppDir := ExpandConstant('{app}');
+    StageDir := ExpandConstant('{tmp}\DeepSeekHarnessSetupStage-{#MyAppVersion}');
+    DelTree(StageDir, True, True, True);
+    if not ForceDirectories(StageDir) then
+      RaiseException('Unable to create the setup staging directory.');
+
+    { Extract and validate the complete release away from {app}. A corrupt or
+      incomplete archive therefore cannot partially overwrite a usable install. }
     TarExe := ExpandConstant('{sys}\tar.exe');
     if not FileExists(TarExe) then
       TarExe := ExpandConstant('{sysnative}\tar.exe');
     if not FileExists(TarExe) then
       TarExe := 'tar.exe';
     if not Exec(TarExe,
-      '-xf "' + ZipPath + '" -C "' + AppDir + '" --strip-components 1',
+      '-xf "' + ZipPath + '" -C "' + StageDir + '" --strip-components 1',
       '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
       RaiseException('Unable to start the Windows archive extractor.');
     if ResultCode <> 0 then
-      RaiseException(Format('Runtime extraction failed (tar exit code %d).', [ResultCode]));
+      RaiseException(Format('Runtime staging failed (tar exit code %d).', [ResultCode]));
 
-    MainExe := AddBackslash(AppDir) + '{#MyAppExeName}';
-    ReleaseManifest := AddBackslash(AppDir) + 'release-manifest.json';
-    PickerWorker := AddBackslash(AppDir) +
+    MainExe := AddBackslash(StageDir) + '{#MyAppExeName}';
+    SafeLauncher := AddBackslash(StageDir) + 'start-desktop.cmd';
+    TransactionGate := AddBackslash(StageDir) + 'runtime\resources\app\src\update-transaction.cjs';
+    ReleaseManifest := AddBackslash(StageDir) + 'release-manifest.json';
+    PickerWorker := AddBackslash(StageDir) +
       'runtime\resources\app\node_modules\@deepseek-ai\dsh-host-directory-picker-native\lib\worker.cjs';
     if not FileExists(ReleaseManifest) then
-      RaiseException('Runtime extraction completed without the release manifest.');
+      RaiseException('Staged release is missing the release manifest.');
     if not FileExists(MainExe) then
-      RaiseException('Runtime extraction completed without the main executable.');
+      RaiseException('Staged release is missing the main executable.');
+    if not FileExists(SafeLauncher) then
+      RaiseException('Staged release is missing the safe desktop launcher.');
+    if not FileExists(TransactionGate) then
+      RaiseException('Staged release is missing the update transaction launch gate.');
     if not FileExists(PickerWorker) then
-      RaiseException('Runtime extraction completed without the directory picker worker.');
+      RaiseException('Staged release is missing the directory picker worker.');
+
+    { Restart Manager cannot see files inside the ZIP. Stop the prior tree,
+      then require the runtime directory rename to succeed before exposing any
+      staged payload. A remaining DLL lock fails here with the old install intact. }
+    TaskKillExe := ExpandConstant('{sys}\taskkill.exe');
+    if FileExists(TaskKillExe) then
+    begin
+      Exec(TaskKillExe, '/F /T /IM "DeepSeek Harness.exe"', '', SW_HIDE,
+        ewWaitUntilTerminated, ResultCode);
+      Sleep(1500);
+    end;
+
+    OldRuntime := AddBackslash(AppDir) + 'runtime';
+    NewRuntime := AddBackslash(StageDir) + 'runtime';
+    BackupRuntime := AddBackslash(AppDir) + '.setup-runtime-backup';
+    FailedRuntime := AddBackslash(StageDir) + 'failed-runtime';
+    DelTree(BackupRuntime, True, True, True);
+    HadOldRuntime := DirExists(OldRuntime);
+    RuntimeSwapped := False;
+    if HadOldRuntime and (not RenameFile(OldRuntime, BackupRuntime)) then
+      RaiseException('The existing runtime is still in use. Close DeepSeek Harness and retry Setup.');
+
+    if not RenameFile(NewRuntime, OldRuntime) then
+    begin
+      if HadOldRuntime then RenameFile(BackupRuntime, OldRuntime);
+      RaiseException('Unable to activate the staged runtime; the previous runtime was restored.');
+    end;
+    RuntimeSwapped := True;
+
+    try
+      { Synchronize non-runtime files only after the atomic runtime switch and
+        publish the release manifest last as the commit marker. }
+      RobocopyExe := ExpandConstant('{sys}\robocopy.exe');
+      if not Exec(RobocopyExe,
+        '"' + StageDir + '" "' + AppDir + '" /E /XD "' + NewRuntime +
+        '" /XF release-manifest.json /R:2 /W:1 /NP /NDL /NFL /NJH /NJS',
+        '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+        RaiseException('Unable to start the setup file synchronizer.');
+      if ResultCode >= 8 then
+        RaiseException(Format('Setup file synchronization failed (Robocopy exit code %d).', [ResultCode]));
+      if not FileCopy(ReleaseManifest, AddBackslash(AppDir) + 'release-manifest.json', False) then
+        RaiseException('Unable to publish the release manifest.');
+    except
+      if RuntimeSwapped then
+      begin
+        RenameFile(OldRuntime, FailedRuntime);
+        if HadOldRuntime then RenameFile(BackupRuntime, OldRuntime);
+      end;
+      raise;
+    end;
+
+    if HadOldRuntime then DelTree(BackupRuntime, True, True, True);
+    { Setup has just committed a fully validated runtime. Do not let an old,
+      abandoned portable-updater journal roll this installation backward on
+      the first shortcut launch. }
+    DeleteFile(AddBackslash(AppDir) + '.update-transaction.json');
+    DelTree(AddBackslash(AppDir) + '.update-backups', True, True, True);
+    DelTree(StageDir, True, True, True);
   end;
 end;

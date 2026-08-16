@@ -72,7 +72,7 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
 ## 安装
 
 1. **Setup 安装包：** 从 Releases 下载 `DeepSeek-Harness-Setup-<version>-win32-x64.exe` 并运行。
-2. **在线安装：** 运行仓库中的 `install.ps1`。脚本只接受带可信 SHA-256 摘要的 release ZIP。参数：`-InstallDir <路径>`（默认 `%LOCALAPPDATA%\DeepSeek-Harness`）、`-NoDesktopShortcut`、`-Force`。
+2. **在线安装：** 运行仓库中的 `install.ps1`。脚本只接受带可信 SHA-256 摘要的 release ZIP。参数：`-InstallDir <路径>`（默认 `%LOCALAPPDATA%\Programs\DeepSeek Harness`）、`-NoDesktopShortcut`、`-Force`。若检测到 `%LOCALAPPDATA%\DeepSeek-Harness` 下的旧版安装，会原地升级。
 3. **便携 ZIP：** 下载 `DeepSeek-Harness-<version>-win32-x64.zip`，先核对 `SHA256SUMS.txt`，再解压完整目录，不要重命名 `runtime`。
 4. **卸载：** 运行 `uninstall.cmd` 或 `uninstall.ps1`。除非明确确认删除，否则会保留用户数据。
 
@@ -113,7 +113,7 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
 - `start-web.cmd`（或 `启动网页版.bat`）使用 PATH 中的 Node.js 启动网页版；未找到 Node.js 时回退到桌面端。
 - `dsh.cmd` 提供同样的网页版入口，并支持子命令：`dsh update`、`dsh desktop`、`dsh trust`。
 - 桌面托盘菜单提供“检查更新”“更新日志”和“关于”。
-- 检测到新版本时，桌面外壳会在应用内显示下载与校验进度，完成后再询问是否重启。更新器会再次校验已准备好的便携 ZIP、发布清单和原生依赖，并在确认重启后以一次整体替换的方式更新 `runtime`。
+- 检测到新版本时，桌面外壳会在应用内显示下载与校验进度，完成后再询问是否重启。更新、回滚和启动恢复共用按安装目录隔离的互斥锁；新旧 `runtime` 通过同卷目录重命名切换。事务未完成时启动器会等待并恢复，直接启动 Electron 则会被门禁阻止。
 - 更新通知以标题栏下方的轻量横幅显示，可按版本选择“不再提示”；“更新日志”和“关于”在卡片式更新中心内打开。具体行为详见[发布说明](RELEASE_NOTES.zh.md)。
 
 ## 常见问题
@@ -132,6 +132,9 @@ Smart App Control 可能直接阻止未签名的应用。如果设备已启用�
 
 **更新检查失败了怎么办？**
 更新中心会显示错误状态和重试入口，不会阻塞主界面。也可以直接运行便携版更新器：`dsh update`、`在线更新.bat` 或 `update.ps1`。
+
+**为什么极简/WSL 模式中的长命令会超时？**
+极简模式会原样执行模型给出的 Linux 命令。对 vendor 工作区使用递归 `grep` 还会扫描嵌套依赖目录，确实可能超过工具超时；建议改用会遵守忽略规则的 `rg`，或显式排除 `node_modules`。超时时桌面桥接现在会只强制终止该终端对应的 `wsl.exe` 进程树并等待 PTY 释放，不应再追加 `PTY cleanup failed`。
 
 ## 构建与发布
 

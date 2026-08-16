@@ -5,9 +5,19 @@ if /I "%~1"=="update" (
     powershell -NoProfile -ExecutionPolicy Bypass -File "%APP_ROOT%update.ps1" %*
     goto :EOF
 )
+if exist "%APP_ROOT%.update-transaction.json" (
+    findstr /C:"\"phase\": \"committed\"" "%APP_ROOT%.update-transaction.json" >nul 2>&1
+    if errorlevel 1 (
+        findstr /C:"\"phase\": \"rolled-back\"" "%APP_ROOT%.update-transaction.json" >nul 2>&1
+        if errorlevel 1 (
+            powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%APP_ROOT%update.ps1" -RecoverOnly
+            if errorlevel 1 exit /b 1
+        )
+    )
+)
 if /I "%~1"=="desktop" (
     shift
-    start "" "%APP_ROOT%runtime\DeepSeek Harness.exe" %*
+    call "%APP_ROOT%start-desktop.cmd" %*
     goto :EOF
 )
 if /I "%~1"=="trust" (
@@ -19,5 +29,5 @@ where node >nul 2>nul
 if %ERRORLEVEL% EQU 0 (
     node "%APP_ROOT%runtime\resources\app\lib\packaged-bin.js" %*
 ) else (
-    start "" "%APP_ROOT%runtime\DeepSeek Harness.exe" %*
+    call "%APP_ROOT%start-desktop.cmd" %*
 )

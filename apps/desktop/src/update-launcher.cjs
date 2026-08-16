@@ -1,5 +1,5 @@
 const { spawn: defaultSpawn } = require('node:child_process')
-const { join } = require('node:path')
+const { join, win32 } = require('node:path')
 
 const DEFAULT_QUIT_DELAY_MS = 750
 
@@ -12,7 +12,7 @@ function resolvePowerShellExecutable({ env = process.env, platform = process.pla
       : ''
   return systemRoot === ''
     ? 'powershell.exe'
-    : join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+    : win32.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
 }
 
 function positivePid(value) {

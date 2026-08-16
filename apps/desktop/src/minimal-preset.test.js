@@ -114,19 +114,24 @@ test('win32 terminal inspector stub satisfies ProcessInspector contracts safely'
 })
 
 function fakeWslTerminal({ earlyExit } = {}) {
-  const calls = { writes: [], signals: [] }
+  const calls = { writes: [], signals: [], terminates: 0 }
+  let resolveDone
   const handle = {
     pid: 4242,
     output: new PassThrough(),
     done: earlyExit === undefined
-      ? new Promise(() => {})
+      ? new Promise(resolve => { resolveDone = resolve })
       : Promise.resolve(earlyExit),
     write: async (data) => { calls.writes.push(data) },
     inspectForeground: async () => ({ processGroupId: 4242, inputWaiting: false }),
     signalForeground: async (signal) => { calls.signals.push(signal); return 4242 },
-    terminate: async () => {},
+    terminate: async () => { calls.terminates += 1 },
   }
-  return { handle, calls }
+  return {
+    handle,
+    calls,
+    exit: (outcome = { exitCode: 1, signal: null }) => resolveDone?.(outcome),
+  }
 }
 
 test('adaptWin32SubprocessRuntime injects inspector and translates WSL launch failures', async () => {
@@ -149,7 +154,14 @@ test('adaptWin32SubprocessRuntime injects inspector and translates WSL launch fa
     },
   }
 
-  adaptWin32SubprocessRuntime(fakeRuntime)
+  const terminatedTrees = []
+  adaptWin32SubprocessRuntime(fakeRuntime, {
+    terminateProcessTree: async (pid) => {
+      terminatedTrees.push(pid)
+      wslTerminal.exit()
+    },
+    terminationGraceMs: 25,
+  })
   assert.ok(fakeRuntime.terminalInspector, 'terminalInspector must be set')
 
   // Direct WSL error must be translated with guidance
@@ -217,7 +229,10 @@ test('adaptWin32SubprocessRuntime injects inspector and translates WSL launch fa
   assert.deepEqual(wslTerminal.calls.signals, ['SIGINT', 'SIGTERM'], 'all signals must reach the inner handle')
   assert.deepEqual(await wslHandle.inspectForeground(), { processGroupId: 4242, inputWaiting: false })
   await wslHandle.terminate()
-  assert.equal(wslTerminal.calls.writes.length, 1, 'terminate must delegate without extra writes')
+  await wslHandle.terminate()
+  assert.deepEqual(terminatedTrees, [4242], 'terminate must taskkill the specific wsl.exe process tree once')
+  assert.equal(wslTerminal.calls.terminates, 1, 'terminate must dispose the inner PTY exactly once')
+  assert.equal(wslTerminal.calls.writes.length, 1, 'terminate must not inject extra terminal input')
 
   // Successful non-WSL spawn passes through untouched
   const result = await fakeRuntime.spawnTerminal({ argv: ['C:/other.exe'] })

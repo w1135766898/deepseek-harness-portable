@@ -72,7 +72,7 @@ Read the [English release notes](RELEASE_NOTES.md) or open **Release Notes** fro
 ## Install
 
 1. **Setup installer:** download `DeepSeek-Harness-Setup-<version>-win32-x64.exe` from Releases and run it.
-2. **Online installer:** run `install.ps1` from this repository. It only accepts a release ZIP with a trusted SHA-256 digest. Options: `-InstallDir <path>` (default `%LOCALAPPDATA%\DeepSeek-Harness`), `-NoDesktopShortcut`, `-Force`.
+2. **Online installer:** run `install.ps1` from this repository. It only accepts a release ZIP with a trusted SHA-256 digest. Options: `-InstallDir <path>` (default `%LOCALAPPDATA%\Programs\DeepSeek Harness`), `-NoDesktopShortcut`, `-Force`. A recognized legacy install under `%LOCALAPPDATA%\DeepSeek-Harness` is upgraded in place.
 3. **Portable ZIP:** download `DeepSeek-Harness-<version>-win32-x64.zip`, verify `SHA256SUMS.txt`, then extract the complete directory without renaming `runtime`.
 4. **Uninstall:** run `uninstall.cmd` or `uninstall.ps1`. User data is kept unless you explicitly confirm removal.
 
@@ -113,7 +113,7 @@ Do not delete or rename the `runtime` directory.
 - `start-web.cmd` (or `启动网页版.bat`) starts the Web surface through Node.js from PATH; if Node.js is missing it falls back to the desktop shell.
 - `dsh.cmd` provides the same web entry plus subcommands: `dsh update`, `dsh desktop`, `dsh trust`.
 - The desktop tray menu provides **Check for Updates**, **Release Notes**, and **About**.
-- When a new release is found, the desktop shell downloads and verifies it in-app with progress, then asks before restarting. The updater re-verifies the prepared portable ZIP, release manifest, and native dependencies, and replaces `runtime` as one operation after restart confirmation.
+- When a new release is found, the desktop shell downloads and verifies it in-app with progress, then asks before restarting. Update, rollback, and startup recovery share a per-installation mutex. The old and staged `runtime` directories are switched with same-volume renames; launchers wait for recovery, and direct Electron starts are blocked while a transaction is incomplete.
 - Update notices appear as a transient banner below the title bar and can be suppressed per version; Release Notes and About open in a card-style Update Hub. See the [release notes](RELEASE_NOTES.md) for the details of these behaviors.
 
 ## FAQ
@@ -132,6 +132,9 @@ Under `%USERPROFILE%\.dsh` (or `$DSH_HOME`), outside the application directory. 
 
 **An update check failed — what now?**
 The Update Hub shows an error state with a retry action instead of blocking the main window. You can also run the portable updater directly: `dsh update`, `在线更新.bat`, or `update.ps1`.
+
+**Why did a long command time out in Minimal/WSL mode?**
+Minimal mode runs the requested Linux command unchanged. Recursive `grep` over the vendored workspace also traverses nested dependency trees and can legitimately exceed the tool timeout; prefer `rg` (which respects ignore files) or exclude `node_modules`. On timeout, the desktop bridge force-stops only that terminal's `wsl.exe` process tree and waits for PTY disposal, so the result should no longer be followed by `PTY cleanup failed`.
 
 ## Build and release
 

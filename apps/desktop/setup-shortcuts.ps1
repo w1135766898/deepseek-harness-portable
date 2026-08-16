@@ -6,7 +6,9 @@ try {
     $appRoot = if ((Split-Path -Leaf $scriptDir) -ieq 'runtime') { Split-Path -Parent $scriptDir } else { $scriptDir }
     $runtimeDir = Join-Path $appRoot 'runtime'
     $exe = Join-Path $runtimeDir 'DeepSeek Harness.exe'
+    $launcher = Join-Path $appRoot 'start-desktop.cmd'
     if (-not (Test-Path -LiteralPath $exe)) { throw ('Executable not found: ' + $exe) }
+    if (-not (Test-Path -LiteralPath $launcher)) { throw ('Safe desktop launcher not found: ' + $launcher) }
     $ico = Join-Path $runtimeDir 'resources\app\assets\deepseek.ico'
     if (-not (Test-Path -LiteralPath $ico)) { $ico = $exe }
 
@@ -16,8 +18,8 @@ try {
     $wsh = New-Object -ComObject WScript.Shell
     $desktop = [Environment]::GetFolderPath('Desktop')
     $shortcut = $wsh.CreateShortcut((Join-Path $desktop 'DeepSeek Harness.lnk'))
-    $shortcut.TargetPath = $exe
-    $shortcut.WorkingDirectory = $runtimeDir
+    $shortcut.TargetPath = $launcher
+    $shortcut.WorkingDirectory = $appRoot
     $shortcut.IconLocation = ($ico + ',0')
     $shortcut.WindowStyle = 1
     $shortcut.Save()

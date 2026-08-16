@@ -1,5 +1,5 @@
 $modulePath = Join-Path $PSScriptRoot '..\updater\updater.psm1'
-Import-Module -Name $modulePath -Force
+Import-Module -Name $modulePath -Force -DisableNameChecking -WarningAction SilentlyContinue
 
 Describe "Transaction backup, install and rollback" {
     BeforeAll {
@@ -82,6 +82,64 @@ Describe "Transaction backup, install and rollback" {
             { Install-ReleaseWithTransaction -AppRoot $app -SourceRoot $source -FromVersion '1.0.0' -TargetVersion '1.0.1' } | Should Throw 'replacement failed'
             [IO.File]::ReadAllText((Join-Path $app 'runtime\marker.txt')) | Should Be 'old'
             [IO.File]::ReadAllText((Join-Path $app 'dsh.cmd')) | Should Be 'old script'
+        } finally {
+            if (Test-Path -LiteralPath $root) {
+                Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+
+    It "retains both the update error and rollback error when automatic recovery fails" {
+        $root = Join-Path $env:TEMP ('pester-double-failure-' + [Guid]::NewGuid().ToString('N'))
+        $app = Join-Path $root 'app'
+        $source = Join-Path $root 'source'
+        New-Item -ItemType Directory -Path (Join-Path $app 'runtime') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $source 'runtime') -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $app 'runtime\marker.txt'), 'old', [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText((Join-Path $source 'runtime\marker.txt'), 'new', [Text.Encoding]::UTF8)
+
+        $script:doubleFailureApp = $app
+        Mock -ModuleName updater Sync-ReleasePayload { throw 'replacement exploded' } -ParameterFilter {
+            $DestinationRoot -eq $script:doubleFailureApp
+        }
+        Mock -ModuleName updater Invoke-Rollback { throw 'rollback locked libvips' } -ParameterFilter {
+            $AppRoot -eq $script:doubleFailureApp
+        }
+        try {
+            {
+                Install-ReleaseWithTransaction -AppRoot $app -SourceRoot $source -FromVersion '1.0.0' -TargetVersion '1.0.1'
+            } | Should Throw 'Update failed: replacement exploded Automatic rollback also failed: rollback locked libvips'
+        } finally {
+            if (Test-Path -LiteralPath $root) {
+                Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+
+    It "closes a preparing journal safely when the runtime move never began" {
+        $root = Join-Path $env:TEMP ('pester-preparing-' + [Guid]::NewGuid().ToString('N'))
+        $app = Join-Path $root 'app'
+        $backup = Join-Path $app '.update-backups\1.0.0-pending'
+        New-Item -ItemType Directory -Path (Join-Path $app 'runtime') -Force | Out-Null
+        New-Item -ItemType Directory -Path $backup -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $app 'runtime\marker.txt'), 'untouched', [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText((Join-Path $app '.update-transaction.json'), (@{
+            schemaVersion = 1
+            transactionId = 'preparing-test'
+            fromVersion = '1.0.0'
+            targetVersion = '1.0.1'
+            phase = 'preparing'
+            backupPath = $backup
+            startedAt = [DateTime]::UtcNow.ToString('o')
+        } | ConvertTo-Json))
+
+        Mock -ModuleName updater Test-PortableLayout {}
+        try {
+            Recover-PendingTransaction -AppRoot $app
+            $state = Get-Content -LiteralPath (Join-Path $app '.update-transaction.json') -Raw | ConvertFrom-Json
+            $state.phase | Should Be 'rolled-back'
+            [IO.File]::ReadAllText((Join-Path $app 'runtime\marker.txt')) | Should Be 'untouched'
+            (Test-Path -LiteralPath $backup) | Should Be $false
         } finally {
             if (Test-Path -LiteralPath $root) {
                 Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue

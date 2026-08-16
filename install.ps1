@@ -4,7 +4,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$InstallDir = "$env:LOCALAPPDATA\DeepSeek-Harness",
+    [string]$InstallDir = "$env:LOCALAPPDATA\Programs\DeepSeek Harness",
     [switch]$NoDesktopShortcut,
     [switch]$Force
 )
@@ -13,6 +13,17 @@ $ErrorActionPreference = 'Stop'
 $REPO = 'wsnxxxs/deepseek-harness-portable'
 $APP_NAME = 'DeepSeek Harness'
 $RELEASE_MANIFEST_NAME = 'release-manifest.json'
+
+# Preserve an existing installation created by releases older than 1.2.5
+# when the caller did not explicitly choose a destination.
+if (-not $PSBoundParameters.ContainsKey('InstallDir')) {
+    $legacyInstallDir = Join-Path $env:LOCALAPPDATA 'DeepSeek-Harness'
+    if (-not (Test-Path -LiteralPath $InstallDir) -and
+        (Test-Path -LiteralPath (Join-Path $legacyInstallDir 'runtime\DeepSeek Harness.exe'))) {
+        $InstallDir = $legacyInstallDir
+    }
+}
+$InstallDir = [System.IO.Path]::GetFullPath($InstallDir)
 
 function Write-Header {
     Write-Host ''
@@ -142,6 +153,7 @@ function Test-PortableLayout {
         'runtime\DeepSeek Harness.exe',
         'runtime\resources\app\package.json',
         'runtime\resources\app\lib\packaged-bin.js',
+        'runtime\resources\app\src\update-transaction.cjs',
         'runtime\resources\app\node_modules\node-pty\prebuilds\win32-x64\pty.node',
         'runtime\resources\app\node_modules\@koromix\koffi-win32-x64\win32_x64\koffi.node'
     )
@@ -211,6 +223,92 @@ function Test-ZipEntrySafety {
     }
 }
 
+function Test-ProcessPathUnderRoot {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProcessPath,
+        [Parameter(Mandatory = $true)][string]$Root
+    )
+    try {
+        $fullPath = [System.IO.Path]::GetFullPath($ProcessPath)
+        $fullRoot = [System.IO.Path]::GetFullPath($Root).TrimEnd('\')
+        return $fullPath -eq $fullRoot -or $fullPath.StartsWith($fullRoot + '\', [System.StringComparison]::OrdinalIgnoreCase)
+    } catch {
+        return $false
+    }
+}
+
+function Get-InstalledProcessIds {
+    param([Parameter(Mandatory = $true)][string]$Root)
+    return @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
+        try {
+            $_.Id -ne $PID -and $_.Path -and (Test-ProcessPathUnderRoot -ProcessPath $_.Path -Root $Root)
+        } catch { $false }
+    } | ForEach-Object { $_.Id } | Select-Object -Unique)
+}
+
+function Stop-InstalledProcesses {
+    param(
+        [Parameter(Mandatory = $true)][string]$Root,
+        [int]$TimeoutSeconds = 30
+    )
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ($true) {
+        $running = @(Get-InstalledProcessIds -Root $Root)
+        if ($running.Count -eq 0) { return }
+        foreach ($processId in $running) {
+            try { & taskkill.exe /PID $processId /T /F 2>$null | Out-Null } catch {}
+        }
+        if ((Get-Date) -ge $deadline) {
+            throw ('Installed processes did not exit before replacement: ' + ($running -join ', '))
+        }
+        Start-Sleep -Milliseconds 500
+    }
+}
+
+function Remove-DirectoryWithRetry {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [int]$MaxRetries = 20
+    )
+    if (-not (Test-Path -LiteralPath $Path)) { return }
+    for ($attempt = 1; $attempt -le $MaxRetries; $attempt++) {
+        try {
+            Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+            return
+        } catch {
+            if ($attempt -eq $MaxRetries) { throw }
+            Start-Sleep -Milliseconds 500
+        }
+    }
+}
+
+function Assert-SafeInstallTarget {
+    param(
+        [Parameter(Mandatory = $true)][string]$Root,
+        [switch]$AllowUnknownTarget
+    )
+    if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return }
+    $entries = @(Get-ChildItem -LiteralPath $Root -Force -ErrorAction Stop)
+    if ($entries.Count -eq 0) { return }
+    $looksLikeHarness = (Test-Path -LiteralPath (Join-Path $Root $RELEASE_MANIFEST_NAME) -PathType Leaf) -and
+        (Test-Path -LiteralPath (Join-Path $Root 'runtime\DeepSeek Harness.exe') -PathType Leaf)
+    if (-not $looksLikeHarness -and -not $AllowUnknownTarget) {
+        throw ('The install directory is non-empty and is not a recognized DeepSeek Harness installation. Use -Force only if replacing it is intentional: ' + $Root)
+    }
+}
+
+function Copy-InstallTree {
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+    New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    & robocopy.exe $Source $Destination /E /R:2 /W:1 /NP /NDL /NFL /NJH /NJS 2>$null | Out-Null
+    if ($LASTEXITCODE -ge 8) {
+        throw ('File synchronization failed with Robocopy exit code ' + $LASTEXITCODE + '.')
+    }
+}
+
 function Extract-And-Install {
     param(
         [Parameter(Mandatory = $true)][string]$ZipPath,
@@ -220,6 +318,13 @@ function Extract-And-Install {
 
     $guid = [Guid]::NewGuid().ToString('N')
     $extractTemp = Join-Path $env:TEMP ('dsh-extract-' + $guid)
+    $installParent = Split-Path -Parent $InstallDir
+    $installLeaf = Split-Path -Leaf $InstallDir
+    $stageDir = Join-Path $installParent ('.' + $installLeaf + '.install-' + $guid)
+    $backupDir = Join-Path $installParent ('.' + $installLeaf + '.previous-' + $guid)
+    $originalLocation = (Get-Location).Path
+    $oldMoved = $false
+    $newMoved = $false
     New-Item -ItemType Directory -Path $extractTemp -Force | Out-Null
     try {
         Test-ZipEntrySafety -ZipPath $ZipPath -Destination $extractTemp
@@ -234,15 +339,44 @@ function Extract-And-Install {
         $sourceRoot = if ($innerDir) { $innerDir.FullName } else { $extractTemp }
         Test-PortableLayout -Root $sourceRoot -ExpectedDistributionVersion $ExpectedDistributionVersion
 
-        New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-        & robocopy.exe $sourceRoot $InstallDir /E /R:2 /W:1 /NP /NDL /NFL /NJH /NJS | Out-Null
-        if ($LASTEXITCODE -ge 8) {
-            throw ('File synchronization failed with Robocopy exit code ' + $LASTEXITCODE + '.')
+        New-Item -ItemType Directory -Path $installParent -Force | Out-Null
+        Copy-InstallTree -Source $sourceRoot -Destination $stageDir
+        Test-PortableLayout -Root $stageDir -ExpectedDistributionVersion $ExpectedDistributionVersion
+        Assert-SafeInstallTarget -Root $InstallDir -AllowUnknownTarget:$Force
+        Stop-InstalledProcesses -Root $InstallDir
+
+        # Both directories live under the same parent, so each Move-Item is a
+        # same-volume rename. No partially copied runtime is ever exposed as
+        # the active installation.
+        Set-Location -LiteralPath $installParent
+        if (Test-Path -LiteralPath $InstallDir) {
+            Move-Item -LiteralPath $InstallDir -Destination $backupDir
+            $oldMoved = $true
         }
+        Move-Item -LiteralPath $stageDir -Destination $InstallDir
+        $newMoved = $true
         Test-PortableLayout -Root $InstallDir -ExpectedDistributionVersion $ExpectedDistributionVersion
+        if ($oldMoved) {
+            try { Remove-DirectoryWithRetry -Path $backupDir } catch {
+                Write-Warning ('The new installation is active, but the previous backup could not be removed: ' + $backupDir)
+            }
+        }
+    } catch {
+        $installError = $_
+        if ($newMoved -and (Test-Path -LiteralPath $InstallDir)) {
+            try { Remove-DirectoryWithRetry -Path $InstallDir } catch {}
+        }
+        if ($oldMoved -and (Test-Path -LiteralPath $backupDir)) {
+            try { Move-Item -LiteralPath $backupDir -Destination $InstallDir } catch {
+                throw ('Installation failed: ' + $installError.Exception.Message + ' Restoration of the previous installation also failed: ' + $_.Exception.Message)
+            }
+        }
+        throw $installError
     } finally {
+        try { Set-Location -LiteralPath $originalLocation } catch {}
         Remove-Item -LiteralPath $ZipPath -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $extractTemp -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $stageDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -256,10 +390,14 @@ function Create-Shortcuts {
     Write-Host '[5/6] Creating shortcuts and PATH entry...' -ForegroundColor Yellow
     $wshShell = New-Object -ComObject WScript.Shell
     $targetExe = Join-Path $InstallDir 'runtime\DeepSeek Harness.exe'
-    $workDir = Join-Path $InstallDir 'runtime'
+    $desktopLauncher = Join-Path $InstallDir 'start-desktop.cmd'
+    $workDir = $InstallDir
     if (-not (Test-Path -LiteralPath $targetExe)) {
         $targetExe = Join-Path $InstallDir 'DeepSeek Harness.exe'
         $workDir = $InstallDir
+    }
+    if (-not (Test-Path -LiteralPath $desktopLauncher)) {
+        throw ('Safe desktop launcher is missing: ' + $desktopLauncher)
     }
     $iconPath = Join-Path $InstallDir 'runtime\resources\app\assets\deepseek.ico'
     if (-not (Test-Path -LiteralPath $iconPath)) {
@@ -269,7 +407,7 @@ function Create-Shortcuts {
     if (-not $NoDesktopShortcut) {
         $desktopPath = [Environment]::GetFolderPath('Desktop')
         $shortcut = $wshShell.CreateShortcut((Join-Path $desktopPath ($APP_NAME + '.lnk')))
-        $shortcut.TargetPath = $targetExe
+        $shortcut.TargetPath = $desktopLauncher
         $shortcut.WorkingDirectory = $workDir
         $shortcut.Description = 'DeepSeek Harness desktop client'
         $shortcut.IconLocation = $iconPath + ',0'
@@ -280,7 +418,7 @@ function Create-Shortcuts {
     $startMenuDir = Join-Path ([Environment]::GetFolderPath('Programs')) 'DeepSeek Harness'
     New-Item -ItemType Directory -Path $startMenuDir -Force | Out-Null
     $startShortcut = $wshShell.CreateShortcut((Join-Path $startMenuDir ($APP_NAME + '.lnk')))
-    $startShortcut.TargetPath = $targetExe
+    $startShortcut.TargetPath = $desktopLauncher
     $startShortcut.WorkingDirectory = $workDir
     $startShortcut.Description = 'DeepSeek Harness desktop client'
     $startShortcut.IconLocation = $iconPath + ',0'
@@ -339,18 +477,20 @@ function Write-Success {
     Write-Host 'Launch from the desktop shortcut or run: dsh' -ForegroundColor White
 }
 
-try {
-    Write-Header
-    Test-Prerequisites
-    $releaseInfo = Get-LatestReleaseInfo
-    $tempZip = Join-Path $env:TEMP ('DeepSeek-Harness-' + $releaseInfo.version + '.zip')
-    Download-WithMirrorFailover -ReleaseInfo $releaseInfo -DestinationZip $tempZip
-    Extract-And-Install -ZipPath $tempZip -ExpectedDistributionVersion $releaseInfo.version
-    Show-SigningNotice
-    Create-Shortcuts
-    Write-Success
-} catch {
-    Write-Host ''
-    Write-Host ('Installation failed: ' + $_.Exception.Message) -ForegroundColor Red
-    exit 1
+if ($MyInvocation.InvocationName -ne '.') {
+    try {
+        Write-Header
+        Test-Prerequisites
+        $releaseInfo = Get-LatestReleaseInfo
+        $tempZip = Join-Path $env:TEMP ('DeepSeek-Harness-' + $releaseInfo.version + '.zip')
+        Download-WithMirrorFailover -ReleaseInfo $releaseInfo -DestinationZip $tempZip
+        Extract-And-Install -ZipPath $tempZip -ExpectedDistributionVersion $releaseInfo.version
+        Show-SigningNotice
+        Create-Shortcuts
+        Write-Success
+    } catch {
+        Write-Host ''
+        Write-Host ('Installation failed: ' + $_.Exception.Message) -ForegroundColor Red
+        exit 1
+    }
 }
