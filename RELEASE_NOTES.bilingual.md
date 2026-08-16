@@ -1,20 +1,16 @@
-# DeepSeek Harness for Win v1.2.4
+# DeepSeek Harness for Win v1.2.5
 
 Windows x64 便携版 · 2026-08-16
 
-这是本 Windows 分发版的 v1.2.4 版本，通过 WSLENV 机制共享终端环境变量彻底解决分页器阻塞，为 WSL 终端引入 Ctrl+C 字节级精确中断响应，联动 PTY 生命周期确保退出时销毁后台进程，并全面对齐视觉外挂 Design Tokens 设计规范。
+这是本 Windows 分发版的 v1.2.5 版本，修复了更新日志与更新检测模块在未显式提供资产文件名时的误报问题，并在所有合法的 SemVer 版本下自动推导标准便携分发包文件名，确保应用内更新与提示保持准确同步。
 
-## 新功能与体验优化
+## 问题修复与体验优化
 
-- **通过 WSLENV 共享 WSL 终端环境变量**：将 Windows 宿主环境中的终端与运行时变量（`PAGER`、`GIT_PAGER`、`TERM`、`DSH_*` 等）自动注入 Linux 会话，彻底消除 `git`/`man` 等命令因交互分页器（`less`）阻塞的问题，确保就绪探测畅通无阻。
-- **WSL 终端精确 SIGINT 中断响应**：封装底层终端句柄，将前端发起的 `SIGINT` 信号转化为标准 `Ctrl+C` 字节流直接写入 PTY，使得前台正在执行的任务能够即时响应中断与停止，无需等待 300s 超时强制重置。
-- **完善 WSL 终端进程生命周期与退出联动**：修复进程树根节点逻辑，在宿主应用退出时联动调用 PTY `SIGKILL` 彻底销毁 `wsl.exe` 与后台终端资源，杜绝孤儿进程残留。
-- **WSL 状态智能探测与跨编码自适应解码**：自动识别并兼容 UTF-16LE / UTF-8 编码混杂的 `wsl -l -q` 输出，杜绝误判；针对未安装 Linux 发行版等异常场景提供中英文双语友好排错指引与一键修复建议。
-- **视觉外挂（Vision Bridge）UI 规范与官方 Design Tokens 对齐**：深度优化 `@dsh-portable/vision-bridge` 前端配置组件在浅色与深色主题下的视觉变量与卡片间距，界面表现更精致协调。
+- **修复更新检测误报与资产包回退推导**：修复当通过 Mirror/Raw 渠道拉取更新日志或历史记录中未显式指定 `assetName` 时导致模态框误判为“当前已是最新版本”的问题，并为所有合法 SemVer 版本自动推导标准便携分发包文件名（`DeepSeek-Harness-${version}-win32-x64.zip`）。
 
 ## 组件版本
 
-- 分发：1.2.4
+- 分发：1.2.5
 - 桌面外壳：0.1.0-shell.2
 - 运行时内核：0.1.0-rc.5
 
@@ -24,19 +20,15 @@ Windows x64 便携版 · 2026-08-16
 
 Windows x64 portable release · 2026-08-16
 
-This is the v1.2.4 release of this Windows distribution, sharing terminal environment variables with WSL sessions via WSLENV to eliminate pager hangs, delivering Ctrl+C signals for interactive WSL task interruptions, binding host shutdown directly to PTY lifecycle cleanup, and aligning Vision Bridge styles with official design tokens.
+This is the v1.2.5 release of this Windows distribution, fixing an updater detection issue where releases without explicit asset names caused false "up to date" status reports, and automatically deriving standard portable asset filenames across valid SemVer releases.
 
-### New Features & Improvements
+### Bug Fixes & Improvements
 
-- **WSL Terminal Environment Sharing via WSLENV**: Windows host terminal and runtime environment variables (`PAGER`, `GIT_PAGER`, `TERM`, `DSH_*`, etc.) are now seamlessly shared into WSL Linux sessions. This completely eliminates interactive pager hangs (such as `less` in `git` or `man`) and ensures readiness probe workflows run smoothly.
-- **Interactive SIGINT Delivery for WSL Terminals**: Intercepts terminal interrupt requests and delivers the standard Ctrl+C byte directly into the PTY stream. Foreground tasks now respond and cancel immediately without waiting for 300s command timeout resets.
-- **Deterministic WSL Process Cleanup on Exit**: Binds host shutdown directly to PTY `SIGKILL` signals, ensuring background `wsl.exe` instances and terminal subprocesses are cleanly destroyed on application exit with zero orphan processes.
-- **Robust WSL Diagnostic & Cross-Encoding Detection**: Automatically handles and decodes mixed UTF-16LE and UTF-8 `wsl -l -q` command output across different Windows locales. Provides actionable bilingual troubleshooting guidance and one-click commands when distributions are missing.
-- **Vision Bridge Design Token Alignment**: Harmonized CSS variables and card styles in `@dsh-portable/vision-bridge` with official microkernel design tokens across dark and light themes.
+- **Updater Detection & Asset Fallback**: Fixed an issue where new releases fetched via raw release notes or history without an explicit `assetName` field caused the update dialog to falsely report "You are running the latest version", and automatically derives standard package names (`DeepSeek-Harness-${version}-win32-x64.zip`) for valid SemVer releases.
 
 ### Component Versions
 
-- Distribution: 1.2.4
+- Distribution: 1.2.5
 - Desktop Shell: 0.1.0-shell.2
 - Runtime Kernel: 0.1.0-rc.5
 
@@ -49,6 +41,6 @@ This is the v1.2.4 release of this Windows distribution, sharing terminal enviro
 Every final release artifact is verified with a SHA-256 checksum:
 
 ```
-36027F8B2C747CA0F58C749C1291B63CB7D0992B57DF2EDBDC47B9972430F030 *DeepSeek-Harness-1.2.4-win32-x64.zip
-BF3DC481FDEBEB4B220B36E0B8F200288CAC9F92B604025FCBE31F32309BCD4A *DeepSeek-Harness-Setup-1.2.4-win32-x64.exe
+EFC849607DE021C9F5F147C367C1A59F6D87BD3482A278B06CC151B6F3E26292 *DeepSeek-Harness-1.2.5-win32-x64.zip
+9494D7F7F0733118D28910EFEBCAAAC709B236225369A7A6975939C6B9B95445 *DeepSeek-Harness-Setup-1.2.5-win32-x64.exe
 ```

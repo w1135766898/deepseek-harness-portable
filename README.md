@@ -62,8 +62,8 @@ Upstream [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) is 
 
 | Item | Version |
 | --- | --- |
-| Release | DeepSeek Harness for Win **v1.2.4** ([download](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.2.4)) |
-| Distribution | 1.2.4 |
+| Release | DeepSeek Harness for Win **v1.2.5** ([download](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.2.5)) |
+| Distribution | 1.2.5 |
 | Desktop shell | 0.1.0-shell.2 |
 | Kernel | 0.1.0-rc.5 |
 

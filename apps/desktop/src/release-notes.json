@@ -1,31 +1,49 @@
 {
-  "version": "1.2.4",
-  "name": "DeepSeek Harness for Win v1.2.4",
+  "version": "1.2.5",
+  "name": "DeepSeek Harness for Win v1.2.5",
   "publishedAt": "2026-08-16",
   "sections": [
     {
-      "key": "features",
-      "titleEn": "New Features & Improvements",
-      "titleZh": "新功能与体验优化",
+      "key": "fixes",
+      "titleEn": "Bug Fixes & Improvements",
+      "titleZh": "问题修复与体验优化",
       "itemsEn": [
-        "WSL terminal environment sharing via WSLENV: seamlessly propagates Windows host terminal environment variables (PAGER, GIT_PAGER, TERM, DSH_*, etc.) into Linux sessions, eliminating pager hangs and unblocking readiness protocols.",
-        "Interactive SIGINT delivery for WSL: intercepts terminal interrupt requests and delivers the standard Ctrl+C byte into the PTY stream, allowing foreground tasks to abort immediately without waiting for timeouts.",
-        "Deterministic WSL process cleanup: binds host shutdown directly to PTY SIGKILL signals, ensuring background wsl.exe instances and terminal subprocesses are cleanly destroyed on exit.",
-        "Robust WSL diagnostic & cross-encoding detection: auto-adapts to UTF-16LE / UTF-8 outputs during environment probing, and provides actionable bilingual guidance when distributions are missing.",
-        "Vision Bridge design token alignment: harmonized CSS variables and card styles in @dsh-portable/vision-bridge with official microkernel design tokens across dark and light themes."
+        "Updater detection & asset fallback: fixed issue where new releases fetched via raw notes or history without explicit assetName caused the update modal to display false 'up to date' status, and automatically derive standard package names for valid SemVer releases."
       ],
       "itemsZh": [
-        "通过 WSLENV 共享 WSL 终端环境变量：将 Windows 宿主环境中的终端与运行时变量（PAGER、GIT_PAGER、TERM、DSH_* 等）自动注入 Linux 会话，彻底消除 git/man 等命令因分页器阻塞的问题，确保就绪探测畅通无阻。",
-        "WSL 终端精确 SIGINT 中断响应：封装底层终端句柄，将前端发起的 SIGINT 信号转化为标准 Ctrl+C 字节流直接写入 PTY，使得前台正在执行的任务能够即时响应中断与停止，无需等待 300s 超时强制重置。",
-        "完善 WSL 终端进程生命周期与退出联动：修复进程树根节点逻辑，在宿主应用退出时联动调用 PTY SIGKILL 彻底销毁 wsl.exe 与后台终端资源，杜绝孤儿进程残留。",
-        "WSL 状态智能探测与跨编码自适应解码：自动识别并兼容 UTF-16LE / UTF-8 编码混杂的 wsl -l -q 输出，杜绝误判；针对未安装 Linux 发行版等异常场景提供中英文双语友好排错指引与一键修复建议。",
-        "视觉外挂（Vision Bridge）UI 规范与官方 Design Tokens 对齐：深度优化 @dsh-portable/vision-bridge 前端配置组件在浅色与深色主题下的视觉变量与卡片间距，界面表现更精致协调。"
+        "修复更新检测误报与资产包回退推导：修复当通过 Mirror/Raw 渠道拉取更新日志或历史记录中未显式指定 assetName 时导致模态框误判为“当前已是最新版本”的问题，并为所有合法 SemVer 版本自动推导标准便携分发包文件名。"
       ]
     }
   ],
-  "bodyZh": "## 新功能与体验优化\n\n- **通过 WSLENV 共享 WSL 终端环境变量**：将 Windows 宿主环境中的终端与运行时变量（PAGER、GIT_PAGER、TERM、DSH_* 等）自动注入 Linux 会话，彻底消除 git/man 等命令因分页器阻塞的问题，确保就绪探测畅通无阻。\n- **WSL 终端精确 SIGINT 中断响应**：封装底层终端句柄，将前端发起的 SIGINT 信号转化为标准 Ctrl+C 字节流直接写入 PTY，使得前台正在执行的任务能够即时响应中断与停止，无需等待 300s 超时强制重置。\n- **完善 WSL 终端进程生命周期与退出联动**：修复进程树根节点逻辑，在宿主应用退出时联动调用 PTY SIGKILL 彻底销毁 wsl.exe 与后台终端资源，杜绝孤儿进程残留。\n- **WSL 状态智能探测与跨编码自适应解码**：自动识别并兼容 UTF-16LE / UTF-8 编码混杂的 wsl -l -q 输出，杜绝误判；针对未安装 Linux 发行版等异常场景提供中英文双语友好排错指引与一键修复建议。\n- **视觉外挂（Vision Bridge）UI 规范与官方 Design Tokens 对齐**：深度优化 @dsh-portable/vision-bridge 前端配置组件在浅色与深色主题下的视觉变量与卡片间距，界面表现更精致协调。",
-  "bodyEn": "## New Features & Improvements\n\n- **WSL terminal environment sharing via WSLENV**: seamlessly propagates Windows host terminal environment variables (PAGER, GIT_PAGER, TERM, DSH_*, etc.) into Linux sessions, eliminating pager hangs and unblocking readiness protocols.\n- **Interactive SIGINT delivery for WSL**: intercepts terminal interrupt requests and delivers the standard Ctrl+C byte into the PTY stream, allowing foreground tasks to abort immediately without waiting for timeouts.\n- **Deterministic WSL process cleanup**: binds host shutdown directly to PTY SIGKILL signals, ensuring background wsl.exe instances and terminal subprocesses are cleanly destroyed on exit.\n- **Robust WSL diagnostic & cross-encoding detection**: auto-adapts to UTF-16LE / UTF-8 outputs during environment probing, and provides actionable bilingual guidance when distributions are missing.\n- **Vision Bridge design token alignment**: harmonized CSS variables and card styles in @dsh-portable/vision-bridge with official microkernel design tokens across dark and light themes.",
+  "bodyZh": "## 问题修复与体验优化\n\n- **修复更新检测误报与资产包回退推导**：修复当通过 Mirror/Raw 渠道拉取更新日志或历史记录中未显式指定 assetName 时导致模态框误判为“当前已是最新版本”的问题，并为所有合法 SemVer 版本自动推导标准便携分发包文件名。",
+  "bodyEn": "## Bug Fixes & Improvements\n\n- **Updater detection & asset fallback**: fixed issue where new releases fetched via raw notes or history without explicit assetName caused the update modal to display false 'up to date' status, and automatically derive standard package names for valid SemVer releases.",
   "history": [
+    {
+      "version": "1.2.4",
+      "name": "DeepSeek Harness for Win v1.2.4",
+      "publishedAt": "2026-08-16",
+      "sections": [
+        {
+          "key": "features",
+          "titleEn": "New Features & Improvements",
+          "titleZh": "新功能与体验优化",
+          "itemsEn": [
+            "WSL terminal environment sharing via WSLENV: seamlessly propagates Windows host terminal environment variables (PAGER, GIT_PAGER, TERM, DSH_*, etc.) into Linux sessions, eliminating pager hangs and unblocking readiness protocols.",
+            "Interactive SIGINT delivery for WSL: intercepts terminal interrupt requests and delivers the standard Ctrl+C byte into the PTY stream, allowing foreground tasks to abort immediately without waiting for timeouts.",
+            "Deterministic WSL process cleanup: binds host shutdown directly to PTY SIGKILL signals, ensuring background wsl.exe instances and terminal subprocesses are cleanly destroyed on exit.",
+            "Robust WSL diagnostic & cross-encoding detection: auto-adapts to UTF-16LE / UTF-8 outputs during environment probing, and provides actionable bilingual guidance when distributions are missing.",
+            "Vision Bridge design token alignment: harmonized CSS variables and card styles in @dsh-portable/vision-bridge with official microkernel design tokens across dark and light themes."
+          ],
+          "itemsZh": [
+            "通过 WSLENV 共享 WSL 终端环境变量：将 Windows 宿主环境中的终端与运行时变量（PAGER、GIT_PAGER、TERM、DSH_* 等）自动注入 Linux 会话，彻底消除 git/man 等命令因分页器阻塞的问题，确保就绪探测畅通无阻。",
+            "WSL 终端精确 SIGINT 中断响应：封装底层终端句柄，将前端发起的 SIGINT 信号转化为标准 Ctrl+C 字节流直接写入 PTY，使得前台正在执行的任务能够即时响应中断与停止，无需等待 300s 超时强制重置。",
+            "完善 WSL 终端进程生命周期与退出联动：修复进程树根节点逻辑，在宿主应用退出时联动调用 PTY SIGKILL 彻底销毁 wsl.exe 与后台终端资源，杜绝孤儿进程残留。",
+            "WSL 状态智能探测与跨编码自适应解码：自动识别并兼容 UTF-16LE / UTF-8 编码混杂的 wsl -l -q 输出，杜绝误判；针对未安装 Linux 发行版等异常场景提供中英文双语友好排错指引与一键修复建议。",
+            "视觉外挂（Vision Bridge）UI 规范与官方 Design Tokens 对齐：深度优化 @dsh-portable/vision-bridge 前端配置组件在浅色与深色主题下的视觉变量与卡片间距，界面表现更精致协调。"
+          ]
+        }
+      ]
+    },
     {
       "version": "1.2.3",
       "name": "DeepSeek Harness for Win v1.2.3",
