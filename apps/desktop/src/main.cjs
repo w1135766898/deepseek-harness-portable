@@ -2232,27 +2232,15 @@ function writeUpdateProbeIfRequested() {
 function menuItems() {
   return [
     { label: desktopText('menu.showApp'), click: showWindow },
-    { label: desktopText('menu.checkUpdates'), click: () => { void checkForUpdates(true) } },
-    { label: desktopText('menu.rollback'), click: () => { void triggerRollback() } },
-    { label: desktopText('menu.releaseNotes'), click: () => { openInAppReleaseNotes({ mode: 'history' }) } },
-    { label: desktopText('menu.about'), click: () => { openInAppReleaseNotes({ mode: 'about' }) } },
-    { label: desktopText('menu.openBrowser'), click: () => { void openWebUiInBrowser() } },
     { type: 'separator' },
     { label: desktopText('menu.chooseWorkspace'), click: () => { void chooseWorkspace() } },
     { label: desktopText('menu.recentWorkspaces'), submenu: recentWorkspaceMenuItems() },
-    { label: desktopText('menu.openWorkspace', { path: workspace() }), click: () => { void shell.openPath(workspace()) } },
-    {
-      label: desktopText('menu.useHomeWorkspace'),
-      enabled: workspace() !== homedir(),
-      click: async () => {
-        await switchWorkspace(homedir())
-      },
-    },
+    { type: 'separator' },
     { label: desktopText('menu.refreshInterface'), accelerator: 'CmdOrCtrl+R', click: reloadRenderer },
     { label: desktopText('menu.restartHarness'), accelerator: 'CmdOrCtrl+Shift+R', click: () => { void requestHarnessRestart() } },
+    { label: desktopText('menu.openBrowser'), click: () => { void openWebUiInBrowser() } },
     { type: 'separator' },
-    { label: desktopText('menu.copyDiagnostics'), click: () => { exportDiagnostics({ send: () => {} }) } },
-    { label: desktopText('menu.clearWebStorage'), click: () => { void clearDesktopStorage({ send: () => {} }) } },
+    { label: desktopText('menu.aboutAndUpdates'), click: () => { openInAppReleaseNotes({ mode: 'history' }) } },
     { type: 'separator' },
     { label: desktopText('menu.quit'), accelerator: process.platform === 'darwin' ? 'Command+Q' : 'Alt+F4', click: () => app.quit() },
   ]

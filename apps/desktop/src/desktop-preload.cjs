@@ -78,6 +78,7 @@ if (!isSplashDocument) {
     modalLoading: false,
     menuOpen: false,
     menuFocusIndex: -1,
+    menuSubmenu: undefined,
     menuPosition: { left: 8, top: 42 },
     recentWorkspaces: [],
     currentWorkspace: '',
@@ -254,7 +255,8 @@ if (!isSplashDocument) {
       const itemId = releaseElementId(version)
       const bodyId = itemId + '-body'
       const badges = renderReleaseBadges(release)
-      return '<article class="dsh-accordion-item ' + (current ? 'is-current ' : '') + (expanded ? 'is-expanded' : '') + '"><div class="dsh-release-node" aria-hidden="true"></div><button class="dsh-accordion-header" type="button" data-action="toggle-release" data-version="' + escapeHtml(version) + '" id="' + escapeHtml(itemId) + '" aria-expanded="' + (expanded ? 'true' : 'false') + '" aria-controls="' + escapeHtml(bodyId) + '"><span class="dsh-accordion-chevron" aria-hidden="true">' + (expanded ? '▼' : '▶') + '</span><span class="dsh-release-heading"><span class="dsh-version">v' + escapeHtml(version) + '</span><span class="dsh-type">' + escapeHtml(releaseTypeLabel(release.releaseType)) + '</span>' + (current ? '<span class="dsh-current">' + escapeHtml(desktopText('release.current')) + '</span>' : (index === 0 ? '<span class="dsh-latest">' + escapeHtml(desktopText('release.latest')) + '</span>' : '')) + '</span><span class="dsh-release-badges">' + badges + '</span><time datetime="' + escapeHtml(release.publishedAt || '') + '">' + formatDate(release.publishedAt) + '</time></button><div class="dsh-accordion-body" id="' + escapeHtml(bodyId) + '" role="region" aria-labelledby="' + escapeHtml(itemId) + '"' + (expanded ? '' : ' hidden') + '>' + renderReleaseSections(release) + '</div></article>'
+      const chevronSvg = '<svg class="dsh-accordion-chevron" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 4 10 8 6 12"/></svg>'
+      return '<article class="dsh-accordion-item ' + (current ? 'is-current ' : '') + (expanded ? 'is-expanded' : '') + '"><div class="dsh-release-node" aria-hidden="true"></div><button class="dsh-accordion-header" type="button" data-action="toggle-release" data-version="' + escapeHtml(version) + '" id="' + escapeHtml(itemId) + '" aria-expanded="' + (expanded ? 'true' : 'false') + '" aria-controls="' + escapeHtml(bodyId) + '">' + chevronSvg + '<span class="dsh-release-heading"><span class="dsh-version">v' + escapeHtml(version) + '</span><span class="dsh-type">' + escapeHtml(releaseTypeLabel(release.releaseType)) + '</span>' + (current ? '<span class="dsh-current">' + escapeHtml(desktopText('release.current')) + '</span>' : (index === 0 ? '<span class="dsh-latest">' + escapeHtml(desktopText('release.latest')) + '</span>' : '')) + '</span><span class="dsh-release-badges">' + badges + '</span><time datetime="' + escapeHtml(release.publishedAt || '') + '">' + formatDate(release.publishedAt) + '</time></button><div class="dsh-accordion-body" id="' + escapeHtml(bodyId) + '" role="region" aria-labelledby="' + escapeHtml(itemId) + '"' + (expanded ? '' : ' hidden') + '>' + renderReleaseSections(release) + '</div></article>'
     }).join('') + '</div>'
   }
 
@@ -537,6 +539,7 @@ if (!isSplashDocument) {
   function openMenuAt(anchor) {
     state.menuOpen = true
     state.menuFocusIndex = 0
+    state.menuSubmenu = undefined
     state.menuPosition = menuPositionForButton(anchor || findNativeMenuAnchor())
     ipcRenderer.send('desktop:wsl:probe')
     render()
@@ -545,6 +548,7 @@ if (!isSplashDocument) {
   function closeMenu() {
     state.menuOpen = false
     state.menuFocusIndex = -1
+    state.menuSubmenu = undefined
     render()
   }
 
@@ -560,22 +564,37 @@ if (!isSplashDocument) {
     const wslLabel = state.wslState?.available
       ? desktopText('wsl.menuStatusReady', { distros: state.wslState?.distros?.[0] || 'Linux' })
       : desktopText('wsl.menuStatusMissing')
+    const hasUpdate = Boolean(state.data?.updateAvailable || (state.notice && state.notice.kind === 'available') || state.updateProgress)
+    const updateDot = hasUpdate ? '<span class="dsh-menu-dot" title="' + escapeHtml(desktopText('release.foundNew')) + '">●</span>' : ''
+
+    const isRecentOpen = state.menuSubmenu === 'workspaces'
+    const isMaintenanceOpen = state.menuSubmenu === 'maintenance'
+
+    const recentSubmenu = isRecentOpen
+      ? '<div class="dsh-submenu-container">' + renderRecentWorkspaceItems() + '</div>'
+      : ''
+
+    const maintenanceSubmenu = isMaintenanceOpen
+      ? '<div class="dsh-submenu-container">' +
+          '<button class="dsh-menu-item" data-action="desktop-wsl-guide" role="menuitem"><span>🐧</span><strong>' + escapeHtml(wslLabel) + '</strong></button>' +
+          '<button class="dsh-menu-item" data-action="desktop-export-diagnostics" role="menuitem"><span>⇩</span><strong>' + escapeHtml(desktopText('menu.copyDiagnostics')) + '</strong></button>' +
+          '<button class="dsh-menu-item" data-action="desktop-clear-storage" role="menuitem"><span>⌫</span><strong>' + escapeHtml(desktopText('menu.clearWebStorage')) + '</strong></button>' +
+        '</div>'
+      : ''
+
     return '<div class="dsh-menu-popover" role="menu" aria-label="' + escapeHtml(desktopText('menu.desktopMenu')) + '"' + positionMarkup + '>' +
-      '<button class="dsh-menu-item" data-action="desktop-check-updates" role="menuitem"><span>↻</span><strong>' + escapeHtml(desktopText('menu.checkUpdates')) + '</strong></button>' +
-      '<button class="dsh-menu-item" data-action="desktop-release-notes" role="menuitem"><span>☷</span><strong>' + escapeHtml(desktopText('menu.releaseNotes')) + '</strong></button>' +
-      '<button class="dsh-menu-item" data-action="desktop-about" role="menuitem"><span>ⓘ</span><strong>' + escapeHtml(desktopText('menu.about', { appName: 'DeepSeek Harness' })) + '</strong></button>' +
-      '<div class="dsh-menu-separator"></div>' +
       '<button class="dsh-menu-item" data-action="desktop-choose-workspace" role="menuitem"><span>⌂</span><strong>' + escapeHtml(desktopText('menu.chooseWorkspace')) + '</strong></button>' +
-      '<div class="dsh-menu-heading">' + escapeHtml(desktopText('menu.recentWorkspaces')) + '</div>' +
-      renderRecentWorkspaceItems() +
+      '<button class="dsh-menu-item dsh-menu-item-expandable' + (isRecentOpen ? ' is-expanded' : '') + '" data-action="desktop-toggle-recent" role="menuitem" aria-expanded="' + (isRecentOpen ? 'true' : 'false') + '"><span>📁</span><strong>' + escapeHtml(desktopText('menu.recentWorkspaces')) + '</strong><span class="dsh-menu-expand" aria-hidden="true">' + (isRecentOpen ? '▾' : '▸') + '</span></button>' +
+      recentSubmenu +
       '<div class="dsh-menu-separator"></div>' +
-      '<button class="dsh-menu-item" data-action="desktop-reload-ui" role="menuitem"><span>⟳</span><strong>' + escapeHtml(desktopText('menu.refreshInterface')) + ' <kbd>Ctrl+R</kbd></strong></button>' +
-      '<button class="dsh-menu-item" data-action="desktop-restart" role="menuitem"><span>↺</span><strong>' + escapeHtml(desktopText('menu.restartHarness')) + ' <kbd>Ctrl+Shift+R</kbd></strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-reload-ui" role="menuitem"><span>⟳</span><strong>' + escapeHtml(desktopText('menu.refreshInterface')) + '</strong><kbd>Ctrl+R</kbd></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-restart" role="menuitem"><span>↺</span><strong>' + escapeHtml(desktopText('menu.restartHarness')) + '</strong><kbd>Ctrl+Shift+R</kbd></button>' +
       '<button class="dsh-menu-item" data-action="desktop-open-browser" role="menuitem"><span>↗</span><strong>' + escapeHtml(desktopText('menu.openBrowser')) + '</strong></button>' +
       '<div class="dsh-menu-separator"></div>' +
-      '<button class="dsh-menu-item" data-action="desktop-wsl-guide" role="menuitem"><span>🐧</span><strong>' + escapeHtml(wslLabel) + '</strong></button>' +
-      '<button class="dsh-menu-item" data-action="desktop-export-diagnostics" role="menuitem"><span>⇩</span><strong>' + escapeHtml(desktopText('menu.copyDiagnostics')) + '</strong></button>' +
-      '<button class="dsh-menu-item" data-action="desktop-clear-storage" role="menuitem"><span>⌫</span><strong>' + escapeHtml(desktopText('menu.clearWebStorage')) + '</strong></button>' +
+      '<button class="dsh-menu-item dsh-menu-item-expandable' + (isMaintenanceOpen ? ' is-expanded' : '') + '" data-action="desktop-toggle-maintenance" role="menuitem" aria-expanded="' + (isMaintenanceOpen ? 'true' : 'false') + '"><span>🛠</span><strong>' + escapeHtml(desktopText('menu.maintenance')) + '</strong>' + (!state.wslState?.available && state.wslState !== undefined ? '<span class="dsh-menu-warn">⚠️</span>' : '') + '<span class="dsh-menu-expand" aria-hidden="true">' + (isMaintenanceOpen ? '▾' : '▸') + '</span></button>' +
+      maintenanceSubmenu +
+      '<div class="dsh-menu-separator"></div>' +
+      '<button class="dsh-menu-item" data-action="desktop-about-and-updates" role="menuitem"><span>ⓘ</span><strong>' + escapeHtml(desktopText('menu.aboutAndUpdates')) + '</strong>' + updateDot + '</button>' +
       '</div>'
   }
 
@@ -786,6 +805,20 @@ if (!isSplashDocument) {
   function handleAction(target) {
     const action = target?.dataset?.action
     if (!action) return
+    if (action === 'desktop-toggle-recent') {
+      state.menuSubmenu = state.menuSubmenu === 'workspaces' ? undefined : 'workspaces'
+      render()
+      return
+    }
+    if (action === 'desktop-toggle-maintenance') {
+      state.menuSubmenu = state.menuSubmenu === 'maintenance' ? undefined : 'maintenance'
+      render()
+      return
+    }
+    if (action === 'desktop-about-and-updates') {
+      sendMenuAction('release-notes')
+      return
+    }
     if (action === 'desktop-check-updates') {
       sendMenuAction('check-for-updates')
       return
@@ -909,14 +942,18 @@ if (!isSplashDocument) {
     .dsh-chrome { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; color: #182235; font: 13px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif; }
     .dsh-drag-region { position: fixed; inset: 0 140px auto 0; height: var(--dsh-titlebar-height); pointer-events: auto; -webkit-app-region: drag; }
     .dsh-notice, .dsh-modal-layer { pointer-events: auto; }
-    .dsh-menu-popover { position: fixed; top: var(--dsh-menu-top, 42px); left: var(--dsh-menu-left, 8px); z-index: 6; display: grid; min-width: 236px; max-height: calc(100vh - 16px); overflow-y: auto; padding: 6px; border: 1px solid rgba(116, 138, 171, .24); border-radius: 12px; background: rgba(250, 252, 255, .98); box-shadow: 0 16px 40px rgba(23, 43, 72, .2); pointer-events: auto; -webkit-app-region: no-drag; }
+    .dsh-menu-popover { position: fixed; top: var(--dsh-menu-top, 42px); left: var(--dsh-menu-left, 8px); z-index: 6; display: grid; min-width: 236px; max-height: calc(100vh - 16px); overflow-y: auto; padding: 6px; border: 1px solid rgba(116, 138, 171, .24); border-radius: 12px; background: rgba(250, 252, 255, .98); box-shadow: 0 16px 40px rgba(23, 43, 72, .2); pointer-events: auto; -webkit-app-region: no-drag; animation: dsh-popover-in .18s cubic-bezier(.16, 1, .3, 1) both; transform-origin: top left; }
     .dsh-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 7px 9px; border: 0; border-radius: 7px; color: #263a5a; background: transparent; cursor: pointer; text-align: left; font: 12px/1.2 inherit; -webkit-app-region: no-drag; }
     .dsh-menu-item:hover { color: #1d5ebf; background: #eaf2ff; }
     .dsh-menu-item.is-focused { color: #1d5ebf; background: #eaf2ff; outline: 2px solid rgba(52, 127, 242, .24); outline-offset: -2px; }
     .dsh-menu-item span { display: inline-grid; place-items: center; width: 17px; color: #5b80b8; font-size: 14px; }
     .dsh-menu-item strong { font-weight: 600; }
-    .dsh-menu-item kbd { margin-left: auto; color: #8191a8; font: 10px ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .dsh-menu-item kbd { margin-left: auto; padding: 2px 5px; border: 1px solid rgba(116, 138, 171, .22); border-radius: 4px; color: #6e8099; background: rgba(220, 230, 245, .55); font: 10px ui-monospace, SFMono-Regular, Consolas, monospace; }
     .dsh-menu-item:disabled { color: #9aa8bc; cursor: default; opacity: .78; }
+    .dsh-submenu-container { margin-left: 12px; padding-left: 6px; border-left: 2px solid rgba(116, 138, 171, .16); display: grid; gap: 2px; animation: dsh-fade-in .15s ease; }
+    .dsh-menu-expand { margin-left: auto; color: #8191a8; font-size: 11px; }
+    .dsh-menu-dot { margin-left: auto; color: #307bf0; font-size: 10px; animation: dsh-pulse 1.8s ease-in-out infinite; }
+    .dsh-menu-warn { margin-left: auto; font-size: 11px; }
     .dsh-menu-heading { padding: 5px 9px 3px; color: #8191a8; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
     .dsh-menu-separator { height: 1px; margin: 5px 4px; background: rgba(116, 138, 171, .18); }
     .dsh-notice { position: fixed; top: var(--dsh-titlebar-height, 36px); left: 50%; right: auto; bottom: auto; width: min(700px, calc(100vw - 32px)); display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid rgba(87, 151, 255, .32); border-radius: 10px; background: rgba(247, 250, 255, .94); box-shadow: 0 10px 28px rgba(31, 50, 83, .18), 0 1px 2px rgba(15, 23, 42, .08); backdrop-filter: blur(22px) saturate(160%); animation: dsh-notice-in .28s cubic-bezier(.16,1,.3,1) both; z-index: 5; }
@@ -965,10 +1002,11 @@ if (!isSplashDocument) {
     .dsh-modal-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; scroll-behavior: smooth; padding: 20px 24px 30px; -webkit-overflow-scrolling: touch; }
     .dsh-modal-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 10px 20px; border-top: 1px solid rgba(42, 61, 92, .1); }
     .dsh-footer-left, .dsh-footer-right { gap: 6px; }
-    .dsh-hero-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; padding: 16px; border: 1px solid rgba(61, 129, 240, .25); border-radius: 12px; background: rgba(74, 143, 247, .08); }
-    .dsh-hero-card-success, .dsh-hero-card-ready { border-color: rgba(40, 116, 81, .28); background: #e5f6ee; }
-    .dsh-hero-card-error { border-color: rgba(224, 71, 95, .28); background: #fde8ed; }
-    .dsh-hero-card-neutral { border-color: rgba(116, 138, 171, .2); background: rgba(235, 241, 249, .72); }
+    .dsh-hero-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; padding: 16px; border: 1px solid rgba(61, 129, 240, .25); border-left-width: 4px; border-radius: 12px; background: rgba(74, 143, 247, .08); }
+    .dsh-hero-card-success, .dsh-hero-card-ready { border-color: rgba(40, 116, 81, .28); border-left-color: #287451; background: #e5f6ee; }
+    .dsh-hero-card-error { border-color: rgba(224, 71, 95, .28); border-left-color: #bd3e56; background: #fde8ed; }
+    .dsh-hero-card-available, .dsh-hero-card-progress { border-left-color: #307bf0; }
+    .dsh-hero-card-neutral { border-color: rgba(116, 138, 171, .2); border-left-color: #6e85a8; background: rgba(235, 241, 249, .72); }
     .dsh-hero-copy { min-width: 0; display: grid; gap: 3px; }
     .dsh-hero-copy strong { color: #245db1; font-size: 14px; }
     .dsh-hero-card-success .dsh-hero-copy strong, .dsh-hero-card-ready .dsh-hero-copy strong { color: #287451; }
@@ -992,7 +1030,8 @@ if (!isSplashDocument) {
     .dsh-accordion-item.is-current .dsh-release-node { border-color: #347ff2; background: #347ff2; box-shadow: 0 0 10px rgba(52, 127, 242, .45); }
     .dsh-accordion-header { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; padding: 9px 12px; border: 0; color: inherit; background: transparent; cursor: pointer; text-align: left; font: inherit; }
     .dsh-accordion-header:hover { background: rgba(234, 242, 255, .72); }
-    .dsh-accordion-chevron { flex: 0 0 12px; color: #6e85a8; font-size: 10px; }
+    .dsh-accordion-chevron { flex: 0 0 12px; width: 12px; height: 12px; color: #6e85a8; transition: transform .2s cubic-bezier(.16, 1, .3, 1); }
+    .dsh-accordion-item.is-expanded .dsh-accordion-chevron { transform: rotate(90deg); }
     .dsh-release-heading { min-width: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .dsh-version { color: #1e2d44; font: 700 14px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; }
     .dsh-type, .dsh-current, .dsh-latest { display: inline-block; padding: 2px 7px; border-radius: 999px; color: #5371a0; background: #edf3fb; font-size: 10px; font-weight: 650; }
@@ -1004,7 +1043,7 @@ if (!isSplashDocument) {
     .dsh-badge.improvements { color: #a96b0c; background: #fff1d8; }
     .dsh-badge.fixes { color: #bd3e56; background: #fde8ed; }
     .dsh-accordion-header time { flex: 0 0 auto; color: #94a1b5; font-size: 11px; }
-    .dsh-accordion-body { padding: 0 14px 14px 38px; border-top: 1px solid rgba(116, 138, 171, .15); }
+    .dsh-accordion-body { padding: 0 14px 14px 38px; border-top: 1px solid rgba(116, 138, 171, .15); animation: dsh-fade-in .18s ease; }
     .dsh-release-section { margin: 13px 0 0; }
     .dsh-release-section h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; color: #61738f; font-size: 11px; font-weight: 700; }
     .dsh-section-icon, .dsh-release-icon { display: inline-grid; place-items: center; flex: 0 0 auto; border-radius: 5px; font-size: 10px; font-weight: 800; }
@@ -1026,6 +1065,8 @@ if (!isSplashDocument) {
     .dsh-about h3 { margin: 0 0 8px; color: #1e2d44; font-size: 18px; }
     .dsh-about p { margin: 5px 0; color: #657793; }
     .dsh-muted { color: #9aa7ba !important; font-size: 11px; }
+    @keyframes dsh-popover-in { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes dsh-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
     @keyframes dsh-notice-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
     @keyframes dsh-notice-out { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -8px); } }
     @keyframes dsh-slide-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -1045,7 +1086,9 @@ if (!isSplashDocument) {
       .dsh-menu-item:hover { color: #d5e5ff; background: #253b61; }
       .dsh-menu-item.is-focused { color: #d5e5ff; background: #253b61; outline-color: rgba(93, 157, 255, .4); }
       .dsh-menu-item span { color: #9ebdf0; }
-      .dsh-menu-item kbd { color: #8ca3c8; }
+      .dsh-menu-item kbd { border-color: rgba(170, 192, 228, .18); background: rgba(30, 44, 70, .6); color: #8ca3c8; }
+      .dsh-submenu-container { border-left-color: rgba(170, 192, 228, .16); }
+      .dsh-menu-dot { color: #5ba8ff; }
       .dsh-menu-item:disabled, .dsh-menu-heading { color: #7185a5; }
       .dsh-menu-separator { background: rgba(170, 192, 228, .16); }
       .dsh-notice { border-color: rgba(93, 157, 255, .36); background: rgba(19, 29, 47, .94); box-shadow: 0 16px 40px rgba(0, 0, 0, .36); }
