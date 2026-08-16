@@ -1,23 +1,45 @@
 {
-  "version": "1.2.5",
-  "name": "DeepSeek Harness for Win v1.2.5",
+  "version": "1.2.6",
+  "name": "DeepSeek Harness for Win v1.2.6",
   "publishedAt": "2026-08-16",
   "sections": [
     {
       "key": "fixes",
-      "titleEn": "Bug Fixes & Improvements",
-      "titleZh": "问题修复与体验优化",
+      "titleEn": "Bug Fixes & Hardening",
+      "titleZh": "问题修复与安装更新加固",
       "itemsEn": [
-        "Updater detection & asset fallback: fixed issue where new releases fetched via raw notes or history without explicit assetName caused the update modal to display false 'up to date' status, and automatically derive standard package names for valid SemVer releases."
+        "Updater & installer hardening: resolved directory replacement edge-cases to prevent nested runtime directories, eliminated PowerShell output pipeline leaks, and added transaction journal state validation.",
+        "Setup installer resilience: enhanced pre-extraction cleanup and child process termination in Inno Setup to eliminate archive extraction permission errors.",
+        "WSL terminal subprocess cleanup: tightened terminal inspection and process tree lifecycle across Windows desktop sessions."
       ],
       "itemsZh": [
-        "修复更新检测误报与资产包回退推导：修复当通过 Mirror/Raw 渠道拉取更新日志或历史记录中未显式指定 assetName 时导致模态框误判为“当前已是最新版本”的问题，并为所有合法 SemVer 版本自动推导标准便携分发包文件名。"
+        "更新与安装事务加固：重构目录原子替换逻辑，杜绝 Windows NTFS 句柄未释放时导致的 runtime 目录嵌套，清理 PowerShell 输出流泄露，并引入更新事务日志状态校验守护。",
+        "Setup 安装包稳健性优化：增强解压前的残留子进程终止与旧目录清理机制，杜绝安装时出现 tar 解压权限冲突问题。",
+        "WSL 终端子进程退出清理：进一步强化终端检查与进程树生命周期联动，确保会话退出时彻底清理资源。"
       ]
     }
   ],
-  "bodyZh": "## 问题修复与体验优化\n\n- **修复更新检测误报与资产包回退推导**：修复当通过 Mirror/Raw 渠道拉取更新日志或历史记录中未显式指定 assetName 时导致模态框误判为“当前已是最新版本”的问题，并为所有合法 SemVer 版本自动推导标准便携分发包文件名。",
-  "bodyEn": "## Bug Fixes & Improvements\n\n- **Updater detection & asset fallback**: fixed issue where new releases fetched via raw notes or history without explicit assetName caused the update modal to display false 'up to date' status, and automatically derive standard package names for valid SemVer releases.",
+  "bodyZh": "## 问题修复与安装更新加固\n\n- **更新与安装事务加固**：重构目录原子替换逻辑，杜绝 Windows NTFS 句柄未释放时导致的 runtime 目录嵌套，清理 PowerShell 输出流泄露，并引入更新事务日志状态校验守护。\n- **Setup 安装包稳健性优化**：增强解压前的残留子进程终止与旧目录清理机制，杜绝安装时出现 tar 解压权限冲突问题。\n- **WSL 终端子进程退出清理**：进一步强化终端检查与进程树生命周期联动，确保会话退出时彻底清理资源。",
+  "bodyEn": "## Bug Fixes & Hardening\n\n- **Updater & installer hardening**: resolved directory replacement edge-cases to prevent nested runtime directories, eliminated PowerShell output pipeline leaks, and added transaction journal state validation.\n- **Setup installer resilience**: enhanced pre-extraction cleanup and child process termination in Inno Setup to eliminate archive extraction permission errors.\n- **WSL terminal subprocess cleanup**: tightened terminal inspection and process tree lifecycle across Windows desktop sessions.",
   "history": [
+    {
+      "version": "1.2.5",
+      "name": "DeepSeek Harness for Win v1.2.5",
+      "publishedAt": "2026-08-16",
+      "sections": [
+        {
+          "key": "fixes",
+          "titleEn": "Bug Fixes & Improvements",
+          "titleZh": "问题修复与体验优化",
+          "itemsEn": [
+            "Updater detection & asset fallback: fixed issue where new releases fetched via raw notes or history without explicit assetName caused the update modal to display false 'up to date' status, and automatically derive standard package names for valid SemVer releases."
+          ],
+          "itemsZh": [
+            "修复更新检测误报与资产包回退推导：修复当通过 Mirror/Raw 渠道拉取更新日志或历史记录中未显式指定 assetName 时导致模态框误判为“当前已是最新版本”的问题，并为所有合法 SemVer 版本自动推导标准便携分发包文件名。"
+          ]
+        }
+      ]
+    },
     {
       "version": "1.2.4",
       "name": "DeepSeek Harness for Win v1.2.4",

@@ -16,7 +16,7 @@ import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { copyFile, cp, lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { dirname, join, resolve, sep } from 'node:path'
+import { delimiter, dirname, join, resolve, sep } from 'node:path'
 import { parseArgs } from 'node:util'
 import { patchWelcomeNoticeStore } from '../patches/dsh-client-ui-settings-models-welcome-store.js'
 
@@ -185,9 +185,9 @@ class DesktopExeBuild {
   async build(): Promise<void> {
     if (this.cli.skipBuild) {
       console.log('build-desktop-web-exe: skipping pnpm run build (--skip-build)')
-    } else {
-      await this.run('build', pnpmBin(), ['run', 'build'])
+      return
     }
+    await this.run('build', pnpmBin(), ['run', 'build'])
     // The desktop package is not in the host/client aggregate, so its entry
     // lib/ is built explicitly (its lib/types outputs stay out of the tree).
     await this.run('build desktop entry', pnpmBin(), ['--filter', DEPLOY_ROOT_PACKAGE, 'run', 'build'])
@@ -457,15 +457,18 @@ class DesktopExeBuild {
     const newReadUtf16 = `function readUtf16(koffi, address) {\n\treturn koffi.decode.string16(address);\n}`
     const oldPost = `const post = (message) => {\n\t/* v8 ignore next 3 -- disconnect needs a live IPC channel the unit lane must not sever (built-worker.e2e.ts owns the real close path). */\n\tsend(message, () => {\n\t\tif (process.connected) process.disconnect();\n\t});\n};`
     const newPost = `const post = (message) => {\n\tsend(message);\n};`
-    if (!worker.includes(oldReadUtf16Comment) || !worker.includes(oldReadUtf16) || !worker.includes(oldPost)) {
+    if (worker.includes(oldReadUtf16Comment) || worker.includes(oldReadUtf16) || worker.includes(oldPost)) {
+      const patchedWorker = worker
+        .replace(oldReadUtf16Comment, newReadUtf16Comment)
+        .replace(oldReadUtf16, newReadUtf16)
+        .replace(oldPost, newPost)
+      await writeFile(workerTarget, patchedWorker)
+      console.log('build-desktop-web-exe: applied Windows directory-picker runtime patches')
+    } else if (worker.includes(newReadUtf16) && worker.includes(newPost)) {
+      console.log('build-desktop-web-exe: Windows directory-picker runtime already up to date')
+    } else {
       throw new Error('build-desktop-web-exe: directory-picker worker no longer matches the expected upstream IPC code.')
     }
-    const patchedWorker = worker
-      .replace(oldReadUtf16Comment, newReadUtf16Comment)
-      .replace(oldReadUtf16, newReadUtf16)
-      .replace(oldPost, newPost)
-    await writeFile(workerTarget, patchedWorker)
-    console.log('build-desktop-web-exe: applied Windows directory-picker runtime patches')
 
     const welcomeTarget = join(
       this.staging,
@@ -479,12 +482,16 @@ class DesktopExeBuild {
       throw new Error(`build-desktop-web-exe: welcome-notice bundle is missing: ${welcomeTarget}`)
     }
     const welcomeSource = await readFile(welcomeTarget, 'utf8')
-    const welcomePatched = patchWelcomeNoticeStore(welcomeSource)
-    if (welcomePatched === welcomeSource) {
-      throw new Error('build-desktop-web-exe: welcome-notice patch made no changes.')
+    if (welcomeSource.includes('scheduleRetry(operation)')) {
+      console.log('build-desktop-web-exe: welcome-notice retry runtime patch already applied')
+    } else {
+      const welcomePatched = patchWelcomeNoticeStore(welcomeSource)
+      if (welcomePatched === welcomeSource) {
+        throw new Error('build-desktop-web-exe: welcome-notice patch made no changes.')
+      }
+      await writeFile(welcomeTarget, welcomePatched)
+      console.log('build-desktop-web-exe: applied welcome-notice retry runtime patch')
     }
-    await writeFile(welcomeTarget, welcomePatched)
-    console.log('build-desktop-web-exe: applied welcome-notice retry runtime patch')
   }
 
   /** Remove files that are never loaded by the Windows runtime. */
@@ -831,13 +838,26 @@ class DesktopExeBuild {
     await new Promise<void>((resolvePromise, reject) => {
       // On Windows, .cmd shims (pnpm.cmd) cannot spawn directly; route the
       // whole command line through the shell.
+      const binDir = join(root, 'node_modules', '.bin')
+      const pnpmBinDir = join(root, 'node_modules', '.pnpm', 'node_modules', '.bin')
+      const envPath = [binDir, pnpmBinDir, process.env.PATH || process.env.Path || ''].join(delimiter)
+      const childEnv = {
+        ...process.env,
+        NODE_ENV: 'development',
+        PATH: envPath,
+        Path: envPath,
+        CI: 'true',
+        HUSKY: '0',
+        LEFTHOOK: '0',
+        npm_config_confirm_modules_purge: 'false',
+      }
       const child = process.platform === 'win32'
-        ? spawn(printable, { cwd: root, stdio: 'inherit', env: { ...process.env, CI: 'true', HUSKY: '0', LEFTHOOK: '0', npm_config_confirm_modules_purge: 'false' }, shell: true })
+        ? spawn(printable, { cwd: root, stdio: 'inherit', env: childEnv, shell: true })
         : spawn(command, args, {
           cwd: root,
           stdio: 'inherit',
           // Artifact builds must not mutate or validate a developer's Git hooks.
-          env: { ...process.env, CI: 'true', HUSKY: '0', LEFTHOOK: '0', npm_config_confirm_modules_purge: 'false' },
+          env: childEnv,
         })
       child.once('error', (error) => {
         reject(new Error(`build-desktop-web-exe: ${label} failed to spawn: ${error.message} (${printable})`))

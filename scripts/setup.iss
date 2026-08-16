@@ -179,8 +179,8 @@ begin
     if not ForceDirectories(StageDir) then
       RaiseException('Unable to create the setup staging directory.');
 
-    { Extract and validate the complete release away from {app}. A corrupt or
-      incomplete archive therefore cannot partially overwrite a usable install. }
+    // Extract and validate the complete release away from app root. A corrupt or
+    // incomplete archive therefore cannot partially overwrite a usable install.
     TarExe := ExpandConstant('{sys}\tar.exe');
     if not FileExists(TarExe) then
       TarExe := ExpandConstant('{sysnative}\tar.exe');
@@ -210,9 +210,9 @@ begin
     if not FileExists(PickerWorker) then
       RaiseException('Staged release is missing the directory picker worker.');
 
-    { Restart Manager cannot see files inside the ZIP. Stop the prior tree,
-      then require the runtime directory rename to succeed before exposing any
-      staged payload. A remaining DLL lock fails here with the old install intact. }
+    // Restart Manager cannot see files inside the ZIP. Stop the prior tree,
+    // then require the runtime directory rename to succeed before exposing any
+    // staged payload. A remaining DLL lock fails here with the old install intact.
     TaskKillExe := ExpandConstant('{sys}\taskkill.exe');
     if FileExists(TaskKillExe) then
     begin
@@ -239,8 +239,8 @@ begin
     RuntimeSwapped := True;
 
     try
-      { Synchronize non-runtime files only after the atomic runtime switch and
-        publish the release manifest last as the commit marker. }
+      // Synchronize non-runtime files only after the atomic runtime switch and
+      // publish the release manifest last as the commit marker.
       RobocopyExe := ExpandConstant('{sys}\robocopy.exe');
       if not Exec(RobocopyExe,
         '"' + StageDir + '" "' + AppDir + '" /E /XD "' + NewRuntime +
@@ -257,13 +257,13 @@ begin
         RenameFile(OldRuntime, FailedRuntime);
         if HadOldRuntime then RenameFile(BackupRuntime, OldRuntime);
       end;
-      raise;
+      RaiseException(GetExceptionMessage);
     end;
 
     if HadOldRuntime then DelTree(BackupRuntime, True, True, True);
-    { Setup has just committed a fully validated runtime. Do not let an old,
-      abandoned portable-updater journal roll this installation backward on
-      the first shortcut launch. }
+    // Setup has just committed a fully validated runtime. Do not let an old,
+    // abandoned portable-updater journal roll this installation backward on
+    // the first shortcut launch.
     DeleteFile(AddBackslash(AppDir) + '.update-transaction.json');
     DelTree(AddBackslash(AppDir) + '.update-backups', True, True, True);
     DelTree(StageDir, True, True, True);

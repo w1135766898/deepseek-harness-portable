@@ -6,7 +6,7 @@ import { createReadStream } from 'node:fs'
 import { createRequire } from 'node:module'
 import { copyFile, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { existsSync, readFileSync } from 'node:fs'
-import { basename, dirname, join, resolve } from 'node:path'
+import { basename, delimiter, dirname, join, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const require = createRequire(import.meta.url)
@@ -191,13 +191,26 @@ async function writeReleaseManifest(buildRoot: string, version: string, shellVer
   console.log(`Release manifest written: ${join(buildRoot, RELEASE_MANIFEST_NAME)}`)
 }
 
-async function run(command: string, args: string[]): Promise<void> {
+async function run(command: string, args: string[], options: { cwd?: string; env?: NodeJS.ProcessEnv } = {}): Promise<void> {
+  const binDir = join(root, 'node_modules', '.bin')
+  const pnpmBinDir = join(root, 'node_modules', '.pnpm', 'node_modules', '.bin')
+  const envPath = [binDir, pnpmBinDir, process.env.PATH || process.env.Path || ''].join(delimiter)
   await new Promise<void>((resolvePromise, reject) => {
     const child = spawn(command, args, {
-      cwd: root,
+      cwd: options.cwd ?? root,
       stdio: 'inherit',
       shell: process.platform === 'win32' && command.toLowerCase().endsWith('.cmd'),
-      env: { ...process.env, CI: 'true', HUSKY: '0', LEFTHOOK: '0', npm_config_confirm_modules_purge: 'false' },
+      env: {
+        ...process.env,
+        NODE_ENV: 'development',
+        PATH: envPath,
+        Path: envPath,
+        CI: 'true',
+        HUSKY: '0',
+        LEFTHOOK: '0',
+        npm_config_confirm_modules_purge: 'false',
+        ...(options.env ?? {}),
+      },
     })
     child.once('error', reject)
     child.once('exit', (code, signal) => {
@@ -212,10 +225,10 @@ async function verifyReleaseTests(): Promise<void> {
   console.log('Verifying desktop Node.js tests before release packaging...')
   await run(process.execPath, [
     '--test',
-    ...DESKTOP_TEST_FILES.map(file => join(desktopDir, 'src', file)),
-  ])
+    ...DESKTOP_TEST_FILES.map(file => join('src', file)),
+  ], { cwd: desktopDir })
   for (const file of DESKTOP_SYNTAX_FILES) {
-    await run(process.execPath, ['--check', join(desktopDir, 'src', file)])
+    await run(process.execPath, ['--check', join('src', file)], { cwd: desktopDir })
   }
 
   const testRunner = join(root, 'apps', 'desktop', 'tests', 'Run-Tests.ps1')
@@ -413,11 +426,11 @@ async function main(): Promise<void> {
     const tsxBin = join(root, 'node_modules', '.pnpm', 'node_modules', '.bin', process.platform === 'win32' ? 'tsx.CMD' : 'tsx')
     const buildScript = join(root, 'scripts', 'build-desktop-web-exe.ts')
     if (existsSync(tsxBin)) {
-      const buildArgs = [buildScript, '--electron']
+      const buildArgs = [buildScript, '--electron', '--skip-build']
       if (options.pruneSources) buildArgs.push('--prune-sources')
       await run(tsxBin, buildArgs)
     } else {
-      const buildArgs = ['exec', 'tsx', 'scripts/build-desktop-web-exe.ts', '--electron']
+      const buildArgs = ['exec', 'tsx', 'scripts/build-desktop-web-exe.ts', '--electron', '--skip-build']
       if (options.pruneSources) buildArgs.push('--prune-sources')
       await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', buildArgs)
     }

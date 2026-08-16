@@ -38,8 +38,8 @@ The native build downloads Electron and targets Windows x64. The packaged output
 
 ## Release identity
 
-- Release: DeepSeek Harness for Win v1.2.5
-- Distribution: 1.2.5
+- Release: DeepSeek Harness for Win v1.2.6
+- Distribution: 1.2.6
 - Desktop shell: 0.1.0-shell.2
 - Kernel: read from the packaged @deepseek-ai/dsh-web-app manifest
 
