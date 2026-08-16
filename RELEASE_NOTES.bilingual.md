@@ -10,6 +10,7 @@ Windows x64 便携版 · 2026-08-17
 - **市场工具自包含**：便携版通过 Electron 内置 Node.js 运行时提供 DSH 插件 CLI 和 pnpm，市场操作无需系统 Node.js 环境。
 - **已验证更新恢复**：启动器和更新器可从已验证的暂存目录修复发行版自有文件，同时保留事务与回滚安全性。
 - **跨盘符 Setup 安装**：安装器将 staging 保持在用户选择的应用目录下，即使安装到 D: 或 E:，runtime 激活也始终使用同卷重命名。
+- **运行时占用恢复**：覆盖安装会可靠结束桌面进程树，并重试释放 Electron/Node 文件句柄，避免运行中的旧版本阻断 runtime 切换。
 - **启动器事务检测**：启动脚本兼容 PowerShell 5.1 JSON 的空格格式，正确识别 committed/rolled-back 状态，避免每次启动不必要的恢复延迟。
 - **内容寻址打包缓存**：对构建、暂存和 Electron 产物层生成指纹并安全复用，支持显式 `--no-cache`，并校验发布归档布局。
 
@@ -33,6 +34,7 @@ This is the v1.2.7 release of this Windows distribution. It adds a bundled plugi
 - **Self-contained marketplace tooling**: the portable release includes the DSH plugin CLI and pnpm behind the embedded Electron Node.js runtime, so marketplace operations do not require a system Node.js installation.
 - **Verified update recovery**: startup and updater flows can repair release-owned payload files from verified staging while preserving transaction and rollback safety.
 - **Cross-volume Setup installs**: installer staging now stays under the selected application directory, so runtime activation remains a same-volume rename even when installing to D: or E:.
+- **Runtime lock recovery**: in-place Setup upgrades reliably terminate the desktop process tree and retry Electron/Node handle release, so a running old version no longer blocks the runtime switch.
 - **Launcher transaction detection**: startup wrappers tolerate PowerShell 5.1 JSON whitespace when checking committed or rolled-back transactions, avoiding unnecessary recovery delays.
 - **Content-addressed packaging cache**: successful build, staging, and Electron layers are fingerprinted and safely reused, with explicit `--no-cache` support and release archive layout checks.
 
@@ -51,6 +53,6 @@ This is the v1.2.7 release of this Windows distribution. It adds a bundled plugi
 The final portable ZIP and Setup installer SHA-256 values are recorded in SHA256SUMS.txt and attached to the GitHub Release.
 
 ```
-87615DCE61AE272F534D56160E4EEBFA5CE32BD62ECCB423D33E4D88DD6A7AC3 *DeepSeek-Harness-1.2.7-win32-x64.zip
-027FFBCB3B54F2DDFE0FA060A0019394239F48399C5B2A0DD808C474F344EAAC *DeepSeek-Harness-Setup-1.2.7-win32-x64.exe
+C90BE276E00C2F720126B809D6754724D50B83ED88E9B96C38A55FC77CA7061B *DeepSeek-Harness-1.2.7-win32-x64.zip
+689D1CB59AC0A13F5BB92B3B4A3A8EABA428A9B55A07FE2072532C1BD7AFD084 *DeepSeek-Harness-Setup-1.2.7-win32-x64.exe
 ```
