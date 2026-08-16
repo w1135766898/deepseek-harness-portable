@@ -261,7 +261,7 @@ function extractStagingPackage({
   expectedVersion = '',
   appRoot = '',
   spawnImpl,
-  timeoutMs = 60_000,
+  timeoutMs = 120_000,
 } = {}) {
   const { spawn: defaultSpawn } = require('node:child_process')
   const { resolvePowerShellExecutable } = require('./update-launcher.cjs')
@@ -270,15 +270,15 @@ function extractStagingPackage({
   return new Promise((resolve, reject) => {
     const executable = resolvePowerShellExecutable()
     const safeAppRoot = (appRoot || '').replace(/'/g, "''")
-    const moduleScript = safeAppRoot
-      ? `Join-Path '${safeAppRoot}' 'updater\\updater.psm1'`
-      : `Join-Path (Get-Location).Path 'updater\\updater.psm1'`
     const script = [
       "$ErrorActionPreference = 'Stop'",
       '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
-      `$mod = ${moduleScript}`,
-      "if (-not (Test-Path -LiteralPath $mod)) { $mod = Join-Path (Split-Path -Parent $mod) 'updater.psm1' }",
-      'Import-Module -Name $mod -Force',
+      `$roots = @('${safeAppRoot}', (Get-Location).Path)`,
+      "$candidates = @()",
+      "foreach ($r in $roots) { if ($r) { $candidates += (Join-Path $r 'updater\\updater.psm1'); $candidates += (Join-Path $r 'apps\\desktop\\updater\\updater.psm1'); $candidates += (Join-Path $r 'updater.psm1') } }",
+      "$mod = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1",
+      "if (-not $mod) { throw 'updater.psm1 module not found' }",
+      "Import-Module -Name $mod -Force -WarningAction SilentlyContinue",
       `$res = Extract-ReleaseSafe -ZipPath '${zipPath.replace(/'/g, "''")}' -Destination '${stagingDestination.replace(/'/g, "''")}' -ExpectedDistributionVersion '${(expectedVersion || '').replace(/'/g, "''")}'`,
       '[Console]::Out.Write($res)',
     ].join('\n')

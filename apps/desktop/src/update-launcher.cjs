@@ -83,21 +83,23 @@ function launchDetachedPowerShell({
   const executable = resolvePowerShellExecutable({ env, platform })
   let child
   try {
-    // NOTE: do NOT use `detached: true` here. On Windows, Node translates it
-    // to DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP, and Windows PowerShell
-    // 5.1 (ConsoleHost) exits immediately with code 0 WITHOUT executing the
-    // script when it is started with DETACHED_PROCESS and no valid standard
-    // handles (stdio: 'ignore' gives NUL) — exactly the console-less
-    // environment of an Electron main process. The updater would never run
-    // and the status file would stay at "starting" forever, surfacing as
-    // "last update incomplete" on the next launch. A plain spawn still
-    // outlives this process on Windows (children are not killed when the
-    // parent exits) and unref() below keeps the app from waiting on it.
-    child = spawnImpl(executable, args, {
-      cwd: root,
-      stdio: 'ignore',
-      windowsHide: true,
-    })
+    if (platform === 'win32') {
+      const comspec = typeof env.COMSPEC === 'string' && env.COMSPEC.trim() !== ''
+        ? env.COMSPEC
+        : 'cmd.exe'
+      child = spawnImpl(comspec, ['/c', 'start', '""', '/min', executable, ...args], {
+        cwd: root,
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true,
+      })
+    } else {
+      child = spawnImpl(executable, args, {
+        cwd: root,
+        detached: true,
+        stdio: 'ignore',
+      })
+    }
   } catch (error) {
     if (typeof onError === 'function') onError(error)
     return { started: false, pid: 0, executable, args, error }

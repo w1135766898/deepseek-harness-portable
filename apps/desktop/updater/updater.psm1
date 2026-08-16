@@ -728,6 +728,26 @@ function Stop-ProcessTree {
     }
 }
 
+function Remove-DirectoryWithRetry {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [int]$MaxRetries = 10,
+        [int]$DelayMilliseconds = 500
+    )
+    if (-not (Test-Path -LiteralPath $Path)) { return }
+    $retries = $MaxRetries
+    while ($retries -gt 0) {
+        try {
+            Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction Stop
+            return
+        } catch {
+            $retries--
+            if ($retries -le 0) { throw }
+            Start-Sleep -Milliseconds $DelayMilliseconds
+        }
+    }
+}
+
 function Install-ReleaseWithTransaction {
     param(
         [Parameter(Mandatory = $true)][string]$AppRoot,
@@ -779,9 +799,7 @@ function Install-ReleaseWithTransaction {
         $mutationStarted = $true
 
         # Swap the runtime and synchronise every release-owned root file.
-        if (Test-Path -LiteralPath $runtimeDir) {
-            Remove-Item -LiteralPath $runtimeDir -Recurse -Force
-        }
+        Remove-DirectoryWithRetry -Path $runtimeDir
         Move-Item -LiteralPath (Join-Path $SourceRoot 'runtime') -Destination $runtimeDir
         Sync-ReleasePayload -SourceRoot $SourceRoot -DestinationRoot $AppRoot
 
@@ -886,9 +904,7 @@ function Invoke-Rollback {
     Stop-ProcessTree -AppRoot $AppRoot
 
     $runtimeDir = Join-Path $AppRoot 'runtime'
-    if (Test-Path -LiteralPath $runtimeDir) {
-        Remove-Item -LiteralPath $runtimeDir -Recurse -Force
-    }
+    Remove-DirectoryWithRetry -Path $runtimeDir
     Copy-Item -LiteralPath (Join-Path $BackupDir 'runtime') -Destination $runtimeDir -Recurse -Force
     Restore-ReleasePayload -BackupDir $BackupDir -DestinationRoot $AppRoot
 

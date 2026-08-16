@@ -164,11 +164,10 @@ test('records the detached updater PID before requesting app exit', async () => 
   assert.equal(launchedPid, 4321)
   assert.equal(unrefCount, 1)
   assert.equal(quitCount, 1)
-  assert.equal(spawnCall.executable, 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
-  // Windows PowerShell 5.1 exits with code 0 without executing when spawned
-  // with DETACHED_PROCESS (detached: true) and NUL stdio handles; the child
-  // must be launched as a plain hidden process and outlive the app via unref.
-  assert.equal(spawnCall.options.detached, undefined)
+  assert.equal(spawnCall.executable, 'cmd.exe')
+  assert.deepEqual(spawnCall.args.slice(0, 4), ['/c', 'start', '""', '/min'])
+  assert.equal(spawnCall.args[4], 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
+  assert.equal(spawnCall.options.detached, true)
   assert.equal(spawnCall.options.windowsHide, true)
   assert.equal(spawnCall.options.stdio, 'ignore')
 })
