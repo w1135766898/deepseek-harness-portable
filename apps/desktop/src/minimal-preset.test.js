@@ -113,12 +113,14 @@ test('win32 terminal inspector stub satisfies ProcessInspector contracts safely'
   assert.doesNotThrow(() => inspector.signalProcess({ pid: 9999, started: 'wsl-root' }, 'SIGTERM'))
 })
 
-function fakeWslTerminal() {
+function fakeWslTerminal({ earlyExit } = {}) {
   const calls = { writes: [], signals: [] }
   const handle = {
     pid: 4242,
     output: new PassThrough(),
-    done: new Promise(() => {}),
+    done: earlyExit === undefined
+      ? new Promise(() => {})
+      : Promise.resolve(earlyExit),
     write: async (data) => { calls.writes.push(data) },
     inspectForeground: async () => ({ processGroupId: 4242, inputWaiting: false }),
     signalForeground: async (signal) => { calls.signals.push(signal); return 4242 },
@@ -166,6 +168,22 @@ test('adaptWin32SubprocessRuntime injects inspector and translates WSL launch fa
   await assert.rejects(
     async () => fakeRuntime.spawnTerminal({ argv: ['C:/fail.exe'] }),
     /generic failure/,
+  )
+
+  // A WSL session that exits before readiness (e.g. no distribution installed)
+  // must be translated with guidance instead of surfacing the raw early exit
+  const earlyTerminal = fakeWslTerminal({ earlyExit: { exitCode: 4294967295, signal: null } })
+  const earlyRuntime = {
+    terminalInspector: undefined,
+    spawnTerminal: async (spec) => {
+      if (spec?.argv?.some(arg => arg.includes('wsl.exe'))) return earlyTerminal.handle
+      throw new Error('unexpected non-WSL spawn')
+    },
+  }
+  adaptWin32SubprocessRuntime(earlyRuntime)
+  await assert.rejects(
+    async () => earlyRuntime.spawnTerminal({ argv: ['C:/Windows/System32/wsl.exe', '--', 'bash'] }),
+    /Failed to start WSL Linux terminal.*4294967295.*wsl --install/s,
   )
 
   // WSL spawns must advertise the terminal environment through WSLENV while

@@ -14,7 +14,8 @@
  * It also wraps `spawnTerminal` on win32 to:
  * - advertise the terminal environment to the WSL session through `WSLENV`
  *   (WSL shares only PATH and WSLENV-listed names into Linux);
- * - catch WSL launch failures (e.g. ENOENT or missing distro) and provide
+ * - catch WSL launch failures (spawn throws, or wsl.exe exiting before the
+ *   shell reaches readiness — e.g. no distribution installed) and provide
  *   actionable instructions for the user;
  * - deliver `SIGINT` to the WSL foreground group as a Ctrl+C byte, since the
  *   stub cannot signal Linux process groups from Windows.
@@ -140,6 +141,36 @@ function mergedWslenv(): string {
 }
 
 /**
+ * Window during which a freshly spawned WSL session may still prove to be a
+ * launch failure. wsl.exe with no installed (or no default) distribution
+ * prints an error and exits with 0xFFFFFFFF within this window; a healthy
+ * session survives it by orders of magnitude, so the added startup latency is
+ * bounded by this one-time constant.
+ */
+const WSL_EARLY_EXIT_GRACE_MS = 1_000
+
+/**
+ * Detect a WSL launch failure that does not throw at spawn: wsl.exe starts,
+ * prints its error, and exits before the shell reaches readiness.
+ * @param handle - the allocated terminal handle.
+ * @returns the early exit outcome, or undefined when the session survived the grace window.
+ */
+async function wslEarlyExit(handle: SubprocessTerminalHandle): Promise<SubprocessOutcome | undefined> {
+  try {
+    const outcome = await Promise.race([
+      handle.done,
+      new Promise<undefined>(resolve => setTimeout(resolve, WSL_EARLY_EXIT_GRACE_MS)),
+    ])
+    if (outcome === undefined || outcome.exitCode === 0 || outcome.exitCode === null) return undefined
+    return outcome
+  } catch {
+    // A transport failure is not a WSL launch failure; the caller's own
+    // lifecycle surfaces it.
+    return undefined
+  }
+}
+
+/**
  * Win32 WSL terminal handle: delivers `SIGINT` to the WSL foreground group as
  * a Ctrl+C byte. The Win32 stub cannot signal Linux process groups from
  * Windows (they live inside the WSL VM); the terminal's ISIG handling
@@ -209,7 +240,15 @@ export function adaptWin32SubprocessRuntime(runtime: unknown): void {
         throw error
       }
       if (!isWsl || handle === null || typeof handle !== 'object') return handle
-      return new Win32WslTerminalHandle(handle as SubprocessTerminalHandle)
+      const terminal = handle as SubprocessTerminalHandle
+      const early = await wslEarlyExit(terminal)
+      if (early !== undefined) {
+        throw wslLaunchError(
+          `exited with code ${early.exitCode} before the shell started (usually no Linux distribution is installed)`,
+          early,
+        )
+      }
+      return new Win32WslTerminalHandle(terminal)
     }
     wrapped.__wslWrapped = true
     target.spawnTerminal = wrapped
