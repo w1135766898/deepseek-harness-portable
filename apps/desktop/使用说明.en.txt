@@ -1,4 +1,4 @@
-DeepSeek Harness for Win v1.0.0
+DeepSeek Harness for Win v1.2.3
 ================================
 
 Chinese guide: 使用说明.txt
