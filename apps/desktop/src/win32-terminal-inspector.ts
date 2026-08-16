@@ -13,12 +13,20 @@
  * - advertise the terminal environment to the WSL session through `WSLENV`
  *   (WSL shares only PATH and WSLENV-listed names into Linux);
  * - catch WSL launch failures (e.g. ENOENT or missing distro) and provide
- *   actionable instructions for the user.
+ *   actionable instructions for the user;
+ * - deliver `SIGINT` to the WSL foreground group as a Ctrl+C byte, since the
+ *   stub cannot signal Linux process groups from Windows.
  *
  * @module dsh-desktop-web-pkg/win32-terminal-inspector
  */
 
-import type { SubprocessTerminalSignal } from '@deepseek-ai/dsh-subprocess'
+import type { Readable } from 'node:stream'
+import type {
+  SubprocessOutcome,
+  SubprocessTerminalForeground,
+  SubprocessTerminalHandle,
+  SubprocessTerminalSignal,
+} from '@deepseek-ai/dsh-subprocess'
 
 export interface ProcessIdentity {
   pid: number
@@ -126,8 +134,56 @@ function mergedWslenv(): string {
 }
 
 /**
+ * Win32 WSL terminal handle: delivers `SIGINT` to the WSL foreground group as
+ * a Ctrl+C byte. The Win32 stub cannot signal Linux process groups from
+ * Windows (they live inside the WSL VM); the terminal's ISIG handling
+ * interrupts the foreground job when the byte reaches the PTY, which is how a
+ * real console sends Ctrl+C.
+ */
+class Win32WslTerminalHandle implements SubprocessTerminalHandle {
+  constructor(private readonly inner: SubprocessTerminalHandle) {}
+
+  get pid(): number {
+    return this.inner.pid
+  }
+
+  get output(): Readable {
+    return this.inner.output
+  }
+
+  get done(): Promise<SubprocessOutcome> {
+    return this.inner.done
+  }
+
+  write(data: string): Promise<void> {
+    return this.inner.write(data)
+  }
+
+  inspectForeground(): Promise<SubprocessTerminalForeground | undefined> {
+    return this.inner.inspectForeground()
+  }
+
+  async signalForeground(signal: SubprocessTerminalSignal): Promise<number> {
+    if (signal === 'SIGINT') {
+      try {
+        await this.inner.write('\x03')
+      } catch {
+        // A concurrent close can end the session between inspection and write.
+      }
+    }
+    return this.inner.signalForeground(signal)
+  }
+
+  terminate(): Promise<void> {
+    return this.inner.terminate()
+  }
+}
+
+/**
  * Configure a subprocess runtime for Windows: attach the Win32 inspector stub
- * and wrap spawnTerminal to translate WSL launch errors into actionable guidance.
+ * and wrap spawnTerminal to translate WSL launch errors into actionable
+ * guidance, share the terminal environment through WSLENV, and route SIGINT
+ * to the WSL session as a Ctrl+C byte.
  */
 export function adaptWin32SubprocessRuntime(runtime: unknown): void {
   if (runtime === null || typeof runtime !== 'object') return
@@ -137,14 +193,17 @@ export function adaptWin32SubprocessRuntime(runtime: unknown): void {
     const originalSpawnTerminal = target.spawnTerminal.bind(target)
     const wrapped = async (spec: { argv?: string[]; env?: Record<string, string> }) => {
       const isWsl = Array.isArray(spec?.argv) && spec.argv.some(arg => /wsl(\.exe)?$/i.test(arg))
+      let handle: unknown
       try {
-        return await originalSpawnTerminal(isWsl
+        handle = await originalSpawnTerminal(isWsl
           ? { ...spec, env: { ...spec.env, WSLENV: mergedWslenv() } }
           : spec)
       } catch (error: unknown) {
         if (isWsl) throw wslLaunchError(error instanceof Error ? error.message : String(error), error)
         throw error
       }
+      if (!isWsl || handle === null || typeof handle !== 'object') return handle
+      return new Win32WslTerminalHandle(handle as SubprocessTerminalHandle)
     }
     wrapped.__wslWrapped = true
     target.spawnTerminal = wrapped

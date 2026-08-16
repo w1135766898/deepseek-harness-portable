@@ -9,6 +9,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { PassThrough } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import yaml from 'js-yaml'
 import { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
@@ -107,8 +108,23 @@ test('win32 terminal inspector stub satisfies ProcessInspector contracts safely'
   assert.doesNotThrow(() => inspector.signalProcess({ pid: 9999, started: 'wsl-root' }, 'SIGTERM'))
 })
 
+function fakeWslTerminal() {
+  const calls = { writes: [], signals: [] }
+  const handle = {
+    pid: 4242,
+    output: new PassThrough(),
+    done: new Promise(() => {}),
+    write: async (data) => { calls.writes.push(data) },
+    inspectForeground: async () => ({ processGroupId: 4242, inputWaiting: false }),
+    signalForeground: async (signal) => { calls.signals.push(signal); return 4242 },
+    terminate: async () => {},
+  }
+  return { handle, calls }
+}
+
 test('adaptWin32SubprocessRuntime injects inspector and translates WSL launch failures', async () => {
   const seenSpecs = []
+  const wslTerminal = fakeWslTerminal()
   const fakeRuntime = {
     terminalInspector: undefined,
     spawnTerminal: async (spec) => {
@@ -121,6 +137,7 @@ test('adaptWin32SubprocessRuntime injects inspector and translates WSL launch fa
       if (argv[0]?.includes('fail.exe')) {
         throw new Error('generic failure')
       }
+      if (isWsl) return wslTerminal.handle
       return { ok: true }
     },
   }
@@ -149,9 +166,10 @@ test('adaptWin32SubprocessRuntime injects inspector and translates WSL launch fa
   // WSL spawns must advertise the terminal environment through WSLENV while
   // preserving the parent's own entries and collapsing duplicates by name
   const previousWslenv = process.env.WSLENV
+  let wslHandle
   try {
     process.env.WSLENV = 'FOO:/bar:PROMPT_COMMAND'
-    await fakeRuntime.spawnTerminal({ argv: ['C:/Windows/System32/wsl.exe', '--', 'bash'], env: {} })
+    wslHandle = await fakeRuntime.spawnTerminal({ argv: ['C:/Windows/System32/wsl.exe', '--', 'bash'], env: {} })
   } finally {
     if (previousWslenv === undefined) delete process.env.WSLENV
     else process.env.WSLENV = previousWslenv
@@ -166,6 +184,17 @@ test('adaptWin32SubprocessRuntime injects inspector and translates WSL launch fa
     assert.ok(wslenvParts.includes(name), `WSLENV must share ${name}`)
   }
   assert.ok(!wslenvParts.includes('PS1'), 'PS1 must stay out of WSLENV (WSL filters it)')
+
+  // WSL handles route SIGINT as a Ctrl+C byte and delegate everything else
+  assert.equal(wslHandle.pid, 4242, 'proxy must expose the inner terminal pid')
+  await wslHandle.signalForeground('SIGINT')
+  assert.deepEqual(wslTerminal.calls.writes, ['\x03'], 'SIGINT must be delivered as a Ctrl+C byte')
+  await wslHandle.signalForeground('SIGTERM')
+  assert.equal(wslTerminal.calls.writes.length, 1, 'non-SIGINT signals must not inject bytes')
+  assert.deepEqual(wslTerminal.calls.signals, ['SIGINT', 'SIGTERM'], 'all signals must reach the inner handle')
+  assert.deepEqual(await wslHandle.inspectForeground(), { processGroupId: 4242, inputWaiting: false })
+  await wslHandle.terminate()
+  assert.equal(wslTerminal.calls.writes.length, 1, 'terminate must delegate without extra writes')
 
   // Successful non-WSL spawn passes through untouched
   const result = await fakeRuntime.spawnTerminal({ argv: ['C:/other.exe'] })
