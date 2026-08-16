@@ -117,9 +117,60 @@ end;
 procedure StopRunningApp;
 var
   ResultCode: Integer;
+  TaskKillExe, CmdExe: String;
 begin
-  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /T /IM "DeepSeek Harness.exe"', '',
-    SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  TaskKillExe := ExpandConstant('{sys}\taskkill.exe');
+  if not FileExists(TaskKillExe) then
+    TaskKillExe := ExpandConstant('{sysnative}\taskkill.exe');
+  if FileExists(TaskKillExe) then
+  begin
+    if (not Exec(TaskKillExe, '/F /T /IM "DeepSeek Harness.exe"', '',
+      SW_HIDE, ewWaitUntilTerminated, ResultCode)) or (ResultCode <> 0) then
+    begin
+      // Run the same command through cmd.exe as a fallback. This preserves the
+      // quoted image name on Windows builds where CreateProcess argument
+      // parsing differs for an executable launched directly by Setup.
+      CmdExe := ExpandConstant('{cmd}');
+      Exec(CmdExe, '/C taskkill.exe /F /T /IM "DeepSeek Harness.exe"', '',
+        SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    end;
+  end;
+end;
+
+procedure RemoveDirectoryWithRetry(const Path: String);
+var
+  Attempt: Integer;
+begin
+  for Attempt := 1 to 20 do
+  begin
+    if not DirExists(Path) then
+      Exit;
+    DelTree(Path, True, True, True);
+    if not DirExists(Path) then
+      Exit;
+    StopRunningApp;
+    Sleep(500);
+  end;
+end;
+
+function RenameDirectoryWithRetry(const Source, Destination: String): Boolean;
+var
+  Attempt: Integer;
+begin
+  // The desktop shell can take a short moment to release Electron/Node DLL
+  // handles after taskkill returns. Retry the same-volume move instead of
+  // failing immediately during an otherwise safe in-place upgrade.
+  for Attempt := 1 to 20 do
+  begin
+    if RenameFile(Source, Destination) then
+    begin
+      Result := True;
+      Exit;
+    end;
+    StopRunningApp;
+    Sleep(500);
+  end;
+  Result := False;
 end;
 
 function InitializeUninstall(): Boolean;
@@ -174,11 +225,15 @@ begin
   begin
     ZipPath := ExpandConstant('{tmp}\{#MyZipName}');
     AppDir := ExpandConstant('{app}');
+    // Stop an existing shell before touching a previous staging tree. A prior
+    // interrupted Setup may have left a locked stage or backup directory;
+    // cleanup below retries after the same process-tree termination.
+    StopRunningApp;
     // Keep the staging tree on the target volume. The runtime activation below
     // uses RenameFile, which is an atomic same-volume move and cannot cross
     // from the system TEMP drive to a user-selected D: or E: installation.
     StageDir := AddBackslash(AppDir) + '.setup-stage-{#MyAppVersion}';
-    DelTree(StageDir, True, True, True);
+    RemoveDirectoryWithRetry(StageDir);
     if not ForceDirectories(StageDir) then
       RaiseException('Unable to create the setup staging directory.');
 
@@ -214,9 +269,10 @@ begin
     if not FileExists(PickerWorker) then
       RaiseException('Staged release is missing the directory picker worker.');
 
-    // Restart Manager cannot see files inside the ZIP. Stop the prior tree,
-    // then require the runtime directory rename to succeed before exposing any
-    // staged payload. A remaining DLL lock fails here with the old install intact.
+    // Restart Manager cannot see files inside the ZIP. Stop the prior tree both
+    // before and after extraction, then require the runtime directory rename to
+    // succeed before exposing any staged payload. The retry loop handles the
+    // short release delay of Electron/Node DLL handles.
     TaskKillExe := ExpandConstant('{sys}\taskkill.exe');
     if FileExists(TaskKillExe) then
     begin
@@ -229,13 +285,14 @@ begin
     NewRuntime := AddBackslash(StageDir) + 'runtime';
     BackupRuntime := AddBackslash(AppDir) + '.setup-runtime-backup';
     FailedRuntime := AddBackslash(StageDir) + 'failed-runtime';
-    DelTree(BackupRuntime, True, True, True);
+    StopRunningApp;
+    RemoveDirectoryWithRetry(BackupRuntime);
     HadOldRuntime := DirExists(OldRuntime);
     RuntimeSwapped := False;
-    if HadOldRuntime and (not RenameFile(OldRuntime, BackupRuntime)) then
+    if HadOldRuntime and (not RenameDirectoryWithRetry(OldRuntime, BackupRuntime)) then
       RaiseException('The existing runtime is still in use. Close DeepSeek Harness and retry Setup.');
 
-    if not RenameFile(NewRuntime, OldRuntime) then
+    if not RenameDirectoryWithRetry(NewRuntime, OldRuntime) then
     begin
       if HadOldRuntime then RenameFile(BackupRuntime, OldRuntime);
       RaiseException('Unable to activate the staged runtime; the previous runtime was restored.');
@@ -270,6 +327,6 @@ begin
     // the first shortcut launch.
     DeleteFile(AddBackslash(AppDir) + '.update-transaction.json');
     DelTree(AddBackslash(AppDir) + '.update-backups', True, True, True);
-    DelTree(StageDir, True, True, True);
+    RemoveDirectoryWithRetry(StageDir);
   end;
 end;
