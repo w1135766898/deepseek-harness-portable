@@ -274,10 +274,13 @@ function normalizeReleaseNotes(input, fallbackVersion = '0.0.0') {
   }
 }
 
+const { isValidSemver } = require('./semver.cjs')
+
 function normalizeReleaseNotesHistory(input) {
   const source = input && typeof input === 'object' ? input : {}
-  const entries = Array.isArray(source.history) ? source.history : []
-  return entries
+  const entries = Array.isArray(source.history) ? source.history : (Array.isArray(source) ? source : [])
+  const rootEntry = source.version && isValidSemver(String(source.version).replace(/^v/i, '')) ? [source] : []
+  return [...rootEntry, ...entries]
     .map(entry => normalizeReleaseNotes(entry))
     .filter(release => release.version !== '0.0.0')
 }

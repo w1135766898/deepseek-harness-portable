@@ -120,7 +120,7 @@ test('deduplicates history while preferring the copy with a body', () => {
   assert.equal(merged.find(item => item.version === '1.0.0').body, '## Features\n- Notes')
 })
 
-test('normalizes bundled bilingual history entries and drops versionless ones', () => {
+test('normalizes bundled bilingual history entries, includes root version, and drops versionless ones', () => {
   const history = normalizeReleaseNotesHistory({
     version: '1.1.2',
     history: [
@@ -140,10 +140,12 @@ test('normalizes bundled bilingual history entries and drops versionless ones', 
     ],
   })
 
-  assert.equal(history.length, 2)
-  assert.equal(history[0].version, '1.1.1')
-  assert.equal(history[0].sections[0].titleZh, '问题修复')
-  assert.deepEqual(history[0].sections[0].itemsZh, ['修复中文条目'])
+  assert.equal(history.length, 3)
+  assert.equal(history[0].version, '1.1.2')
+  assert.equal(history[1].version, '1.1.1')
+  assert.equal(history[1].sections[0].titleZh, '问题修复')
+  assert.deepEqual(history[1].sections[0].itemsZh, ['修复中文条目'])
+  assert.equal(history[2].version, '1.0.0')
 })
 
 test('keeps bundled bilingual notes ahead of English remote bodies for the same version', () => {

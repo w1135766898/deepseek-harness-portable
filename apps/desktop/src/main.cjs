@@ -1296,75 +1296,108 @@ function clearUpdateStatusForRetry(force = false) {
   }
 }
 
-async function queryLatestVersion() {
+async function queryLatestVersion(options = {}) {
   const apiUrl = `https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases/latest`
   const rawReleaseNotesUrl = `https://raw.githubusercontent.com/${PORTABLE_RELEASE_REPO}/main/apps/desktop/src/release-notes.json`
-  const apiUrls = mirrorUrls(apiUrl, GITHUB_MIRROR_PREFIXES)
+  const apiUrls = [
+    apiUrl,
+    `https://gh-proxy.com/${apiUrl}`,
+  ]
   const rawUrls = mirrorUrls(rawReleaseNotesUrl, GITHUB_MIRROR_PREFIXES)
+  const timeoutMs = options?.timeoutMs || 6000
+  const graceMs = options?.graceMs || 800
 
-  const apiPromises = apiUrls.map(async url => {
-    const data = await fetchJson(url)
-    const version = (data.tag_name || '').replace(/^v/i, '')
-    if (!isValidSemver(version)) throw new Error(`Invalid release version: ${version || '(empty)'}`)
-    const zipAsset = Array.isArray(data.assets)
-      ? data.assets.find(asset => asset?.name === `DeepSeek-Harness-${version}-win32-x64.zip`)
-      : undefined
-    if (zipAsset === undefined) throw new Error('No portable ZIP asset found')
-    const relUrl = data.html_url || `https://github.com/${PORTABLE_RELEASE_REPO}/releases`
-    return {
-      ...normalizeReleaseNotes({
-        ...data,
-        version,
-        releaseUrl: relUrl,
-        channel: url,
-        assetName: zipAsset.name,
-      }, version),
-      channel: url,
-      assetName: zipAsset.name,
-      assetUrl: zipAsset.browser_download_url || '',
-      assetDigest: zipAsset.digest || '',
-      assetSize: Number(zipAsset.size) || 0,
-      tagName: data.tag_name || `v${version}`,
+  return new Promise((resolve, reject) => {
+    const candidates = []
+    let graceTimer = null
+
+    const finish = () => {
+      if (graceTimer) clearTimeout(graceTimer)
+      if (candidates.length === 0) {
+        reject(new Error('No valid release information could be fetched from any source.'))
+        return
+      }
+      candidates.sort((left, right) => compareVersions(right.version, left.version))
+      resolve(candidates[0])
     }
-  })
 
-  const rawPromises = rawUrls.map(async url => {
-    const data = await fetchJson(url)
-    const version = typeof data?.version === 'string' ? data.version.replace(/^v/i, '').trim() : ''
-    if (!isValidSemver(version)) throw new Error(`Invalid raw release version: ${version || '(empty)'}`)
-    const tagName = `v${version}`
-    const assetName = `DeepSeek-Harness-${version}-win32-x64.zip`
-    const relUrl = `https://github.com/${PORTABLE_RELEASE_REPO}/releases/tag/${tagName}`
-    return {
-      ...normalizeReleaseNotes({
-        ...data,
-        version,
-        releaseUrl: relUrl,
-        channel: url,
-        assetName,
-      }, version),
-      channel: url,
-      assetName,
-      assetUrl: `https://github.com/${PORTABLE_RELEASE_REPO}/releases/download/${tagName}/${assetName}`,
-      assetDigest: '',
-      assetSize: 0,
-      tagName,
+    const onCandidate = release => {
+      candidates.push(release)
+      if (!graceTimer) {
+        graceTimer = setTimeout(finish, graceMs)
+      }
     }
-  })
 
-  return Promise.any([...apiPromises, ...rawPromises])
+    const tasks = [
+      ...apiUrls.map(async url => {
+        try {
+          const data = await fetchJson(url, timeoutMs, { headers: { 'Cache-Control': 'no-cache' } })
+          const version = (data.tag_name || '').replace(/^v/i, '')
+          if (!isValidSemver(version)) return
+          const zipAsset = Array.isArray(data.assets)
+            ? data.assets.find(asset => asset?.name === `DeepSeek-Harness-${version}-win32-x64.zip`)
+            : undefined
+          if (zipAsset === undefined) return
+          const relUrl = data.html_url || `https://github.com/${PORTABLE_RELEASE_REPO}/releases`
+          onCandidate({
+            ...normalizeReleaseNotes({
+              ...data,
+              version,
+              releaseUrl: relUrl,
+              channel: url,
+              assetName: zipAsset.name,
+            }, version),
+            channel: url,
+            assetName: zipAsset.name,
+            assetUrl: zipAsset.browser_download_url || '',
+            assetDigest: zipAsset.digest || '',
+            assetSize: Number(zipAsset.size) || 0,
+            tagName: data.tag_name || `v${version}`,
+          })
+        } catch {}
+      }),
+      ...rawUrls.map(async url => {
+        try {
+          const targetUrl = url.includes('?') ? url : `${url}?t=${Date.now()}`
+          const data = await fetchJson(targetUrl, timeoutMs, { headers: { 'Cache-Control': 'no-cache' } })
+          const version = typeof data?.version === 'string' ? data.version.replace(/^v/i, '').trim() : ''
+          if (!isValidSemver(version)) return
+          const tagName = `v${version}`
+          const assetName = `DeepSeek-Harness-${version}-win32-x64.zip`
+          const relUrl = `https://github.com/${PORTABLE_RELEASE_REPO}/releases/tag/${tagName}`
+          onCandidate({
+            ...normalizeReleaseNotes({
+              ...data,
+              version,
+              releaseUrl: relUrl,
+              channel: url,
+              assetName,
+            }, version),
+            channel: url,
+            assetName,
+            assetUrl: `https://github.com/${PORTABLE_RELEASE_REPO}/releases/download/${tagName}/${assetName}`,
+            assetDigest: '',
+            assetSize: 0,
+            tagName,
+          })
+        } catch {}
+      }),
+    ]
+
+    Promise.allSettled(tasks).then(finish)
+  })
 }
 
 async function queryReleaseHistory() {
   const apiUrl = `https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases?per_page=${RELEASE_HISTORY_LIMIT}`
   const rawReleaseNotesUrl = `https://raw.githubusercontent.com/${PORTABLE_RELEASE_REPO}/main/apps/desktop/src/release-notes.json`
-  const channels = GITHUB_MIRROR_PREFIXES.map((prefix, index) => ({
-    name: index === 0 ? 'Portable Windows GitHub' : `Portable Windows GitHub mirror ${index}`,
-    url: mirrorUrls(apiUrl, [prefix])[0],
-  }))
+  const channels = [
+    { name: 'Portable Windows GitHub', url: apiUrl },
+    { name: 'Portable Windows GitHub mirror', url: `https://gh-proxy.com/${apiUrl}` },
+  ]
 
   const apiHistoryPromise = Promise.any(channels.map(async channel => {
-    const data = await fetchJson(channel.url)
+    const data = await fetchJson(channel.url, 6000, { headers: { 'Cache-Control': 'no-cache' } })
     if (!Array.isArray(data)) throw new Error('Release history response was not an array')
     const releases = data
       .filter(release => release && !release.draft)
@@ -1382,7 +1415,8 @@ async function queryReleaseHistory() {
   }))
 
   const rawHistoryPromise = Promise.any(mirrorUrls(rawReleaseNotesUrl, GITHUB_MIRROR_PREFIXES).map(async url => {
-    const data = await fetchJson(url)
+    const targetUrl = url.includes('?') ? url : `${url}?t=${Date.now()}`
+    const data = await fetchJson(targetUrl, 6000, { headers: { 'Cache-Control': 'no-cache' } })
     if (!data || typeof data !== 'object') throw new Error('Raw release notes response was not an object')
     const history = normalizeReleaseNotesHistory(data)
     if (history.length === 0) throw new Error('Raw release history response was empty')
