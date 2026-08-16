@@ -16,8 +16,8 @@ $UPDATE_PROBE_TIMEOUT_SECONDS = 90
 
 $GITHUB_MIRROR_PREFIXES = @(
     '',
-    'https://gh-proxy.com/',
     'https://ghfast.top/',
+    'https://gh-proxy.com/',
     'https://gh.ddlc.top/',
     'https://ghps.cc/'
 )

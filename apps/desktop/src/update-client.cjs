@@ -11,8 +11,8 @@ const DEFAULT_HEADERS = {
 
 const GITHUB_MIRROR_PREFIXES = Object.freeze([
   '',
-  'https://gh-proxy.com/',
   'https://ghfast.top/',
+  'https://gh-proxy.com/',
   'https://gh.ddlc.top/',
   'https://ghps.cc/',
 ])
