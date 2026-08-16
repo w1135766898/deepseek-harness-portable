@@ -14,14 +14,14 @@
         "Added update transaction mutex protection in startup scripts (启动桌面版.bat, start-desktop.cmd) to eliminate file lock collisions."
       ],
       "itemsZh": [
-        "重构便携版更新生命周期：引入运行时后台预解压（Staging）机制，下载、SHA-256 完整性校验与解压布局检查在软件运行期间透明完成，重活前置处理。",
-        "退出后的重启替换耗时从 30+ 秒黑盒等待缩短至 1~2 秒极速原子切换，彻底消除更新卡死或崩溃疑虑。",
+        "重构便携版更新生命周期：引入运行时后台预解压（Staging）机制，下载、SHA-256 完整性校验与解压布局检查在软件运行期间透明完成。",
+        "退出后的重启替换耗时从 30+ 秒缩短至 1~2 秒，消除更新过程等待焦虑。",
         "更新控制权全面透明化，界面明确提供【立即重启更新】与【稍后】选项，支持在方便时自主重启。",
-        "在启动脚本（启动桌面版.bat、start-desktop.cmd）中增加事务锁互斥保护与友好提示，杜绝用户在替换瞬间双击启动导致的 Windows 文件占用冲突与损坏。"
+        "在启动脚本（启动桌面版.bat、start-desktop.cmd）中增加互斥保护与友好提示，杜绝用户在替换瞬间双击启动导致的文件占用冲突。"
       ]
     }
   ],
-  "body": "## New Features & Improvements / 新功能与体验优化\n\n- Transparent In-App Pre-Extraction Staging / 运行时后台透明预解压与完整性校验。\n- 1–2 Second Instant Atomic Swap / 退出后 1~2 秒极速原子对调替换，消除黑盒等待。\n- Full User Control with Explicit Restart / 明确的【立即重启更新】与【稍后】选项，控制权完全交给用户。\n- Launcher Mutex Protection / 启动脚本互斥锁保护，杜绝双击文件占用冲突。",
+  "body": "## New Features & Improvements / 新功能与体验优化\n\n- Transparent In-App Pre-Extraction Staging / 运行时后台透明预解压与完整性校验。\n- 1–2 Second Fast Restart / 退出后 1~2 秒快速完成替换与重启。\n- Full User Control with Explicit Restart / 明确的【立即重启更新】与【稍后】选项，控制权完全交给用户。\n- Launcher Mutex Protection / 启动脚本互斥锁保护，杜绝双击文件占用冲突。",
   "history": [
     {
       "version": "1.2.0",

@@ -222,7 +222,7 @@
   <main class="splash" aria-live="polite">
     <div class="mark"><img src="../assets/deepseek.ico" alt="DeepSeek"></div>
     <h1>DeepSeek Harness</h1>
-    <div class="status" id="status">正在拉起后台引擎…</div>
+    <div class="status" id="status">正在启动后台服务…</div>
     <div class="progress"><i></i></div>
     <section class="error-panel" id="error-panel" hidden aria-live="assertive">
       <h2 class="error-title" id="error-title">后台启动失败</h2>
@@ -240,7 +240,7 @@
     (() => {
       const messages = {
         en: {
-          engine: 'Starting the background engine…',
+          engine: 'Starting the background service…',
           workspace: 'Preparing the workspace…',
           interface: 'Loading the interface…',
           startupSlow: 'Startup is taking longer than expected',
@@ -252,10 +252,10 @@
           chooseWorkspace: 'Switch Workspace',
         },
         zh: {
-          engine: '正在拉起后台引擎…',
+          engine: '正在启动后台服务…',
           workspace: '正在准备工作区…',
           interface: '正在加载界面…',
-          startupSlow: '启动时间较长',
+          startupSlow: '启动耗时较长',
           startupFailed: '后台启动失败',
           noLog: '暂无启动日志。',
           showLog: '查看启动日志',
