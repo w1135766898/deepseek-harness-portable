@@ -17,8 +17,6 @@ export declare const zh: {
     baseURLHint: string;
     apiKey: string;
     apiKeyHint: string;
-    apiKeySet: string;
-    apiKeyUnset: string;
     promptOverride: string;
     promptOverrideHint: string;
     save: string;
@@ -47,8 +45,6 @@ export declare const en: {
     baseURLHint: string;
     apiKey: string;
     apiKeyHint: string;
-    apiKeySet: string;
-    apiKeyUnset: string;
     promptOverride: string;
     promptOverrideHint: string;
     save: string;

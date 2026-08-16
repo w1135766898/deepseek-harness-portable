@@ -19,7 +19,6 @@ export interface VisionCardState {
     baseURL: string;
     apiKey: string;
     prompt: string;
-    hasStoredKey: boolean;
 }
 export interface VisionCardFace {
     hooks: {

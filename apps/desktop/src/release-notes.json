@@ -1,6 +1,6 @@
 {
-  "version": "1.2.1",
-  "name": "DeepSeek Harness for Win v1.2.1",
+  "version": "1.2.2",
+  "name": "DeepSeek Harness for Win v1.2.2",
   "publishedAt": "2026-08-16",
   "sections": [
     {
@@ -8,21 +8,45 @@
       "titleEn": "New Features & Improvements",
       "titleZh": "新功能与体验优化",
       "itemsEn": [
-        "Implemented in-app pre-extraction staging for portable updates: downloading, SHA-256 integrity verification, and decompression now run transparently in the background while the application stays fully usable.",
-        "Reduced post-exit restart replacement downtime from 30+ seconds to 1–2 seconds via instant atomic directory swapping.",
-        "Provided transparent update status and user control with explicit 'Restart and Update Now' and 'Later' options.",
-        "Added update transaction mutex protection in startup scripts (启动桌面版.bat, start-desktop.cmd) to eliminate file lock collisions."
+        "Added Vision Bridge plugin (@dsh-portable/vision-bridge): equips text-only models with multimodal visual inspection capabilities via OpenAI-compatible vision models (GPT-4o, Qwen-VL, GLM-4V, local Ollama, etc.).",
+        "Introduced the global 'view_image' tool: automatically inspects PNG, JPEG, WebP, and GIF images, resolves workspace paths against session cwd, enforces file bounds, and securely streams base64 Data URLs.",
+        "Seamless Settings integration: mounts a dedicated Vision card into the official Settings → Plugins tab with live provider presets, configuration validation, and write-only API key protection.",
+        "Zero-modification vendor isolation: cleanly wired through Cordis microkernel plugin slots and profile overlays without altering any upstream vendor/ code."
       ],
       "itemsZh": [
-        "重构便携版更新生命周期：引入运行时后台预解压（Staging）机制，下载、SHA-256 完整性校验与解压布局检查在软件运行期间透明完成。",
-        "退出后的重启替换耗时从 30+ 秒缩短至 1~2 秒，消除更新过程等待焦虑。",
-        "更新控制权全面透明化，界面明确提供【立即重启更新】与【稍后】选项，支持在方便时自主重启。",
-        "在启动脚本（启动桌面版.bat、start-desktop.cmd）中增加互斥保护与友好提示，杜绝用户在替换瞬间双击启动导致的文件占用冲突。"
+        "新增视觉辅助外挂插件（@dsh-portable/vision-bridge）：为文本模型接入外部 OpenAI 兼容的视觉大模型（如 GPT-4o、Qwen-VL、GLM-4V、本地 Ollama 等），赋予模型看图与识图能力。",
+        "引入全局 view_image 工具：支持 PNG、JPEG、WebP 与 GIF 图片文件，根据当前会话 cwd 智能解析相对路径，自动进行大小校验与 Base64 编码，并严格遵循防凭证重定向外泄的安全规范。",
+        "无缝融入官方设置中心：在【设置 → 插件】页面官方槽位注册专属配置卡片，支持服务商预设一键切换、即时配置验证与持久化保存，API Key 采用纯写模式与 Secret 级别安全脱敏保护。",
+        "零侵入架构设计：全部通过 Cordis 微内核插件机制与运行时 Overlay 动态装配，保持 upstream vendor/deepseek-harness 100% 原生纯净。"
       ]
     }
   ],
-  "body": "## New Features & Improvements / 新功能与体验优化\n\n- Transparent In-App Pre-Extraction Staging / 运行时后台透明预解压与完整性校验。\n- 1–2 Second Fast Restart / 退出后 1~2 秒快速完成替换与重启。\n- Full User Control with Explicit Restart / 明确的【立即重启更新】与【稍后】选项，控制权完全交给用户。\n- Launcher Mutex Protection / 启动脚本互斥锁保护，杜绝双击文件占用冲突。",
+  "body": "## New Features & Improvements / 新功能与体验优化\n\n- Vision Bridge Plugin / 视觉辅助外挂插件：为非多模态大模型赋予看图识图能力。\n- Global 'view_image' Tool / 全局图片查看工具：支持主流格式与会话相对路径智能解析。\n- Official Settings UI Slot / 官方设置槽位无缝融入：提供可视化预设切换与敏感信息保护。\n- Zero-Modification Architecture / 零修改侵入设计：完全基于 Cordis 插件插拔机制。",
   "history": [
+    {
+      "version": "1.2.1",
+      "name": "DeepSeek Harness for Win v1.2.1",
+      "publishedAt": "2026-08-16",
+      "sections": [
+        {
+          "key": "features",
+          "titleEn": "New Features & Improvements",
+          "titleZh": "新功能与体验优化",
+          "itemsEn": [
+            "Implemented in-app pre-extraction staging for portable updates: downloading, SHA-256 integrity verification, and decompression now run transparently in the background while the application stays fully usable.",
+            "Reduced post-exit restart replacement downtime from 30+ seconds to 1–2 seconds via instant atomic directory swapping.",
+            "Provided transparent update status and user control with explicit 'Restart and Update Now' and 'Later' options.",
+            "Added update transaction mutex protection in startup scripts (启动桌面版.bat, start-desktop.cmd) to eliminate file lock collisions."
+          ],
+          "itemsZh": [
+            "重构便携版更新生命周期：引入运行时后台预解压（Staging）机制，下载、SHA-256 完整性校验与解压布局检查在软件运行期间透明完成。",
+            "退出后的重启替换耗时从 30+ 秒缩短至 1~2 秒，消除更新过程等待焦虑。",
+            "更新控制权全面透明化，界面明确提供【立即重启更新】与【稍后】选项，支持在方便时自主重启。",
+            "在启动脚本（启动桌面版.bat、start-desktop.cmd）中增加互斥保护与友好提示，杜绝用户在替换瞬间双击启动导致的文件占用冲突。"
+          ]
+        }
+      ]
+    },
     {
       "version": "1.2.0",
       "name": "DeepSeek Harness for Win v1.2.0",
@@ -61,164 +85,39 @@
       ]
     },
     {
-      "version": "1.1.3",
-      "name": "DeepSeek Harness for Win v1.1.3",
+      "version": "1.1.0",
+      "name": "DeepSeek Harness for Win v1.1.0",
       "publishedAt": "2026-08-16",
       "sections": [
         {
-          "key": "fixes",
-          "titleEn": "Bug Fixes",
-          "titleZh": "问题修复",
+          "key": "features",
+          "titleEn": "New Features",
+          "titleZh": "新功能",
           "itemsEn": [
-            "Refused to remove user data through a junction or symlink during uninstallation to prevent accidental file deletion.",
-            "Terminated the complete backend engine process tree before uninstallation and fixed percent sign escaping in the delayed self-removal script.",
-            "Fixed duplicate PATH entries in the installer by comparing environment variable paths case-insensitively.",
-            "Hardened installation and update extraction against Zip Slip path traversal violations."
+            "Added in-app update checker and one-click update downloader in the desktop menu.",
+            "Supported automatic bilingual release notes presentation with fallback history.",
+            "Added seamless update flow that downloads the portable update and applies it cleanly on restart."
           ],
           "itemsZh": [
-            "卸载时拒绝穿透目录联接（Junction）或符号链接删除用户数据，防止误删外部目录数据。",
-            "卸载前先完整终止后台引擎进程树，并修复延迟自清理脚本中百分号未转义的问题。",
-            "修复安装程序向系统 PATH 写入路径时的重复问题，改为不区分大小写比对。",
-            "强化安装与更新解压流程对 Zip Slip 路径穿越攻击的防御拦截。"
+            "在桌面菜单中新增应用内更新检测与一键下载更新功能。",
+            "支持双语更新日志解析与多版本历史回退展示。",
+            "提供无缝便携版更新体验，自动下载并校验最新发行包，重启后自动完成替换升级。"
           ]
         },
         {
           "key": "improvements",
           "titleEn": "Improvements",
-          "titleZh": "功能改进",
+          "titleZh": "体验优化",
           "itemsEn": [
-            "Throttled automatic update checks to once per day to eliminate unnecessary startup network traffic.",
-            "Implemented exponential backoff for backend health probes when consecutive connection failures accumulate.",
-            "Separated the release history cache out of config.json for cleaner state management.",
-            "Enforced strict HTTP/HTTPS protocol validation on external window-open requests."
+            "Unified DSH_HOME directory resolution across all launch scripts and Electron runtime.",
+            "Hardened Windows process tree termination for long-running child processes on exit."
           ],
           "itemsZh": [
-            "限制后台自动检查更新频率为每天一次，减少不必要的启动网络请求。",
-            "后台引擎连续连接失败时引入指数退避探测机制，避免频繁重试消耗系统资源。",
-            "将更新历史缓存从 config.json 中剥离解耦，保持主配置干净整洁。",
-            "对外部窗口打开请求强制校验 HTTP/HTTPS 协议，提升安全性。"
+            "统合启动脚本与 Electron 主进程对 DSH_HOME 路径的解析逻辑，保证跨工作区的一致性。",
+            "优化 Windows 进程树销毁逻辑，确保应用退出时完全清理遗留的子进程。"
           ]
         }
       ]
-    },
-    {
-      "version": "1.1.2",
-      "name": "DeepSeek Harness for Win v1.1.2",
-      "publishedAt": "2026-08-15",
-      "sections": [
-        {
-          "key": "fixes",
-          "titleEn": "Bug Fixes",
-          "titleZh": "问题修复",
-          "itemsEn": [
-            "Fixed the update log ignoring the app language: release notes now prefer the bundled bilingual content, so a Chinese interface shows Chinese release notes instead of the English text pulled from the GitHub release page."
-          ],
-          "itemsZh": [
-            "修复更新日志不跟随界面语言的问题：更新日志改为优先使用内置的中英双语内容，中文界面下现在显示中文更新说明，而不再回退到 GitHub 发布页的英文正文。"
-          ]
-        },
-        {
-          "key": "improvements",
-          "titleEn": "Improvements",
-          "titleZh": "功能改进",
-          "itemsEn": [
-            "Bundled bilingual release history for all published versions (v1.1.1, v1.1.0, v1.0.0), so the full timeline stays localized even when offline or behind a restricted network."
-          ],
-          "itemsZh": [
-            "内置全部已发布版本（v1.1.1、v1.1.0、v1.0.0）的中英双语更新历史，离线或受限网络环境下时间线同样显示本地化文案。"
-          ]
-        }
-      ],
-      "body": "## Bug Fixes / 问题修复\n\n- Fixed the update log ignoring the app language: release notes now prefer the bundled bilingual content, so a Chinese interface shows Chinese release notes. / 修复更新日志不跟随界面语言的问题：更新日志改为优先使用内置的中英双语内容，中文界面下现在显示中文更新说明。\n\n## Improvements / 功能改进\n\n- Bundled bilingual release history for all published versions (v1.1.1, v1.1.0, v1.0.0). / 内置全部已发布版本（v1.1.1、v1.1.0、v1.0.0）的中英双语更新历史。"
-    },
-    {
-      "version": "1.1.1",
-      "name": "DeepSeek Harness for Win v1.1.1",
-      "publishedAt": "2026-08-15",
-      "sections": [
-        {
-          "key": "fixes",
-          "titleEn": "Bug Fixes",
-          "titleZh": "问题修复",
-          "itemsEn": [
-            "Fixed in-app updates not starting after restart confirmation: the updater is now launched so Windows PowerShell 5.1 actually executes it (the previous detached launch exited silently, leaving the update stuck at \"starting\" and reporting \"last update incomplete\" on the next launch).",
-            "Fixed updater self-termination risk during shell shutdown: the old desktop shell is terminated without recursively killing its process tree, so the running updater can no longer be killed by its own cleanup.",
-            "Fixed unexplained incomplete-update states: early updater failures (for example a missing updater module) now record a concrete failed status with the real error message."
-          ],
-          "itemsZh": [
-            "修复应用内确认重启后更新不执行的问题：更新器改为以 Windows PowerShell 5.1 可正常执行的方式启动（此前分离式启动会静默退出，更新一直卡在 \"starting\"，下次启动提示\"上次更新未完成\"）。",
-            "修复更新器在关闭旧外壳时可能被误杀的问题：旧桌面外壳改为单进程终止，不再递归击杀其进程树，运行中的更新器不会再被自己的清理逻辑杀死。",
-            "修复无法解释的\"更新未完成\"状态：更新器早期失败（如更新模块缺失）现在会写入包含真实错误信息的具体失败状态。"
-          ]
-        },
-        {
-          "key": "improvements",
-          "titleEn": "Improvements",
-          "titleZh": "功能改进",
-          "itemsEn": [
-            "Console updates (在线更新.bat / update.cmd) reuse a previously downloaded, SHA-256 verified update package, so updating after a failed in-app restart does not re-download.",
-            "The post-update launch no longer forces a hidden initial window; the new version's splash and window appear normally."
-          ],
-          "itemsZh": [
-            "控制台更新（在线更新.bat / update.cmd）会复用先前已下载并通过 SHA-256 校验的更新包，应用内重启失败后无需重复下载。",
-            "更新完成后不再强制隐藏初始窗口，新版本的启动过渡页与主窗口正常展示。"
-          ]
-        }
-      ],
-      "body": "## Bug Fixes / 问题修复\n\n- Fixed in-app updates not starting after restart confirmation: the updater is now launched so Windows PowerShell 5.1 actually executes it. / 修复应用内确认重启后更新不执行的问题：更新器改为以 Windows PowerShell 5.1 可正常执行的方式启动。\n- Fixed updater self-termination risk during shell shutdown: the old desktop shell is terminated without recursively killing its process tree. / 修复更新器在关闭旧外壳时可能被误杀的问题：旧桌面外壳改为单进程终止，不再递归击杀其进程树。\n- Fixed unexplained incomplete-update states: early updater failures now record a concrete failed status with the real error message. / 修复无法解释的\"更新未完成\"状态：更新器早期失败现在会写入包含真实错误信息的具体失败状态。\n\n## Improvements / 功能改进\n\n- Console updates reuse a previously downloaded, SHA-256 verified update package, so updating after a failed in-app restart does not re-download. / 控制台更新会复用先前已下载并通过 SHA-256 校验的更新包，应用内重启失败后无需重复下载。\n- The post-update launch no longer forces a hidden initial window; the new version's splash and window appear normally. / 更新完成后不再强制隐藏初始窗口，新版本的启动过渡页与主窗口正常展示。"
-    },
-    {
-      "version": "1.1.0",
-      "name": "DeepSeek Harness for Win v1.1.0",
-      "publishedAt": "2026-08-15",
-      "sections": [
-        {
-          "key": "features",
-          "titleEn": "Features",
-          "titleZh": "主要功能",
-          "itemsEn": [
-            "Added PowerShell (pwsh) shell support and cmdline execution for the Minimal agent preset on Windows.",
-            "Adopted immersive titlebar layout with safe content top offset and draggable region, preventing overlay conflicts with window controls.",
-            "Reworked update and rollback feedback: added starting/rolled-back status indicators, automatic app relaunch after rollback, and localized status cards.",
-            "Added cross-restart Ready Resume for downloaded updates with package integrity verification and startup stale package cleanup."
-          ],
-          "itemsZh": [
-            "Windows 极简 Agent 预设支持 PowerShell (pwsh) 执行器与 cmdline 命令行适配。",
-            "采用沉浸式标题栏布局，增加顶部安全内容边距与窗口拖拽区域，避免与系统窗口控制按钮重叠冲突。",
-            "重构更新与回滚体验：增加更新回滚状态感知、回滚后自动重启恢复，并提供多语言状态卡片。",
-            "支持更新包就绪状态跨进程恢复（Ready Resume），启动时自动校验已下载的安装包，并定期清理过期临时文件。"
-          ]
-        },
-        {
-          "key": "fixes",
-          "titleEn": "Bug Fixes",
-          "titleZh": "问题修复",
-          "itemsEn": [
-            "Disabled background jobs (run_in_background) in Minimal preset on Windows to prevent unmanageable processes.",
-            "Fixed resumed update ready notice being improperly suppressed by earlier dismissals.",
-            "Fixed download-stage error classification and resolved potential deadlock on corrupted packages by falling back to retry.",
-            "Fixed sidebar whale logo click dispatch and anchor view synchronization."
-          ],
-          "itemsZh": [
-            "在 Windows 极简预设中禁用无 UI 控件的后台任务（run_in_background），避免产生无法停止的孤儿进程。",
-            "修复跨进程恢复的更新就绪通知因先前的关闭记录而被误静默的问题。",
-            "修复下载阶段失败时的状态记录分类，并增加损坏安装包自动降级重试以防死锁。",
-            "修复侧边栏深海鲸鱼 Logo 的点击事件分发与锚点视图同步问题。"
-          ]
-        },
-        {
-          "key": "improvements",
-          "titleEn": "Documentation & Tooling",
-          "titleZh": "文档与工具链",
-          "itemsEn": [
-            "Enhanced documentation with full portable directory layout tree, quick start guide, FAQ, and automated i18n synchronization check."
-          ],
-          "itemsZh": [
-            "完善中英文文档，补充完整便携包架构目录树、快速入门指引、常见问题 FAQ 及自动化中英文 i18n 校验工具。"
-          ]
-        }
-      ],
-      "body": "## Features / 主要功能\n\n- Added PowerShell (pwsh) shell support and cmdline execution for the Minimal agent preset on Windows. / Windows 极简 Agent 预设支持 PowerShell (pwsh) 执行器与 cmdline 命令行适配。\n- Adopted immersive titlebar layout with safe content top offset and draggable region. / 采用沉浸式标题栏布局，增加顶部安全内容边距与窗口拖拽区域。\n- Reworked update and rollback feedback with automatic app relaunch and localized status cards. / 重构更新与回滚体验，支持回滚后自动重启恢复与多语言状态卡片。\n- Added cross-restart Ready Resume for downloaded updates with package integrity verification. / 支持更新包就绪状态跨进程恢复（Ready Resume）与启动校验。\n\n## Bug Fixes / 问题修复\n\n- Disabled background jobs (run_in_background) in Minimal preset on Windows. / 极简预设禁用后台作业，防止孤儿进程。\n- Fixed resumed update ready notice being improperly suppressed by earlier dismissals. / 修复就绪通知被误静默拦截的问题。\n- Fixed download-stage error classification and prevented update stalling on corrupted packages. / 修复下载阶段报错分类与损坏包自动重试降级。\n- Fixed sidebar whale logo click dispatch and anchor synchronization. / 修复侧边栏深海鲸鱼 Logo 点击分发与锚点同步。\n\n## Documentation & Tooling / 文档与工具链\n\n- Enhanced documentation with full directory layout tree, FAQ, and automated i18n check. / 完善架构目录树、FAQ 与自动化 i18n 同步校验。"
     },
     {
       "version": "1.0.0",
@@ -227,38 +126,20 @@
       "sections": [
         {
           "key": "features",
-          "titleEn": "Features",
-          "titleZh": "主要功能",
+          "titleEn": "Initial Release",
+          "titleZh": "初始发布",
           "itemsEn": [
-            "Portable Windows x64 package combining the native Electron desktop shell with an embedded DeepSeek Harness Web runtime.",
-            "Workspace selection, browser mode, tray/application menus, release history, About, and diagnostics export.",
-            "In-app update checking, download progress, SHA-256 verification, restart confirmation, and rollback support.",
-            "Native blue whale logo menu, Windows 11 Mica/title-bar styling, system theme synchronization, startup splash, and multi-monitor-safe window state."
+            "Portable zero-configuration Windows desktop distribution for DeepSeek Harness.",
+            "Bundled standalone Node.js and PowerShell execution engine with out-of-the-box support.",
+            "Fully isolated home directory management ($DSH_HOME) ensuring portable USB drive support."
           ],
           "itemsZh": [
-            "提供组合原生 Electron 桌面外壳与内置 DeepSeek Harness Web runtime 的 Windows x64 便携包。",
-            "支持工作区选择、浏览器模式、托盘/应用菜单、更新历史、关于信息和诊断导出。",
-            "支持应用内检查更新、下载进度、SHA-256 校验、重启确认和回滚。",
-            "提供蓝色原生鲸鱼 Logo 菜单、Windows 11 Mica/标题栏样式、系统主题同步、启动过渡页，以及适配多显示器的窗口状态记忆。"
-          ]
-        },
-        {
-          "key": "improvements",
-          "titleEn": "Build & Reliability",
-          "titleZh": "构建与稳定性",
-          "itemsEn": [
-            "The desktop shell, embedded Web runtime, and release package are rebuilt from the pinned vendor/deepseek-harness source workspace included in this repository.",
-            "Release packaging validates the runtime source copy, release manifest, portable archive layout, required native modules, and SHA-256 checksums before publication.",
-            "The package includes Chinese and English quick guides, portable start/update scripts, and an uninstall flow that keeps user data unless deletion is explicitly confirmed."
-          ],
-          "itemsZh": [
-            "桌面外壳、内置 Web runtime 和发行包均基于仓库内固定的 vendor/deepseek-harness 源码 workspace 重新构建。",
-            "发布前会校验 runtime 源码一致性、发布清单、便携包目录布局、必要的原生模块和 SHA-256 校验和。",
-            "安装包包含中英文快速指南、便携启动/更新脚本，以及默认保留用户数据、仅在明确确认后删除数据的卸载流程。"
+            "DeepSeek Harness 便携式开箱即用 Windows 桌面分发版本。",
+            "内置独立 Node.js 与 PowerShell 执行引擎，免环境配置即开即用。",
+            "完全隔离的便携配置目录（$DSH_HOME），支持 U 盘随身携带使用。"
           ]
         }
-      ],
-      "body": "## Features / 主要功能\n\n- Portable Windows x64 package combining the native Electron desktop shell with an embedded DeepSeek Harness Web runtime. / 提供组合原生 Electron 桌面外壳与内置 DeepSeek Harness Web runtime 的 Windows x64 便携包。\n- Workspace selection, browser mode, tray/application menus, release history, About, and diagnostics export. / 支持工作区选择、浏览器模式、托盘/应用菜单、更新历史、关于信息和诊断导出。\n- In-app update checking, download progress, SHA-256 verification, restart confirmation, and rollback support. / 支持应用内检查更新、下载进度、SHA-256 校验、重启确认和回滚。\n- Native blue whale logo menu, Windows 11 Mica/title-bar styling, system theme synchronization, startup splash, and multi-monitor-safe window state. / 提供蓝色原生鲸鱼 Logo 菜单、Windows 11 Mica/标题栏样式、系统主题同步、启动过渡页，以及适配多显示器的窗口状态记忆。\n\n## Build & Reliability / 构建与稳定性\n\n- The desktop shell, embedded Web runtime, and release package are rebuilt from the pinned vendor source workspace. / 桌面外壳、内置 Web runtime 和发行包均基于仓库内固定的 vendor 源码 workspace 重新构建。\n- Release packaging validates the runtime source copy, release manifest, portable archive layout, required native modules, and SHA-256 checksums. / 发布前会校验 runtime 源码一致性、发布清单、便携包目录布局、必要的原生模块和 SHA-256 校验和。\n- The package includes Chinese and English quick guides, portable start/update scripts, and a safe uninstall flow. / 安装包包含中英文快速指南、便携启动/更新脚本，以及默认保留用户数据的安全卸载流程。"
+      ]
     }
   ]
 }

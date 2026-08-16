@@ -51,7 +51,7 @@ async function executeViewImage(args, exec, getConfig) {
 	};
 	if (typeof args.path !== "string" || args.path.trim().length === 0) throw new Error("path must be a non-empty string");
 	const rawPath = args.path.trim();
-	const workspaceRoot = exec.agent?.workspace ?? process.cwd();
+	const workspaceRoot = exec.agent?.session.header.cwd ?? process.cwd();
 	const targetPath = isAbsolute(rawPath) ? rawPath : resolve(workspaceRoot, rawPath);
 	const mime = mimeTypeForPath(targetPath);
 	if (mime === void 0) return {

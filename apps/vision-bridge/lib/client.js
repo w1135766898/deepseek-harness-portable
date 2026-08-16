@@ -27,8 +27,6 @@ window.__ModuleLoader__.load({
 			baseURLHint: "兼容 OpenAI 格式的完整 API 地址",
 			apiKey: "API 密钥",
 			apiKeyHint: "留空表示不修改或无需密钥 (如本地 Ollama)",
-			apiKeySet: "已配置 (受保护)",
-			apiKeyUnset: "未配置",
 			promptOverride: "系统提示词 (可选)",
 			promptOverrideHint: "自定义发送给视觉模型的提示词指令",
 			save: "保存配置",
@@ -57,8 +55,6 @@ window.__ModuleLoader__.load({
 			baseURLHint: "OpenAI-compatible completions endpoint base URL",
 			apiKey: "API Key",
 			apiKeyHint: "Leave blank to keep unchanged or if no key required (e.g. Ollama)",
-			apiKeySet: "Configured (Secret)",
-			apiKeyUnset: "Not set",
 			promptOverride: "System Prompt (Optional)",
 			promptOverrideHint: "Custom instruction sent to the vision model",
 			save: "Save Changes",
@@ -84,32 +80,32 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var VisionCard_module_css_default = {
-			"fieldRow": "bICbtG_fieldRow",
-			"headText": "bICbtG_headText",
-			"input": "bICbtG_input",
-			"btn": "bICbtG_btn",
-			"error": "bICbtG_error",
-			"switch": "bICbtG_switch",
-			"pending": "bICbtG_pending",
-			"select": "bICbtG_select",
-			"textarea": "bICbtG_textarea",
-			"header": "bICbtG_header",
-			"label": "bICbtG_label",
 			"slider": "bICbtG_slider",
-			"name": "bICbtG_name",
-			"card": "bICbtG_card",
-			"footer": "bICbtG_footer",
-			"save": "bICbtG_save",
-			"description": "bICbtG_description",
-			"hint": "bICbtG_hint",
 			"discard": "bICbtG_discard",
-			"statusMsg": "bICbtG_statusMsg",
+			"footer": "bICbtG_footer",
+			"textarea": "bICbtG_textarea",
+			"error": "bICbtG_error",
+			"hint": "bICbtG_hint",
+			"headText": "bICbtG_headText",
+			"field": "bICbtG_field",
+			"switch": "bICbtG_switch",
+			"btn": "bICbtG_btn",
+			"pending": "bICbtG_pending",
+			"label": "bICbtG_label",
+			"select": "bICbtG_select",
 			"chevron": "bICbtG_chevron",
+			"statusMsg": "bICbtG_statusMsg",
+			"card": "bICbtG_card",
+			"chevronOpen": "bICbtG_chevronOpen",
+			"header": "bICbtG_header",
+			"description": "bICbtG_description",
+			"save": "bICbtG_save",
+			"name": "bICbtG_name",
 			"body": "bICbtG_body",
 			"cardOpen": "bICbtG_cardOpen",
-			"readOnly": "bICbtG_readOnly",
-			"chevronOpen": "bICbtG_chevronOpen",
-			"field": "bICbtG_field"
+			"input": "bICbtG_input",
+			"fieldRow": "bICbtG_fieldRow",
+			"readOnly": "bICbtG_readOnly"
 		};
 		//#endregion
 		//#region src/client/VisionCard.tsx
@@ -256,21 +252,16 @@ window.__ModuleLoader__.load({
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: VisionCard_module_css_default.field,
 							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
 									className: VisionCard_module_css_default.label,
-									children: [
-										t("apiKey"),
-										" (",
-										state.hasStoredKey ? t("apiKeySet") : t("apiKeyUnset"),
-										")"
-									]
+									children: t("apiKey")
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
 									type: "password",
 									className: VisionCard_module_css_default.input,
 									value: state.apiKey,
 									disabled: !state.writable,
-									placeholder: state.hasStoredKey ? "••••••••••••••••" : t("apiKeyHint"),
+									placeholder: t("apiKeyHint"),
 									onChange: (e) => props.edit("apiKey", e.target.value)
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
@@ -350,7 +341,6 @@ window.__ModuleLoader__.load({
 				const apiKey = typeof this.staged.apiKey === "string" ? this.staged.apiKey : "";
 				const prompt = typeof this.staged.prompt === "string" ? this.staged.prompt : current.prompt ?? "";
 				const dirty = Object.keys(this.staged).length > 0;
-				const hasStoredKey = Boolean(current.apiKey && current.apiKey.length > 0);
 				return {
 					available: snap.status === "ready" || snap.status === "loading",
 					writable: snap.writable,
@@ -362,8 +352,7 @@ window.__ModuleLoader__.load({
 					model,
 					baseURL,
 					apiKey,
-					prompt,
-					hasStoredKey
+					prompt
 				};
 			}
 			edit = (field, value) => {

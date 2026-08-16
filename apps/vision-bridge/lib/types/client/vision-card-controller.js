@@ -39,7 +39,6 @@ export class VisionCardController {
             ? this.staged.prompt
             : (current.prompt ?? '');
         const dirty = Object.keys(this.staged).length > 0;
-        const hasStoredKey = Boolean(current.apiKey && current.apiKey.length > 0);
         return {
             available: snap.status === 'ready' || snap.status === 'loading',
             writable: snap.writable,
@@ -52,7 +51,6 @@ export class VisionCardController {
             baseURL,
             apiKey,
             prompt,
-            hasStoredKey,
         };
     }
     edit = (field, value) => {
