@@ -156,9 +156,11 @@ Smart App Control 可能直接阻止未签名的应用。如果设备已启用�
 之后使用常规构建与发布命令：
 
     pnpm install
-    pnpm run build
     pnpm run desktop:test
+    pnpm run desktop:package:win
     pnpm run desktop:release:win
+
+打包流程会为源码 workspace 生成指纹，并在输入未变化时复用已成功的构建、运行时部署和 Electron 产物层。排查干净的发布构建时，可使用 `pnpm run desktop:release:win -- --no-cache`，也可向底层打包脚本传入 `--no-cache`；需要有意打包现有编译产物时，仍可使用 `--skip-build`。
 
 桌面包保留三层独立版本：
 
@@ -166,7 +168,7 @@ Smart App Control 可能直接阻止未签名的应用。如果设备已启用�
 - 桌面外壳版本：Electron 外壳包版本。
 - 内核版本：打包进来的 `@deepseek-ai/dsh-web-app` 版本。
 
-发布命令会先构建上游 Web runtime，再构建桌面外壳，生成 `release-manifest.json`，并最后写入 `SHA256SUMS.txt`。准备新版本时，请同步更新 `RELEASE_NOTES.md`、`RELEASE_NOTES.zh.md` 和 `apps/desktop/src/release-notes.json`。
+发布命令会构建或安全复用上游 Web runtime 和桌面外壳，始终执行发布测试，生成 `release-manifest.json`，并最后写入 `SHA256SUMS.txt`。准备新版本时，请同步更新 `RELEASE_NOTES.md`、`RELEASE_NOTES.zh.md` 和 `apps/desktop/src/release-notes.json`。
 
 `dist-desktop/` 是可重建的临时构建目录，发布后可以删除。下一次构建所需的源码保存在 `vendor/deepseek-harness` 中；不要用 `node_modules/` 或便携 ZIP 替代源码提交到仓库。
 

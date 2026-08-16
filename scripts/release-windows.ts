@@ -75,16 +75,18 @@ const DESKTOP_SYNTAX_FILES = [
 type Options = {
   input?: string
   skipBuild: boolean
+  noCache: boolean
   noSetup: boolean
   setupTemplate?: string
   pruneSources: boolean
 }
 
 function parseArgs(argv: string[]): Options {
-  const options: Options = { skipBuild: false, noSetup: false, pruneSources: false }
+  const options: Options = { skipBuild: false, noCache: false, noSetup: false, pruneSources: false }
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
     if (arg === '--skip-build') options.skipBuild = true
+    else if (arg === '--no-cache') options.noCache = true
     else if (arg === '--no-setup') options.noSetup = true
     else if (arg === '--prune-sources') options.pruneSources = true
     else if (arg === '--input') options.input = resolve(root, argv[++index] ?? '')
@@ -95,6 +97,7 @@ function parseArgs(argv: string[]): Options {
         '',
         '  --input <dir>             package an existing portable root',
         '  --skip-build              do not run the Electron build first',
+        '  --no-cache                rebuild all disposable packaging layers',
         '  --prune-sources           remove ordinary TypeScript sources during the build',
         '  --setup-template <exe>    replace the ZIP payload in an existing Setup.exe when ISCC is unavailable',
         '  --no-setup                emit only the ZIP and checksums',
@@ -103,6 +106,9 @@ function parseArgs(argv: string[]): Options {
     } else {
       throw new Error(`Unknown option: ${arg}`)
     }
+  }
+  if (options.noCache && (options.input || options.skipBuild)) {
+    throw new Error('--no-cache cannot be combined with --input or --skip-build because no build would run')
   }
   return options
 }
@@ -220,28 +226,40 @@ async function run(command: string, args: string[], options: { cwd?: string; env
   })
 }
 
+async function runBounded<T>(items: T[], concurrency: number, task: (item: T) => Promise<void>): Promise<void> {
+  let cursor = 0
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor
+      cursor += 1
+      await task(items[index])
+    }
+  }))
+}
+
 async function verifyReleaseTests(): Promise<void> {
   const desktopDir = join(root, 'apps', 'desktop')
   console.log('Verifying desktop Node.js tests before release packaging...')
-  await run(process.execPath, [
+  const nodeTests = run(process.execPath, [
     '--test',
     ...DESKTOP_TEST_FILES.map(file => join('src', file)),
   ], { cwd: desktopDir })
-  await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', [
+  const syntaxChecks = runBounded(DESKTOP_SYNTAX_FILES, 4, file => (
+    run(process.execPath, ['--check', join('src', file)], { cwd: desktopDir })
+  ))
+  const marketplaceTests = run('pnpm', [
     'exec',
     'tsx',
     '--test',
     join(desktopDir, 'src', 'marketplace-bootstrap.test.ts'),
   ])
-  for (const file of DESKTOP_SYNTAX_FILES) {
-    await run(process.execPath, ['--check', join('src', file)], { cwd: desktopDir })
-  }
 
   const testRunner = join(root, 'apps', 'desktop', 'tests', 'Run-Tests.ps1')
-  if (existsSync(testRunner)) {
-    console.log('Verifying updater Pester tests before release packaging...')
-    await run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', testRunner])
-  }
+  const updaterTests = existsSync(testRunner)
+    ? run('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', testRunner])
+    : Promise.resolve()
+  if (existsSync(testRunner)) console.log('Verifying updater Pester tests before release packaging...')
+  await Promise.all([nodeTests, syntaxChecks, marketplaceTests, updaterTests])
 }
 
 async function listArchiveEntries(path: string): Promise<Set<string>> {
@@ -417,19 +435,28 @@ async function buildSetupFromTemplate(template: string, zipPath: string, output:
 
 async function writeChecksums(zipPath: string, setupPath?: string): Promise<void> {
   const files = [zipPath, setupPath].filter((path): path is string => Boolean(path && existsSync(path)))
-  const lines: string[] = []
-  for (const path of files) {
+  const lines = await Promise.all(files.map(async path => {
     const digest = await hashFile(path)
     const name = basename(path)
-    lines.push(`${digest} *${name}`)
     await writeFile(`${path}.sha256`, `${digest} *${name}\n`)
-  }
+    return `${digest} *${name}`
+  }))
   const text = `${lines.join('\n')}\n`
   await writeFile(join(releaseDir, 'SHA256SUMS.txt'), text)
   await writeFile(join(root, 'SHA256SUMS.txt'), text)
 }
 
+async function timed<T>(label: string, action: () => Promise<T>): Promise<T> {
+  const startedAt = performance.now()
+  try {
+    return await action()
+  } finally {
+    console.log(`Release step ${label} completed in ${((performance.now() - startedAt) / 1000).toFixed(2)}s`)
+  }
+}
+
 async function main(): Promise<void> {
+  const startedAt = performance.now()
   const options = parseArgs(process.argv.slice(2))
   const version = distributionVersion()
   const shellVersion = desktopVersion()
@@ -437,19 +464,21 @@ async function main(): Promise<void> {
   const zipPath = join(releaseDir, zipName)
   await rm(zipPath, { force: true })
 
-  await verifyReleaseTests()
+  await timed('tests', verifyReleaseTests)
 
   if (!options.input && !options.skipBuild) {
     const tsxBin = join(root, 'node_modules', '.pnpm', 'node_modules', '.bin', process.platform === 'win32' ? 'tsx.CMD' : 'tsx')
     const buildScript = join(root, 'scripts', 'build-desktop-web-exe.ts')
     if (existsSync(tsxBin)) {
-      const buildArgs = [buildScript, '--electron', '--skip-build']
+      const buildArgs = [buildScript, '--electron']
       if (options.pruneSources) buildArgs.push('--prune-sources')
-      await run(tsxBin, buildArgs)
+      if (options.noCache) buildArgs.push('--no-cache')
+      await timed('Electron packaging', () => run(tsxBin, buildArgs))
     } else {
-      const buildArgs = ['exec', 'tsx', 'scripts/build-desktop-web-exe.ts', '--electron', '--skip-build']
+      const buildArgs = ['exec', 'tsx', 'scripts/build-desktop-web-exe.ts', '--electron']
       if (options.pruneSources) buildArgs.push('--prune-sources')
-      await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', buildArgs)
+      if (options.noCache) buildArgs.push('--no-cache')
+      await timed('Electron packaging', () => run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', buildArgs))
     }
   }
 
@@ -457,11 +486,11 @@ async function main(): Promise<void> {
   if (!existsSync(join(buildRoot, 'runtime', 'DeepSeek Harness.exe'))) {
     throw new Error(`Portable build root is missing runtime/DeepSeek Harness.exe: ${buildRoot}`)
   }
-  await syncPortablePayload(buildRoot)
+  await timed('payload synchronization', () => syncPortablePayload(buildRoot))
   await writeReleaseManifest(buildRoot, version, shellVersion)
   await verifyDesktopRuntimeSources(buildRoot)
-  await run('tar.exe', ['-a', '-c', '-f', zipPath, '-C', dirname(buildRoot), basename(buildRoot)])
-  await verifyPortableArchive(zipPath, buildRoot)
+  await timed('ZIP compression', () => run('tar.exe', ['-a', '-c', '-f', zipPath, '-C', dirname(buildRoot), basename(buildRoot)]))
+  await timed('ZIP validation', () => verifyPortableArchive(zipPath, buildRoot))
 
   let setupPath: string | undefined
   if (!options.noSetup) {
@@ -471,24 +500,25 @@ async function main(): Promise<void> {
       await rm(setupPath, { force: true })
     }
     if (iscc) {
-      await run(iscc, [
+      await timed('Setup generation', () => run(iscc, [
         `/DMyAppVersion=${version}`,
         `/DMyZipName=${zipName}`,
         '/DMyReleaseDir=..\\release',
         '/DMyIconPath=..\\apps\\desktop\\assets\\deepseek.ico',
         join(root, 'scripts', 'setup.iss'),
-      ])
+      ]))
     } else if (options.setupTemplate) {
-      await buildSetupFromTemplate(options.setupTemplate, zipPath, setupPath)
+      await timed('Setup template update', () => buildSetupFromTemplate(options.setupTemplate!, zipPath, setupPath!))
     } else {
       throw new Error('ISCC.exe was not found. Install Inno Setup or pass --setup-template; use --no-setup for ZIP-only output.')
     }
   }
 
-  await writeChecksums(zipPath, setupPath)
+  await timed('checksums', () => writeChecksums(zipPath, setupPath))
   console.log(`Release complete: ${zipPath}`)
   if (setupPath) console.log(`Setup complete: ${setupPath}`)
   console.log(`Checksums written last: ${join(root, 'SHA256SUMS.txt')}`)
+  console.log(`Release total: ${((performance.now() - startedAt) / 1000).toFixed(2)}s`)
 }
 
 await main()

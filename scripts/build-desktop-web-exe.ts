@@ -14,11 +14,20 @@
 
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { copyFile, cp, lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
+import { copyFile, cp, lstat, mkdir, readFile, readdir, realpath, rename, rm, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { delimiter, dirname, join, resolve, sep } from 'node:path'
 import { parseArgs } from 'node:util'
 import { patchWelcomeNoticeStore } from '../patches/dsh-client-ui-settings-models-welcome-store.js'
+import {
+  cacheLayerMatches,
+  completeCacheLayer,
+  fingerprintPaths,
+  preserveFiles,
+  readPackagingCache,
+  writePackagingCache,
+  type PackagingCacheState,
+} from './packaging-cache.ts'
 
 const root = resolve(import.meta.dirname, '..')
 
@@ -42,8 +51,67 @@ const OUT_DIR = 'dist-exe'
 const ELECTRON_OUT_DIR = 'dist-desktop/electron'
 /** The cleared deploy target and pkg input. */
 const STAGING_DIR = 'dist-desktop/node'
+/** Successful layer fingerprints live with other disposable packaging output. */
+const CACHE_STATE_FILE = 'dist-desktop/.cache/packaging-state.json'
 /** Legacy deploy may hoist direct workspace packages into the deploy source's own node_modules. */
 const DEPLOY_SOURCE_NODE_MODULES = 'apps/desktop/node_modules'
+/** Legacy deploy must not leave the host workspace marked as production-only. */
+const HOST_INSTALL_STATE_FILES = [
+  'node_modules/.modules.yaml',
+  'node_modules/.package-map.json',
+  'node_modules/.pnpm/lock.yaml',
+  'node_modules/.pnpm-workspace-state-v1.json',
+]
+
+const FINGERPRINT_EXCLUDED_DIRECTORIES = new Set([
+  '.cache',
+  '.git',
+  'coverage',
+  'dist',
+  'lib',
+  'node_modules',
+  'release',
+  'stress-tests',
+  'test',
+  'tests',
+])
+
+const BUILD_INPUT_PATHS = [
+  'package.json',
+  'pnpm-lock.yaml',
+  'pnpm-workspace.yaml',
+  'apps/desktop/package.json',
+  'apps/desktop/tsconfig.json',
+  'apps/desktop/src',
+  'apps/desktop/config',
+  'apps/desktop/assets',
+  'apps/vision-bridge/package.json',
+  'apps/vision-bridge/tsconfig.json',
+  'apps/vision-bridge/tsdown.config.ts',
+  'apps/vision-bridge/src',
+  'vendor/deepseek-harness/package.json',
+  'vendor/deepseek-harness/pnpm-lock.yaml',
+  'vendor/deepseek-harness/pnpm-workspace.yaml',
+  'vendor/deepseek-harness/tsconfig.json',
+  'vendor/deepseek-harness/tsconfig.base.json',
+  'vendor/deepseek-harness/tsconfig.base.client.json',
+  'vendor/deepseek-harness/tsconfig.client.json',
+  'vendor/deepseek-harness/tsconfig.host.json',
+  'vendor/deepseek-harness/tsdown.config.ts',
+  'vendor/deepseek-harness/apps/web',
+  'vendor/deepseek-harness/native/landlock-run',
+  'vendor/deepseek-harness/packages',
+  'vendor/deepseek-harness/vendor',
+]
+
+const STAGING_INPUT_PATHS = [
+  'package.json',
+  'pnpm-lock.yaml',
+  'pnpm-workspace.yaml',
+  'scripts/build-desktop-web-exe.ts',
+  'scripts/packaging-cache.ts',
+  'patches',
+]
 
 /** The desktop app owns the shell version embedded in the Electron package. */
 const DESKTOP_PACKAGE_JSON = resolve(root, 'apps/desktop/package.json')
@@ -103,6 +171,8 @@ class BuildCli {
     readonly electron: boolean,
     /** Remove ordinary TypeScript sources after the safe release pruning pass. */
     readonly pruneSources: boolean,
+    /** Rebuild every disposable packaging layer and refresh its cache key. */
+    readonly noCache: boolean,
   ) {}
 
   /**
@@ -123,7 +193,13 @@ class BuildCli {
       console.log(BuildCli.usage())
       process.exit(0)
     }
-    return new BuildCli(values['skip-build'], values['dry-run'], values.electron, values['prune-sources'])
+    return new BuildCli(
+      values['skip-build'],
+      values['dry-run'],
+      values.electron,
+      values['prune-sources'],
+      values['no-cache'],
+    )
   }
 
   private static parseRaw(argv: string[]) {
@@ -134,6 +210,7 @@ class BuildCli {
         'dry-run': { type: 'boolean', default: false },
         'electron': { type: 'boolean', default: false },
         'prune-sources': { type: 'boolean', default: false },
+        'no-cache': { type: 'boolean', default: false },
         'help': { type: 'boolean', default: false },
       },
     }).values
@@ -147,6 +224,7 @@ class BuildCli {
       '  --dry-run      print every command and config patch without executing.',
       '  --electron     build the native Windows Electron shell (portable folder).',
       '  --prune-sources remove ordinary .ts/.tsx source files after safe pruning; smoke-test the release before publishing.',
+      '  --no-cache     rebuild all disposable packaging layers and refresh their cache keys.',
       '  --help         print this help.',
       '',
       `Default route: ${PKG_SPEC} --sea, target ${DEFAULT_NODE_RANGE}-win-x64; writes to ${OUT_DIR}/.`,
@@ -178,8 +256,26 @@ class DesktopExeBuild {
   readonly staging = resolve(root, STAGING_DIR)
   private readonly outDir = resolve(root, OUT_DIR)
   private readonly electronOutDir = resolve(root, ELECTRON_OUT_DIR)
+  private readonly cachePath = resolve(root, CACHE_STATE_FILE)
+  private cacheState: PackagingCacheState = { version: 1 }
+  private buildKey = ''
+  private stagingKey = ''
 
   constructor(private readonly cli: BuildCli) {}
+
+  /** Load cache state and fingerprint source inputs before any mutable step. */
+  async initialize(): Promise<void> {
+    this.cacheState = this.cli.noCache || this.cli.dryRun
+      ? { version: 1 }
+      : await readPackagingCache(this.cachePath)
+    this.buildKey = await this.timed('fingerprint build inputs', () => fingerprintPaths({
+      baseDir: root,
+      paths: BUILD_INPUT_PATHS,
+      excludedDirectoryNames: FINGERPRINT_EXCLUDED_DIRECTORIES,
+      salt: ['build-v1', process.platform, process.arch, process.version],
+    }))
+    if (this.cli.noCache) console.log('build-desktop-web-exe: cache bypassed (--no-cache)')
+  }
 
   /** Build all package artifacts unless `--skip-build` was passed. */
   async build(): Promise<void> {
@@ -187,10 +283,66 @@ class DesktopExeBuild {
       console.log('build-desktop-web-exe: skipping pnpm run build (--skip-build)')
       return
     }
-    await this.run('build', pnpmBin(), ['run', 'build'])
-    // The desktop package is not in the host/client aggregate, so its entry
-    // lib/ is built explicitly (its lib/types outputs stay out of the tree).
-    await this.run('build desktop entry', pnpmBin(), ['--filter', DEPLOY_ROOT_PACKAGE, 'run', 'build'])
+    const required = [
+      join(root, 'apps', 'desktop', ENTRY_BIN),
+      join(root, 'apps', 'vision-bridge', 'lib', 'index.js'),
+      join(root, 'vendor', 'deepseek-harness', 'apps', 'web', 'dist', 'index.html'),
+      join(root, 'vendor', 'deepseek-harness', 'packages', 'bundle', 'web-app', 'lib', 'index.js'),
+    ]
+    if (!this.cli.noCache && cacheLayerMatches(this.cacheState.build, this.buildKey, required)) {
+      console.log(`build-desktop-web-exe: build cache hit (${this.buildKey.slice(0, 12)})`)
+      return
+    }
+    console.log(`build-desktop-web-exe: build cache miss (${this.buildKey.slice(0, 12)})`)
+    await this.timed('build', () => this.run('build', pnpmBin(), ['run', 'build']))
+    if (!this.cli.dryRun) {
+      this.cacheState = completeCacheLayer(this.cacheState, 'build', this.buildKey)
+      await writePackagingCache(this.cachePath, this.cacheState)
+    }
+  }
+
+  /** Reuse a complete deployed closure, or rebuild and cache it as one layer. */
+  async prepareStaging(): Promise<void> {
+    this.stagingKey = await fingerprintPaths({
+      baseDir: root,
+      paths: STAGING_INPUT_PATHS,
+      excludedDirectoryNames: FINGERPRINT_EXCLUDED_DIRECTORIES,
+      salt: [
+        'staging-v1',
+        this.buildKey,
+        this.cli.electron ? 'electron' : 'sea',
+        this.cli.pruneSources ? 'prune-sources' : 'keep-sources',
+      ],
+    })
+    const required = [
+      join(this.staging, 'package.json'),
+      join(this.staging, ENTRY_BIN),
+      join(this.staging, 'lib', 'marketplace-bootstrap.js'),
+      join(this.staging, 'node_modules', '@deepseek-ai', 'dsh-web-app', 'package.json'),
+      join(this.staging, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'),
+      join(this.staging, 'node_modules', 'dsh-plugin-marketplace', 'lib', 'index.js'),
+      join(this.staging, 'node_modules', 'dsh-plugin-marketplace', 'lib', 'client.js'),
+      join(this.staging, 'node_modules', 'dsh-plugin-marketplace', 'cordis.patch.yml'),
+      join(this.staging, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs'),
+      join(this.staging, 'node_modules', 'node-pty', 'prebuilds', 'win32-x64', 'pty.node'),
+      join(this.staging, 'node_modules', '@koromix', 'koffi-win32-x64', 'win32_x64', 'koffi.node'),
+    ]
+    if (!this.cli.noCache && cacheLayerMatches(this.cacheState.staging, this.stagingKey, required)) {
+      console.log(`build-desktop-web-exe: staging cache hit (${this.stagingKey.slice(0, 12)})`)
+      return
+    }
+    console.log(`build-desktop-web-exe: staging cache miss (${this.stagingKey.slice(0, 12)})`)
+    await this.timed('prepare staging', async () => {
+      await this.deployStaging()
+      await this.stageNativeAddons()
+      await this.applyRuntimePatches()
+      await this.pruneReleasePayload()
+      await this.injectPkgConfig()
+    })
+    if (!this.cli.dryRun) {
+      this.cacheState = completeCacheLayer(this.cacheState, 'staging', this.stagingKey)
+      await writePackagingCache(this.cachePath, this.cacheState)
+    }
   }
 
   /** Clear and deploy the runtime closure into the staging directory. */
@@ -200,7 +352,7 @@ class DesktopExeBuild {
     }
     if (this.cli.dryRun) console.log(`build-desktop-web-exe: [dry-run] rm -rf ${this.staging}`)
     else await rm(this.staging, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
-    await this.run('deploy', pnpmBin(), [
+    await this.preserveHostInstallState(() => this.run('deploy', pnpmBin(), [
       '--filter',
       DEPLOY_ROOT_PACKAGE,
       'deploy',
@@ -214,9 +366,18 @@ class DesktopExeBuild {
       // deploy-time install must not run node-gyp (and needs no scripts).
       '--config.ignore-scripts=true',
       this.staging,
-    ])
+    ]))
     await this.restoreLegacyHoists()
     await this.materializeStagedLinks()
+  }
+
+  private async preserveHostInstallState(action: () => Promise<void>): Promise<void> {
+    if (this.cli.dryRun) {
+      await action()
+      return
+    }
+    await preserveFiles(HOST_INSTALL_STATE_FILES.map(path => join(root, path)), action)
+    console.log('build-desktop-web-exe: preserved host pnpm install state across legacy deploy')
   }
 
   /**
@@ -276,40 +437,38 @@ class DesktopExeBuild {
       return
     }
     const nodeModules = join(this.staging, 'node_modules')
-    let remaining = await this.findSymlink(nodeModules)
-    while (remaining !== undefined) {
-      const segments = remaining.slice(nodeModules.length + 1).split(sep)
-      const binIndex = segments.lastIndexOf('.bin')
-      if (binIndex >= 0) {
-        await rm(join(nodeModules, ...segments.slice(0, binIndex + 1)), { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
-        remaining = await this.findSymlink(nodeModules)
-        continue
-      }
-      const destination = remaining
-      const source = await realpath(destination)
-      const nestedNodeModules = join(source, 'node_modules')
-      await rm(destination, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
-      await cp(source, destination, {
-        recursive: true,
-        dereference: true,
-        filter: path => path !== nestedNodeModules && !path.startsWith(nestedNodeModules + sep),
-      })
-      remaining = await this.findSymlink(nodeModules)
-    }
-  }
-
-  /** Return the first symbolic link (or junction) below a directory, if one exists. */
-  private async findSymlink(directory: string): Promise<string | undefined> {
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      const path = join(directory, entry.name)
-      const metadata = await lstat(path)
-      if (metadata.isSymbolicLink()) return path
-      if (metadata.isDirectory()) {
-        const nested = await this.findSymlink(path)
-        if (nested !== undefined) return nested
+    let materialized = 0
+    let removedBinDirectories = 0
+    const visit = async (directory: string): Promise<void> => {
+      for (const entry of await readdir(directory, { withFileTypes: true })) {
+        const path = join(directory, entry.name)
+        if (entry.name === '.bin') {
+          await rm(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
+          removedBinDirectories += 1
+          continue
+        }
+        const metadata = await lstat(path)
+        if (metadata.isSymbolicLink()) {
+          const source = await realpath(path)
+          const nestedNodeModules = join(source, 'node_modules')
+          await rm(path, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
+          await cp(source, path, {
+            recursive: true,
+            dereference: true,
+            filter: candidate => candidate !== nestedNodeModules && !candidate.startsWith(nestedNodeModules + sep),
+          })
+          materialized += 1
+          const copied = await lstat(path)
+          if (copied.isDirectory()) await visit(path)
+          continue
+        }
+        if (metadata.isDirectory()) await visit(path)
       }
     }
-    return undefined
+    await visit(nodeModules)
+    console.log(
+      `build-desktop-web-exe: materialized ${materialized} links and removed ${removedBinDirectories} .bin directories in one pass`,
+    )
   }
 
   /**
@@ -411,15 +570,13 @@ class DesktopExeBuild {
       console.log('build-desktop-web-exe: [dry-run] stage native addons')
       return
     }
-    // node-pty 1.1.0 ships prebuilt win32 binaries in its tarball; the whole
-    // win32-x64 prebuild dir (pty.node + conpty pieces) must be present.
-    await this.ensureNativeDir('node-pty@', 'node-pty', 'prebuilds/win32-x64')
-    // sharp: the attachment image processor; its lib dir carries the
-    // platform DLLs and the versioned .node binary.
-    await this.ensureNativeDir('@img+sharp-win32-x64@', '@img/sharp-win32-x64', 'lib')
-    // koffi: the sandbox-windows-acl FFI addon, shipped as an optional
-    // @koromix/koffi-<platform> package with the binary inside.
-    await this.ensureNativeFile('@koromix+koffi-win32-x64@', '@koromix/koffi-win32-x64', 'win32_x64/koffi.node')
+    await Promise.all([
+      // node-pty ships pty.node and its ConPTY helpers in one platform directory.
+      this.ensureNativeDir('node-pty@', 'node-pty', 'prebuilds/win32-x64'),
+      // sharp carries the platform DLLs and versioned .node binary together.
+      this.ensureNativeDir('@img+sharp-win32-x64@', '@img/sharp-win32-x64', 'lib'),
+      this.ensureNativeFile('@koromix+koffi-win32-x64@', '@koromix/koffi-win32-x64', 'win32_x64/koffi.node'),
+    ])
   }
 
   /**
@@ -503,37 +660,49 @@ class DesktopExeBuild {
     }
 
     const nodePty = join(this.staging, 'node_modules', 'node-pty')
-    for (const platform of ['darwin-arm64', 'darwin-x64', 'win32-arm64']) {
-      await rm(join(nodePty, 'prebuilds', platform), { recursive: true, force: true })
-    }
-    const removedPdb = await this.removeStagedFiles((path) => path.startsWith(nodePty + sep) && path.toLowerCase().endsWith('.pdb'))
-    const removedMaps = await this.removeStagedFiles((path) => path.toLowerCase().endsWith('.map'))
-    const removedDeclarations = await this.removeStagedFiles((path) => path.toLowerCase().endsWith('.d.ts'))
+    await Promise.all(['darwin-arm64', 'darwin-x64', 'win32-arm64'].map(platform => (
+      rm(join(nodePty, 'prebuilds', platform), { recursive: true, force: true })
+    )))
+    const removed = await this.removeUnusedStagedFiles(nodePty)
     const rceditPath = join(this.staging, 'node_modules', 'rcedit')
     if (existsSync(rceditPath)) await rm(rceditPath, { recursive: true, force: true })
-    const removedSources = this.cli.pruneSources
-      ? await this.removeStagedFiles((path) => /\.(?:ts|tsx)$/i.test(path))
-      : 0
     console.log(
-      `build-desktop-web-exe: pruned ${removedPdb} PDB, ${removedMaps} map, ${removedDeclarations} declaration` +
-      `${this.cli.pruneSources ? `, and ${removedSources} source` : ''} files`,
+      `build-desktop-web-exe: pruned ${removed.pdb} PDB, ${removed.map} map, ${removed.declaration} declaration` +
+      `${this.cli.pruneSources ? `, and ${removed.source} source` : ''} files in one pass`,
     )
   }
 
-  private async removeStagedFiles(predicate: (path: string) => boolean): Promise<number> {
-    let removed = 0
+  private async removeUnusedStagedFiles(nodePty: string): Promise<Record<'pdb' | 'map' | 'declaration' | 'source', number>> {
+    const removed = { pdb: 0, map: 0, declaration: 0, source: 0 }
+    const removals: string[] = []
     const visit = async (directory: string): Promise<void> => {
       for (const entry of await readdir(directory, { withFileTypes: true })) {
         const path = join(directory, entry.name)
         if (entry.isDirectory()) {
           await visit(path)
-        } else if (entry.isFile() && predicate(path)) {
-          await rm(path, { force: true })
-          removed += 1
+        } else if (entry.isFile()) {
+          const lower = path.toLowerCase()
+          let category: keyof typeof removed | undefined
+          if (path.startsWith(nodePty + sep) && lower.endsWith('.pdb')) category = 'pdb'
+          else if (lower.endsWith('.map')) category = 'map'
+          else if (lower.endsWith('.d.ts')) category = 'declaration'
+          else if (this.cli.pruneSources && /\.(?:ts|tsx)$/i.test(path)) category = 'source'
+          if (category) {
+            removed[category] += 1
+            removals.push(path)
+          }
         }
       }
     }
     await visit(this.staging)
+    let cursor = 0
+    await Promise.all(Array.from({ length: Math.min(16, removals.length) }, async () => {
+      while (cursor < removals.length) {
+        const index = cursor
+        cursor += 1
+        await rm(removals[index], { force: true })
+      }
+    }))
     return removed
   }
 
@@ -581,9 +750,46 @@ class DesktopExeBuild {
    * @returns the executable path.
    */
   async pack(): Promise<string> {
-    if (this.cli.electron) return this.packElectron()
     const version = desktopVersion()
-    const product = join(this.outDir, `${OUTPUT_BASENAME}-${version}-win-x64.exe`)
+    const product = this.cli.electron
+      ? join(this.electronOutDir, `${ELECTRON_APP_NAME}-win32-x64`, 'runtime', `${ELECTRON_APP_NAME}.exe`)
+      : join(this.outDir, `${OUTPUT_BASENAME}-${version}-win-x64.exe`)
+    const artifactKey = await fingerprintPaths({
+      baseDir: root,
+      paths: [],
+      salt: [
+        'artifact-v1',
+        this.stagingKey,
+        process.version,
+        this.cli.electron ? 'electron-win32-x64' : `${PKG_SPEC}-${DEFAULT_NODE_RANGE}-win-x64`,
+      ],
+    })
+    const required = this.cli.electron
+      ? [
+          product,
+          join(dirname(product), 'resources', 'app', ENTRY_BIN),
+          join(dirname(product), 'resources', 'app', 'node_modules', '@deepseek-ai', 'dsh-web-app', 'package.json'),
+        ]
+      : [product]
+    if (!this.cli.noCache && cacheLayerMatches(this.cacheState.electron, artifactKey, required)) {
+      console.log(`build-desktop-web-exe: artifact cache hit (${artifactKey.slice(0, 12)})`)
+      return product
+    }
+    console.log(`build-desktop-web-exe: artifact cache miss (${artifactKey.slice(0, 12)})`)
+    await this.timed('package artifact', async () => {
+      if (this.cli.electron) await this.packElectron()
+      else await this.packSea(product)
+      await this.pruneElectronLocales(product)
+    })
+    if (!this.cli.dryRun) {
+      this.cacheState = completeCacheLayer(this.cacheState, 'electron', artifactKey)
+      await writePackagingCache(this.cachePath, this.cacheState)
+    }
+    return product
+  }
+
+  /** Package the single-file SEA executable. */
+  private async packSea(product: string): Promise<void> {
     if (!this.cli.dryRun) await mkdir(this.outDir, { recursive: true })
     const baseReady = this.cli.dryRun ? true : await this.preparePkgBaseIcon()
     await this.runPkg(product)
@@ -596,7 +802,6 @@ class DesktopExeBuild {
     if (!this.cli.dryRun && !existsSync(product)) {
       throw new Error(`build-desktop-web-exe: product ${product} is missing after the pkg run; inspect ${this.outDir}.`)
     }
-    return product
   }
 
   /** Run the single-file SEA packager for the staged runtime. */
@@ -617,13 +822,18 @@ class DesktopExeBuild {
   private async packElectron(): Promise<string> {
     const portableRoot = join(this.electronOutDir, `${ELECTRON_APP_NAME}-win32-x64`)
     const packagerOutDir = join(this.electronOutDir, '.packager')
+    const nextPortableRoot = join(this.electronOutDir, `.portable-next-${process.pid}`)
+    const previousPortableRoot = join(this.electronOutDir, `.portable-previous-${process.pid}`)
     const packagedRoot = join(packagerOutDir, `${ELECTRON_APP_NAME}-win32-x64`)
     const packagedProduct = join(packagedRoot, `${ELECTRON_APP_NAME}.exe`)
     const runtimeRoot = join(portableRoot, 'runtime')
     const product = join(runtimeRoot, `${ELECTRON_APP_NAME}.exe`)
     if (!this.cli.dryRun) {
-      await rm(portableRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
-      await rm(packagerOutDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
+      await Promise.all([
+        rm(packagerOutDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 }),
+        rm(nextPortableRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 }),
+        rm(previousPortableRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 }),
+      ])
       await mkdir(packagerOutDir, { recursive: true })
     }
     // electron-packager reads the Electron package's downloaded distribution
@@ -677,9 +887,20 @@ class DesktopExeBuild {
       if (!existsSync(packagedProduct)) {
         throw new Error(`build-desktop-web-exe: Electron product ${packagedProduct} is missing after packaging.`)
       }
-      await mkdir(portableRoot, { recursive: true })
-      await cp(packagedRoot, runtimeRoot, { recursive: true, dereference: true })
+      await mkdir(nextPortableRoot, { recursive: true })
+      await rename(packagedRoot, join(nextPortableRoot, 'runtime'))
+      if (existsSync(portableRoot)) await rename(portableRoot, previousPortableRoot)
+      try {
+        await rename(nextPortableRoot, portableRoot)
+      } catch (error) {
+        if (existsSync(previousPortableRoot) && !existsSync(portableRoot)) {
+          await rename(previousPortableRoot, portableRoot)
+        }
+        throw error
+      }
+      await rm(previousPortableRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
       await rm(packagerOutDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
+      console.log('build-desktop-web-exe: moved Electron runtime into place without a second tree copy')
     }
     return product
   }
@@ -824,6 +1045,16 @@ class DesktopExeBuild {
     }
   }
 
+  private async timed<T>(label: string, action: () => Promise<T>): Promise<T> {
+    const startedAt = performance.now()
+    try {
+      return await action()
+    } finally {
+      const seconds = (performance.now() - startedAt) / 1000
+      console.log(`build-desktop-web-exe: ${label} completed in ${seconds.toFixed(2)}s`)
+    }
+  }
+
   /**
    * Run one subprocess with inherited stdio. Spawn and non-zero-exit errors
    * include the command; dry runs only print it.
@@ -878,20 +1109,17 @@ class DesktopExeBuild {
 }
 
 async function main(): Promise<void> {
+  const startedAt = performance.now()
   const cli = BuildCli.parse(process.argv.slice(2))
   const pipeline = new DesktopExeBuild(cli)
   console.log(`build-desktop-web-exe: staging: ${pipeline.staging}`)
+  await pipeline.initialize()
   await pipeline.build()
-  await pipeline.deployStaging()
-  await pipeline.stageNativeAddons()
-  await pipeline.applyRuntimePatches()
-  await pipeline.pruneReleasePayload()
-  await pipeline.injectPkgConfig()
+  await pipeline.prepareStaging()
   const product = await pipeline.pack()
-  await pipeline.pruneElectronLocales(product)
   await pipeline.stageDistributionDocs(product)
   pipeline.printProduct(product)
+  console.log(`build-desktop-web-exe: total ${((performance.now() - startedAt) / 1000).toFixed(2)}s`)
 }
 
 await main()
-

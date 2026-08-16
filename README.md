@@ -156,9 +156,11 @@ On a fresh clone, initialize the source workspace once:
 After that, the normal build and release commands are:
 
     pnpm install
-    pnpm run build
     pnpm run desktop:test
+    pnpm run desktop:package:win
     pnpm run desktop:release:win
+
+Packaging fingerprints the source workspace and reuses successful build, deployed-runtime, and Electron layers when their inputs have not changed. Use `pnpm run desktop:release:win -- --no-cache` when diagnosing a clean release build, or pass `--no-cache` to the underlying package script; `--skip-build` remains available when intentionally packaging existing compiled output.
 
 The desktop package keeps three version identities:
 
@@ -166,7 +168,7 @@ The desktop package keeps three version identities:
 - desktop shell version: the Electron shell package version.
 - kernel version: the packaged `@deepseek-ai/dsh-web-app` version.
 
-The release command builds the upstream Web runtime, builds the desktop shell, writes `release-manifest.json`, and writes `SHA256SUMS.txt` last. When preparing a release, update `RELEASE_NOTES.md`, `RELEASE_NOTES.zh.md`, and `apps/desktop/src/release-notes.json` together.
+The release command builds or safely reuses the upstream Web runtime and desktop shell, always runs the release tests, writes `release-manifest.json`, and writes `SHA256SUMS.txt` last. When preparing a release, update `RELEASE_NOTES.md`, `RELEASE_NOTES.zh.md`, and `apps/desktop/src/release-notes.json` together.
 
 `dist-desktop/` is a generated build directory and may be deleted after a release. The source needed for the next build remains in `vendor/deepseek-harness`; do not commit `node_modules/` or a portable ZIP as a substitute for the source workspace.
 
