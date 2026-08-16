@@ -185,6 +185,23 @@ const Config = z.object({
 	prompt: z.string().default("")
 });
 const VISION_SETTINGS_NAMESPACE = settingsNamespace("vision");
+const HOOKED = Symbol("vision-bridge-settings-hook");
+/** Map one redacted settings descriptor to its wire view (matching api-proxy.ts:1929). */
+function toView(descriptor) {
+	return {
+		ns: String(descriptor.ns),
+		schema: descriptor.schema,
+		value: descriptor.value,
+		...descriptor.base === void 0 ? {} : { base: descriptor.base },
+		...descriptor.user === void 0 ? {} : { user: descriptor.user },
+		applies: descriptor.applies,
+		secrets: (descriptor.secrets ?? []).map((secret) => ({
+			path: [...secret.path],
+			set: secret.set
+		})),
+		revision: descriptor.revision
+	};
+}
 function apply(ctx, config = {}) {
 	const resolved = Config(config);
 	let currentConfig = () => resolved;
@@ -193,6 +210,50 @@ function apply(ctx, config = {}) {
 			currentConfig = thunk;
 		},
 		onChange: () => {}
+	});
+	ctx.inject(["apiProxy", "settings"], (scopeCtx) => {
+		const settingsApi = scopeCtx.apiProxy.settings;
+		if (settingsApi === void 0 || settingsApi[HOOKED]) return;
+		settingsApi[HOOKED] = true;
+		const rawDescribe = settingsApi.describe.bind(settingsApi);
+		const rawMutate = settingsApi.mutate.bind(settingsApi);
+		settingsApi.describe = async (request) => {
+			const response = await rawDescribe(request);
+			if (!response.result.ok) return response;
+			const namespaces = response.result.value.namespaces;
+			if (namespaces.some((entry) => entry.ns === "vision")) return response;
+			const descriptor = scopeCtx.settings.describe({ redactSecrets: true }).find((entry) => String(entry.ns) === "vision");
+			if (descriptor !== void 0) namespaces.push(toView(descriptor));
+			return response;
+		};
+		settingsApi.mutate = async (request) => {
+			const { ns, ops, expectedRevision } = request.payload;
+			if (ns !== "vision") return rawMutate(request);
+			try {
+				await scopeCtx.settings.mutate(VISION_SETTINGS_NAMESPACE, ops, expectedRevision);
+				const updated = scopeCtx.settings.describe({ redactSecrets: true }).find((entry) => String(entry.ns) === "vision");
+				if (updated === void 0) throw new Error("vision namespace vanished after write");
+				return {
+					rpcId: request.rpcId,
+					result: {
+						ok: true,
+						value: toView(updated)
+					}
+				};
+			} catch (error) {
+				return {
+					rpcId: request.rpcId,
+					result: {
+						ok: false,
+						error: {
+							code: "settings-rejected",
+							message: error instanceof Error ? error.message : String(error),
+							details: {}
+						}
+					}
+				};
+			}
+		};
 	});
 	ctx.tools.register(defineTool({
 		name: "view_image",

@@ -7,6 +7,8 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { SettingsDescriptor, SettingsPathOp } from '@deepseek-ai/dsh-settings'
+import type { RpcResponse, SettingsNamespaceView } from '@deepseek-ai/dsh-host-apiproxy'
 import type { ViewImageResult, VisionConfig } from './types.ts'
 import { executeViewImage, renderViewImageContent } from './view-image.ts'
 
@@ -30,6 +32,22 @@ export const Config: z<VisionConfig> = z.object({
 
 export const VISION_SETTINGS_NAMESPACE = settingsNamespace('vision')
 
+const HOOKED = Symbol('vision-bridge-settings-hook')
+
+/** Map one redacted settings descriptor to its wire view (matching api-proxy.ts:1929). */
+function toView(descriptor: SettingsDescriptor): SettingsNamespaceView {
+  return {
+    ns: String(descriptor.ns),
+    schema: descriptor.schema,
+    value: descriptor.value,
+    ...descriptor.base === undefined ? {} : { base: descriptor.base },
+    ...descriptor.user === undefined ? {} : { user: descriptor.user },
+    applies: descriptor.applies,
+    secrets: (descriptor.secrets ?? []).map(secret => ({ path: [...secret.path], set: secret.set })),
+    revision: descriptor.revision,
+  }
+}
+
 export function apply(ctx: Context, config: Config = {}): void {
   const resolved = Config(config) as Required<VisionConfig>
 
@@ -48,7 +66,57 @@ export function apply(ctx: Context, config: Config = {}): void {
     },
   )
 
-  // 2) Register global view_image tool on Host level (visible to all agents without modifying presets)
+  // 2) Hook apiProxy.settings to expose 'vision' to web clients and handle its mutations
+  ctx.inject(['apiProxy', 'settings'], (scopeCtx) => {
+    const settingsApi = scopeCtx.apiProxy.settings
+    if (settingsApi === undefined || (settingsApi as unknown as Record<symbol, boolean>)[HOOKED]) return
+    ;(settingsApi as unknown as Record<symbol, boolean>)[HOOKED] = true
+
+    const rawDescribe = settingsApi.describe.bind(settingsApi)
+    const rawMutate = settingsApi.mutate.bind(settingsApi)
+
+    settingsApi.describe = async (request) => {
+      const response = await rawDescribe(request)
+      if (!response.result.ok) return response
+      const namespaces = response.result.value.namespaces
+      if (namespaces.some(entry => entry.ns === 'vision')) return response
+      const descriptor = scopeCtx.settings
+        .describe({ redactSecrets: true })
+        .find(entry => String(entry.ns) === 'vision')
+      if (descriptor !== undefined) namespaces.push(toView(descriptor))
+      return response
+    }
+
+    settingsApi.mutate = async (request) => {
+      const { ns, ops, expectedRevision } = request.payload
+      if (ns !== 'vision') return rawMutate(request)
+      try {
+        await scopeCtx.settings.mutate(VISION_SETTINGS_NAMESPACE, ops as SettingsPathOp[], expectedRevision)
+        const updated = scopeCtx.settings
+          .describe({ redactSecrets: true })
+          .find(entry => String(entry.ns) === 'vision')
+        if (updated === undefined) throw new Error('vision namespace vanished after write')
+        return {
+          rpcId: request.rpcId,
+          result: { ok: true, value: toView(updated) },
+        } as RpcResponse<SettingsNamespaceView>
+      } catch (error) {
+        return {
+          rpcId: request.rpcId,
+          result: {
+            ok: false,
+            error: {
+              code: 'settings-rejected',
+              message: error instanceof Error ? error.message : String(error),
+              details: {},
+            },
+          },
+        } as RpcResponse<SettingsNamespaceView>
+      }
+    }
+  })
+
+  // 3) Register global view_image tool on Host level (visible to all agents without modifying presets)
   ctx.tools.register(
     defineTool({
       name: 'view_image',
@@ -96,7 +164,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     }),
   )
 
-  // 3) System prompt guidance section
+  // 4) System prompt guidance section
   ctx.systemPrompt.section({
     name: 'tool:view_image',
     order: 150,

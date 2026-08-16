@@ -20,6 +20,20 @@ export const Config = z.object({
     prompt: z.string().default(''),
 });
 export const VISION_SETTINGS_NAMESPACE = settingsNamespace('vision');
+const HOOKED = Symbol('vision-bridge-settings-hook');
+/** Map one redacted settings descriptor to its wire view (matching api-proxy.ts:1929). */
+function toView(descriptor) {
+    return {
+        ns: String(descriptor.ns),
+        schema: descriptor.schema,
+        value: descriptor.value,
+        ...descriptor.base === undefined ? {} : { base: descriptor.base },
+        ...descriptor.user === undefined ? {} : { user: descriptor.user },
+        applies: descriptor.applies,
+        secrets: (descriptor.secrets ?? []).map(secret => ({ path: [...secret.path], set: secret.set })),
+        revision: descriptor.revision,
+    };
+}
 export function apply(ctx, config = {}) {
     const resolved = Config(config);
     // 1) Bind settings namespace (reads user settings.yaml -> fallback to entry config -> schema default)
@@ -30,7 +44,60 @@ export function apply(ctx, config = {}) {
         },
         onChange: () => { },
     });
-    // 2) Register global view_image tool on Host level (visible to all agents without modifying presets)
+    // 2) Hook apiProxy.settings to expose 'vision' to web clients and handle its mutations
+    ctx.inject(['apiProxy', 'settings'], (scopeCtx) => {
+        const settingsApi = scopeCtx.apiProxy.settings;
+        if (settingsApi === undefined || settingsApi[HOOKED])
+            return;
+        settingsApi[HOOKED] = true;
+        const rawDescribe = settingsApi.describe.bind(settingsApi);
+        const rawMutate = settingsApi.mutate.bind(settingsApi);
+        settingsApi.describe = async (request) => {
+            const response = await rawDescribe(request);
+            if (!response.result.ok)
+                return response;
+            const namespaces = response.result.value.namespaces;
+            if (namespaces.some(entry => entry.ns === 'vision'))
+                return response;
+            const descriptor = scopeCtx.settings
+                .describe({ redactSecrets: true })
+                .find(entry => String(entry.ns) === 'vision');
+            if (descriptor !== undefined)
+                namespaces.push(toView(descriptor));
+            return response;
+        };
+        settingsApi.mutate = async (request) => {
+            const { ns, ops, expectedRevision } = request.payload;
+            if (ns !== 'vision')
+                return rawMutate(request);
+            try {
+                await scopeCtx.settings.mutate(VISION_SETTINGS_NAMESPACE, ops, expectedRevision);
+                const updated = scopeCtx.settings
+                    .describe({ redactSecrets: true })
+                    .find(entry => String(entry.ns) === 'vision');
+                if (updated === undefined)
+                    throw new Error('vision namespace vanished after write');
+                return {
+                    rpcId: request.rpcId,
+                    result: { ok: true, value: toView(updated) },
+                };
+            }
+            catch (error) {
+                return {
+                    rpcId: request.rpcId,
+                    result: {
+                        ok: false,
+                        error: {
+                            code: 'settings-rejected',
+                            message: error instanceof Error ? error.message : String(error),
+                            details: {},
+                        },
+                    },
+                };
+            }
+        };
+    });
+    // 3) Register global view_image tool on Host level (visible to all agents without modifying presets)
     ctx.tools.register(defineTool({
         name: 'view_image',
         description: 'Inspect and describe an image file using an external vision model. Supports PNG, JPEG, WebP, and GIF images. ' +
@@ -74,7 +141,7 @@ export function apply(ctx, config = {}) {
             };
         },
     }));
-    // 3) System prompt guidance section
+    // 4) System prompt guidance section
     ctx.systemPrompt.section({
         name: 'tool:view_image',
         order: 150,
