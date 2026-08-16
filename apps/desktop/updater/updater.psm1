@@ -16,10 +16,10 @@ $UPDATE_PROBE_TIMEOUT_SECONDS = 90
 
 $GITHUB_MIRROR_PREFIXES = @(
     '',
-    'https://ghfast.top/',
-    'https://mirror.ghproxy.com/',
     'https://gh-proxy.com/',
-    'https://gh.ddlc.top/'
+    'https://ghfast.top/',
+    'https://gh.ddlc.top/',
+    'https://ghps.cc/'
 )
 
 $MODULE_ROOT = $PSScriptRoot

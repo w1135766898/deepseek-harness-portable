@@ -1240,6 +1240,7 @@ async function resolvePortableChecksum(release) {
   const tag = encodeURIComponent(normalized.tagName)
   const checksumUrls = [
     ...mirrorUrls(`https://raw.githubusercontent.com/${PORTABLE_RELEASE_REPO}/${tag}/SHA256SUMS.txt`, GITHUB_MIRROR_PREFIXES),
+    ...mirrorUrls(`https://github.com/${PORTABLE_RELEASE_REPO}/releases/download/${tag}/SHA256SUMS.txt`, GITHUB_MIRROR_PREFIXES),
     ...mirrorUrls(`https://raw.githubusercontent.com/${PORTABLE_RELEASE_REPO}/main/SHA256SUMS.txt`, GITHUB_MIRROR_PREFIXES),
   ]
   return Promise.any(checksumUrls.map(async url => {
@@ -1297,15 +1298,12 @@ function clearUpdateStatusForRetry(force = false) {
 
 async function queryLatestVersion() {
   const apiUrl = `https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases/latest`
-  const channels = GITHUB_MIRROR_PREFIXES.map((prefix, index) => ({
-    name: index === 0 ? 'Portable Windows GitHub' : `Portable Windows GitHub mirror ${index}`,
-    url: mirrorUrls(apiUrl, [prefix])[0],
-  }))
+  const rawReleaseNotesUrl = `https://raw.githubusercontent.com/${PORTABLE_RELEASE_REPO}/main/apps/desktop/src/release-notes.json`
+  const apiUrls = mirrorUrls(apiUrl, GITHUB_MIRROR_PREFIXES)
+  const rawUrls = mirrorUrls(rawReleaseNotesUrl, GITHUB_MIRROR_PREFIXES)
 
-  // Promise.any resolves as soon as the first complete and valid channel
-  // responds. A slow or blocked direct connection must not hold up a mirror.
-  return Promise.any(channels.map(async c => {
-    const data = await fetchJson(c.url)
+  const apiPromises = apiUrls.map(async url => {
+    const data = await fetchJson(url)
     const version = (data.tag_name || '').replace(/^v/i, '')
     if (!isValidSemver(version)) throw new Error(`Invalid release version: ${version || '(empty)'}`)
     const zipAsset = Array.isArray(data.assets)
@@ -1318,27 +1316,54 @@ async function queryLatestVersion() {
         ...data,
         version,
         releaseUrl: relUrl,
-        channel: c.name,
+        channel: url,
         assetName: zipAsset.name,
       }, version),
-      channel: c.name,
+      channel: url,
       assetName: zipAsset.name,
       assetUrl: zipAsset.browser_download_url || '',
       assetDigest: zipAsset.digest || '',
       assetSize: Number(zipAsset.size) || 0,
       tagName: data.tag_name || `v${version}`,
     }
-  }))
+  })
+
+  const rawPromises = rawUrls.map(async url => {
+    const data = await fetchJson(url)
+    const version = typeof data?.version === 'string' ? data.version.replace(/^v/i, '').trim() : ''
+    if (!isValidSemver(version)) throw new Error(`Invalid raw release version: ${version || '(empty)'}`)
+    const tagName = `v${version}`
+    const assetName = `DeepSeek-Harness-${version}-win32-x64.zip`
+    const relUrl = `https://github.com/${PORTABLE_RELEASE_REPO}/releases/tag/${tagName}`
+    return {
+      ...normalizeReleaseNotes({
+        ...data,
+        version,
+        releaseUrl: relUrl,
+        channel: url,
+        assetName,
+      }, version),
+      channel: url,
+      assetName,
+      assetUrl: `https://github.com/${PORTABLE_RELEASE_REPO}/releases/download/${tagName}/${assetName}`,
+      assetDigest: '',
+      assetSize: 0,
+      tagName,
+    }
+  })
+
+  return Promise.any([...apiPromises, ...rawPromises])
 }
 
 async function queryReleaseHistory() {
   const apiUrl = `https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases?per_page=${RELEASE_HISTORY_LIMIT}`
+  const rawReleaseNotesUrl = `https://raw.githubusercontent.com/${PORTABLE_RELEASE_REPO}/main/apps/desktop/src/release-notes.json`
   const channels = GITHUB_MIRROR_PREFIXES.map((prefix, index) => ({
     name: index === 0 ? 'Portable Windows GitHub' : `Portable Windows GitHub mirror ${index}`,
     url: mirrorUrls(apiUrl, [prefix])[0],
   }))
 
-  const history = await Promise.any(channels.map(async channel => {
+  const apiHistoryPromise = Promise.any(channels.map(async channel => {
     const data = await fetchJson(channel.url)
     if (!Array.isArray(data)) throw new Error('Release history response was not an array')
     const releases = data
@@ -1355,7 +1380,16 @@ async function queryReleaseHistory() {
     if (releases.length === 0) throw new Error('Release history response was empty')
     return releases
   }))
-  return history
+
+  const rawHistoryPromise = Promise.any(mirrorUrls(rawReleaseNotesUrl, GITHUB_MIRROR_PREFIXES).map(async url => {
+    const data = await fetchJson(url)
+    if (!data || typeof data !== 'object') throw new Error('Raw release notes response was not an object')
+    const history = normalizeReleaseNotesHistory(data)
+    if (history.length === 0) throw new Error('Raw release history response was empty')
+    return history
+  }))
+
+  return Promise.any([apiHistoryPromise, rawHistoryPromise])
 }
 
 function sortReleaseHistory(history) {
@@ -1603,7 +1637,7 @@ async function preparePortableUpdate(targetVersion, release) {
       targetVersion: effectiveTarget,
     })
     await downloadWithFallback(downloadUrls, packagePath, {
-      timeoutMs: 10_000,
+      timeoutMs: 60_000,
       onAttempt: url => {
         let host = url
         try { host = new URL(url).host } catch {}
