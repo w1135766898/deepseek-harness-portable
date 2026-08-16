@@ -209,6 +209,7 @@ class DesktopExeBuild {
       '--config.node-linker=hoisted',
       '--config.auto-install-peers=false',
       '--config.link-workspace-packages=true',
+      '--config.confirmModulesPurge=false',
       // Native addons are staged explicitly from the host install; the
       // deploy-time install must not run node-gyp (and needs no scripts).
       '--config.ignore-scripts=true',

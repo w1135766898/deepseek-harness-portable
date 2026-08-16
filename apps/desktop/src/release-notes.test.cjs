@@ -6,7 +6,57 @@ const {
   normalizeReleaseNotesHistory,
   parseReleaseBody,
   releaseType,
+  splitBilingualReleaseBody,
 } = require('./release-notes.cjs')
+
+test('splits combined bilingual release bodies at language boundaries', () => {
+  const sample = [
+    '# DeepSeek Harness for Win v1.2.2',
+    '',
+    '## 新功能与体验优化',
+    '- 视觉辅助外挂插件',
+    '',
+    '---',
+    '',
+    '## English Release Notes',
+    '',
+    '### New Features & Improvements',
+    '- Vision Bridge Plugin',
+  ].join('\n')
+
+  const { bodyZh, bodyEn } = splitBilingualReleaseBody(sample)
+  assert.equal(bodyZh.includes('视觉辅助外挂插件'), true)
+  assert.equal(bodyZh.includes('Vision Bridge Plugin'), false)
+  assert.equal(bodyEn.includes('Vision Bridge Plugin'), true)
+  assert.equal(bodyEn.includes('视觉辅助外挂插件'), false)
+})
+
+test('parses combined bilingual release markdown into clean monolingual sections', () => {
+  const sample = [
+    '# DeepSeek Harness for Win v1.2.2',
+    '',
+    '## 新功能与体验优化',
+    '- 视觉辅助外挂插件',
+    '- 全局 view_image 工具',
+    '',
+    '## 组件版本',
+    '- 分发：1.2.2',
+    '',
+    '---',
+    '',
+    '## English Release Notes',
+    '',
+    '### New Features & Improvements',
+    '- Vision Bridge Plugin',
+    '- Global view_image Tool',
+  ].join('\n')
+
+  const sections = parseReleaseBody(sample)
+  assert.equal(sections.length, 1)
+  assert.equal(sections[0].key, 'features')
+  assert.deepEqual(sections[0].itemsZh, ['视觉辅助外挂插件', '全局 view_image 工具'])
+  assert.deepEqual(sections[0].itemsEn, ['Vision Bridge Plugin', 'Global view_image Tool'])
+})
 
 test('parses release headings and bullet items into typed sections', () => {
   const sections = parseReleaseBody([

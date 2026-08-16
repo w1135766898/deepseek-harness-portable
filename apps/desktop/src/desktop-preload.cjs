@@ -231,18 +231,26 @@ if (!isSplashDocument) {
 
   function renderReleaseSections(release) {
     const sections = release?.sections || []
-    const body = state.locale === 'zh' ? (release?.bodyZh || release?.body) : (release?.bodyEn || release?.body)
+    const isZh = state.locale === 'zh'
+    const body = isZh ? (release?.bodyZh || release?.body) : (release?.bodyEn || release?.body)
     if (sections.length === 0 && body) {
       return '<div class="dsh-release-item"><span class="dsh-release-icon other">•</span><div>' + inlineMarkdown(body) + '</div></div>'
     }
     if (sections.length === 0) return '<div class="dsh-empty-copy">' + escapeHtml(desktopText('release.maintenance')) + '</div>'
-    return sections.map(section => (
-      '<section class="dsh-release-section"><h3><span class="dsh-section-icon ' + escapeHtml(section.key || 'other') + '">' + releaseIcon(section.key) + '</span>' + escapeHtml(state.locale === 'zh' ? (section.titleZh || section.title || section.labelZh || section.label || '其他') : (section.titleEn || section.title || section.label || 'Other')) + '</h3>' +
-      ((state.locale === 'zh'
-        ? (Array.isArray(section.itemsZh) && section.itemsZh.length > 0 ? section.itemsZh : section.items)
-        : (Array.isArray(section.itemsEn) && section.itemsEn.length > 0 ? section.itemsEn : section.items)) || []).map(item => '<div class="dsh-release-item"><span class="dsh-release-icon ' + escapeHtml(section.key || 'other') + '">' + releaseIcon(section.key) + '</span><div>' + inlineMarkdown(item) + '</div></div>').join('') +
-      '</section>'
-    )).join('')
+    const rendered = sections.map(section => {
+      const title = isZh
+        ? (section.titleZh || section.labelZh || section.title || '其他')
+        : (section.titleEn || section.label || section.title || 'Other')
+      const rawItems = isZh ? section.itemsZh : section.itemsEn
+      const items = Array.isArray(rawItems) && rawItems.length > 0
+        ? rawItems
+        : (Array.isArray(section.items) ? section.items : [])
+      if (items.length === 0) return ''
+      return '<section class="dsh-release-section"><h3><span class="dsh-section-icon ' + escapeHtml(section.key || 'other') + '">' + releaseIcon(section.key) + '</span>' + escapeHtml(title) + '</h3>' +
+        items.map(item => '<div class="dsh-release-item"><span class="dsh-release-icon ' + escapeHtml(section.key || 'other') + '">' + releaseIcon(section.key) + '</span><div>' + inlineMarkdown(item) + '</div></div>').join('') +
+        '</section>'
+    }).filter(Boolean).join('')
+    return rendered || '<div class="dsh-empty-copy">' + escapeHtml(desktopText('release.maintenance')) + '</div>'
   }
 
   function renderTimeline(releases) {

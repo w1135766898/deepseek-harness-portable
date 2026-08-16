@@ -57,10 +57,36 @@ function cleanMarkdownText(value) {
     .trim()
 }
 
-function parseReleaseBody(body) {
+function splitBilingualReleaseBody(body) {
   const source = asText(body).replace(/\r\n?/g, '\n')
-  if (!source) return []
+  if (!source) return { bodyZh: '', bodyEn: '' }
 
+  // 1. Check for English delimiter (e.g. --- ## English Release Notes or ## English Release Notes)
+  const enMatch = /(?:^|\n)(?:---\r?\n\s*)?#{1,3}\s+(?:English Release Notes|English Notes|English)\b/i.exec(source)
+  if (enMatch) {
+    const zhPart = source.slice(0, enMatch.index).trim()
+    const enPart = source.slice(enMatch.index + enMatch[0].length).trim()
+    return { bodyZh: zhPart, bodyEn: enPart }
+  }
+
+  // 2. Check for Chinese delimiter (e.g. --- ## 中文发布说明 or ## 中文更新日志)
+  const zhMatch = /(?:^|\n)(?:---\r?\n\s*)?#{1,3}\s+(?:中文发布说明|中文更新日志|中文说明|Release Notes \(中文\))\b/i.exec(source)
+  if (zhMatch) {
+    const enPart = source.slice(0, zhMatch.index).trim()
+    const zhPart = source.slice(zhMatch.index + zhMatch[0].length).trim()
+    return { bodyZh: zhPart, bodyEn: enPart }
+  }
+
+  // 3. Fallback: check if text contains Chinese characters
+  const hasChinese = /[\u4e00-\u9fa5]/.test(source)
+  return {
+    bodyZh: hasChinese ? source : '',
+    bodyEn: hasChinese ? '' : source,
+  }
+}
+
+function parseSingleLanguageBody(source, lang = 'en') {
+  if (!source) return []
   const sections = []
   let current
   let paragraph = []
@@ -90,8 +116,8 @@ function parseReleaseBody(body) {
     if (text) {
       const section = ensureSection()
       section.items.push(text)
-      section.itemsEn.push(text)
-      section.itemsZh.push(text)
+      if (lang === 'zh') section.itemsZh.push(text)
+      else section.itemsEn.push(text)
     }
   }
 
@@ -111,12 +137,16 @@ function parseReleaseBody(body) {
     if (heading) {
       flushParagraph()
       const title = heading[1].replace(/^\[|\]$/g, '').trim()
+      if (/^deepseek harness/i.test(title) || /^组件版本/i.test(title) || /^component versions?/i.test(title) || /^校验和|checksum/i.test(title)) {
+        current = undefined
+        continue
+      }
       const meta = CATEGORY_META[categoryKey(title)]
       current = {
         ...meta,
         title: title || meta.label,
-        titleEn: title || meta.label,
-        titleZh: title || meta.labelZh,
+        titleEn: lang === 'en' ? (title || meta.label) : meta.label,
+        titleZh: lang === 'zh' ? (title || meta.labelZh) : meta.labelZh,
         items: [],
         itemsEn: [],
         itemsZh: [],
@@ -128,10 +158,11 @@ function parseReleaseBody(body) {
     if (/^\s*(?:[-*+]\s+|\d+[.)]\s+)/.test(rawLine)) {
       flushParagraph()
       const item = cleanMarkdownText(rawLine)
+      if (!item || current === undefined) continue
       const section = ensureSection()
       section.items.push(item)
-      section.itemsEn.push(item)
-      section.itemsZh.push(item)
+      if (lang === 'zh') section.itemsZh.push(item)
+      else section.itemsEn.push(item)
       continue
     }
 
@@ -140,7 +171,9 @@ function parseReleaseBody(body) {
       continue
     }
 
-    paragraph.push(line)
+    if (current !== undefined) {
+      paragraph.push(line)
+    }
   }
   flushParagraph()
 
@@ -154,12 +187,55 @@ function parseReleaseBody(body) {
     .filter(section => section.items.length > 0)
 }
 
+function parseReleaseBody(body) {
+  const source = asText(body).replace(/\r\n?/g, '\n')
+  if (!source) return []
+
+  const { bodyZh, bodyEn } = splitBilingualReleaseBody(source)
+  if (bodyZh && bodyEn) {
+    const zhSections = parseSingleLanguageBody(bodyZh, 'zh')
+    const enSections = parseSingleLanguageBody(bodyEn, 'en')
+
+    const merged = new Map()
+    for (const s of zhSections) {
+      merged.set(s.key, {
+        ...s,
+        titleZh: s.titleZh || s.title,
+        itemsZh: s.itemsZh,
+        itemsEn: [],
+      })
+    }
+    for (const s of enSections) {
+      if (merged.has(s.key)) {
+        const existing = merged.get(s.key)
+        existing.titleEn = s.titleEn || s.title
+        existing.itemsEn = s.itemsEn
+        if (existing.itemsZh.length === 0) existing.itemsZh = s.itemsZh.length > 0 ? s.itemsZh : s.itemsEn
+        if (existing.items.length === 0) existing.items = s.items
+      } else {
+        merged.set(s.key, {
+          ...s,
+          titleEn: s.titleEn || s.title,
+          itemsEn: s.itemsEn,
+          itemsZh: [],
+        })
+      }
+    }
+    return [...merged.values()].filter(s => s.itemsZh.length > 0 || s.itemsEn.length > 0 || s.items.length > 0)
+  }
+
+  const lang = bodyZh ? 'zh' : 'en'
+  return parseSingleLanguageBody(source, lang)
+}
+
 function normalizeReleaseNotes(input, fallbackVersion = '0.0.0') {
   const source = input && typeof input === 'object' ? input : {}
   const version = normalizeVersion(source.version || source.tag_name, fallbackVersion)
-  const bodyEn = asText(source.bodyEn).slice(0, MAX_BODY_LENGTH)
-  const bodyZh = asText(source.bodyZh).slice(0, MAX_BODY_LENGTH)
-  const body = (asText(source.body) || bodyEn || bodyZh).slice(0, MAX_BODY_LENGTH)
+  const rawBody = asText(source.body)
+  const split = splitBilingualReleaseBody(rawBody)
+  const bodyEn = (asText(source.bodyEn) || split.bodyEn || rawBody).slice(0, MAX_BODY_LENGTH)
+  const bodyZh = (asText(source.bodyZh) || split.bodyZh || rawBody).slice(0, MAX_BODY_LENGTH)
+  const body = (rawBody || bodyEn || bodyZh).slice(0, MAX_BODY_LENGTH)
   const suppliedSections = Array.isArray(source.sections)
     ? source.sections.map(section => {
       if (!section || typeof section !== 'object') return undefined
@@ -250,4 +326,5 @@ module.exports = {
   normalizeUrl,
   parseReleaseBody,
   releaseType,
+  splitBilingualReleaseBody,
 }

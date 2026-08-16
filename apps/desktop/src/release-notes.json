@@ -21,7 +21,8 @@
       ]
     }
   ],
-  "body": "## New Features & Improvements / 新功能与体验优化\n\n- Vision Bridge Plugin / 视觉辅助外挂插件：为非多模态大模型赋予看图识图能力。\n- Global 'view_image' Tool / 全局图片查看工具：支持主流格式与会话相对路径智能解析。\n- Official Settings UI Slot / 官方设置槽位无缝融入：提供可视化预设切换与敏感信息保护。\n- Zero-Modification Architecture / 零修改侵入设计：完全基于 Cordis 插件插拔机制。",
+  "bodyZh": "## 新功能与体验优化\n\n- **视觉辅助外挂插件（@dsh-portable/vision-bridge）**：为文本模型接入外部 OpenAI 兼容的视觉大模型（如 GPT-4o、Qwen-VL、GLM-4V、本地 Ollama 等），赋予模型看图与识图能力。\n- **全局 view_image 工具**：支持 PNG、JPEG、WebP 与 GIF 图片文件，根据当前会话 cwd 智能解析相对路径，自动进行大小校验与 Base64 编码，并严格遵循防凭证重定向外泄的安全规范。\n- **官方设置槽位无缝融入**：在【设置 → 插件】页面官方槽位注册专属配置卡片，支持服务商预设一键切换、即时配置验证与持久化保存，API Key 采用纯写模式与 Secret 级别安全脱敏保护。\n- **零侵入架构设计**：全部通过 Cordis 微内核插件机制与运行时 Overlay 动态装配，保持 upstream vendor/deepseek-harness 100% 原生纯净。",
+  "bodyEn": "## New Features & Improvements\n\n- **Vision Bridge plugin (@dsh-portable/vision-bridge)**: equips text-only models with multimodal visual inspection capabilities via OpenAI-compatible vision models (GPT-4o, Qwen-VL, GLM-4V, local Ollama, etc.).\n- **Global 'view_image' tool**: automatically inspects PNG, JPEG, WebP, and GIF images, resolves workspace paths against session cwd, enforces file bounds, and securely streams base64 Data URLs.\n- **Official Settings UI slot**: mounts a dedicated Vision card into the official Settings → Plugins tab with live provider presets, configuration validation, and write-only API key protection.\n- **Zero-modification architecture**: cleanly wired through Cordis microkernel plugin slots and profile overlays without altering any upstream vendor/ code.",
   "history": [
     {
       "version": "1.2.1",
