@@ -108,13 +108,17 @@ test('win32 terminal inspector stub satisfies ProcessInspector contracts safely'
 })
 
 test('adaptWin32SubprocessRuntime injects inspector and translates WSL launch failures', async () => {
+  const seenSpecs = []
   const fakeRuntime = {
     terminalInspector: undefined,
     spawnTerminal: async (spec) => {
-      if (spec?.argv?.some(arg => arg.includes('wsl.exe'))) {
+      seenSpecs.push(spec)
+      const argv = spec?.argv ?? []
+      const isWsl = argv.some(arg => arg.includes('wsl.exe'))
+      if (argv.includes('missing.exe') || (argv[0] === 'runner.exe' && isWsl)) {
         throw new Error('ENOENT: command not found')
       }
-      if (spec?.argv?.[0]?.includes('fail.exe')) {
+      if (argv[0]?.includes('fail.exe')) {
         throw new Error('generic failure')
       }
       return { ok: true }
@@ -126,7 +130,7 @@ test('adaptWin32SubprocessRuntime injects inspector and translates WSL launch fa
 
   // Direct WSL error must be translated with guidance
   await assert.rejects(
-    async () => fakeRuntime.spawnTerminal({ argv: ['C:/Windows/System32/wsl.exe', '--', 'bash'] }),
+    async () => fakeRuntime.spawnTerminal({ argv: ['C:/Windows/System32/wsl.exe', 'missing.exe', '--', 'bash'] }),
     /Failed to start WSL Linux terminal.*WSL 运行环境缺失.*wsl --install/s,
   )
 
@@ -142,7 +146,29 @@ test('adaptWin32SubprocessRuntime injects inspector and translates WSL launch fa
     /generic failure/,
   )
 
-  // Successful spawn
+  // WSL spawns must advertise the terminal environment through WSLENV while
+  // preserving the parent's own entries and collapsing duplicates by name
+  const previousWslenv = process.env.WSLENV
+  try {
+    process.env.WSLENV = 'FOO:/bar:PROMPT_COMMAND'
+    await fakeRuntime.spawnTerminal({ argv: ['C:/Windows/System32/wsl.exe', '--', 'bash'], env: {} })
+  } finally {
+    if (previousWslenv === undefined) delete process.env.WSLENV
+    else process.env.WSLENV = previousWslenv
+  }
+  const wslSpec = seenSpecs[seenSpecs.length - 1]
+  assert.ok(wslSpec.env && typeof wslSpec.env === 'object', 'WSL spawn spec must keep an env object')
+  const wslenvParts = wslSpec.env.WSLENV.split(':')
+  assert.ok(wslenvParts.includes('FOO'), 'parent WSLENV entries must be preserved')
+  assert.ok(wslenvParts.includes('/bar'), 'parent WSLENV path-flagged entries must be preserved')
+  assert.equal(wslenvParts.filter(part => part === 'PROMPT_COMMAND').length, 1, 'duplicate names must collapse')
+  for (const name of ['PAGER', 'GIT_PAGER', 'TERM', 'DSH_SHELL', 'DSH_PTY_SESSION_ID']) {
+    assert.ok(wslenvParts.includes(name), `WSLENV must share ${name}`)
+  }
+  assert.ok(!wslenvParts.includes('PS1'), 'PS1 must stay out of WSLENV (WSL filters it)')
+
+  // Successful non-WSL spawn passes through untouched
   const result = await fakeRuntime.spawnTerminal({ argv: ['C:/other.exe'] })
   assert.deepEqual(result, { ok: true })
+  assert.deepEqual(seenSpecs[seenSpecs.length - 1], { argv: ['C:/other.exe'] })
 })
