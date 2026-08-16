@@ -454,6 +454,36 @@ function startupLog(error) {
 
 let wslState = { probed: false, available: false, distros: [] }
 
+/**
+ * Decode the raw stdout of `wsl.exe -l -q`. WSL writes UTF-16LE (optionally
+ * BOM-prefixed) when stdout is redirected, but honors `WSL_UTF8=1` and emits
+ * UTF-8 instead. A UTF-16LE stream has NUL bytes at odd offsets, which UTF-8
+ * terminal output never contains, so the byte pattern picks the encoding.
+ * @param raw - the captured stdout bytes.
+ * @returns trimmed non-empty distro name lines.
+ */
+function decodeWslDistroList(raw) {
+  let text
+  if (raw.length >= 2 && raw[0] === 0xff && raw[1] === 0xfe) {
+    text = raw.subarray(2).toString('utf16le')
+  } else {
+    let oddZeros = 0
+    let evenZeros = 0
+    for (let index = 0; index < raw.length; index += 1) {
+      if (raw[index] === 0) {
+        if (index % 2 === 1) oddZeros += 1
+        else evenZeros += 1
+      }
+    }
+    text = oddZeros > evenZeros ? raw.toString('utf16le') : raw.toString('utf8')
+  }
+  return text
+    .replace(/^\uFEFF/, '')
+    .split(/[\r\n]+/)
+    .map(s => s.replace(/\0/g, '').trim())
+    .filter(Boolean)
+}
+
 function probeWslAvailability() {
   if (process.platform !== 'win32') {
     wslState = { probed: true, available: true, distros: [] }
@@ -464,19 +494,15 @@ function probeWslAvailability() {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
-    let stdout = ''
-    child.stdout.on('data', chunk => { stdout += chunk.toString('utf16le') })
+    const chunks = []
+    child.stdout.on('data', chunk => { chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)) })
     child.on('error', () => {
       wslState = { probed: true, available: false, distros: [] }
       sendWslState()
       resolve(wslState)
     })
     child.on('close', code => {
-      const distros = stdout
-        .replace(/^\uFEFF/, '')
-        .split(/[\r\n]+/)
-        .map(s => s.replace(/\0/g, '').trim())
-        .filter(Boolean)
+      const distros = decodeWslDistroList(Buffer.concat(chunks))
       const isAvailable = code === 0 && distros.length > 0
       wslState = { probed: true, available: isAvailable, distros }
       sendWslState()
