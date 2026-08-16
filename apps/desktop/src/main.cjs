@@ -23,7 +23,7 @@ const { readLocalePreference } = require('./desktop-locale-store.cjs')
 const { countSectionBadges, mergeReleaseHistory, normalizeReleaseNotes, normalizeReleaseNotesHistory } = require('./release-notes.cjs')
 const { findPortableRoot } = require('./update-path.cjs')
 const { evaluateUpdateLaunch } = require('./update-transaction.cjs')
-const { buildUpdaterArguments, launchDetachedPowerShell } = require('./update-launcher.cjs')
+const { buildUpdaterArguments, launchDetachedPowerShell, resolveUpdaterEntrypoint } = require('./update-launcher.cjs')
 const { ensureUnifiedDshHome } = require('./workspace-service.cjs')
 const { readConfigStore, updateConfigStore } = require('./config-store.cjs')
 const { terminateProcessTree } = require('./process-tree.cjs')
@@ -1656,10 +1656,67 @@ async function promptPortableUpdateRestart(prepared) {
     })
     return
   }
+  try {
+    await ensurePreparedUpdateStaging(prepared)
+  } catch (error) {
+    const message = errorMessage(error)
+    writeDesktopUpdateStatus({
+      state: 'failed',
+      stage: 'extract',
+      message,
+      fromVersion: getLocalVersion(),
+      targetVersion: prepared.targetVersion,
+    })
+    sendUpdateState({ state: 'failed', stage: 'extract', label: message, targetVersion: prepared.targetVersion })
+    void dialog.showMessageBox(visibleDialogParent(), {
+      type: 'error',
+      title: desktopText('update.updaterUnavailable'),
+      message,
+    })
+    return
+  }
   sendUpdateState({ state: 'replacing', stage: 'launch', label: desktopText('update.replacing'), targetVersion: prepared.targetVersion })
   if (!triggerPortableUpdate(prepared.targetVersion, prepared.packagePath, prepared.sha256, prepared.stagingPath)) {
     sendUpdateState({ state: 'ready', stage: 'ready', label: desktopText('update.updaterUnavailable'), progress: 100, targetVersion: prepared.targetVersion })
   }
+}
+
+async function ensurePreparedUpdateStaging(prepared) {
+  const root = findPortableRoot(__dirname)
+  if (root === undefined) throw new Error(desktopText('update.portableRootMissing'))
+  if (prepared.stagingPath && existsSync(prepared.stagingPath)) {
+    resolveUpdaterEntrypoint({ root, stagingPath: prepared.stagingPath })
+    return prepared.stagingPath
+  }
+
+  if (!prepared.packagePath || !existsSync(prepared.packagePath)) {
+    throw new Error('The verified update package is no longer available.')
+  }
+  if (prepared.stagingPath) {
+    try { rmSync(prepared.stagingPath, { recursive: true, force: true }) } catch {}
+  }
+  const safeVersion = String(prepared.targetVersion || 'latest').replace(/[^0-9A-Za-z._-]/g, '_')
+  const tempRoot = join(app.getPath('temp'), 'deepseek-harness-updates')
+  mkdirSync(tempRoot, { recursive: true })
+  const stagingRoot = join(tempRoot, `staging-${safeVersion}-${Date.now()}`)
+  prepared.stagingPath = await extractStagingPackage({
+    zipPath: prepared.packagePath,
+    stagingDestination: stagingRoot,
+    expectedVersion: prepared.targetVersion,
+    appRoot: root,
+  })
+  resolveUpdaterEntrypoint({ root, stagingPath: prepared.stagingPath })
+  writeDesktopUpdateStatus({
+    state: 'ready',
+    stage: 'ready',
+    message: desktopText('update.verifiedWaiting'),
+    fromVersion: getLocalVersion(),
+    targetVersion: prepared.targetVersion,
+    packagePath: prepared.packagePath,
+    stagingPath: prepared.stagingPath,
+    sha256: prepared.sha256,
+  })
+  return prepared.stagingPath
 }
 
 async function preparePortableUpdate(targetVersion, release) {
@@ -1758,17 +1815,12 @@ async function preparePortableUpdate(targetVersion, release) {
     })
 
     const stagingRoot = join(tempRoot, `staging-${safeVersion}-${Date.now()}`)
-    try {
-      stagingPath = await extractStagingPackage({
-        zipPath: packagePath,
-        stagingDestination: stagingRoot,
-        expectedVersion: effectiveTarget,
-        appRoot: root,
-      })
-    } catch (stagingError) {
-      console.warn('Pre-extraction into staging directory skipped, will extract during restart:', stagingError)
-      stagingPath = ''
-    }
+    stagingPath = await extractStagingPackage({
+      zipPath: packagePath,
+      stagingDestination: stagingRoot,
+      expectedVersion: effectiveTarget,
+      appRoot: root,
+    })
 
     preparedPortableUpdate = {
       packagePath,
@@ -2096,7 +2148,6 @@ async function showUpdateNoticeIfNeeded() {
 function triggerPortableUpdate(targetVersion, packagePath, expectedSha256, stagingPath) {
   const root = findPortableRoot(__dirname)
   if (root !== undefined) {
-    const updatePs1 = join(root, 'update.ps1')
     const userDataPath = app.getPath('userData')
     const fromVersion = getLocalVersion()
     const startedAt = new Date().toISOString()
@@ -2111,8 +2162,13 @@ function triggerPortableUpdate(targetVersion, packagePath, expectedSha256, stagi
       processId: 0,
     })
     try {
+      // Run the updater shipped inside the already verified staging tree. An
+      // older installed updater may contain the very rollback bug this release
+      // is intended to repair, or its runtime may already be partially deleted.
+      const updaterEntrypoint = resolveUpdaterEntrypoint({ root, stagingPath })
       const updaterArgs = buildUpdaterArguments({
-        scriptPath: updatePs1,
+        scriptPath: updaterEntrypoint.scriptPath,
+        appRoot: updaterEntrypoint.appRoot,
         statusFile: statusPath(userDataPath),
         fromVersion,
         targetVersion,
@@ -2124,7 +2180,7 @@ function triggerPortableUpdate(targetVersion, packagePath, expectedSha256, stagi
       })
       const launchResult = launchDetachedPowerShell({
         root,
-        scriptPath: updatePs1,
+        scriptPath: updaterEntrypoint.scriptPath,
         args: updaterArgs,
         onLaunch: () => writeUpdateStatus(userDataPath, {
           state: 'starting',

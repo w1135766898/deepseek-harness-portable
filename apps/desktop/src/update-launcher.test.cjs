@@ -5,12 +5,14 @@ const test = require('node:test')
 const {
   buildUpdaterArguments,
   launchDetachedPowerShell,
+  resolveUpdaterEntrypoint,
   resolvePowerShellExecutable,
 } = require('./update-launcher.cjs')
 
 test('builds portable update arguments with status, package, and process context', () => {
   assert.deepEqual(buildUpdaterArguments({
     scriptPath: 'C:\\portable\\update.ps1',
+    appRoot: 'C:\\portable',
     statusFile: 'C:\\user-data\\update-status.json',
     fromVersion: '1.0.7',
     targetVersion: '1.1.0',
@@ -24,6 +26,8 @@ test('builds portable update arguments with status, package, and process context
     'Bypass',
     '-File',
     'C:\\portable\\update.ps1',
+    '-AppRoot',
+    'C:\\portable',
     '-StatusFile',
     'C:\\user-data\\update-status.json',
     '-FromVersion',
@@ -45,6 +49,7 @@ test('builds portable update arguments with status, package, and process context
 test('builds portable update arguments with pre-extracted stagingPath', () => {
   assert.deepEqual(buildUpdaterArguments({
     scriptPath: 'C:\\portable\\update.ps1',
+    appRoot: 'C:\\portable',
     statusFile: 'C:\\user-data\\update-status.json',
     fromVersion: '1.0.7',
     targetVersion: '1.1.0',
@@ -59,6 +64,8 @@ test('builds portable update arguments with pre-extracted stagingPath', () => {
     'Bypass',
     '-File',
     'C:\\portable\\update.ps1',
+    '-AppRoot',
+    'C:\\portable',
     '-StatusFile',
     'C:\\user-data\\update-status.json',
     '-FromVersion',
@@ -82,6 +89,7 @@ test('builds portable update arguments with pre-extracted stagingPath', () => {
 test('builds rollback arguments with status and relaunch options', () => {
   assert.deepEqual(buildUpdaterArguments({
     scriptPath: 'C:\\portable\\update.ps1',
+    appRoot: 'C:\\portable',
     statusFile: 'C:\\user-data\\update-status.json',
     fromVersion: 'ignored',
     targetVersion: 'ignored',
@@ -95,6 +103,8 @@ test('builds rollback arguments with status and relaunch options', () => {
     'Bypass',
     '-File',
     'C:\\portable\\update.ps1',
+    '-AppRoot',
+    'C:\\portable',
     '-Rollback',
     '-StatusFile',
     'C:\\user-data\\update-status.json',
@@ -132,6 +142,39 @@ test('resolves the system Windows PowerShell executable', () => {
     'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
   )
   assert.equal(resolvePowerShellExecutable({ env: {}, platform: 'linux' }), 'pwsh')
+})
+
+test('uses the verified staged updater to repair an older installation', () => {
+  const root = 'C:\\portable'
+  const stagingPath = 'C:\\temp\\staging-1.2.7'
+  const expected = new Set([
+    `${stagingPath}\\update.ps1`,
+    `${stagingPath}\\updater\\updater.psm1`,
+    `${stagingPath}\\updater\\release-payload.ps1`,
+  ])
+  const entrypoint = resolveUpdaterEntrypoint({
+    root,
+    stagingPath,
+    platform: 'win32',
+    exists: path => expected.has(path),
+  })
+  assert.deepEqual(entrypoint, {
+    scriptPath: `${stagingPath}\\update.ps1`,
+    appRoot: root,
+    source: 'staging',
+  })
+})
+
+test('fails closed when a prepared updater bootstrap is incomplete', () => {
+  assert.throws(
+    () => resolveUpdaterEntrypoint({
+      root: 'C:\\portable',
+      stagingPath: 'C:\\temp\\staging',
+      platform: 'win32',
+      exists: () => false,
+    }),
+    /Prepared updater bootstrap is incomplete/,
+  )
 })
 
 test('records the detached updater PID before requesting app exit', async () => {

@@ -147,6 +147,45 @@ Describe "Transaction backup, install and rollback" {
         }
     }
 
+    It "recovers a legacy backed-up transaction before applying a staged update" {
+        $root = Join-Path $env:TEMP ('pester-bootstrap-repair-' + [Guid]::NewGuid().ToString('N'))
+        $app = Join-Path $root 'app'
+        $staging = Join-Path $root 'staging'
+        $backup = Join-Path $app '.update-backups\1.0.0-legacy'
+        New-Item -ItemType Directory -Path (Join-Path $app 'runtime') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $staging 'runtime') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $backup 'runtime') -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $app 'runtime\marker.txt'), 'partially deleted 1.0.1', [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText((Join-Path $app 'release-manifest.json'), '{"distributionVersion":"1.0.1"}', [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText((Join-Path $backup 'runtime\marker.txt'), 'complete 1.0.0', [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText((Join-Path $backup 'release-manifest.json'), '{"distributionVersion":"1.0.0"}', [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText((Join-Path $staging 'runtime\marker.txt'), 'complete 1.0.2', [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText((Join-Path $staging 'release-manifest.json'), '{"distributionVersion":"1.0.2"}', [Text.Encoding]::UTF8)
+        [IO.File]::WriteAllText((Join-Path $app '.update-transaction.json'), (@{
+            schemaVersion = 1
+            transactionId = 'legacy-broken-update'
+            fromVersion = '1.0.0'
+            targetVersion = '1.0.1'
+            phase = 'backed-up'
+            backupPath = $backup
+            startedAt = [DateTime]::UtcNow.ToString('o')
+        } | ConvertTo-Json))
+
+        Mock -ModuleName updater Test-PortableLayout {}
+        Mock -ModuleName updater Sync-ReleasePayload {}
+        try {
+            Invoke-Updater -AppRoot $app -StagingPath $staging -FromVersion '1.0.1' -TargetVersion '1.0.2' -Force
+            [IO.File]::ReadAllText((Join-Path $app 'runtime\marker.txt')) | Should Be 'complete 1.0.2'
+            $state = Get-Content -LiteralPath (Join-Path $app '.update-transaction.json') -Raw | ConvertFrom-Json
+            $state.phase | Should Be 'committed'
+            $state.fromVersion | Should Be '1.0.0'
+        } finally {
+            if (Test-Path -LiteralPath $root) {
+                Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+
     It "rolls back when the updated process exits before the health probe" {
         $root = Join-Path $env:TEMP ('pester-health-' + [Guid]::NewGuid().ToString('N'))
         $app = Join-Path $root 'app'

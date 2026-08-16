@@ -1,4 +1,5 @@
 const { spawn: defaultSpawn } = require('node:child_process')
+const { existsSync } = require('node:fs')
 const { join, win32 } = require('node:path')
 
 const DEFAULT_QUIT_DELAY_MS = 750
@@ -20,6 +21,33 @@ function positivePid(value) {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0
 }
 
+function resolveUpdaterEntrypoint({
+  root,
+  stagingPath,
+  exists = existsSync,
+  platform = process.platform,
+} = {}) {
+  if (typeof root !== 'string' || root.trim() === '') {
+    throw new Error('Portable root is required to resolve the updater entrypoint.')
+  }
+  const joinPath = platform === 'win32' ? win32.join : join
+  if (typeof stagingPath === 'string' && stagingPath.trim() !== '') {
+    const stagedScript = joinPath(stagingPath, 'update.ps1')
+    const stagedModule = joinPath(stagingPath, 'updater', 'updater.psm1')
+    const stagedPayload = joinPath(stagingPath, 'updater', 'release-payload.ps1')
+    const missing = [stagedScript, stagedModule, stagedPayload].filter(path => !exists(path))
+    if (missing.length > 0) {
+      throw new Error(`Prepared updater bootstrap is incomplete: ${missing.join(', ')}`)
+    }
+    return { scriptPath: stagedScript, appRoot: root, source: 'staging' }
+  }
+  const installedScript = joinPath(root, 'update.ps1')
+  if (!exists(installedScript)) {
+    throw new Error(`Installed updater entrypoint is missing: ${installedScript}`)
+  }
+  return { scriptPath: installedScript, appRoot: root, source: 'installed' }
+}
+
 function buildUpdaterArguments({
   scriptPath,
   statusFile,
@@ -28,6 +56,7 @@ function buildUpdaterArguments({
   packagePath,
   expectedSha256,
   stagingPath,
+  appRoot,
   enginePid,
   shellPid,
   rollback = false,
@@ -40,6 +69,7 @@ function buildUpdaterArguments({
     '-File',
     scriptPath,
   ]
+  if (appRoot) args.push('-AppRoot', appRoot)
 
   if (rollback) {
     args.push('-Rollback')
@@ -131,5 +161,6 @@ module.exports = {
   DEFAULT_QUIT_DELAY_MS,
   buildUpdaterArguments,
   launchDetachedPowerShell,
+  resolveUpdaterEntrypoint,
   resolvePowerShellExecutable,
 }

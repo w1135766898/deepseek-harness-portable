@@ -680,6 +680,31 @@ function Test-ProcessPathUnderRoot {
     }
 }
 
+function Test-ProcessCommandLineUnderRoot {
+    param(
+        [string]$CommandLine,
+        [Parameter(Mandatory = $true)][string]$Root
+    )
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) { return $false }
+    try {
+        $fullRoot = [System.IO.Path]::GetFullPath($Root).TrimEnd('\', '/') -replace '/', '\'
+        $normalizedCommandLine = $CommandLine -replace '/', '\'
+        $needle = $fullRoot + '\'
+        $offset = 0
+        while ($offset -lt $normalizedCommandLine.Length) {
+            $index = $normalizedCommandLine.IndexOf($needle, $offset, [System.StringComparison]::OrdinalIgnoreCase)
+            if ($index -lt 0) { return $false }
+            if ($index -eq 0) { return $true }
+            $prefix = $normalizedCommandLine[$index - 1]
+            if ([char]::IsWhiteSpace($prefix) -or $prefix -in @('"', "'", '=', '(')) { return $true }
+            $offset = $index + 1
+        }
+        return $false
+    } catch {
+        return $false
+    }
+}
+
 function Stop-ProcessTree {
     param(
         [int]$EnginePid = 0,
@@ -712,6 +737,19 @@ function Stop-ProcessTree {
                     $_.Id -ne $PID -and $_.Path -and (Test-ProcessPathUnderRoot -ProcessPath $_.Path -Root $AppRoot)
                 } catch { $false }
             } | ForEach-Object { $_.Id })
+            # The packaged backend can be hosted by a system node.exe rather
+            # than an executable below AppRoot. Its script argument still
+            # points into runtime, and a loaded native addon (notably sharp's
+            # libvips DLL) keeps the runtime locked until that host exits.
+            try {
+                $running += @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+                    $_.ProcessId -ne $PID -and
+                    (Test-ProcessCommandLineUnderRoot -CommandLine ([string]$_.CommandLine) -Root $AppRoot)
+                } | ForEach-Object { $_.ProcessId })
+            } catch {
+                # Executable-path discovery above remains available on hosts
+                # where CIM process metadata cannot be queried.
+            }
         }
         $running = @($running | Where-Object { $_ -ne $PID } | Select-Object -Unique)
         if ($running.Count -eq 0) { return }
@@ -1044,9 +1082,10 @@ function Invoke-Updater {
     try {
         Write-Banner
         $localInfo = Get-LocalReleaseInfo -AppRoot $APP_ROOT
-        if ([string]::IsNullOrWhiteSpace($FromVersion)) {
-            $FromVersion = $localInfo.distributionVersion
-        }
+        # Recovery may have changed the active version before this update
+        # begins. Always derive the transaction's real source version from the
+        # repaired installation rather than trusting the shell's stale value.
+        $FromVersion = $localInfo.distributionVersion
         $currentStage = 'check'
         Write-UpdateStatus -StatusFile $StatusFile -State 'checking' -Stage $currentStage -Message 'Checking for the latest portable release.' -From $FromVersion -Target $TargetVersion
         Write-Host ('  Local distribution: ' + $localInfo.distributionVersion) -ForegroundColor White

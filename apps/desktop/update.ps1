@@ -16,7 +16,8 @@ param(
     [int]$ShellPid = 0,
     [switch]$Rollback,
     [switch]$RelaunchAfterRollback,
-    [switch]$RecoverOnly
+    [switch]$RecoverOnly,
+    [string]$AppRoot = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -92,10 +93,20 @@ try {
         throw ("Updater module not found at: " + $modulePath)
     }
 
+    # A staged release may run its own newer updater against an older or
+    # damaged installation. Keep the module/script root separate from the
+    # installation being repaired so the bootstrap never depends on files in
+    # the target runtime.
+    $targetRoot = if ([string]::IsNullOrWhiteSpace($AppRoot)) {
+        $scriptRoot
+    } else {
+        [System.IO.Path]::GetFullPath($AppRoot)
+    }
+
     # Serialize update, rollback, and startup recovery for this installation.
     # A process-local lock is insufficient because shortcuts and a second
     # desktop process can start another PowerShell updater concurrently.
-    $normalizedRoot = [System.IO.Path]::GetFullPath($scriptRoot).TrimEnd('\').ToUpperInvariant()
+    $normalizedRoot = $targetRoot.TrimEnd('\').ToUpperInvariant()
     $sha256 = [System.Security.Cryptography.SHA256]::Create()
     try {
         $digest = $sha256.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($normalizedRoot))
@@ -117,7 +128,7 @@ try {
         }
 
         if ($RecoverOnly) {
-            Recover-PendingTransaction -AppRoot $scriptRoot -StatusFile $StatusFile
+            Recover-PendingTransaction -AppRoot $targetRoot -StatusFile $StatusFile
         } else {
             # update.ps1 ships at the portable distribution root, so its own
             # directory IS AppRoot; pass it explicitly instead of inferring it
@@ -135,7 +146,7 @@ try {
                 -ShellPid $ShellPid `
                 -Rollback:$Rollback `
                 -RelaunchAfterRollback:$RelaunchAfterRollback `
-                -AppRoot $scriptRoot
+                -AppRoot $targetRoot
         }
     } finally {
         if ($mutexAcquired) {
