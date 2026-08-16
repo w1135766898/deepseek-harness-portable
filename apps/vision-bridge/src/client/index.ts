@@ -14,7 +14,7 @@ import { VisionCard } from './VisionCard.tsx'
 import { VisionCardController, type VisionSettings } from './vision-card-controller.ts'
 
 export const name = 'vision-bridge-client'
-export const inject = ['slots', 'locale', 'settingsScope']
+export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope']
 
 export function apply(ctx: ClientContext): void {
   // 1) Register i18n dictionary

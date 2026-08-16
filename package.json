@@ -7,7 +7,7 @@
     "preinstall": "node scripts/prepare-upstream-submodule.cjs",
     "test": "pnpm run desktop:test && pnpm run desktop:updater:test",
     "readme:check": "node scripts/check-readme-i18n.cjs",
-    "build": "pnpm --filter @deepseek-ai/dsh-root run build && pnpm --filter dsh-desktop-web-pkg run build",
+    "build": "pnpm --filter @deepseek-ai/dsh-root run build && pnpm --filter @dsh-portable/vision-bridge run build && pnpm --filter dsh-desktop-web-pkg run build",
     "desktop:bootstrap": "git submodule update --init --recursive && pnpm install",
     "desktop:dev": "pnpm --filter dsh-desktop-web-pkg start",
     "desktop:test": "pnpm --filter dsh-desktop-web-pkg test",

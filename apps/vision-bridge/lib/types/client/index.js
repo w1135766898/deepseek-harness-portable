@@ -7,7 +7,7 @@ import { zh, en } from "./locales.js";
 import { VisionCard } from "./VisionCard.js";
 import { VisionCardController } from "./vision-card-controller.js";
 export const name = 'vision-bridge-client';
-export const inject = ['slots', 'locale', 'settingsScope'];
+export const inject = ['slots', 'locale', 'connection', 'remote', 'settingsScope'];
 export function apply(ctx) {
     // 1) Register i18n dictionary
     ctx.effect(() => ctx.locale.register('vision-bridge', { zh, en }), 'vision-bridge: dictionaries');
