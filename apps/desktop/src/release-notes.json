@@ -34,13 +34,13 @@
           "titleEn": "New Features & Improvements",
           "titleZh": "新功能与体验优化",
           "itemsEn": [
-            "Added Vision Bridge plugin (@dsh-portable/vision-bridge): equips text-only models with multimodal visual inspection capabilities via OpenAI-compatible vision models (GPT-4o, Qwen-VL, GLM-4V, local Ollama, etc.).",
+            "Added Vision Bridge plugin (@dsh-portable/vision-bridge): equips text-only models with multimodal visual inspection capabilities via OpenAI-compatible endpoints with modern cost-performance vision models (Gemini 3.7 Flash, Mimo V2.5, etc.).",
             "Introduced the global 'view_image' tool: automatically inspects PNG, JPEG, WebP, and GIF images, resolves workspace paths against session cwd, enforces file bounds, and securely streams base64 Data URLs.",
             "Seamless Settings integration: mounts a dedicated Vision card into the official Settings → Plugins tab with live provider presets, configuration validation, and write-only API key protection.",
             "Zero-modification vendor isolation: cleanly wired through Cordis microkernel plugin slots and profile overlays without altering any upstream vendor/ code."
           ],
           "itemsZh": [
-            "新增视觉辅助外挂插件（@dsh-portable/vision-bridge）：为文本模型接入外部 OpenAI 兼容的视觉大模型（如 GPT-4o、Qwen-VL、GLM-4V、本地 Ollama 等），赋予模型看图与识图能力。",
+            "新增视觉辅助外挂插件（@dsh-portable/vision-bridge）：为文本模型接入外部 OpenAI 兼容端点与高性价比多模态模型（如 Gemini 3.7 Flash、Mimo V2.5 等），赋予模型看图与识图能力。",
             "引入全局 view_image 工具：支持 PNG、JPEG、WebP 与 GIF 图片文件，根据当前会话 cwd 智能解析相对路径，自动进行大小校验与 Base64 编码，并严格遵循防凭证重定向外泄的安全规范。",
             "无缝融入官方设置中心：在【设置 → 插件】页面官方槽位注册专属配置卡片，支持服务商预设一键切换、即时配置验证与持久化保存，API Key 采用纯写模式与 Secret 级别安全脱敏保护。",
             "零侵入架构设计：全部通过 Cordis 微内核插件机制与运行时 Overlay 动态装配，保持 upstream vendor/deepseek-harness 100% 原生纯净。"

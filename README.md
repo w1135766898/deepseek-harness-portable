@@ -36,7 +36,7 @@ Upstream [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) is 
    - User data is completely isolated in `%USERPROFILE%\.dsh` (`$DSH_HOME`), making the entire directory portable and USB-drive friendly.
    - Designed with Windows 11 Mica material, custom title bar, sidebar logo desktop menu integration, system theme sync, and smooth startup splash.
 3. **Multimodal Vision Bridge (`@dsh-portable/vision-bridge`)**:
-   - Equips text-only models with multimodal visual inspection capabilities by connecting to external OpenAI-compatible vision models (GPT-4o, Qwen-VL, GLM-4V, local Ollama, etc.).
+   - Equips text-only models with multimodal visual inspection capabilities by connecting to external OpenAI-compatible endpoints with high cost-performance vision models (Gemini 3.7 Flash, Mimo V2.5, etc.).
    - Global `view_image` tool registered directly into the official `Settings → Plugins` slot with live provider presets, connection validation, and write-only API key security protection.
 4. **Seamless In-App Atomic Updates**:
    - Background staging download, SHA-256 integrity verification, and pre-extraction while the application remains fully usable.

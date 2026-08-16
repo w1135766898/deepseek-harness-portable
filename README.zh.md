@@ -36,7 +36,7 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
    - 用户数据严格隔离于 `%USERPROFILE%\.dsh`（`$DSH_HOME`），支持便携目录整体移动或放入 U 盘随身携带。
    - 深度适配 Windows 11 Mica 质感、原生标题栏、侧边栏 Logo 融合菜单、系统深浅色同步与分阶段启动过渡。
 3. **视觉辅助多模态外挂（`@dsh-portable/vision-bridge`）**：
-   - 为纯文本大模型（如 DeepSeek-V3 / R1）接入外部 OpenAI 兼容的视觉大模型（GPT-4o、Qwen-VL、GLM-4V、本地 Ollama 等），赋予模型看图、UI分析与图表识别能力。
+   - 为纯文本大模型（如 DeepSeek-V3 / R1）接入外部 OpenAI 兼容端点与高性价比多模态模型（如 Gemini 3.7 Flash、Mimo V2.5 等），赋予模型看图、UI分析与图表识别能力。
    - 全局 `view_image` 工具无缝集成至官方【设置 → 插件】槽位，支持服务商预设一键切换、即时测试与 API Key 纯写脱敏保护。
 4. **无感极速原子化更新**：
    - 引入运行时后台预解压（Staging）机制，在软件运行期间透明完成下载、SHA-256 完整性校验与解压布局检查。
