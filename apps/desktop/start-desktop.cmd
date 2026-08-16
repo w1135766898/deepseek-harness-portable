@@ -8,11 +8,11 @@ if exist "%~dp0.update-transaction.json" (
     if errorlevel 1 (
         findstr /R /C:"phase.*rolled-back" "%~dp0.update-transaction.json" >nul 2>&1
         if errorlevel 1 (
-            echo [DeepSeek Harness] 正在等待版本升级事务完成并检查回滚状态，请稍候...
+            echo [DeepSeek Harness] Waiting for the update transaction to finish...
             powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0update.ps1" -RecoverOnly
             if errorlevel 1 (
-                echo [DeepSeek Harness] 无法安全恢复未完成的升级。为避免损坏安装，本次启动已取消。
-                echo 请运行“在线更新.bat”重试，或保留窗口中的错误信息以便诊断。
+                echo [DeepSeek Harness] Could not recover the unfinished update; startup is cancelled.
+                echo Run the online updater and retry, or keep this window open for diagnostics.
                 pause
                 exit /b 1
             )
