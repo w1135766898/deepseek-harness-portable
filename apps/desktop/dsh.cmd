@@ -7,9 +7,9 @@ if /I "%~1"=="update" (
     goto :EOF
 )
 if exist "%APP_ROOT%.update-transaction.json" (
-    findstr /C:"\"phase\": \"committed\"" "%APP_ROOT%.update-transaction.json" >nul 2>&1
+    findstr /R /C:"phase.*committed" "%APP_ROOT%.update-transaction.json" >nul 2>&1
     if errorlevel 1 (
-        findstr /C:"\"phase\": \"rolled-back\"" "%APP_ROOT%.update-transaction.json" >nul 2>&1
+        findstr /R /C:"phase.*rolled-back" "%APP_ROOT%.update-transaction.json" >nul 2>&1
         if errorlevel 1 (
             powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%APP_ROOT%update.ps1" -RecoverOnly
             if errorlevel 1 exit /b 1

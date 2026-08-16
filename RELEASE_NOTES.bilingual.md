@@ -1,18 +1,21 @@
-# DeepSeek Harness for Win v1.2.6
+# DeepSeek Harness for Win v1.2.7
 
-Windows x64 便携版 · 2026-08-16
+Windows x64 便携版 · 2026-08-17
 
-这是本 Windows 分发版的 v1.2.6 版本，全面加固了 Windows 平台上的更新替换与安装包稳健性，修复了更新过程中可能产生的目录嵌套与输出流泄露，并增强了进程树退出清理与事务状态机校验守护。
+这是本 Windows 分发版的 v1.2.7 版本，新增内置插件市场流程，修复基于已验证暂存内容的更新启动边界问题，并让 Windows 打包更快、更可复现。
 
-## 问题修复与安装更新加固
+## 新功能与体验优化
 
-- **更新与安装事务加固**：重构目录原子替换逻辑，杜绝 Windows NTFS 句柄未释放时导致的 `runtime` 目录嵌套问题，清理 PowerShell 输出流泄露，并引入更新事务日志状态校验守护。
-- **Setup 安装包稳健性优化**：增强解压前的残留子进程终止与旧目录清理机制，杜绝安装时出现 tar 解压权限冲突（`tar exit code 1`）问题。
-- **WSL 终端子进程退出清理**：进一步强化终端检查与进程树生命周期联动，确保桌面会话退出时彻底清理资源。
+- **内置插件市场**：每个 Web profile 首次使用时预装固定版本的 `dsh-plugin-marketplace`。用户可以关闭或卸载它，选择会在重启和升级后保持。
+- **市场工具自包含**：便携版通过 Electron 内置 Node.js 运行时提供 DSH 插件 CLI 和 pnpm，市场操作无需系统 Node.js 环境。
+- **已验证更新恢复**：启动器和更新器可从已验证的暂存目录修复发行版自有文件，同时保留事务与回滚安全性。
+- **跨盘符 Setup 安装**：安装器将 staging 保持在用户选择的应用目录下，即使安装到 D: 或 E:，runtime 激活也始终使用同卷重命名。
+- **启动器事务检测**：启动脚本兼容 PowerShell 5.1 JSON 的空格格式，正确识别 committed/rolled-back 状态，避免每次启动不必要的恢复延迟。
+- **内容寻址打包缓存**：对构建、暂存和 Electron 产物层生成指纹并安全复用，支持显式 `--no-cache`，并校验发布归档布局。
 
 ## 组件版本
 
-- 分发：1.2.6
+- 分发：1.2.7
 - 桌面外壳：0.1.0-shell.2
 - 运行时内核：0.1.0-rc.5
 
@@ -20,19 +23,22 @@ Windows x64 便携版 · 2026-08-16
 
 ## English Release Notes
 
-Windows x64 portable release · 2026-08-16
+Windows x64 portable release · 2026-08-17
 
-This is the v1.2.6 release of this Windows distribution, hardening the update and installation workflows on Windows, resolving runtime directory replacement edge-cases and PowerShell pipeline leaks, and enhancing process-tree lifecycle management.
+This is the v1.2.7 release of this Windows distribution. It adds a bundled plugin marketplace workflow, repairs update bootstrap edge-cases from verified staging, and makes Windows packaging faster and more reproducible.
 
-### Bug Fixes & Hardening
+### New Features & Improvements
 
-- **Updater & Installer Hardening**: Re-engineered directory atomic replacement to prevent nested runtime paths when NTFS handles are pending release, eliminated PowerShell output pipeline leaks, and added transaction journal state validation.
-- **Setup Installer Resilience**: Enhanced pre-extraction child process termination and directory cleanup in Inno Setup to eliminate archive extraction permission errors (`tar exit code 1`).
-- **WSL Terminal Subprocess Cleanup**: Tightened terminal inspection and process tree lifecycle across Windows desktop sessions.
+- **Bundled plugin marketplace**: each Web profile receives the pinned `dsh-plugin-marketplace` package once. Users can disable or remove it, and that choice persists across restarts and upgrades.
+- **Self-contained marketplace tooling**: the portable release includes the DSH plugin CLI and pnpm behind the embedded Electron Node.js runtime, so marketplace operations do not require a system Node.js installation.
+- **Verified update recovery**: startup and updater flows can repair release-owned payload files from verified staging while preserving transaction and rollback safety.
+- **Cross-volume Setup installs**: installer staging now stays under the selected application directory, so runtime activation remains a same-volume rename even when installing to D: or E:.
+- **Launcher transaction detection**: startup wrappers tolerate PowerShell 5.1 JSON whitespace when checking committed or rolled-back transactions, avoiding unnecessary recovery delays.
+- **Content-addressed packaging cache**: successful build, staging, and Electron layers are fingerprinted and safely reused, with explicit `--no-cache` support and release archive layout checks.
 
 ### Component Versions
 
-- Distribution: 1.2.6
+- Distribution: 1.2.7
 - Desktop Shell: 0.1.0-shell.2
 - Runtime Kernel: 0.1.0-rc.5
 
@@ -40,11 +46,11 @@ This is the v1.2.6 release of this Windows distribution, hardening the update an
 
 ## 校验和与安全 / Checksums and security
 
-每个最终发布构件均经 SHA-256 校验和验证：
+最终便携 ZIP 和 Setup 安装包的 SHA-256 值会记录在 SHA256SUMS.txt，并作为 GitHub Release 附件发布。
 
-Every final release artifact is verified with a SHA-256 checksum:
+The final portable ZIP and Setup installer SHA-256 values are recorded in SHA256SUMS.txt and attached to the GitHub Release.
 
 ```
-8CD036754069C9451895B65F2F589D78EC2B593065A31B64CB30D238EFD5BE8A *DeepSeek-Harness-1.2.6-win32-x64.zip
-075F5901ABDDE684FEC9C8488A40A51A571D38ACF7EFDE616F92E097F190EF21 *DeepSeek-Harness-Setup-1.2.6-win32-x64.exe
+87615DCE61AE272F534D56160E4EEBFA5CE32BD62ECCB423D33E4D88DD6A7AC3 *DeepSeek-Harness-1.2.7-win32-x64.zip
+027FFBCB3B54F2DDFE0FA060A0019394239F48399C5B2A0DD808C474F344EAAC *DeepSeek-Harness-Setup-1.2.7-win32-x64.exe
 ```

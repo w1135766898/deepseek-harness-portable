@@ -66,8 +66,8 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
 
 | 项目 | 版本 |
 | --- | --- |
-| 发布 | DeepSeek Harness for Win **v1.2.6**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.2.6)) |
-| 分发版本 | 1.2.6 |
+| 发布 | DeepSeek Harness for Win **v1.2.7**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.2.7)) |
+| 分发版本 | 1.2.7 |
 | 桌面外壳 | 0.1.0-shell.2 |
 | 内核 | 0.1.0-rc.5 |
 

@@ -247,7 +247,7 @@ async function verifyReleaseTests(): Promise<void> {
   const syntaxChecks = runBounded(DESKTOP_SYNTAX_FILES, 4, file => (
     run(process.execPath, ['--check', join('src', file)], { cwd: desktopDir })
   ))
-  const marketplaceTests = run('pnpm', [
+  const marketplaceTests = run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', [
     'exec',
     'tsx',
     '--test',

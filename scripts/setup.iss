@@ -174,13 +174,17 @@ begin
   begin
     ZipPath := ExpandConstant('{tmp}\{#MyZipName}');
     AppDir := ExpandConstant('{app}');
-    StageDir := ExpandConstant('{tmp}\DeepSeekHarnessSetupStage-{#MyAppVersion}');
+    // Keep the staging tree on the target volume. The runtime activation below
+    // uses RenameFile, which is an atomic same-volume move and cannot cross
+    // from the system TEMP drive to a user-selected D: or E: installation.
+    StageDir := AddBackslash(AppDir) + '.setup-stage-{#MyAppVersion}';
     DelTree(StageDir, True, True, True);
     if not ForceDirectories(StageDir) then
       RaiseException('Unable to create the setup staging directory.');
 
-    // Extract and validate the complete release away from app root. A corrupt or
-    // incomplete archive therefore cannot partially overwrite a usable install.
+    // Extract and validate the complete release in a separate directory on the
+    // target volume. A corrupt or incomplete archive therefore cannot partially
+    // overwrite a usable install, while runtime activation remains same-volume.
     TarExe := ExpandConstant('{sys}\tar.exe');
     if not FileExists(TarExe) then
       TarExe := ExpandConstant('{sysnative}\tar.exe');

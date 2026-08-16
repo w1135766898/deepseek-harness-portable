@@ -39,8 +39,8 @@
 
 ## 发布身份
 
-- 发布：DeepSeek Harness for Win v1.2.6
-- 分发：1.2.6
+- 发布：DeepSeek Harness for Win v1.2.7
+- 分发：1.2.7
 - 外壳：0.1.0-shell.2
 - 内核：读取打包后的 @deepseek-ai/dsh-web-app manifest
 

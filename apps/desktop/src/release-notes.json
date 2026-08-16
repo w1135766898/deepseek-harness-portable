@@ -1,27 +1,55 @@
 {
-  "version": "1.2.6",
-  "name": "DeepSeek Harness for Win v1.2.6",
-  "publishedAt": "2026-08-16",
+  "version": "1.2.7",
+  "name": "DeepSeek Harness for Win v1.2.7",
+  "publishedAt": "2026-08-17",
   "sections": [
     {
-      "key": "fixes",
-      "titleEn": "Bug Fixes & Hardening",
-      "titleZh": "问题修复与安装更新加固",
+      "key": "features",
+      "titleEn": "New Features & Improvements",
+      "titleZh": "新功能与体验优化",
       "itemsEn": [
-        "Updater & installer hardening: resolved directory replacement edge-cases to prevent nested runtime directories, eliminated PowerShell output pipeline leaks, and added transaction journal state validation.",
-        "Setup installer resilience: enhanced pre-extraction cleanup and child process termination in Inno Setup to eliminate archive extraction permission errors.",
-        "WSL terminal subprocess cleanup: tightened terminal inspection and process tree lifecycle across Windows desktop sessions."
+        "Bundled plugin marketplace: each Web profile receives the pinned dsh-plugin-marketplace package once; users can disable or remove it and the choice persists across restarts and upgrades.",
+        "Self-contained marketplace tooling: the portable release includes the DSH plugin CLI and pnpm behind the embedded Electron Node.js runtime, without requiring a system Node.js installation.",
+        "Verified update recovery: startup and updater flows can repair release-owned payload files from verified staging while preserving transaction and rollback safety.",
+        "Cross-volume Setup installs: installer staging now stays under the selected application directory, so runtime activation remains a same-volume rename even when installing to D: or E:.",
+        "Launcher transaction detection: startup wrappers tolerate PowerShell 5.1 JSON whitespace when checking committed or rolled-back transactions, avoiding unnecessary recovery delays.",
+        "Content-addressed packaging cache: successful build, staging, and Electron layers are fingerprinted and safely reused, with explicit --no-cache support and release archive layout checks."
       ],
       "itemsZh": [
-        "更新与安装事务加固：重构目录原子替换逻辑，杜绝 Windows NTFS 句柄未释放时导致的 runtime 目录嵌套，清理 PowerShell 输出流泄露，并引入更新事务日志状态校验守护。",
-        "Setup 安装包稳健性优化：增强解压前的残留子进程终止与旧目录清理机制，杜绝安装时出现 tar 解压权限冲突问题。",
-        "WSL 终端子进程退出清理：进一步强化终端检查与进程树生命周期联动，确保会话退出时彻底清理资源。"
+        "内置插件市场：每个 Web profile 首次使用时预装固定版本的 dsh-plugin-marketplace；用户可以关闭或卸载它，选择会在重启和升级后保持。",
+        "市场工具自包含：便携版通过 Electron 内置 Node.js 运行时提供 DSH 插件 CLI 和 pnpm，市场操作无需系统 Node.js 环境。",
+        "已验证更新恢复：启动器和更新器可从已验证的暂存目录修复发行版自有文件，同时保留事务与回滚安全性。",
+        "跨盘符 Setup 安装：安装器将 staging 保持在用户选择的应用目录下，即使安装到 D: 或 E:，runtime 激活也始终使用同卷重命名。",
+        "启动器事务检测：启动脚本兼容 PowerShell 5.1 JSON 的空格格式，正确识别 committed/rolled-back 状态，避免每次启动不必要的恢复延迟。",
+        "内容寻址打包缓存：对构建、暂存和 Electron 产物层生成指纹并安全复用，支持显式 --no-cache，并校验发布归档布局。"
       ]
     }
   ],
-  "bodyZh": "## 问题修复与安装更新加固\n\n- **更新与安装事务加固**：重构目录原子替换逻辑，杜绝 Windows NTFS 句柄未释放时导致的 runtime 目录嵌套，清理 PowerShell 输出流泄露，并引入更新事务日志状态校验守护。\n- **Setup 安装包稳健性优化**：增强解压前的残留子进程终止与旧目录清理机制，杜绝安装时出现 tar 解压权限冲突问题。\n- **WSL 终端子进程退出清理**：进一步强化终端检查与进程树生命周期联动，确保会话退出时彻底清理资源。",
-  "bodyEn": "## Bug Fixes & Hardening\n\n- **Updater & installer hardening**: resolved directory replacement edge-cases to prevent nested runtime directories, eliminated PowerShell output pipeline leaks, and added transaction journal state validation.\n- **Setup installer resilience**: enhanced pre-extraction cleanup and child process termination in Inno Setup to eliminate archive extraction permission errors.\n- **WSL terminal subprocess cleanup**: tightened terminal inspection and process tree lifecycle across Windows desktop sessions.",
+  "bodyZh": "## 新功能与体验优化\n\n- **内置插件市场**：每个 Web profile 首次使用时预装固定版本的 dsh-plugin-marketplace；用户可以关闭或卸载它，选择会在重启和升级后保持。\n- **市场工具自包含**：便携版通过 Electron 内置 Node.js 运行时提供 DSH 插件 CLI 和 pnpm，市场操作无需系统 Node.js 环境。\n- **已验证更新恢复**：启动器和更新器可从已验证的暂存目录修复发行版自有文件，同时保留事务与回滚安全性。\n- **跨盘符 Setup 安装**：安装器将 staging 保持在用户选择的应用目录下，即使安装到 D: 或 E:，runtime 激活也始终使用同卷重命名。\n- **启动器事务检测**：启动脚本兼容 PowerShell 5.1 JSON 的空格格式，正确识别 committed/rolled-back 状态，避免每次启动不必要的恢复延迟。\n- **内容寻址打包缓存**：对构建、暂存和 Electron 产物层生成指纹并安全复用，支持显式 --no-cache，并校验发布归档布局。",
+  "bodyEn": "## New Features & Improvements\n\n- **Bundled plugin marketplace**: each Web profile receives the pinned dsh-plugin-marketplace package once; users can disable or remove it and the choice persists across restarts and upgrades.\n- **Self-contained marketplace tooling**: the portable release includes the DSH plugin CLI and pnpm behind the embedded Electron Node.js runtime, without requiring a system Node.js installation.\n- **Verified update recovery**: startup and updater flows can repair release-owned payload files from verified staging while preserving transaction and rollback safety.\n- **Cross-volume Setup installs**: installer staging now stays under the selected application directory, so runtime activation remains a same-volume rename even when installing to D: or E:.\n- **Launcher transaction detection**: startup wrappers tolerate PowerShell 5.1 JSON whitespace when checking committed or rolled-back transactions, avoiding unnecessary recovery delays.\n- **Content-addressed packaging cache**: successful build, staging, and Electron layers are fingerprinted and safely reused, with explicit --no-cache support and release archive layout checks.",
   "history": [
+    {
+      "version": "1.2.6",
+      "name": "DeepSeek Harness for Win v1.2.6",
+      "publishedAt": "2026-08-16",
+      "sections": [
+        {
+          "key": "fixes",
+          "titleEn": "Bug Fixes & Hardening",
+          "titleZh": "问题修复与安装更新加固",
+          "itemsEn": [
+            "Updater & installer hardening: resolved directory replacement edge-cases to prevent nested runtime directories, eliminated PowerShell output pipeline leaks, and added transaction journal state validation.",
+            "Setup installer resilience: enhanced pre-extraction cleanup and child process termination in Inno Setup to eliminate archive extraction permission errors.",
+            "WSL terminal subprocess cleanup: tightened terminal inspection and process tree lifecycle across Windows desktop sessions."
+          ],
+          "itemsZh": [
+            "更新与安装事务加固：重构目录原子替换逻辑，杜绝 Windows NTFS 句柄未释放时导致的 runtime 目录嵌套，清理 PowerShell 输出流泄露，并引入更新事务日志状态校验守护。",
+            "Setup 安装包稳健性优化：增强解压前的残留子进程终止与旧目录清理机制，杜绝安装时出现 tar 解压权限冲突问题。",
+            "WSL 终端子进程退出清理：进一步强化终端检查与进程树生命周期联动，确保会话退出时彻底清理资源。"
+          ]
+        }
+      ]
+    },
     {
       "version": "1.2.5",
       "name": "DeepSeek Harness for Win v1.2.5",
