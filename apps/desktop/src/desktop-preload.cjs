@@ -459,14 +459,32 @@ if (!isSplashDocument) {
     return '<section class="dsh-disconnect-banner" role="alert"><div class="dsh-disconnect-copy"><strong>' + escapeHtml(desktopText('health.disconnected')) + '</strong><span>' + escapeHtml(status.message || desktopText('health.unavailable')) + '</span></div><button class="dsh-button" data-action="health-reconnect">' + escapeHtml(desktopText('health.reconnect')) + '</button><button class="dsh-button primary" data-action="health-restart">' + escapeHtml(desktopText('health.restart')) + '</button></section>'
   }
 
+  const MENU_ICONS = {
+    workspace: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5L8 2.5l5.5 4v6.5a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-6.5z"/><path d="M6 14v-4.5h4V14"/></svg>',
+    recentWorkspaces: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h2.8l1.4 1.5H12.5A1.5 1.5 0 0 1 14 6v5.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5v-7z"/><polyline points="7.5 7 9.5 8.5 7.5 10"/></svg>',
+    refresh: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 1 1 1.6 3.9L2.5 13.5"/><polyline points="2.5 9.5 2.5 13.5 6.5 13.5"/></svg>',
+    restart: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9L13.5 2.5"/><polyline points="13.5 6.5 13.5 2.5 9.5 2.5"/></svg>',
+    browser: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4"/><polyline points="9.5 2.5 13.5 2.5 13.5 6.5"/><line x1="6.5" y1="9.5" x2="13.5" y2="2.5"/></svg>',
+    advanced: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="2.5" y1="4" x2="13.5" y2="4"/><circle cx="5.5" cy="4" r="1.75" fill="currentColor"/><line x1="2.5" y1="8" x2="13.5" y2="8"/><circle cx="10.5" cy="8" r="1.75" fill="currentColor"/><line x1="2.5" y1="12" x2="13.5" y2="12"/><circle cx="6.5" cy="12" r="1.75" fill="currentColor"/></svg>',
+    terminal: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="2"/><polyline points="5 6 7.5 8 5 10"/><line x1="9" y1="10.5" x2="11.5" y2="10.5"/></svg>',
+    log: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2H4a1.5 1.5 0 0 0-1.5 1.5v9A1.5 1.5 0 0 0 4 14h8a1.5 1.5 0 0 0 1.5-1.5V6L9 2z"/><polyline points="9 2 9 6 13 6"/><line x1="5.5" y1="8.5" x2="10.5" y2="8.5"/><line x1="5.5" y1="11" x2="9" y2="11"/></svg>',
+    resetCache: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8A5.5 5.5 0 0 1 3.5 11.5M2.5 8A5.5 5.5 0 0 1 12.5 4.5"/><polyline points="2.5 12 3.5 11.5 4 13.5"/><polyline points="13.5 4 12.5 4.5 12 2.5"/><line x1="6" y1="6" x2="10" y2="10"/><line x1="10" y1="6" x2="6" y2="10"/></svg>',
+    about: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><line x1="8" y1="7" x2="8" y2="11.5"/><circle cx="8" cy="4.75" r="0.75" fill="currentColor"/></svg>',
+    expandChevron: '<svg class="dsh-menu-expand" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 4 10 8 6 12"/></svg>',
+    check: '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3.5 8.5 6.5 11.5 12.5 4.5"/></svg>',
+    folder: '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h2.8l1.4 1.5H12.5A1.5 1.5 0 0 1 14 6v5.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5v-7z"/></svg>',
+    trash: '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4.5h10M6 4.5V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5M4.5 4.5v8a1.5 1.5 0 0 0 1.5 1.5h4a1.5 1.5 0 0 0 1.5-1.5v-8"/></svg>',
+    dot: '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="2.5" fill="currentColor"/></svg>',
+  }
+
   function renderRecentWorkspaceItems() {
     const entries = Array.isArray(state.recentWorkspaces) ? state.recentWorkspaces : []
     const items = entries.length === 0
-      ? '<button class="dsh-menu-item" type="button" disabled><span>·</span><strong>' + escapeHtml(desktopText('menu.noRecentWorkspaces')) + '</strong></button>'
+      ? '<button class="dsh-menu-item" type="button" disabled><span>' + MENU_ICONS.dot + '</span><strong>' + escapeHtml(desktopText('menu.noRecentWorkspaces')) + '</strong></button>'
       : entries.map(path => (
-        '<button class="dsh-menu-item" type="button" data-action="desktop-recent-workspace" data-path="' + escapeHtml(path) + '" role="menuitem"><span>' + (path === state.currentWorkspace ? '✓' : '↪') + '</span><strong>' + escapeHtml(path) + '</strong></button>'
+        '<button class="dsh-menu-item" type="button" data-action="desktop-recent-workspace" data-path="' + escapeHtml(path) + '" role="menuitem"><span>' + (path === state.currentWorkspace ? MENU_ICONS.check : MENU_ICONS.folder) + '</span><strong>' + escapeHtml(path) + '</strong></button>'
       )).join('')
-    return items + '<button class="dsh-menu-item" type="button" data-action="desktop-clear-recent-workspaces" role="menuitem"' + (entries.length === 0 ? ' disabled' : '') + '><span>×</span><strong>' + escapeHtml(desktopText('menu.clearRecentWorkspaces')) + '</strong></button>'
+    return items + '<button class="dsh-menu-item" type="button" data-action="desktop-clear-recent-workspaces" role="menuitem"' + (entries.length === 0 ? ' disabled' : '') + '><span>' + MENU_ICONS.trash + '</span><strong>' + escapeHtml(desktopText('menu.clearRecentWorkspaces')) + '</strong></button>'
   }
 
   function isNativeBrandButton(button) {
@@ -578,36 +596,39 @@ if (!isSplashDocument) {
     const isRecentOpen = state.menuSubmenu === 'workspaces'
     const isMaintenanceOpen = state.menuSubmenu === 'maintenance'
 
-    const recentSubmenu = isRecentOpen
-      ? '<div class="dsh-submenu-container">' + renderRecentWorkspaceItems() + '</div>'
-      : ''
+    const recentSubmenu = '<div class="dsh-submenu-wrapper dsh-recent-submenu' + (isRecentOpen ? ' is-expanded' : '') + '" aria-hidden="' + (isRecentOpen ? 'false' : 'true') + '">' +
+      '<div class="dsh-submenu-container">' + renderRecentWorkspaceItems() + '</div>' +
+      '</div>'
 
-    const maintenanceSubmenu = isMaintenanceOpen
-      ? '<div class="dsh-submenu-container">' +
-          '<button class="dsh-menu-item" data-action="desktop-wsl-guide" role="menuitem"><span>🐧</span><strong>' + escapeHtml(wslLabel) + '</strong></button>' +
-          '<button class="dsh-menu-item" data-action="desktop-export-diagnostics" role="menuitem"><span>⇩</span><strong>' + escapeHtml(desktopText('menu.copyDiagnostics')) + '</strong></button>' +
-          '<button class="dsh-menu-item" data-action="desktop-clear-storage" role="menuitem"><span>⌫</span><strong>' + escapeHtml(desktopText('menu.clearWebStorage')) + '</strong></button>' +
-        '</div>'
-      : ''
+    const maintenanceSubmenu = '<div class="dsh-submenu-wrapper dsh-maintenance-submenu' + (isMaintenanceOpen ? ' is-expanded' : '') + '" aria-hidden="' + (isMaintenanceOpen ? 'false' : 'true') + '">' +
+      '<div class="dsh-submenu-container">' +
+        '<button class="dsh-menu-item" data-action="desktop-wsl-guide" role="menuitem"><span>' + MENU_ICONS.terminal + '</span><strong>' + escapeHtml(wslLabel) + '</strong></button>' +
+        '<button class="dsh-menu-item" data-action="desktop-export-diagnostics" role="menuitem"><span>' + MENU_ICONS.log + '</span><strong>' + escapeHtml(desktopText('menu.copyDiagnostics')) + '</strong></button>' +
+        '<button class="dsh-menu-item" data-action="desktop-clear-storage" role="menuitem"><span>' + MENU_ICONS.resetCache + '</span><strong>' + escapeHtml(desktopText('menu.clearWebStorage')) + '</strong></button>' +
+      '</div>' +
+      '</div>'
 
     return '<div class="dsh-menu-popover" role="menu" aria-label="' + escapeHtml(desktopText('menu.desktopMenu')) + '"' + positionMarkup + '>' +
-      '<button class="dsh-menu-item" data-action="desktop-choose-workspace" role="menuitem"><span>⌂</span><strong>' + escapeHtml(desktopText('menu.chooseWorkspace')) + '</strong></button>' +
-      '<button class="dsh-menu-item dsh-menu-item-expandable' + (isRecentOpen ? ' is-expanded' : '') + '" data-action="desktop-toggle-recent" role="menuitem" aria-expanded="' + (isRecentOpen ? 'true' : 'false') + '"><span>📁</span><strong>' + escapeHtml(desktopText('menu.recentWorkspaces')) + '</strong><span class="dsh-menu-expand" aria-hidden="true">' + (isRecentOpen ? '▾' : '▸') + '</span></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-choose-workspace" role="menuitem"><span>' + MENU_ICONS.workspace + '</span><strong>' + escapeHtml(desktopText('menu.chooseWorkspace')) + '</strong></button>' +
+      '<button class="dsh-menu-item dsh-menu-item-expandable' + (isRecentOpen ? ' is-expanded' : '') + '" data-action="desktop-toggle-recent" role="menuitem" aria-expanded="' + (isRecentOpen ? 'true' : 'false') + '"><span>' + MENU_ICONS.recentWorkspaces + '</span><strong>' + escapeHtml(desktopText('menu.recentWorkspaces')) + '</strong>' + MENU_ICONS.expandChevron + '</button>' +
       recentSubmenu +
       '<div class="dsh-menu-separator"></div>' +
-      '<button class="dsh-menu-item" data-action="desktop-reload-ui" role="menuitem"><span>⟳</span><strong>' + escapeHtml(desktopText('menu.refreshInterface')) + '</strong><kbd>Ctrl+R</kbd></button>' +
-      '<button class="dsh-menu-item" data-action="desktop-restart" role="menuitem"><span>↺</span><strong>' + escapeHtml(desktopText('menu.restartHarness')) + '</strong><kbd>Ctrl+Shift+R</kbd></button>' +
-      '<button class="dsh-menu-item" data-action="desktop-open-browser" role="menuitem"><span>↗</span><strong>' + escapeHtml(desktopText('menu.openBrowser')) + '</strong></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-reload-ui" role="menuitem"><span>' + MENU_ICONS.refresh + '</span><strong>' + escapeHtml(desktopText('menu.refreshInterface')) + '</strong><kbd>Ctrl+R</kbd></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-restart" role="menuitem"><span>' + MENU_ICONS.restart + '</span><strong>' + escapeHtml(desktopText('menu.restartHarness')) + '</strong><kbd>Ctrl+Shift+R</kbd></button>' +
+      '<button class="dsh-menu-item" data-action="desktop-open-browser" role="menuitem"><span>' + MENU_ICONS.browser + '</span><strong>' + escapeHtml(desktopText('menu.openBrowser')) + '</strong></button>' +
       '<div class="dsh-menu-separator"></div>' +
-      '<button class="dsh-menu-item dsh-menu-item-expandable' + (isMaintenanceOpen ? ' is-expanded' : '') + '" data-action="desktop-toggle-maintenance" role="menuitem" aria-expanded="' + (isMaintenanceOpen ? 'true' : 'false') + '"><span>🛠</span><strong>' + escapeHtml(desktopText('menu.maintenance')) + '</strong>' + (!state.wslState?.available && state.wslState !== undefined ? '<span class="dsh-menu-warn">⚠️</span>' : '') + '<span class="dsh-menu-expand" aria-hidden="true">' + (isMaintenanceOpen ? '▾' : '▸') + '</span></button>' +
+      '<button class="dsh-menu-item dsh-menu-item-expandable' + (isMaintenanceOpen ? ' is-expanded' : '') + '" data-action="desktop-toggle-maintenance" role="menuitem" aria-expanded="' + (isMaintenanceOpen ? 'true' : 'false') + '"><span>' + MENU_ICONS.advanced + '</span><strong>' + escapeHtml(desktopText('menu.maintenance')) + '</strong>' + (!state.wslState?.available && state.wslState !== undefined ? '<span class="dsh-menu-warn">⚠️</span>' : '') + MENU_ICONS.expandChevron + '</button>' +
       maintenanceSubmenu +
       '<div class="dsh-menu-separator"></div>' +
-      '<button class="dsh-menu-item" data-action="desktop-about-and-updates" role="menuitem"><span>ⓘ</span><strong>' + escapeHtml(desktopText('menu.aboutAndUpdates')) + '</strong>' + updateDot + '</button>' +
+      '<button class="dsh-menu-item" data-action="desktop-about-and-updates" role="menuitem"><span>' + MENU_ICONS.about + '</span><strong>' + escapeHtml(desktopText('menu.aboutAndUpdates')) + '</strong>' + updateDot + '</button>' +
       '</div>'
   }
 
   function focusableMenuItems() {
-    return Array.from(shadow.querySelectorAll('.dsh-menu-item:not(:disabled)'))
+    return Array.from(shadow.querySelectorAll('.dsh-menu-item:not(:disabled)')).filter(el => {
+      const wrapper = el.closest('.dsh-submenu-wrapper')
+      return !wrapper || wrapper.classList.contains('is-expanded')
+    })
   }
 
   function syncMenuFocus() {
@@ -637,13 +658,69 @@ if (!isSplashDocument) {
     if (item !== undefined) item.click()
   }
 
-  function render() {
-    if (!host?.shadowRoot || chromeRefs === undefined) return
-    const nextMenuMarkup = renderMenu()
-    if (nextMenuMarkup !== menuMarkup) {
+  function syncMenu() {
+    if (!state.menuOpen) {
+      if (chromeRefs.menuHost.innerHTML !== '') {
+        chromeRefs.menuHost.innerHTML = ''
+        menuMarkup = ''
+      }
+      return
+    }
+
+    const popover = chromeRefs.menuHost.querySelector('.dsh-menu-popover')
+    if (!popover) {
+      const nextMenuMarkup = renderMenu()
       chromeRefs.menuHost.innerHTML = nextMenuMarkup
       menuMarkup = nextMenuMarkup
+      return
     }
+
+    const position = state.menuPosition || defaultMenuPosition()
+    popover.style.setProperty('--dsh-menu-left', position.left + 'px')
+    popover.style.setProperty('--dsh-menu-top', position.top + 'px')
+
+    const isRecentOpen = state.menuSubmenu === 'workspaces'
+    const isMaintenanceOpen = state.menuSubmenu === 'maintenance'
+
+    const recentBtn = popover.querySelector('[data-action="desktop-toggle-recent"]')
+    const recentWrapper = popover.querySelector('.dsh-recent-submenu')
+    if (recentBtn && recentWrapper) {
+      recentBtn.classList.toggle('is-expanded', isRecentOpen)
+      recentBtn.setAttribute('aria-expanded', isRecentOpen ? 'true' : 'false')
+      recentWrapper.classList.toggle('is-expanded', isRecentOpen)
+      recentWrapper.setAttribute('aria-hidden', isRecentOpen ? 'false' : 'true')
+      const recentContainer = recentWrapper.querySelector('.dsh-submenu-container')
+      if (recentContainer) {
+        const recentHtml = renderRecentWorkspaceItems()
+        if (recentContainer.innerHTML !== recentHtml) {
+          recentContainer.innerHTML = recentHtml
+        }
+      }
+    }
+
+    const maintenanceBtn = popover.querySelector('[data-action="desktop-toggle-maintenance"]')
+    const maintenanceWrapper = popover.querySelector('.dsh-maintenance-submenu')
+    if (maintenanceBtn && maintenanceWrapper) {
+      maintenanceBtn.classList.toggle('is-expanded', isMaintenanceOpen)
+      maintenanceBtn.setAttribute('aria-expanded', isMaintenanceOpen ? 'true' : 'false')
+      maintenanceWrapper.classList.toggle('is-expanded', isMaintenanceOpen)
+      maintenanceWrapper.setAttribute('aria-hidden', isMaintenanceOpen ? 'false' : 'true')
+    }
+
+    const wslItem = popover.querySelector('[data-action="desktop-wsl-guide"] strong')
+    if (wslItem) {
+      const wslLabel = state.wslState?.available
+        ? desktopText('wsl.menuStatusReady', { distros: state.wslState?.distros?.[0] || 'Linux' })
+        : desktopText('wsl.menuStatusMissing')
+      if (wslItem.textContent !== wslLabel) {
+        wslItem.textContent = wslLabel
+      }
+    }
+  }
+
+  function render() {
+    if (!host?.shadowRoot || chromeRefs === undefined) return
+    syncMenu()
     const nextNoticeMarkup = renderNotice()
     if (nextNoticeMarkup !== noticeMarkup) {
       chromeRefs.noticeHost.innerHTML = nextNoticeMarkup
@@ -954,12 +1031,18 @@ if (!isSplashDocument) {
     .dsh-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 7px 9px; border: 0; border-radius: 7px; color: #263a5a; background: transparent; cursor: pointer; text-align: left; font: 12px/1.2 inherit; -webkit-app-region: no-drag; }
     .dsh-menu-item:hover { color: #1d5ebf; background: #eaf2ff; }
     .dsh-menu-item.is-focused { color: #1d5ebf; background: #eaf2ff; outline: 2px solid rgba(52, 127, 242, .24); outline-offset: -2px; }
-    .dsh-menu-item span { display: inline-grid; place-items: center; width: 17px; color: #5b80b8; font-size: 14px; }
+    .dsh-menu-item span { display: inline-grid; place-items: center; width: 17px; height: 17px; color: #5b80b8; font-size: 14px; flex-shrink: 0; }
+    .dsh-menu-item span svg { display: block; width: 14px; height: 14px; }
+    .dsh-menu-item:hover span, .dsh-menu-item.is-focused span { color: #1d5ebf; }
     .dsh-menu-item strong { font-weight: 600; }
     .dsh-menu-item kbd { margin-left: auto; padding: 2px 5px; border: 1px solid rgba(116, 138, 171, .22); border-radius: 4px; color: #6e8099; background: rgba(220, 230, 245, .55); font: 10px ui-monospace, SFMono-Regular, Consolas, monospace; }
     .dsh-menu-item:disabled { color: #9aa8bc; cursor: default; opacity: .78; }
-    .dsh-submenu-container { margin-left: 12px; padding-left: 6px; border-left: 2px solid rgba(116, 138, 171, .16); display: grid; gap: 2px; animation: dsh-fade-in .15s ease; }
-    .dsh-menu-expand { margin-left: auto; color: #8191a8; font-size: 11px; }
+    .dsh-submenu-wrapper { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .22s cubic-bezier(.16, 1, .3, 1), visibility 0s linear .22s; visibility: hidden; }
+    .dsh-submenu-wrapper.is-expanded { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows .22s cubic-bezier(.16, 1, .3, 1), visibility 0s; }
+    .dsh-submenu-container { min-height: 0; overflow: hidden; margin-left: 12px; padding-left: 6px; border-left: 2px solid rgba(116, 138, 171, .16); display: grid; gap: 2px; opacity: 0; transform: translateY(-4px); transition: opacity .18s cubic-bezier(.16, 1, .3, 1), transform .2s cubic-bezier(.16, 1, .3, 1); }
+    .dsh-submenu-wrapper.is-expanded .dsh-submenu-container { opacity: 1; transform: translateY(0); padding-top: 2px; padding-bottom: 2px; }
+    .dsh-menu-expand { display: inline-flex; align-items: center; justify-content: center; margin-left: auto; color: #8191a8; font-size: 11px; transition: transform .2s cubic-bezier(.16, 1, .3, 1); }
+    .dsh-menu-item-expandable.is-expanded .dsh-menu-expand { transform: rotate(90deg); }
     .dsh-menu-dot { margin-left: auto; color: #307bf0; font-size: 10px; animation: dsh-pulse 1.8s ease-in-out infinite; }
     .dsh-menu-warn { margin-left: auto; font-size: 11px; }
     .dsh-menu-heading { padding: 5px 9px 3px; color: #8191a8; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
@@ -1094,8 +1177,10 @@ if (!isSplashDocument) {
       .dsh-menu-item:hover { color: #d5e5ff; background: #253b61; }
       .dsh-menu-item.is-focused { color: #d5e5ff; background: #253b61; outline-color: rgba(93, 157, 255, .4); }
       .dsh-menu-item span { color: #9ebdf0; }
+      .dsh-menu-item:hover span, .dsh-menu-item.is-focused span { color: #72a7f9; }
       .dsh-menu-item kbd { border-color: rgba(170, 192, 228, .18); background: rgba(30, 44, 70, .6); color: #8ca3c8; }
       .dsh-submenu-container { border-left-color: rgba(170, 192, 228, .16); }
+      .dsh-menu-expand { color: #6e84a8; }
       .dsh-menu-dot { color: #5ba8ff; }
       .dsh-menu-item:disabled, .dsh-menu-heading { color: #7185a5; }
       .dsh-menu-separator { background: rgba(170, 192, 228, .16); }
