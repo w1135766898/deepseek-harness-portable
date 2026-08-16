@@ -7,7 +7,7 @@ Chinese guide: 使用说明.txt
    Launches the bundled Electron desktop shell.
 
 2. start-web.cmd
-   Uses Node.js from PATH to launch the Web surface in a browser.
+   Uses Electron's embedded Node.js to launch the Web surface; no system Node.js is required.
 
 3. dsh.cmd or update.ps1
    Checks the latest distribution, downloads a complete release, verifies SHA-256,
@@ -33,6 +33,10 @@ Chinese guide: 使用说明.txt
 7. uninstall.cmd or uninstall.ps1
    Removes the portable application, shortcuts, and PATH entry. User data is kept
    unless you explicitly confirm its removal.
+
+The marketplace is preinstalled once per Web profile and can be disabled or
+removed under Settings → Plugins → Installed; restart does not restore it.
+Marketplace plugins are third-party code, so review their source and permissions.
 
 This release is not signed by a trusted commercial CA. SmartScreen or Smart App
 Control may warn or block it. No certificate or trust-store change is performed

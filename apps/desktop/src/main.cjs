@@ -16,7 +16,7 @@ const {
   writeFileSync,
 } = require('node:fs')
 const { homedir } = require('node:os')
-const { basename, dirname, join, resolve } = require('node:path')
+const { basename, delimiter, dirname, join, resolve } = require('node:path')
 const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 const { messageForLocale, localeFromSystem, normalizePreference } = require('./desktop-locale.cjs')
 const { readLocalePreference } = require('./desktop-locale-store.cjs')
@@ -820,6 +820,11 @@ function startHarness(cwd, signal) {
     throw new Error(`The packaged Harness entry is missing: ${packagedBin}. Run the desktop build first.`)
   }
 
+  const portableRoot = dirname(dirname(process.execPath))
+  const inheritedPath = process.env.PATH || process.env.Path || ''
+  const commandPath = existsSync(join(portableRoot, 'dsh.cmd'))
+    ? [portableRoot, inheritedPath].filter(Boolean).join(delimiter)
+    : inheritedPath
   const child = spawn(process.execPath, [
     packagedBin,
     '--host',
@@ -832,6 +837,8 @@ function startHarness(cwd, signal) {
       DSH_HOME: resolveUnifiedDshHome(),
       DSH_TELEMETRY_DISABLED: '1',
       ELECTRON_RUN_AS_NODE: '1',
+      PATH: commandPath,
+      Path: commandPath,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,

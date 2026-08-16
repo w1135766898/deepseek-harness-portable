@@ -9,6 +9,15 @@ This file lists **direct** dependencies declared by the workspace and the explic
 
 The complete npm transitive closure, including the Landlock launcher workspace, is recorded with exact pinned versions in [`pnpm-lock.yaml`](pnpm-lock.yaml) — inspect it with `pnpm licenses list`. The Python closure is recorded separately in [`python/sdk/uv.lock`](python/sdk/uv.lock).
 
+## Bundled marketplace and package manager
+
+The Windows distribution additionally ships the following direct runtime components. The marketplace source is pinned by commit in `apps/desktop/package.json`; its own `LICENSE` file is retained in the packaged dependency.
+
+| Package | Source | License |
+| --- | --- | --- |
+| `dsh-plugin-marketplace` | [AwesomeHou/dsh-plugin-marketplace@c8adea1](https://github.com/AwesomeHou/dsh-plugin-marketplace/tree/c8adea1a41c7d1037aa33f44ad6a9b986399a354) | MIT |
+| `pnpm` 11.21.0 | [pnpm/pnpm](https://github.com/pnpm/pnpm) | MIT |
+
 ## Vendored source (`vendor/`)
 
 The Cordis framework and its foundation libraries are source-vendored into this repository rather than consumed from npm, and republished under the `@deepseek-ai` scope. All are MIT-licensed; each directory preserves its upstream `LICENSE` file. Exact upstream commits and local modifications are recorded in [`vendor/README.md`](vendor/README.md).

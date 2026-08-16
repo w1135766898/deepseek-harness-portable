@@ -42,6 +42,9 @@ importers:
       '@deepseek-ai/cosmokit':
         specifier: link:../../vendor/deepseek-harness/vendor/cosmokit
         version: link:../../vendor/deepseek-harness/vendor/cosmokit
+      '@deepseek-ai/dsh':
+        specifier: workspace:^
+        version: link:../../vendor/deepseek-harness/apps/cli
       '@deepseek-ai/dsh-agent':
         specifier: workspace:^
         version: link:../../vendor/deepseek-harness/packages/core/agent
@@ -588,12 +591,18 @@ importers:
       commander:
         specifier: ^15.0.0
         version: 15.0.0
+      dsh-plugin-marketplace:
+        specifier: github:AwesomeHou/dsh-plugin-marketplace#c8adea1a41c7d1037aa33f44ad6a9b986399a354
+        version: https://codeload.github.com/AwesomeHou/dsh-plugin-marketplace/tar.gz/c8adea1a41c7d1037aa33f44ad6a9b986399a354
       js-yaml:
         specifier: ^4.2.0
         version: 4.3.1
       node-addon-require-builtin:
         specifier: ^0.1.4
         version: 0.1.4
+      pnpm:
+        specifier: 11.21.0
+        version: 11.21.0
     devDependencies:
       '@electron/packager':
         specifier: 20.0.4
@@ -12475,6 +12484,10 @@ packages:
   dompurify@3.4.13:
     resolution: {integrity: sha512-2vmYIoqjze2d+kakP8S/nS5shfsl587kzwEjcGlTdiksUVgFHnFCsLYDVj/JNqJVOQZGSYBTmuycv0PodwmnMQ==}
 
+  dsh-plugin-marketplace@https://codeload.github.com/AwesomeHou/dsh-plugin-marketplace/tar.gz/c8adea1a41c7d1037aa33f44ad6a9b986399a354:
+    resolution: {gitHosted: true, integrity: sha512-95wwcwrg0tTm5L7/0luO+xYXCMmIElVp/xIF9PEZlq1edGA/rTCQoTn+BMLc1JtNeNusOuKn9LGObqbR8TOzDQ==, tarball: https://codeload.github.com/AwesomeHou/dsh-plugin-marketplace/tar.gz/c8adea1a41c7d1037aa33f44ad6a9b986399a354}
+    version: 0.2.2
+
   dts-resolver@3.0.0:
     resolution: {integrity: sha512-1T1f+z+4tl9XD+m+0HBgWoL/nm0bOIffyWaUuUSBlFg/86IWvfx+wjNaO/ybU0AJzG9/Mi5hBUgGV6zCmWEN7Q==}
     engines: {node: ^22.18.0 || >=24.0.0}
@@ -13828,6 +13841,11 @@ packages:
   plist@3.1.1:
     resolution: {integrity: sha512-ZIfcLJC+7E7FBFnDxm9MPmt7D+DidyQ26lewieO75AdhA2ayMtsJSES0iWzqJQbcVRSrTufQoy0DR94xHue0oA==}
     engines: {node: '>=10.4.0'}
+
+  pnpm@11.21.0:
+    resolution: {integrity: sha512-UhcFvOaJkk6scvWjWHEi82JonvZXHlW6gAdv1jfBETLs/62ib61Op5xIW/3b/T1aKlsFgFp36JPeceyKbMo7sQ==}
+    engines: {node: '>=22.13'}
+    hasBin: true
 
   points-on-curve@0.2.0:
     resolution: {integrity: sha512-0mYKnYYe9ZcqMCWhUjItv/oHjvgEsfKvnUTg8sAtnHr3GVy7rGkXCb6d5cSyqrWqL4k81b9CPg3urd+T7aop3A==}
@@ -17809,6 +17827,8 @@ snapshots:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
+  dsh-plugin-marketplace@https://codeload.github.com/AwesomeHou/dsh-plugin-marketplace/tar.gz/c8adea1a41c7d1037aa33f44ad6a9b986399a354: {}
+
   dts-resolver@3.0.0(oxc-resolver@11.24.2):
     optionalDependencies:
       oxc-resolver: 11.24.2
@@ -19478,6 +19498,8 @@ snapshots:
       '@xmldom/xmldom': 0.9.11
       base64-js: 1.5.1
       xmlbuilder: 15.1.1
+
+  pnpm@11.21.0: {}
 
   points-on-curve@0.2.0: {}
 

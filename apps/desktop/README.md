@@ -15,6 +15,8 @@ This workspace package builds the native Electron desktop shell for DeepSeek Har
 - Shows update availability in a compact, centered banner below the title bar; it auto-destroys after seven seconds or dismissal, supports per-version suppression, and keeps the full release history in a centered card-style Update Hub.
 - Fuses the native sidebar logo with the desktop menu: expanded left click opens the menu, while collapsed left click expands the sidebar and right click opens the menu.
 - Uses a Windows 11 Mica title-bar overlay, system theme synchronization, startup splash, and persisted multi-monitor-safe window bounds.
+- Preinstalls the pinned `dsh-plugin-marketplace` once per Web profile; users can disable or remove it without the distribution restoring it on restart.
+- Bundles the DSH plugin CLI and pnpm behind Electron's Node mode, so marketplace operations do not require a system Node.js toolchain.
 
 ## Build and test
 
@@ -47,7 +49,7 @@ The release manifest is written beside runtime and records the distribution, des
 
 ## User data and security
 
-The shell binds the Web server to loopback and sets DSH_TELEMETRY_DISABLED=1. Workspace settings and desktop release-note state are stored in Electron user data, not inside the packaged application directory.
+The shell binds the Web server to loopback and sets DSH_TELEMETRY_DISABLED=1. Workspace settings and desktop release-note state are stored in Electron user data, not inside the packaged application directory. Marketplace plugins are third-party code and should be reviewed before installation.
 
 Set the DeepSeek API key in the Web UI settings or in the environment used to launch the executable. The executable is not signed by a trusted commercial CA, so Windows SmartScreen may warn on first run.
 

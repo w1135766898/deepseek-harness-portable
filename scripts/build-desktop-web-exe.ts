@@ -790,6 +790,7 @@ class DesktopExeBuild {
         'apps/desktop/使用说明.txt',
         'apps/desktop/使用说明.en.txt',
         'apps/desktop/dsh.cmd',
+        'apps/desktop/portable-pnpm.cmd',
         'uninstall.cmd',
         'uninstall.ps1',
         'apps/desktop/update.ps1',
@@ -798,7 +799,9 @@ class DesktopExeBuild {
       for (const relPath of rootFiles) {
         const source = join(root, relPath)
         if (!existsSync(source)) continue
-        const basename = relPath.includes('/') ? relPath.slice(relPath.lastIndexOf('/') + 1) : relPath
+        const basename = relPath === 'apps/desktop/portable-pnpm.cmd'
+          ? 'pnpm.cmd'
+          : relPath.includes('/') ? relPath.slice(relPath.lastIndexOf('/') + 1) : relPath
         const dest = join(rootDir, basename)
         if (this.cli.dryRun) {
           console.log(`build-desktop-web-exe: [dry-run] cp ${source} ${dest}`)

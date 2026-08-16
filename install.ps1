@@ -148,12 +148,20 @@ function Test-PortableLayout {
     $required = @(
         $RELEASE_MANIFEST_NAME,
         'dsh.cmd',
+        'pnpm.cmd',
         'uninstall.cmd',
         'uninstall.ps1',
         'runtime\DeepSeek Harness.exe',
         'runtime\resources\app\package.json',
         'runtime\resources\app\lib\packaged-bin.js',
+        'runtime\resources\app\lib\marketplace-bootstrap.js',
         'runtime\resources\app\src\update-transaction.cjs',
+        'runtime\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js',
+        'runtime\resources\app\node_modules\dsh-plugin-marketplace\package.json',
+        'runtime\resources\app\node_modules\dsh-plugin-marketplace\cordis.patch.yml',
+        'runtime\resources\app\node_modules\dsh-plugin-marketplace\lib\index.js',
+        'runtime\resources\app\node_modules\dsh-plugin-marketplace\lib\client.js',
+        'runtime\resources\app\node_modules\pnpm\bin\pnpm.cjs',
         'runtime\resources\app\node_modules\node-pty\prebuilds\win32-x64\pty.node',
         'runtime\resources\app\node_modules\@koromix\koffi-win32-x64\win32_x64\koffi.node'
     )

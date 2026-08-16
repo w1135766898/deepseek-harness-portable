@@ -38,10 +38,13 @@ Upstream [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) is 
 3. **Multimodal Vision Bridge (`@dsh-portable/vision-bridge`)**:
    - Equips text-only models with multimodal visual inspection capabilities by connecting to external OpenAI-compatible endpoints with high cost-performance vision models (Gemini 3.7 Flash, Mimo V2.5, etc.).
    - Global `view_image` tool registered directly into the official `Settings → Plugins` slot with live provider presets, connection validation, and write-only API key security protection.
-4. **Seamless In-App Atomic Updates**:
+4. **Preinstalled Plugin Marketplace (`dsh-plugin-marketplace`)**:
+   - Adds searchable **Plugin Marketplace** and **Installed** tabs under `Settings → Plugins`, backed by the live GitHub `dsh-plugin` topic.
+   - Ships with agent tools for searching, installing, inspecting, and updating plugins. It is preinstalled once per Web profile and remains removed or disabled when the user chooses so.
+5. **Seamless In-App Atomic Updates**:
    - Background staging download, SHA-256 integrity verification, and pre-extraction while the application remains fully usable.
    - Near-instantaneous (1–2s) atomic swap on restart with full transactional rollback safety.
-5. **Zero-Modification Architecture**:
+6. **Zero-Modification Architecture**:
    - Cleanly wired through Cordis microkernel plugin slots and profile overlays without modifying upstream `vendor/deepseek-harness` code.
 
 ## Quick start
@@ -57,6 +60,7 @@ Upstream [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) is 
 - Workspace selection, browser mode, tray/app menu, update history, About, and diagnostics export.
 - In-app update checks with download progress, SHA-256 verification, restart confirmation, and rollback.
 - Native sidebar logo with an integrated desktop menu, Windows 11 Mica/title-bar styling, system theme sync, a staged startup splash, and persisted multi-monitor-safe window bounds.
+- Preinstalled, removable plugin marketplace with paginated GitHub search, one-click installation, update management, and agent-facing market tools.
 
 ## Latest release
 
@@ -84,7 +88,8 @@ The installer and updater verify the ZIP digest, release manifest, application m
 
     DeepSeek Harness-win32-x64/
     ├─ dsh.cmd                      CLI entry: web mode, `dsh update`, `dsh desktop`, `dsh trust`
-    ├─ start-web.cmd                Browser mode entry (Node.js from PATH; falls back to desktop)
+    ├─ pnpm.cmd                     Embedded package-manager entry used by plugin management
+    ├─ start-web.cmd                Browser mode entry using the embedded Electron/Node runtime
     ├─ start-desktop.cmd            Desktop mode entry
     ├─ update.ps1                   Portable updater
     ├─ setup-shortcuts.ps1          Shortcut and user PATH setup
@@ -110,8 +115,8 @@ Do not delete or rename the `runtime` directory.
 ## Launch and update
 
 - `start-desktop.cmd` (or `启动桌面版.bat`) launches the bundled Electron desktop shell.
-- `start-web.cmd` (or `启动网页版.bat`) starts the Web surface through Node.js from PATH; if Node.js is missing it falls back to the desktop shell.
-- `dsh.cmd` provides the same web entry plus subcommands: `dsh update`, `dsh desktop`, `dsh trust`.
+- `start-web.cmd` (or `启动网页版.bat`) starts the Web surface through the embedded Electron/Node runtime; no system Node.js installation is required.
+- `dsh.cmd` provides the same web entry plus the embedded plugin-management CLI and distribution subcommands: `dsh update`, `dsh desktop`, `dsh trust`.
 - The desktop tray menu provides **Check for Updates**, **Release Notes**, and **About**.
 - When a new release is found, the desktop shell downloads and verifies it in-app with progress, then asks before restarting. Update, rollback, and startup recovery share a per-installation mutex. The old and staged `runtime` directories are switched with same-volume renames; launchers wait for recovery, and direct Electron starts are blocked while a transaction is incomplete.
 - Update notices appear as a transient banner below the title bar and can be suppressed per version; Release Notes and About open in a card-style Update Hub. See the [release notes](RELEASE_NOTES.md) for the details of these behaviors.
@@ -125,7 +130,7 @@ The desktop executable is currently not signed by a trusted commercial CA, so Sm
 Smart App Control may block unsigned apps outright. If it is enabled on your device, you may need to turn it off for this app, or use an enterprise-approved, CA-signed build. See Microsoft's [Smart App Control overview](https://learn.microsoft.com/en-us/windows/apps/develop/smart-app-control/overview).
 
 **Do I need Node.js installed?**
-No — the portable `runtime` bundles its own Node.js for the desktop shell. Only browser/Web mode (`start-web.cmd`, `启动网页版.bat`) uses a Node.js from PATH, and it falls back to the desktop shell when Node.js is missing.
+No. Desktop mode, browser/Web mode, the DSH plugin CLI, and pnpm all use the Node.js runtime embedded in Electron.
 
 **Where is my data stored?**
 Under `%USERPROFILE%\.dsh` (or `$DSH_HOME`), outside the application directory. See [User data and API key](#user-data-and-api-key).
@@ -170,6 +175,7 @@ The release command builds the upstream Web runtime, builds the desktop shell, w
 - Verify the published SHA-256 values before running downloaded files.
 - The local web server binds to loopback by default.
 - Do not put API keys in the repository or release directory.
+- Marketplace entries are third-party code discovered from GitHub. Review a plugin's repository and permissions before installing it; installation can run package build scripts and grants the plugin the capabilities of its Cordis composition.
 - If trusted executables are required, use an approved CA, Microsoft Artifact Signing, or an enterprise signing policy.
 
 See Microsoft's [Smart App Control overview](https://learn.microsoft.com/en-us/windows/apps/develop/smart-app-control/overview) and [SmartScreen reputation guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation).

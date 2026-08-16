@@ -28,7 +28,7 @@ if (Test-Path -LiteralPath $payloadScript) {
     . $payloadScript
 } else {
     $global:RELEASE_PAYLOAD = @(
-        'release-manifest.json', 'dsh.cmd', 'uninstall.cmd', 'uninstall.ps1', 'update.ps1', 'update.cmd',
+        'release-manifest.json', 'dsh.cmd', 'pnpm.cmd', 'uninstall.cmd', 'uninstall.ps1', 'update.ps1', 'update.cmd',
         'setup-shortcuts.ps1', 'start-web.cmd', 'start-desktop.cmd', '启动网页版.bat', '启动桌面窗口.bat',
         '启动桌面版.bat', '在线更新.bat', '创建桌面快捷方式.bat', '一键解除拦截(自签名信任).bat',
         '使用说明.txt', '使用说明.en.txt', 'smoke-native.cjs',
@@ -615,6 +615,7 @@ function Test-PortableLayout {
     $required = @(
         $RELEASE_MANIFEST_NAME,
         'dsh.cmd',
+        'pnpm.cmd',
         'uninstall.cmd',
         'uninstall.ps1',
         'update.ps1',
@@ -625,9 +626,16 @@ function Test-PortableLayout {
         'runtime\DeepSeek Harness.exe',
         'runtime\resources\app\package.json',
         'runtime\resources\app\lib\packaged-bin.js',
+        'runtime\resources\app\lib\marketplace-bootstrap.js',
         'runtime\resources\app\src\update-transaction.cjs',
         'runtime\resources\app\src\semver.cjs',
         'runtime\resources\app\src\semver-cli.cjs',
+        'runtime\resources\app\node_modules\@deepseek-ai\dsh\lib\bin.js',
+        'runtime\resources\app\node_modules\dsh-plugin-marketplace\package.json',
+        'runtime\resources\app\node_modules\dsh-plugin-marketplace\cordis.patch.yml',
+        'runtime\resources\app\node_modules\dsh-plugin-marketplace\lib\index.js',
+        'runtime\resources\app\node_modules\dsh-plugin-marketplace\lib\client.js',
+        'runtime\resources\app\node_modules\pnpm\bin\pnpm.cjs',
         'runtime\resources\app\node_modules\node-pty\prebuilds\win32-x64\pty.node',
         'runtime\resources\app\node_modules\@koromix\koffi-win32-x64\win32_x64\koffi.node'
     )

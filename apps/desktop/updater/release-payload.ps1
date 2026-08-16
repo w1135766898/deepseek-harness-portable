@@ -5,6 +5,7 @@
 $global:RELEASE_PAYLOAD = @(
     'release-manifest.json',
     'dsh.cmd',
+    'pnpm.cmd',
     'uninstall.cmd',
     'uninstall.ps1',
     'update.ps1',

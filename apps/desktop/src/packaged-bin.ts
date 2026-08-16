@@ -21,7 +21,7 @@
  * @module dsh-desktop-web-pkg/packaged-bin
  */
 
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
@@ -39,11 +39,17 @@ import {
   loadProfile,
   mountRootInclude,
   PROFILE_PATCH_FILENAME,
+  readProfileManifest,
   type Profile,
+  writeProfileManifest,
 } from '@deepseek-ai/dsh-app-boot'
 import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
 import { dshHomePath, resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { DSH_LAUNCH_ENVIRONMENT_KEY, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
+import {
+  ensureMarketplacePreinstalled,
+  MARKETPLACE_PACKAGE,
+} from './marketplace-bootstrap.js'
 import { adaptWin32SubprocessRuntime } from './win32-terminal-inspector.js'
 
 /** Diagnostic prefix for every fail-loud and load error. */
@@ -56,6 +62,10 @@ const TELEMETRY_ROW_ID = 'session-telemetry-otel'
 const SHIPPED_PRESET_SOURCE = fileURLToPath(new URL('../config/agent-presets/', import.meta.url))
 /** This package's manifest: the install anchor for bundle resolution inside the VFS. */
 const INSTALL_ANCHOR = fileURLToPath(new URL('../package.json', import.meta.url))
+/** Runtime packages used by the one-time marketplace profile bootstrap. */
+const installationRequire = createRequire(INSTALL_ANCHOR)
+const MARKETPLACE_SOURCE_DIR = dirname(installationRequire.resolve(`${MARKETPLACE_PACKAGE}/package.json`))
+const PNPM_CLI_ENTRY = join(dirname(installationRequire.resolve('pnpm')), 'bin', 'pnpm.cjs')
 /** The empty root entry list every profile tree patches over. */
 const PROFILE_ROOT_CONFIG = `# dsh profile root — an empty entry list. The tree is composed as patches:
 # each bundle in the profile's dsh.profile.bundles, then cordis.patch.yml, then any
@@ -161,7 +171,63 @@ function composeProfile(shippedPresetRoot: string): {
   homePatches: PatchOptions[]
   overlays: PatchOptions[]
 } {
-  const profile = loadProfile(NAME, PROFILE_NAME, INSTALL_ANCHOR)
+  let profile = loadProfile(NAME, PROFILE_NAME, INSTALL_ANCHOR)
+  const marketplace = ensureMarketplacePreinstalled({
+    profileDir: profile.dir,
+    sourceDir: MARKETPLACE_SOURCE_DIR,
+    install: sourceSpec => {
+      const child = spawnSync(process.execPath, [
+        PNPM_CLI_ENTRY,
+        'add',
+        '-w',
+        sourceSpec,
+      ], {
+        cwd: profile.dir,
+        env: {
+          ...process.env,
+          ELECTRON_RUN_AS_NODE: '1',
+        },
+        stdio: 'inherit',
+        windowsHide: true,
+      })
+      if (child.error !== undefined) {
+        console.error(`${NAME}: failed to start the embedded marketplace installer: ${child.error.message}`)
+        return 1
+      }
+      const exitCode = child.status ?? 1
+      if (exitCode !== 0) return exitCode
+      try {
+        // The public `dsh plugin` command performs this same reconciliation
+        // after pnpm exits. Run pnpm directly here because its Windows shell
+        // forwarder cannot preserve a link path containing spaces (the
+        // packaged product directory is normally named `DeepSeek Harness`).
+        const manifest = readProfileManifest(NAME, profile.dir)
+        const bundles = manifest.dsh?.profile?.bundles ?? []
+        if (!bundles.includes(MARKETPLACE_PACKAGE)) {
+          manifest.dsh = {
+            ...manifest.dsh,
+            profile: {
+              ...manifest.dsh?.profile,
+              bundles: [...bundles, MARKETPLACE_PACKAGE],
+            },
+          }
+          writeProfileManifest(profile.dir, manifest)
+        }
+      } catch (cause) {
+        console.error(`${NAME}: failed to enable the preinstalled marketplace: ${cause instanceof Error ? cause.message : String(cause)}`)
+        return 1
+      }
+      return 0
+    },
+  })
+  if (marketplace.status === 'failed') {
+    console.error(`${NAME}: marketplace preinstall deferred: ${marketplace.error ?? 'unknown error'}`)
+  } else if (marketplace.status === 'installed') {
+    console.log(`${NAME}: preinstalled ${MARKETPLACE_PACKAGE} into the web profile`)
+    // The installer reconciles the manifest and node_modules tree; reload the
+    // profile so this boot sees the newly appended bundle layer.
+    profile = loadProfile(NAME, PROFILE_NAME, INSTALL_ANCHOR)
+  }
   const homePatches = loadOptionalPatches(NAME, homePatchPath()) ?? []
   const bundlePatches = profile.layers.flatMap(layer => layer.patches)
   const rows = new Map<string, { config?: unknown }>()
@@ -339,6 +405,10 @@ async function openBrowserWhenReady(ctx: Context): Promise<void> {
  */
 async function main(): Promise<void> {
   const args = process.argv.slice(2)
+  // `cmd.exe` keeps `%*` unchanged after SHIFT. Accept the explicit `web`
+  // alias here so `dsh.cmd web ...` forwards an arbitrary number of flags
+  // without reconstructing or re-quoting them in batch syntax.
+  if (args[0]?.toLowerCase() === 'web') args.shift()
   let openBrowser = true
   const webArgs: string[] = []
   for (const arg of args) {

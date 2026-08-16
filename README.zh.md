@@ -38,10 +38,13 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
 3. **视觉辅助多模态外挂（`@dsh-portable/vision-bridge`）**：
    - 为纯文本大模型（如 DeepSeek-V3 / R1）接入外部 OpenAI 兼容端点与高性价比多模态模型（如 Gemini 3.7 Flash、Mimo V2.5 等），赋予模型看图、UI分析与图表识别能力。
    - 全局 `view_image` 工具无缝集成至官方【设置 → 插件】槽位，支持服务商预设一键切换、即时测试与 API Key 纯写脱敏保护。
-4. **无感极速原子化更新**：
+4. **预装插件市场（`dsh-plugin-marketplace`）**：
+   - 在【设置 → 插件】中增加可搜索的“插件市场”和“已安装”页签，实时读取 GitHub `dsh-plugin` 话题。
+   - 内置供 Agent 搜索、安装、检查和更新插件的工具。每个 Web profile 只预装一次，用户关闭或卸载后不会被自动恢复。
+5. **无感极速原子化更新**：
    - 引入运行时后台预解压（Staging）机制，在软件运行期间透明完成下载、SHA-256 完整性校验与解压布局检查。
    - 重启替换耗时仅 1~2 秒，配备完善的事务备份与异常自动回滚保障。
-5. **零侵入微内核架构**：
+6. **零侵入微内核架构**：
    - 所有 Windows 适配与功能插件均通过 Cordis 微内核插件机制与运行时 Overlay 动态挂载，保持 upstream `vendor/deepseek-harness` 100% 原生纯净，无缝跟随官方上游迭代。
 
 ## 快速开始
@@ -57,6 +60,7 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
 - 支持工作区选择、浏览器模式、托盘/应用菜单、更新历史、关于信息和诊断导出。
 - 支持应用内检查更新、下载进度、SHA-256 校验、重启确认和回滚。
 - 原生侧边栏 Logo 集成桌面菜单（展开态左键打开、收起态右键打开），Windows 11 Mica/标题栏样式、系统主题同步、分阶段启动过渡，以及适配多显示器的窗口状态记忆。
+- 预装可移除的插件市场，支持 GitHub 分页搜索、一键安装、插件更新管理和 Agent 市场工具。
 
 ## 最新发布
 
@@ -84,7 +88,8 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
 
     DeepSeek Harness-win32-x64/
     ├─ dsh.cmd                     命令行入口：网页模式、`dsh update`、`dsh desktop`、`dsh trust`
-    ├─ start-web.cmd               浏览器模式入口（使用 PATH 中的 Node.js，缺失时回退桌面端）
+    ├─ pnpm.cmd                    插件管理使用的内置包管理器入口
+    ├─ start-web.cmd               使用内置 Electron/Node runtime 的浏览器模式入口
     ├─ start-desktop.cmd           桌面模式入口
     ├─ update.ps1                  便携版更新器
     ├─ setup-shortcuts.ps1         快捷方式和 PATH 设置
@@ -110,8 +115,8 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
 ## 启动与更新
 
 - `start-desktop.cmd`（或 `启动桌面版.bat`）启动内置 Electron 桌面端。
-- `start-web.cmd`（或 `启动网页版.bat`）使用 PATH 中的 Node.js 启动网页版；未找到 Node.js 时回退到桌面端。
-- `dsh.cmd` 提供同样的网页版入口，并支持子命令：`dsh update`、`dsh desktop`、`dsh trust`。
+- `start-web.cmd`（或 `启动网页版.bat`）使用内置 Electron/Node runtime 启动网页版，无需安装系统 Node.js。
+- `dsh.cmd` 提供同样的网页版入口、内置插件管理 CLI，并支持分发版子命令：`dsh update`、`dsh desktop`、`dsh trust`。
 - 桌面托盘菜单提供“检查更新”“更新日志”和“关于”。
 - 检测到新版本时，桌面外壳会在应用内显示下载与校验进度，完成后再询问是否重启。更新、回滚和启动恢复共用按安装目录隔离的互斥锁；新旧 `runtime` 通过同卷目录重命名切换。事务未完成时启动器会等待并恢复，直接启动 Electron 则会被门禁阻止。
 - 更新通知以标题栏下方的轻量横幅显示，可按版本选择“不再提示”；“更新日志”和“关于”在卡片式更新中心内打开。具体行为详见[发布说明](RELEASE_NOTES.zh.md)。
@@ -125,7 +130,7 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
 Smart App Control 可能直接阻止未签名的应用。如果设备已启用该功能，可能需要为应用将其关闭，或使用经企业批准、CA 签名的构建。参考 Microsoft 的 [Smart App Control 概述](https://learn.microsoft.com/en-us/windows/apps/develop/smart-app-control/overview)。
 
 **需要安装 Node.js 吗？**
-不需要——便携包的 `runtime` 自带桌面端所需的 Node.js。只有浏览器/网页模式（`start-web.cmd`、`启动网页版.bat`）会使用 PATH 中的 Node.js，找不到时会回退到桌面端。
+不需要。桌面模式、浏览器/网页模式、DSH 插件 CLI 和 pnpm 均使用 Electron 内置的 Node.js runtime。
 
 **我的数据存在哪里？**
 在 `%USERPROFILE%\.dsh`（或 `$DSH_HOME`），位于应用目录之外。见[用户数据与API密钥](#用户数据与api密钥)。
@@ -170,6 +175,7 @@ Smart App Control 可能直接阻止未签名的应用。如果设备已启用�
 - 运行下载文件前请先核对发布的 SHA-256 值。
 - 本地 Web 服务默认只绑定回环地址。
 - 不要把 API key 放入仓库或发布目录。
+- 市场条目是从 GitHub 发现的第三方代码。安装前请审查插件仓库和权限；安装过程可能运行包构建脚本，插件会获得其 Cordis 组合所声明的能力。
 - 如果组织要求可信可执行文件，请使用受认可的 CA、Microsoft Artifact Signing 或企业代码签名策略。
 
 参考 [Smart App Control](https://learn.microsoft.com/en-us/windows/apps/develop/smart-app-control/overview) 和 [SmartScreen reputation guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation).

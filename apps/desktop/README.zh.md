@@ -15,6 +15,8 @@
 - 在标题栏下方居中显示紧凑更新横幅，7 秒或关闭后销毁，支持按版本忽略，并在当前窗口打开居中卡片式更新中心。
 - 原生侧边栏 Logo 融合桌面菜单：展开态左键打开菜单，收起态左键展开侧边栏、右键打开菜单。
 - Windows 11 下使用 Mica/标题栏覆盖与系统主题同步，并记忆窗口位置、尺寸和最大化状态。
+- 每个 Web profile 首次使用时预装固定版本的 `dsh-plugin-marketplace`；用户关闭或卸载后，分发版不会在重启时恢复它。
+- 通过 Electron 的 Node 模式内置 DSH 插件 CLI 与 pnpm，市场操作无需系统 Node.js 工具链。
 
 ## 构建与测试
 
@@ -46,7 +48,7 @@ release-manifest.json 会写入 runtime 同级目录，记录分发版本、桌�
 
 ## 用户数据与安全
 
-外壳将 Web 服务绑定到回环地址，并设置 DSH_TELEMETRY_DISABLED=1。工作区设置和桌面端发布说明状态保存在 Electron 用户数据中，不会写入打包应用目录。
+外壳将 Web 服务绑定到回环地址，并设置 DSH_TELEMETRY_DISABLED=1。工作区设置和桌面端发布说明状态保存在 Electron 用户数据中，不会写入打包应用目录。市场中的插件属于第三方代码，安装前应先审查其来源和权限。
 
 请在 Web UI 设置中配置 DeepSeek API key，或在启动可执行文件的环境中提供。当前可执行文件没有可信商业 CA 签名，首次运行时 Windows SmartScreen 可能发出警告。
 

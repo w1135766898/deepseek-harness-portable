@@ -26,3 +26,4 @@ allowBuilds:
   '@google/genai': false
   protobufjs: false
   node-addon-require-builtin: false
+  dsh-plugin-marketplace: false

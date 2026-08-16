@@ -227,6 +227,12 @@ async function verifyReleaseTests(): Promise<void> {
     '--test',
     ...DESKTOP_TEST_FILES.map(file => join('src', file)),
   ], { cwd: desktopDir })
+  await run(process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', [
+    'exec',
+    'tsx',
+    '--test',
+    join(desktopDir, 'src', 'marketplace-bootstrap.test.ts'),
+  ])
   for (const file of DESKTOP_SYNTAX_FILES) {
     await run(process.execPath, ['--check', join('src', file)], { cwd: desktopDir })
   }
@@ -263,6 +269,7 @@ async function verifyPortableArchive(zipPath: string, buildRoot: string): Promis
   const required = [
     RELEASE_MANIFEST_NAME,
     'dsh.cmd',
+    'pnpm.cmd',
     'uninstall.cmd',
     'uninstall.ps1',
     'update.ps1',
@@ -273,6 +280,7 @@ async function verifyPortableArchive(zipPath: string, buildRoot: string): Promis
     'runtime/DeepSeek Harness.exe',
     'runtime/resources/app/package.json',
     'runtime/resources/app/lib/packaged-bin.js',
+    'runtime/resources/app/lib/marketplace-bootstrap.js',
     'runtime/resources/app/lib/win32-terminal-inspector.js',
     'runtime/resources/app/src/update-launcher.cjs',
     'runtime/resources/app/src/update-transaction.cjs',
@@ -280,6 +288,12 @@ async function verifyPortableArchive(zipPath: string, buildRoot: string): Promis
     'runtime/resources/app/src/desktop-locale-store.cjs',
     'runtime/resources/app/src/semver.cjs',
     'runtime/resources/app/src/semver-cli.cjs',
+    'runtime/resources/app/node_modules/@deepseek-ai/dsh/lib/bin.js',
+    'runtime/resources/app/node_modules/dsh-plugin-marketplace/package.json',
+    'runtime/resources/app/node_modules/dsh-plugin-marketplace/cordis.patch.yml',
+    'runtime/resources/app/node_modules/dsh-plugin-marketplace/lib/index.js',
+    'runtime/resources/app/node_modules/dsh-plugin-marketplace/lib/client.js',
+    'runtime/resources/app/node_modules/pnpm/bin/pnpm.cjs',
   ]
   const missing = required.filter(relative => !entries.has(`${prefix}${relative}`))
   if (missing.length > 0) {
@@ -358,6 +372,7 @@ async function syncPortablePayload(buildRoot: string): Promise<void> {
     'apps/desktop/update.ps1',
     'apps/desktop/setup-shortcuts.ps1',
     'apps/desktop/dsh.cmd',
+    'apps/desktop/portable-pnpm.cmd',
     'apps/desktop/使用说明.txt',
     'apps/desktop/使用说明.en.txt',
     'apps/desktop/启动网页版.bat',
@@ -372,7 +387,9 @@ async function syncPortablePayload(buildRoot: string): Promise<void> {
   for (const relPath of rootFiles) {
     const source = join(root, relPath)
     if (!existsSync(source)) continue
-    const base = relPath.includes('/') ? relPath.slice(relPath.lastIndexOf('/') + 1) : relPath
+    const base = relPath === 'apps/desktop/portable-pnpm.cmd'
+      ? 'pnpm.cmd'
+      : relPath.includes('/') ? relPath.slice(relPath.lastIndexOf('/') + 1) : relPath
     await copyFile(source, join(buildRoot, base))
   }
   console.log(`Portable runtime sources and payload synchronized into ${buildRoot}`)

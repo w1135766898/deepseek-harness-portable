@@ -11,10 +11,5 @@ if exist "%~dp0.update-transaction.json" (
         )
     )
 )
-where node >nul 2>nul
-if %ERRORLEVEL% EQU 0 (
-    node "%~dp0runtime\resources\app\lib\packaged-bin.js" %*
-) else (
-    echo Node.js was not found. Launching the desktop shell instead.
-    call "%~dp0start-desktop.cmd" %*
-)
+call "%~dp0dsh.cmd" web %*
+exit /b %ERRORLEVEL%
