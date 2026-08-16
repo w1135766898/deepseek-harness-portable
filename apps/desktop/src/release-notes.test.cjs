@@ -85,7 +85,9 @@ test('normalizes GitHub release fields and keeps only https URLs', () => {
   assert.equal(release.version, '2.3.0')
   assert.equal(release.releaseType, 'Minor')
   assert.equal(release.releaseUrl.startsWith('https://'), true)
+  assert.equal(release.assetName, 'DeepSeek-Harness-2.3.0-win32-x64.zip')
   assert.equal(normalizeReleaseNotes({ url: 'javascript:alert(1)' }).releaseUrl, undefined)
+  assert.equal(normalizeReleaseNotes({ url: 'javascript:alert(1)' }).assetName, undefined)
 })
 
 test('preserves localized release sections and bodies', () => {

@@ -1240,6 +1240,7 @@ function normalizePortableRelease(value) {
   const normalized = normalizeReleaseNotes(source)
   return {
     ...normalized,
+    assetName: normalized.assetName || (isValidSemver(normalized.version) && normalized.version !== '0.0.0' ? `DeepSeek-Harness-${normalized.version}-win32-x64.zip` : undefined),
     assetUrl: safeHttpsUrl(source.assetUrl || source.browser_download_url),
     assetDigest: typeof source.assetDigest === 'string' ? source.assetDigest.trim() : '',
     assetSize: Number(source.assetSize) || 0,
@@ -1579,7 +1580,6 @@ async function buildReleaseNotesData(context = {}, options = {}) {
   const currentRelease = history.find(item => item.version === localInfo.distributionVersion) || localRelease
   const updateAvailable = Boolean(
     latestRelease
-      && latestRelease.assetName
       && compareVersions(latestRelease.version, localInfo.distributionVersion) > 0,
   )
 

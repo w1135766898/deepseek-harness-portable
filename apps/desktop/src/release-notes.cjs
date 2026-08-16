@@ -1,3 +1,5 @@
+const { isValidSemver } = require('./semver.cjs')
+
 const MAX_BODY_LENGTH = 32_000
 
 const CATEGORY_META = {
@@ -270,11 +272,9 @@ function normalizeReleaseNotes(input, fallbackVersion = '0.0.0') {
     releaseType: asText(source.releaseType) || releaseType(version),
     prerelease: Boolean(source.prerelease),
     channel: asText(source.channel) || undefined,
-    assetName: asText(source.assetName) || undefined,
+    assetName: asText(source.assetName) || (isValidSemver(version) && version !== '0.0.0' ? `DeepSeek-Harness-${version}-win32-x64.zip` : undefined),
   }
 }
-
-const { isValidSemver } = require('./semver.cjs')
 
 function normalizeReleaseNotesHistory(input) {
   const source = input && typeof input === 'object' ? input : {}
