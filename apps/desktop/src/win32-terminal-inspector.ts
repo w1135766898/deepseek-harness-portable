@@ -4,7 +4,9 @@
  * Upstream `dsh-subprocess-local` throws on win32 because POSIX process inspection
  * (/proc/pid/stat or ps -axo) is not supported natively on Windows.
  * This stub provides safe fallbacks:
- * - `processTree(rootPid)` returns `[{ pid: rootPid, started: 'wsl-root' }]` to satisfy `LocalTerminalHandle`'s rootIdentity.
+ * - `processTree(rootPid)` returns `[]`: a fabricated root identity would make
+ *   `LocalTerminalHandle.forceStopShell` take its (no-op) signal branch and skip
+ *   the node-pty kill fallback during host exit.
  * - `foregroundPgid(shellPid)` returns `shellPid` so that `signalForeground` does not throw and destroy the session.
  * - `isStdinWaiting()` returns `false` (terminal readiness safely falls back to prompt-marker and silence detection).
  * - `signalGroup` and `signalProcess` are safe no-ops.
@@ -54,8 +56,12 @@ export class Win32TerminalProcessInspector implements ProcessInspector {
     return false
   }
 
-  processTree(rootPid: number): ProcessIdentity[] {
-    return [{ pid: rootPid, started: 'wsl-root' }]
+  processTree(_rootPid: number): ProcessIdentity[] {
+    // No Windows process table and no visibility into the WSL VM: report no
+    // members. A fabricated root identity would make
+    // LocalTerminalHandle.forceStopShell take its (no-op) signal branch and
+    // skip the node-pty kill fallback during host exit.
+    return []
   }
 
   processSession(_sessionId: number): ProcessIdentity[] {

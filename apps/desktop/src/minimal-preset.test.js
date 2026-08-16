@@ -4,6 +4,10 @@
  *
  * On POSIX hosts, `terminal-bash` spawns `/bin/bash`.
  * On Windows hosts, `terminal-bash` spawns `C:/Windows/System32/wsl.exe` with `['--', 'bash', ...]`.
+ *
+ * The win32 inspector stub reports no process-tree members (the WSL VM is not
+ * observable from Windows), and spawnTerminal is wrapped to share WSLENV,
+ * translate WSL launch failures, and route SIGINT as a Ctrl+C byte.
  */
 
 import { test } from 'node:test'
@@ -94,10 +98,11 @@ test('win32 terminal inspector stub satisfies ProcessInspector contracts safely'
   // isStdinWaiting must return false so readiness falls back to prompt/silence
   assert.equal(inspector.isStdinWaiting(9999), false)
 
-  // processTree must provide rootIdentity member
+  // processTree must report no members so LocalTerminalHandle.forceStopShell
+  // falls back to node-pty's own kill during host exit instead of routing
+  // through the (no-op) signal branch of a fabricated root identity
   const tree = inspector.processTree(9999)
-  assert.equal(tree.length, 1)
-  assert.equal(tree[0].pid, 9999)
+  assert.deepEqual(tree, [])
 
   // processSession and isAlive
   assert.deepEqual(inspector.processSession(9999), [])
