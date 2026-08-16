@@ -1,6 +1,6 @@
 {
-  "version": "1.2.3",
-  "name": "DeepSeek Harness for Win v1.2.3",
+  "version": "1.2.4",
+  "name": "DeepSeek Harness for Win v1.2.4",
   "publishedAt": "2026-08-16",
   "sections": [
     {
@@ -8,22 +8,48 @@
       "titleEn": "New Features & Improvements",
       "titleZh": "新功能与体验优化",
       "itemsEn": [
-        "Native WSL environment bridge & RL Chain-of-Thought reproduction: seamlessly reproduces DeepSeek's native 'We need / Let's' step-by-step reasoning CoT on Windows by executing the official Minimal Preset in genuine Linux Bash.",
-        "Vision Bridge API proxy integration: dynamically exposes the vision configuration schema to the Host Web UI apiProxy, enabling seamless provider management and inspection directly in Settings.",
-        "Desktop UI interaction optimization: refined menu accordion expand animations, enhanced intuitive wording, polished SVG icons, and verified monolingual in-app release notes viewer.",
-        "Documentation & 'Why Us' value proposition: added comprehensive comparisons detailing how the Windows distribution overcomes PowerShell token divergence and terminal friction."
+        "WSL terminal environment sharing via WSLENV: seamlessly propagates Windows host terminal environment variables (PAGER, GIT_PAGER, TERM, DSH_*, etc.) into Linux sessions, eliminating pager hangs and unblocking readiness protocols.",
+        "Interactive SIGINT delivery for WSL: intercepts terminal interrupt requests and delivers the standard Ctrl+C byte into the PTY stream, allowing foreground tasks to abort immediately without waiting for timeouts.",
+        "Deterministic WSL process cleanup: binds host shutdown directly to PTY SIGKILL signals, ensuring background wsl.exe instances and terminal subprocesses are cleanly destroyed on exit.",
+        "Robust WSL diagnostic & cross-encoding detection: auto-adapts to UTF-16LE / UTF-8 outputs during environment probing, and provides actionable bilingual guidance when distributions are missing.",
+        "Vision Bridge design token alignment: harmonized CSS variables and card styles in @dsh-portable/vision-bridge with official microkernel design tokens across dark and light themes."
       ],
       "itemsZh": [
-        "强化 WSL 原生环境桥接与强化学习思维链复现：在 Windows 平台通过 WSL 原生 Linux Bash 完整承载官方极简模式（Minimal Preset），完美复现 DeepSeek 标志性的“We need / Let's”链式规划与分步推理思维链（CoT）。",
-        "视觉辅助外挂 API 代理层融合：动态将 vision 配置注入 Host Web UI apiProxy，实现【设置 → 插件】中视觉服务商的即时管理、参数校验与无缝调用。",
-        "桌面端交互细节与动效优化：深度优化菜单手风琴折叠展开动画、精简文案表述、升级矢量图标，并严格确保应用内更新日志单语言纯净渲染。",
-        "完善项目文档与 Why Us 核心差异说明：全面阐述 Windows 便携版本相较于官方版本在 Token 分布对齐、环境免配置与多模态扩展等方面的独特优势。"
+        "通过 WSLENV 共享 WSL 终端环境变量：将 Windows 宿主环境中的终端与运行时变量（PAGER、GIT_PAGER、TERM、DSH_* 等）自动注入 Linux 会话，彻底消除 git/man 等命令因分页器阻塞的问题，确保就绪探测畅通无阻。",
+        "WSL 终端精确 SIGINT 中断响应：封装底层终端句柄，将前端发起的 SIGINT 信号转化为标准 Ctrl+C 字节流直接写入 PTY，使得前台正在执行的任务能够即时响应中断与停止，无需等待 300s 超时强制重置。",
+        "完善 WSL 终端进程生命周期与退出联动：修复进程树根节点逻辑，在宿主应用退出时联动调用 PTY SIGKILL 彻底销毁 wsl.exe 与后台终端资源，杜绝孤儿进程残留。",
+        "WSL 状态智能探测与跨编码自适应解码：自动识别并兼容 UTF-16LE / UTF-8 编码混杂的 wsl -l -q 输出，杜绝误判；针对未安装 Linux 发行版等异常场景提供中英文双语友好排错指引与一键修复建议。",
+        "视觉外挂（Vision Bridge）UI 规范与官方 Design Tokens 对齐：深度优化 @dsh-portable/vision-bridge 前端配置组件在浅色与深色主题下的视觉变量与卡片间距，界面表现更精致协调。"
       ]
     }
   ],
-  "bodyZh": "## 新功能与体验优化\n\n- **强化 WSL 原生环境桥接与强化学习思维链复现**：在 Windows 平台通过 WSL 原生 Linux Bash 完整承载官方极简模式（Minimal Preset），完美复现 DeepSeek 标志性的“We need / Let's”链式规划与分步推理思维链（CoT）。\n- **视觉辅助外挂 API 代理层融合**：动态将 vision 配置注入 Host Web UI apiProxy，实现【设置 → 插件】中视觉服务商的即时管理、参数校验与无缝调用。\n- **桌面端交互细节与动效优化**：深度优化菜单手风琴折叠展开动画、精简文案表述、升级矢量图标，并严格确保应用内更新日志单语言纯净渲染。\n- **完善项目文档与 Why Us 核心差异说明**：全面阐述 Windows 便携版本相较于官方版本在 Token 分布对齐、环境免配置与多模态扩展等方面的独特优势。",
-  "bodyEn": "## New Features & Improvements\n\n- **Native WSL environment bridge & RL Chain-of-Thought reproduction**: seamlessly reproduces DeepSeek's native 'We need / Let's' step-by-step reasoning CoT on Windows by executing the official Minimal Preset in genuine Linux Bash.\n- **Vision Bridge API proxy integration**: dynamically exposes the vision configuration schema to the Host Web UI apiProxy, enabling seamless provider management and inspection directly in Settings.\n- **Desktop UI interaction optimization**: refined menu accordion expand animations, enhanced intuitive wording, polished SVG icons, and verified monolingual in-app release notes viewer.\n- **Documentation & 'Why Us' value proposition**: added comprehensive comparisons detailing how the Windows distribution overcomes PowerShell token divergence and terminal friction.",
+  "bodyZh": "## 新功能与体验优化\n\n- **通过 WSLENV 共享 WSL 终端环境变量**：将 Windows 宿主环境中的终端与运行时变量（PAGER、GIT_PAGER、TERM、DSH_* 等）自动注入 Linux 会话，彻底消除 git/man 等命令因分页器阻塞的问题，确保就绪探测畅通无阻。\n- **WSL 终端精确 SIGINT 中断响应**：封装底层终端句柄，将前端发起的 SIGINT 信号转化为标准 Ctrl+C 字节流直接写入 PTY，使得前台正在执行的任务能够即时响应中断与停止，无需等待 300s 超时强制重置。\n- **完善 WSL 终端进程生命周期与退出联动**：修复进程树根节点逻辑，在宿主应用退出时联动调用 PTY SIGKILL 彻底销毁 wsl.exe 与后台终端资源，杜绝孤儿进程残留。\n- **WSL 状态智能探测与跨编码自适应解码**：自动识别并兼容 UTF-16LE / UTF-8 编码混杂的 wsl -l -q 输出，杜绝误判；针对未安装 Linux 发行版等异常场景提供中英文双语友好排错指引与一键修复建议。\n- **视觉外挂（Vision Bridge）UI 规范与官方 Design Tokens 对齐**：深度优化 @dsh-portable/vision-bridge 前端配置组件在浅色与深色主题下的视觉变量与卡片间距，界面表现更精致协调。",
+  "bodyEn": "## New Features & Improvements\n\n- **WSL terminal environment sharing via WSLENV**: seamlessly propagates Windows host terminal environment variables (PAGER, GIT_PAGER, TERM, DSH_*, etc.) into Linux sessions, eliminating pager hangs and unblocking readiness protocols.\n- **Interactive SIGINT delivery for WSL**: intercepts terminal interrupt requests and delivers the standard Ctrl+C byte into the PTY stream, allowing foreground tasks to abort immediately without waiting for timeouts.\n- **Deterministic WSL process cleanup**: binds host shutdown directly to PTY SIGKILL signals, ensuring background wsl.exe instances and terminal subprocesses are cleanly destroyed on exit.\n- **Robust WSL diagnostic & cross-encoding detection**: auto-adapts to UTF-16LE / UTF-8 outputs during environment probing, and provides actionable bilingual guidance when distributions are missing.\n- **Vision Bridge design token alignment**: harmonized CSS variables and card styles in @dsh-portable/vision-bridge with official microkernel design tokens across dark and light themes.",
   "history": [
+    {
+      "version": "1.2.3",
+      "name": "DeepSeek Harness for Win v1.2.3",
+      "publishedAt": "2026-08-16",
+      "sections": [
+        {
+          "key": "features",
+          "titleEn": "New Features & Improvements",
+          "titleZh": "新功能与体验优化",
+          "itemsEn": [
+            "Native WSL environment bridge & RL Chain-of-Thought reproduction: seamlessly reproduces DeepSeek's native 'We need / Let's' step-by-step reasoning CoT on Windows by executing the official Minimal Preset in genuine Linux Bash.",
+            "Vision Bridge API proxy integration: dynamically exposes the vision configuration schema to the Host Web UI apiProxy, enabling seamless provider management and inspection directly in Settings.",
+            "Desktop UI interaction optimization: refined menu accordion expand animations, enhanced intuitive wording, polished SVG icons, and verified monolingual in-app release notes viewer.",
+            "Documentation & 'Why Us' value proposition: added comprehensive comparisons detailing how the Windows distribution overcomes PowerShell token divergence and terminal friction."
+          ],
+          "itemsZh": [
+            "强化 WSL 原生环境桥接与强化学习思维链复现：在 Windows 平台通过 WSL 原生 Linux Bash 完整承载官方极简模式（Minimal Preset），完美复现 DeepSeek 标志性的“We need / Let's”链式规划与分步推理思维链（CoT）。",
+            "视觉辅助外挂 API 代理层融合：动态将 vision 配置注入 Host Web UI apiProxy，实现【设置 → 插件】中视觉服务商的即时管理、参数校验与无缝调用。",
+            "桌面端交互细节与动效优化：深度优化菜单手风琴折叠展开动画、精简文案表述、升级矢量图标，并严格确保应用内更新日志单语言纯净渲染。",
+            "完善项目文档与 Why Us 核心差异说明：全面阐述 Windows 便携版本相较于官方版本在 Token 分布对齐、环境免配置与多模态扩展等方面的独特优势。"
+          ]
+        }
+      ]
+    },
     {
       "version": "1.2.2",
       "name": "DeepSeek Harness for Win v1.2.2",

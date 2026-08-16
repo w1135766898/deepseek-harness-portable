@@ -1,24 +1,25 @@
-# DeepSeek Harness for Win v1.2.3
+# DeepSeek Harness for Win v1.2.4
 
 [English](RELEASE_NOTES.md)
 
 Windows x64 便携版 · 2026-08-16
 
-这是本 Windows 分发版的 v1.2.3 版本，强化了 WSL 原生 Linux Bash 环境桥接以完美复现 DeepSeek 官方强化学习（RL）标志性的“We need / Let's”思维链推理模式，将视觉外挂配置无缝接入 Web UI 代理，并全面优化桌面端交互体验。
+这是本 Windows 分发版的 v1.2.4 版本，通过 WSLENV 机制共享终端环境变量彻底解决分页器阻塞，为 WSL 终端引入 Ctrl+C 字节级精确中断响应，联动 PTY 生命周期确保退出时销毁后台进程，并全面对齐视觉外挂 Design Tokens 设计规范。
 
 ## 新功能与体验优化
 
-- **强化 WSL 原生环境桥接与“We need / Let's”思维链复现**：DeepSeek 官方强化学习训练基于 Linux Bash 环境。在 Windows 平台通过 WSL 原生 Linux Bash 完整承载官方极简模式（Minimal Preset），杜绝 PowerShell 语法与 Token 漂移，完美复现模型经典的“We need to... / Let's check...”分步规划与链式推理（CoT）。
-- **视觉辅助外挂 API 代理层融合**：动态将 `@dsh-portable/vision-bridge` 配置模式注入 Host Web UI `apiProxy`，支持在【设置 → 插件】中即时管理视觉服务商、测试连接并安全持久化。
-- **桌面端交互细节与动效优化**：深度优化菜单手风琴折叠展开动画、精简文案表述、升级矢量图标，并严格确保应用内更新日志单语言纯净渲染。
-- **完善项目文档与 Why Us 核心差异说明**：全面补充 Windows 便携版本相较于官方版本在 Token 分布对齐、环境免配置与多模态扩展等方面的独特价值与核心优势。
+- **通过 WSLENV 共享 WSL 终端环境变量**：将 Windows 宿主环境中的终端与运行时变量（`PAGER`、`GIT_PAGER`、`TERM`、`DSH_*` 等）自动注入 Linux 会话，彻底消除 `git`/`man` 等命令因交互分页器（`less`）阻塞的问题，确保就绪探测畅通无阻。
+- **WSL 终端精确 SIGINT 中断响应**：封装底层终端句柄，将前端发起的 `SIGINT` 信号转化为标准 `Ctrl+C` 字节流直接写入 PTY，使得前台正在执行的任务能够即时响应中断与停止，无需等待 300s 超时强制重置。
+- **完善 WSL 终端进程生命周期与退出联动**：修复进程树根节点逻辑，在宿主应用退出时联动调用 PTY `SIGKILL` 彻底销毁 `wsl.exe` 与后台终端资源，杜绝孤儿进程残留。
+- **WSL 状态智能探测与跨编码自适应解码**：自动识别并兼容 UTF-16LE / UTF-8 编码混杂的 `wsl -l -q` 输出，杜绝误判；针对未安装 Linux 发行版等异常场景提供中英文双语友好排错指引与一键修复建议。
+- **视觉外挂（Vision Bridge）UI 规范与官方 Design Tokens 对齐**：深度优化 `@dsh-portable/vision-bridge` 前端配置组件在浅色与深色主题下的视觉变量与卡片间距，界面表现更精致协调。
 
 ## 组件版本
 
-- 分发：1.2.3
+- 分发：1.2.4
 - 桌面外壳：0.1.0-shell.2
 - 内核：0.1.0-rc.5（@deepseek-ai/dsh-web-app）
-- 标签：v1.2.3
+- 标签：v1.2.4
 
 ## 校验和与安全
 
