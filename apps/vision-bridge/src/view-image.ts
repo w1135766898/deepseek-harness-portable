@@ -69,9 +69,12 @@ export async function executeViewImage(
     throw new Error('path must be a non-empty string')
   }
 
-  // 1. Resolve path (absolute or relative to agent workspace / cwd)
+  // 1. Resolve path (absolute or relative to the session workspace)
   const rawPath = args.path.trim()
-  const workspaceRoot = (exec.agent as { workspace?: string } | undefined)?.workspace ?? process.cwd()
+  // The session header's cwd is the durable session workspace identity; the
+  // host process cwd is the fallback when the session carries none.
+  const sessionCwd = exec.agent?.session.header.cwd
+  const workspaceRoot = sessionCwd ?? process.cwd()
   const targetPath = isAbsolute(rawPath) ? rawPath : resolve(workspaceRoot, rawPath)
 
   // 2. MIME type check

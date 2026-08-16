@@ -24,7 +24,7 @@ describe('view-image', () => {
   const stubExec = {
     signal: new AbortController().signal,
     agent: {
-      workspace: process.cwd(),
+      session: { header: { cwd: process.cwd() } },
     },
   } as never
 
@@ -70,6 +70,54 @@ describe('view-image', () => {
     )
     expect(res.isError).toBe(true)
     expect(res.text).toContain('no API key configured')
+  })
+
+  it('allows missing API key for ollama and omits the Authorization header', async () => {
+    const mockResponse = {
+      choices: [{ message: { content: 'llava sees a cat.' } }],
+    }
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    } as never)
+
+    const res = await executeViewImage(
+      { path: samplePng },
+      stubExec,
+      () => ({ ...baseConfig, provider: 'ollama', apiKey: '' }),
+    )
+
+    expect(res.isError).toBeUndefined()
+    expect(res.text).toBe('llava sees a cat.')
+    const headers = fetchSpy.mock.calls[0]?.[1]?.headers as Record<string, string>
+    expect(headers.Authorization).toBeUndefined()
+  })
+
+  it('resolves relative paths against the session header cwd', async () => {
+    const mockResponse = {
+      choices: [{ message: { content: 'relative path ok.' } }],
+    }
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockResponse,
+    } as never)
+    const sessionExec = {
+      signal: new AbortController().signal,
+      agent: {
+        session: { header: { cwd: testDir } },
+      },
+    } as never
+
+    const res = await executeViewImage(
+      { path: 'test.png' },
+      sessionExec,
+      () => baseConfig,
+    )
+
+    expect(res.isError).toBeUndefined()
+    expect(res.path).toBe(join(testDir, 'test.png'))
   })
 
   it('refuses unsupported file extensions', async () => {
@@ -155,6 +203,24 @@ describe('view-image', () => {
     expect(res.isError).toBe(true)
     expect(res.text).toContain('HTTP 401')
     expect(res.text).not.toContain('test-sk-1234567890')
+  })
+
+  it('surfaces fetch abort/timeout as a structured error', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => new Promise((_resolve, reject) => {
+      const signal = init?.signal as AbortSignal | undefined
+      signal?.addEventListener('abort', () => {
+        reject(new DOMException('The operation was aborted.', 'AbortError'))
+      })
+    }))
+
+    const res = await executeViewImage(
+      { path: samplePng },
+      stubExec,
+      () => ({ ...baseConfig, timeoutMs: 20 }),
+    )
+
+    expect(res.isError).toBe(true)
+    expect(res.text).toContain('aborted')
   })
 
   it('renders content format correctly for model context', () => {

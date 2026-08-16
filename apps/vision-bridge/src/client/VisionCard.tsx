@@ -120,17 +120,15 @@ export function VisionCard(props: VisionCardProps) {
             <span className={css.hint}>{t('modelHint')}</span>
           </div>
 
-          {/* 5. API Key */}
+          {/* 5. API Key (write-only: the wire never returns the stored secret) */}
           <div className={css.field}>
-            <label className={css.label}>
-              {t('apiKey')} ({state.hasStoredKey ? t('apiKeySet') : t('apiKeyUnset')})
-            </label>
+            <label className={css.label}>{t('apiKey')}</label>
             <input
               type="password"
               className={css.input}
               value={state.apiKey}
               disabled={!state.writable}
-              placeholder={state.hasStoredKey ? '••••••••••••••••' : t('apiKeyHint')}
+              placeholder={t('apiKeyHint')}
               onChange={e => props.edit('apiKey', e.target.value)}
             />
             <span className={css.hint}>{t('apiKeyHint')}</span>

@@ -25,7 +25,6 @@ export interface VisionCardState {
   baseURL: string
   apiKey: string
   prompt: string
-  hasStoredKey: boolean
 }
 
 export interface VisionCardFace {
@@ -80,7 +79,6 @@ export class VisionCardController {
       : (current.prompt ?? '')
 
     const dirty = Object.keys(this.staged).length > 0
-    const hasStoredKey = Boolean(current.apiKey && current.apiKey.length > 0)
 
     return {
       available: snap.status === 'ready' || snap.status === 'loading',
@@ -94,7 +92,6 @@ export class VisionCardController {
       baseURL,
       apiKey,
       prompt,
-      hasStoredKey,
     }
   }
 
