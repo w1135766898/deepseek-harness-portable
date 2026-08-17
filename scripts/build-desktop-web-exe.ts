@@ -19,6 +19,7 @@ import { homedir } from 'node:os'
 import { delimiter, dirname, join, resolve, sep } from 'node:path'
 import { parseArgs } from 'node:util'
 import { patchWelcomeNoticeStore } from '../patches/dsh-client-ui-settings-models-welcome-store.js'
+import { patchMarketplaceSelfUpdate } from '../patches/dsh-plugin-marketplace-self-update.js'
 import {
   cacheLayerMatches,
   completeCacheLayer,
@@ -170,6 +171,13 @@ const ASSET_GLOBS = [
   'node_modules/**/*.png',
   'node_modules/**/*.txt',
 ]
+
+const MARKETPLACE_RUNTIME_FILES = [
+  'package.json',
+  'cordis.patch.yml',
+  'lib/index.js',
+  'lib/client.js',
+] as const
 
 /**
  * Validated CLI configuration; construction owns help and parse-error exits.
@@ -368,6 +376,7 @@ class DesktopExeBuild {
       join(this.staging, 'lib', 'marketplace-bootstrap.js'),
       join(this.staging, 'node_modules', '@deepseek-ai', 'dsh-web-app', 'package.json'),
       join(this.staging, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'),
+      join(this.staging, 'node_modules', 'dsh-plugin-marketplace', 'package.json'),
       join(this.staging, 'node_modules', 'dsh-plugin-marketplace', 'lib', 'index.js'),
       join(this.staging, 'node_modules', 'dsh-plugin-marketplace', 'lib', 'client.js'),
       join(this.staging, 'node_modules', 'dsh-plugin-marketplace', 'cordis.patch.yml'),
@@ -385,6 +394,7 @@ class DesktopExeBuild {
     ]
     if (!this.cli.noCache && cacheLayerMatches(this.cacheState.staging, this.stagingKey, required)) {
       console.log(`build-desktop-web-exe: staging cache hit (${this.stagingKey.slice(0, 12)})`)
+      await this.validateMarketplaceStaging()
       return
     }
     console.log(`build-desktop-web-exe: staging cache miss (${this.stagingKey.slice(0, 12)})`)
@@ -394,6 +404,7 @@ class DesktopExeBuild {
       await this.applyRuntimePatches()
       await this.pruneReleasePayload()
       await this.injectPkgConfig()
+      await this.validateMarketplaceStaging()
     })
     if (!this.cli.dryRun) {
       this.cacheState = completeCacheLayer(this.cacheState, 'staging', this.stagingKey)
@@ -656,6 +667,7 @@ class DesktopExeBuild {
         console.log('build-desktop-web-exe: [dry-run] skip Windows directory-picker runtime patches on macOS')
       }
       console.log('build-desktop-web-exe: [dry-run] apply welcome-notice retry runtime patch')
+      console.log('build-desktop-web-exe: [dry-run] apply marketplace broken-link self-update fallback')
       return
     }
     if (this.cli.platform === 'win32') {
@@ -717,6 +729,42 @@ class DesktopExeBuild {
       }
       await writeFile(welcomeTarget, welcomePatched)
       console.log('build-desktop-web-exe: applied welcome-notice retry runtime patch')
+    }
+
+    const marketplaceTarget = join(
+      this.staging,
+      'node_modules',
+      'dsh-plugin-marketplace',
+      'lib',
+      'index.js',
+    )
+    if (!existsSync(marketplaceTarget)) {
+      throw new Error(`build-desktop-web-exe: marketplace host bundle is missing: ${marketplaceTarget}`)
+    }
+    const marketplaceSource = await readFile(marketplaceTarget, 'utf8')
+    const marketplacePatched = patchMarketplaceSelfUpdate(marketplaceSource)
+    if (marketplacePatched === marketplaceSource) {
+      console.log('build-desktop-web-exe: marketplace broken-link self-update fallback already applied')
+    } else {
+      await writeFile(marketplaceTarget, marketplacePatched)
+      console.log('build-desktop-web-exe: applied marketplace broken-link self-update fallback')
+    }
+  }
+
+  /** Reject a deploy/cache layer that cannot supply the bundled marketplace. */
+  private async validateMarketplaceStaging(): Promise<void> {
+    const packageRoot = join(this.staging, 'node_modules', 'dsh-plugin-marketplace')
+    if (this.cli.dryRun) {
+      console.log(`build-desktop-web-exe: [dry-run] validate bundled marketplace at ${packageRoot}`)
+      return
+    }
+    const missing = MARKETPLACE_RUNTIME_FILES.filter(relative => !existsSync(join(packageRoot, relative)))
+    if (missing.length > 0) {
+      throw new Error(`build-desktop-web-exe: staged marketplace is incomplete; missing: ${missing.join(', ')}`)
+    }
+    const manifest = JSON.parse(await readFile(join(packageRoot, 'package.json'), 'utf8')) as { name?: unknown }
+    if (manifest.name !== 'dsh-plugin-marketplace') {
+      throw new Error(`build-desktop-web-exe: staged marketplace manifest has unexpected name: ${String(manifest.name)}`)
     }
   }
 
@@ -867,6 +915,7 @@ class DesktopExeBuild {
           this.appResourcesDir(product),
           join(this.appResourcesDir(product), ENTRY_BIN),
           join(this.appResourcesDir(product), 'node_modules', '@deepseek-ai', 'dsh-web-app', 'package.json'),
+          join(this.appResourcesDir(product), 'node_modules', 'dsh-plugin-marketplace', 'package.json'),
         ]
       : [product]
     if (!this.cli.noCache && cacheLayerMatches(this.cacheState.electron, artifactKey, required)) {

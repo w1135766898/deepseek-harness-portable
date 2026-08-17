@@ -31,7 +31,7 @@ type PackageManifest = {
 }
 
 export type MarketplaceBootstrapResult = {
-  status: 'already-seeded' | 'adopted' | 'installed' | 'failed'
+  status: 'already-seeded' | 'adopted' | 'installed' | 'repaired' | 'failed'
   enabled: boolean
   error?: string
 }
@@ -39,7 +39,7 @@ export type MarketplaceBootstrapResult = {
 export type MarketplaceBootstrapOptions = {
   profileDir: string
   sourceDir: string
-  install: (sourceSpec: string) => number
+  install: (sourceSpec: string, enabled: boolean) => number
 }
 
 function readJson<T>(path: string): T | undefined {
@@ -92,43 +92,41 @@ function writeSeedMarker(profileDir: string): void {
  * Seed the bundled marketplace exactly once for a profile.
  *
  * Existing, loadable dependencies are adopted without changing their version
- * or enabled state. A marker with no dependency is an intentional uninstall
- * and is never repaired automatically.
+ * or enabled state. Incomplete dependencies are rebuilt from the bundled
+ * source while preserving enabled state. A marker with no dependency is an
+ * intentional uninstall and is never repaired automatically.
  */
 export function ensureMarketplacePreinstalled(
   options: MarketplaceBootstrapOptions,
 ): MarketplaceBootstrapResult {
   const marker = join(options.profileDir, MARKETPLACE_SEED_MARKER)
   const initial = profileState(options.profileDir)
-  if (existsSync(marker)) {
-    return { status: 'already-seeded', enabled: initial?.enabled ?? false }
-  }
   if (initial === undefined) {
     return { status: 'failed', enabled: false, error: 'web profile manifest is missing or invalid' }
   }
+  const seeded = existsSync(marker)
+  if (seeded && !initial.dependency) {
+    return { status: 'already-seeded', enabled: false }
+  }
   if (initial.dependency) {
-    if (!initial.packageReady) {
-      return {
-        status: 'failed',
-        enabled: initial.enabled,
-        error: 'existing marketplace dependency is incomplete; leaving it untouched',
-      }
+    if (initial.packageReady) {
+      if (!seeded) writeSeedMarker(options.profileDir)
+      return { status: seeded ? 'already-seeded' : 'adopted', enabled: initial.enabled }
     }
-    writeSeedMarker(options.profileDir)
-    return { status: 'adopted', enabled: initial.enabled }
   }
   const sourceManifest = readJson<PackageManifest>(join(options.sourceDir, 'package.json'))
   if (sourceManifest?.name !== MARKETPLACE_PACKAGE) {
-    return { status: 'failed', enabled: false, error: 'bundled marketplace package is missing or invalid' }
+    return { status: 'failed', enabled: initial.enabled, error: 'bundled marketplace package is missing or invalid' }
   }
-  const exitCode = options.install(`link:${options.sourceDir}`)
+  const desiredEnabled = initial.dependency ? initial.enabled : true
+  const exitCode = options.install(`link:${options.sourceDir}`, desiredEnabled)
   if (exitCode !== 0) {
-    return { status: 'failed', enabled: false, error: `embedded dsh plugin install exited with code ${exitCode}` }
+    return { status: 'failed', enabled: initial.enabled, error: `embedded dsh plugin install exited with code ${exitCode}` }
   }
   const installed = profileState(options.profileDir)
-  if (installed?.dependency !== true || installed.enabled !== true || installed.packageReady !== true) {
-    return { status: 'failed', enabled: installed?.enabled ?? false, error: 'marketplace install did not produce a loadable enabled bundle' }
+  if (installed?.dependency !== true || installed.enabled !== desiredEnabled || installed.packageReady !== true) {
+    return { status: 'failed', enabled: installed?.enabled ?? false, error: 'marketplace install did not produce a loadable bundle with the expected enabled state' }
   }
   writeSeedMarker(options.profileDir)
-  return { status: 'installed', enabled: true }
+  return { status: initial.dependency ? 'repaired' : 'installed', enabled: desiredEnabled }
 }

@@ -8,11 +8,9 @@
  *
  * - `DSH_HOME` defaults to `<exe-dir>/.dsh` so the exe is portable; an
  *   explicit `DSH_HOME` env var still wins.
- * - `boot()` receives the packaged install's `node_modules` as
- *   `bareModuleBaseUrl`, so bare plugin specifiers resolve from the VFS
- *   instead of from the on-disk profile directory, and the
- *   profiles/node_modules symlink fallback is deliberately not healed
- *   (its targets live inside the pkg VFS and cannot be junctioned from disk).
+ * - Real-filesystem runtimes resolve bare plugins from the profile first and
+ *   heal its installation fallback, so profile-owned updates take effect.
+ *   The legacy single-file runtime keeps resolving from its packaged VFS.
  *
  * After the tree settles, the local URL is polled and (unless `--no-open`)
  * opened in the default browser. All other flags pass through to the web
@@ -33,13 +31,17 @@ import Loader from '@deepseek-ai/cordis-plugin-loader'
 import {
   assertEntriesActivated,
   composeEntries,
+  healProfilesModuleFallback,
+  initProfile,
   installFailLoud,
   loadLayeredEnv,
   loadOptionalPatches,
   loadProfile,
   mountRootInclude,
   PROFILE_PATCH_FILENAME,
+  PROFILE_TEMPLATES,
   readProfileManifest,
+  resolveProfileDir,
   type Profile,
   writeProfileManifest,
 } from '@deepseek-ai/dsh-app-boot'
@@ -64,8 +66,15 @@ const SHIPPED_PRESET_SOURCE = fileURLToPath(new URL('../config/agent-presets/', 
 const INSTALL_ANCHOR = fileURLToPath(new URL('../package.json', import.meta.url))
 /** Runtime packages used by the one-time marketplace profile bootstrap. */
 const installationRequire = createRequire(INSTALL_ANCHOR)
-const MARKETPLACE_SOURCE_DIR = dirname(installationRequire.resolve(`${MARKETPLACE_PACKAGE}/package.json`))
 const PNPM_CLI_ENTRY = join(dirname(installationRequire.resolve('pnpm')), 'bin', 'pnpm.cjs')
+
+function marketplaceSourceDir(): string | undefined {
+  try {
+    return dirname(installationRequire.resolve(`${MARKETPLACE_PACKAGE}/package.json`))
+  } catch {
+    return undefined
+  }
+}
 /** The empty root entry list every profile tree patches over. */
 const PROFILE_ROOT_CONFIG = `# dsh profile root — an empty entry list. The tree is composed as patches:
 # each bundle in the profile's dsh.profile.bundles, then cordis.patch.yml, then any
@@ -171,63 +180,68 @@ function composeProfile(shippedPresetRoot: string): {
   homePatches: PatchOptions[]
   overlays: PatchOptions[]
 } {
-  let profile = loadProfile(NAME, PROFILE_NAME, INSTALL_ANCHOR)
-  const marketplace = ensureMarketplacePreinstalled({
-    profileDir: profile.dir,
-    sourceDir: MARKETPLACE_SOURCE_DIR,
-    install: sourceSpec => {
-      const child = spawnSync(process.execPath, [
-        PNPM_CLI_ENTRY,
-        'add',
-        '-w',
-        sourceSpec,
-      ], {
-        cwd: profile.dir,
-        env: {
-          ...process.env,
-          ELECTRON_RUN_AS_NODE: '1',
-        },
-        stdio: 'inherit',
-        windowsHide: true,
-      })
-      if (child.error !== undefined) {
-        console.error(`${NAME}: failed to start the embedded marketplace installer: ${child.error.message}`)
-        return 1
-      }
-      const exitCode = child.status ?? 1
-      if (exitCode !== 0) return exitCode
-      try {
-        // The public `dsh plugin` command performs this same reconciliation
-        // after pnpm exits. Run pnpm directly here because its Windows shell
-        // forwarder cannot preserve a link path containing spaces (the
-        // packaged product directory is normally named `DeepSeek Harness`).
-        const manifest = readProfileManifest(NAME, profile.dir)
-        const bundles = manifest.dsh?.profile?.bundles ?? []
-        if (!bundles.includes(MARKETPLACE_PACKAGE)) {
-          manifest.dsh = {
-            ...manifest.dsh,
-            profile: {
-              ...manifest.dsh?.profile,
-              bundles: [...bundles, MARKETPLACE_PACKAGE],
-            },
-          }
-          writeProfileManifest(profile.dir, manifest)
+  const profileDir = resolveProfileDir(PROFILE_NAME)
+  initProfile(profileDir, PROFILE_TEMPLATES[PROFILE_NAME] ?? [])
+  const bundledMarketplace = marketplaceSourceDir()
+  const marketplace = bundledMarketplace === undefined
+    ? { status: 'failed' as const, enabled: false, error: 'bundled marketplace package is missing or invalid' }
+    : ensureMarketplacePreinstalled({
+      profileDir,
+      sourceDir: bundledMarketplace,
+      install: (sourceSpec, enabled) => {
+        const child = spawnSync(process.execPath, [
+          PNPM_CLI_ENTRY,
+          'add',
+          '-w',
+          sourceSpec,
+        ], {
+          cwd: profileDir,
+          env: {
+            ...process.env,
+            ELECTRON_RUN_AS_NODE: '1',
+          },
+          stdio: 'inherit',
+          windowsHide: true,
+        })
+        if (child.error !== undefined) {
+          console.error(`${NAME}: failed to start the embedded marketplace installer: ${child.error.message}`)
+          return 1
         }
-      } catch (cause) {
-        console.error(`${NAME}: failed to enable the preinstalled marketplace: ${cause instanceof Error ? cause.message : String(cause)}`)
-        return 1
-      }
-      return 0
-    },
-  })
+        const exitCode = child.status ?? 1
+        if (exitCode !== 0) return exitCode
+        try {
+          // The public `dsh plugin` command performs this same reconciliation
+          // after pnpm exits. Run pnpm directly here because its Windows shell
+          // forwarder cannot preserve a link path containing spaces (the
+          // packaged product directory is normally named `DeepSeek Harness`).
+          const manifest = readProfileManifest(NAME, profileDir)
+          const bundles = manifest.dsh?.profile?.bundles ?? []
+          const nextBundles = enabled
+            ? bundles.includes(MARKETPLACE_PACKAGE) ? bundles : [...bundles, MARKETPLACE_PACKAGE]
+            : bundles.filter(bundle => bundle !== MARKETPLACE_PACKAGE)
+          if (nextBundles.length !== bundles.length || nextBundles.some((bundle, index) => bundle !== bundles[index])) {
+            manifest.dsh = {
+              ...manifest.dsh,
+              profile: {
+                ...manifest.dsh?.profile,
+                bundles: nextBundles,
+              },
+            }
+            writeProfileManifest(profileDir, manifest)
+          }
+        } catch (cause) {
+          console.error(`${NAME}: failed to enable the preinstalled marketplace: ${cause instanceof Error ? cause.message : String(cause)}`)
+          return 1
+        }
+        return 0
+      },
+    })
   if (marketplace.status === 'failed') {
     console.error(`${NAME}: marketplace preinstall deferred: ${marketplace.error ?? 'unknown error'}`)
-  } else if (marketplace.status === 'installed') {
-    console.log(`${NAME}: preinstalled ${MARKETPLACE_PACKAGE} into the web profile`)
-    // The installer reconciles the manifest and node_modules tree; reload the
-    // profile so this boot sees the newly appended bundle layer.
-    profile = loadProfile(NAME, PROFILE_NAME, INSTALL_ANCHOR)
+  } else if (marketplace.status === 'installed' || marketplace.status === 'repaired') {
+    console.log(`${NAME}: ${marketplace.status === 'installed' ? 'preinstalled' : 'repaired'} ${MARKETPLACE_PACKAGE} in the web profile`)
   }
+  const profile = loadProfile(NAME, PROFILE_NAME, INSTALL_ANCHOR)
   const homePatches = loadOptionalPatches(NAME, homePatchPath()) ?? []
   const bundlePatches = profile.layers.flatMap(layer => layer.patches)
   const rows = new Map<string, { config?: unknown }>()
@@ -419,6 +433,8 @@ async function main(): Promise<void> {
 
   const shippedPresetRoot = await materializeShippedPresetRoot()
   const composed = composeProfile(shippedPresetRoot)
+  const virtualRuntime = Boolean((process as NodeJS.Process & { pkg?: unknown }).pkg)
+  if (!virtualRuntime) healProfilesModuleFallback(INSTALL_ANCHOR)
   const app: { current?: Context } = {}
   const shutdown = (() => {
     let exiting = false
@@ -444,9 +460,12 @@ async function main(): Promise<void> {
   const rootConfig = join(composed.profile.dir, PROFILE_ROOT_FILENAME)
   await writeFile(rootConfig, PROFILE_ROOT_CONFIG)
 
- // Bare specifiers resolve from the packaged install's node_modules inside
-  // the pkg VFS; relative specifiers keep resolving from the profile dir.
-  const bareModuleBaseUrl = pathToFileURL(join(dirname(INSTALL_ANCHOR), 'node_modules') + '/').href
+  // Electron and ordinary Node runtimes use the profile as the first package
+  // anchor, then its healed profiles/node_modules installation fallback. The
+  // single-file VFS cannot be the target of real filesystem junctions.
+  const bareModuleBaseUrl = pathToFileURL(
+    virtualRuntime ? join(dirname(INSTALL_ANCHOR), 'node_modules') : composed.profile.dir,
+  ).href + '/'
 
   // The Loader tree captures `baseUrl` at construction, so app-boot's `boot()`
   // cannot point runtime-created bare-name entries (e.g. the

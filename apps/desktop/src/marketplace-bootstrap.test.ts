@@ -111,6 +111,31 @@ test('the marker preserves an intentional uninstall', () => {
   }
 })
 
+test('a broken dependency is rebuilt even after seeding and keeps its enabled state', () => {
+  const item = fixture()
+  try {
+    const manifest = JSON.parse(readFileSync(join(item.profile, 'package.json'), 'utf8'))
+    manifest.dependencies[MARKETPLACE_PACKAGE] = 'link:missing-marketplace'
+    writeJson(join(item.profile, 'package.json'), manifest)
+    writeJson(join(item.profile, MARKETPLACE_SEED_MARKER), { schemaVersion: 1 })
+    const specs: string[] = []
+    const result = ensureMarketplacePreinstalled({
+      profileDir: item.profile,
+      sourceDir: item.source,
+      install: (spec, enabled) => {
+        specs.push(spec)
+        assert.equal(enabled, false)
+        item.materialize(enabled)
+        return 0
+      },
+    })
+    assert.deepEqual(result, { status: 'repaired', enabled: false })
+    assert.deepEqual(specs, [`link:${item.source}`])
+  } finally {
+    rmSync(item.root, { recursive: true, force: true })
+  }
+})
+
 test('failed or incomplete installs remain retryable and never write the marker', () => {
   const item = fixture()
   try {
@@ -128,14 +153,14 @@ test('failed or incomplete installs remain retryable and never write the marker'
       install: () => 0,
     })
     assert.equal(incomplete.status, 'failed')
-    assert.match(incomplete.error ?? '', /did not produce a loadable enabled bundle/)
+    assert.match(incomplete.error ?? '', /did not produce a loadable bundle/)
     assert.equal(existsSync(join(item.profile, MARKETPLACE_SEED_MARKER)), false)
   } finally {
     rmSync(item.root, { recursive: true, force: true })
   }
 })
 
-test('a broken pre-existing dependency is preserved for manual repair', () => {
+test('a broken pre-existing dependency is repaired from the bundled package', () => {
   const item = fixture()
   try {
     const manifest = JSON.parse(readFileSync(join(item.profile, 'package.json'), 'utf8'))
@@ -144,10 +169,12 @@ test('a broken pre-existing dependency is preserved for manual repair', () => {
     const result = ensureMarketplacePreinstalled({
       profileDir: item.profile,
       sourceDir: item.source,
-      install: () => { throw new Error('must not overwrite user state') },
+      install: (_spec, enabled) => {
+        item.materialize(enabled)
+        return 0
+      },
     })
-    assert.equal(result.status, 'failed')
-    assert.match(result.error ?? '', /leaving it untouched/)
+    assert.deepEqual(result, { status: 'repaired', enabled: false })
   } finally {
     rmSync(item.root, { recursive: true, force: true })
   }
