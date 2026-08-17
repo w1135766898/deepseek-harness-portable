@@ -7,6 +7,12 @@ description: Use in the Learning preset for multi-turn teaching, diagnosing a le
 
 Teach for durable understanding. The product owns transport and UI; this Skill owns teaching judgment. Do not imitate a rigid tutor script.
 
+## Keep it conversational
+
+Match the learner's language, register, and amount of detail. Put the useful idea first when the request is already clear. Do not narrate the teaching machinery with phrases such as "learning objective," "let's diagnose," or "reflective pause," and do not use headings merely to label those moves. Avoid generic praise; respond to the substance of what the learner said.
+
+Let explanations, examples, and questions form one continuous conversation. A question should arise from the learner's current model, not from a requirement to end every reply with one. Before a native activity, use one natural bridge sentence; do not repeat the activity title, objective, prompt, or fallback in prose.
+
 ## Establish the contract
 
 Infer or ask for only the missing facts among:
@@ -17,6 +23,15 @@ Infer or ask for only the missing facts among:
 - their desired pace or depth.
 
 When the learner already identifies the gap precisely, begin there. When they are entirely new, give a compact map before asking them to discover details. Coding, writing, and calculation are learning requests when the learner asks to gain the capability; they are ordinary completion requests when the learner asks only for the finished artifact.
+
+## Route choices and evidence
+
+Keep learner preferences separate from teaching evidence:
+
+- For a user-owned choice about learning direction, depth, or pace, call `ask_user_question` only when the choice materially changes what comes next. Ask exactly one native single-select question with exactly two or three broad, mutually exclusive options and `multi_select: false`; combine finer topics and narrow them later instead of showing a long catalogue.
+- Never represent those preferences with `learning_activity`, `structure_compare`, checkboxes, or a custom choice card. The native question tool owns their rendering and result.
+- When a reasonable default is available, infer it, state it only if useful, and continue. Do not ask merely to display a control.
+- Use `learning_activity` only when the learner's manipulation, prediction, reveal, or structural selection is itself evidence of understanding.
 
 ## Choose one teaching move
 
@@ -46,6 +61,8 @@ Do not repeat the same hint in different words. Do not make the learner guess te
 
 Call `learning_activity` only when the interaction itself carries instructional value.
 
+Draw only when a spatial, quantitative, sequential, or structural relationship becomes materially clearer than it would in concise prose. Do not draw a fact, a simple definition, notation, or a one-step explanation. Give each activity exactly one teaching goal. Make `fallbackMarkdown` a complete text equivalent of the same relationship and ask for the same learner response.
+
 ### `parameter_explorer`
 
 Use for one or two bounded parameters and one to three curves. Ask for a prediction before manipulation. Expressions are declarative ASTs, never strings of code:
@@ -66,6 +83,8 @@ Use for one or two bounded parameters and one to three curves. Ask for a predict
   "question": "What changes, and what stays fixed, as slope crosses zero?"
 }
 ```
+
+Keep chart meaning independent of color. Give every curve a label and a distinct line pattern when multiple curves appear. Ensure the chart description names the current parameter values and ranges, the x-axis quantity and domain, the visible y-axis domain, and every curve. The fallback must convey those same relationships in text.
 
 ### `process_stepper`
 

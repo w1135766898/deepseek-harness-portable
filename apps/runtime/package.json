@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "build": "tsc -b",
-    "test": "pnpm exec tsx --test src/capability-report.test.ts src/capability-report-cache.test.ts src/marketplace-bootstrap.test.ts src/minimal-preset.test.ts src/mode-catalog.test.ts src/mode-resolver.test.ts src/open-browser.test.ts src/profile-module-resolver.test.ts src/profile-startup.test.ts",
+    "test": "pnpm exec tsx --test src/capability-report.test.ts src/capability-report-cache.test.ts src/marketplace-bootstrap.test.ts src/minimal-preset.test.ts src/mode-catalog.test.ts src/mode-resolver.test.ts src/open-browser.test.ts src/profile-module-resolver.test.ts src/profile-startup.test.ts src/session-compatibility.test.ts",
     "deps:sync": "pnpm exec tsx ../../scripts/runtime/sync-runtime-deps.ts",
     "deps:check": "pnpm exec tsx ../../scripts/runtime/sync-runtime-deps.ts --check"
   },

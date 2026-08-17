@@ -85,6 +85,37 @@
   color: var(--dsw-alias-label-secondary);
 }
 
+.routeBadge {
+  flex: none;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  line-height: 17px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.route_local {
+  color: var(--dsw-alias-label-success, #15803d);
+}
+
+.route_remote {
+  color: var(--dsw-alias-label-warning, #b45309);
+}
+
+.route_disabled {
+  color: var(--dsw-alias-label-tertiary, #64748b);
+}
+
+.route_invalid {
+  color: var(--dsw-alias-label-error, #dc2626);
+}
+
+.nativeRoute {
+  color: var(--dsw-alias-brand-primary, #2563eb);
+}
+
 .body {
   border-top: 1px solid var(--dsw-alias-border-l2);
   margin: 0 16px;
@@ -96,6 +127,53 @@
   font-size: 12px;
   line-height: 1.5;
   color: var(--dsw-alias-label-tertiary);
+}
+
+.routeSummary {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid currentColor;
+  border-radius: 9px;
+  background: var(--dsw-alias-bg-layer-3);
+}
+
+.routeDot {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.routeText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.routeText strong {
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+}
+
+.routeText span {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.routeText code {
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: currentColor;
 }
 
 .field {

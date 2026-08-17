@@ -22,6 +22,11 @@ describe('preset isolation', () => {
   it('mounts the model-facing entry only in the learning preset', () => {
     const learning = readFileSync(join(packageRoot, 'preset/learning/agent.cordis.yml'), 'utf8')
     expect(learning.match(/@dsh-portable\/interactive-learning\/agent/g)).toHaveLength(1)
+    expect(learning.match(/@deepseek-ai\/dsh-tool-ask-user/g)).toHaveLength(1)
+    const manifest = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>
+    }
+    expect(manifest.dependencies?.['@deepseek-ai/dsh-tool-ask-user']).toBe('workspace:^')
 
     const shippedRoot = join(repositoryRoot, 'apps/runtime/config/agent-presets')
     for (const path of filesNamed(shippedRoot, 'agent.cordis.yml')) {

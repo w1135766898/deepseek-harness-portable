@@ -18,10 +18,5 @@
  *
  * @module @dsh-portable/runtime/packaged-bin
  */
-import { type RuntimeModeTrace } from './mode-catalog.js';
-declare module '@deepseek-ai/dsh-session' {
-    interface SessionEventMap {
-        'portable-runtime/mode-resolution': RuntimeModeTrace;
-    }
-}
+export {};
 //# sourceMappingURL=packaged-bin.d.ts.map

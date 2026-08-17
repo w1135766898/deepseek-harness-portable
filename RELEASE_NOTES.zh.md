@@ -1,13 +1,19 @@
-# DeepSeek Harness Desktop v1.3.0
+# DeepSeek Harness Desktop v1.3.1
 
 [English](RELEASE_NOTES.md)
 
-Windows x64 便携版与 macOS Apple Silicon DMG · 2026-08-17
+Windows x64、macOS Apple Silicon 与 Linux x64 桌面版 · 2026-08-18
 
-这是 v1.3.0 桌面版发布，新增 macOS Apple Silicon Electron/DMG 通道和原生 POSIX 极简模式，同时保留 Windows 便携流程、内置插件市场、已验证更新恢复与可复现打包缓存。
+这是 v1.3.1 桌面版发布：运行时升级至 DeepSeek Harness rc.7，修复覆盖安装首次启动与新版事件导致的历史会话兼容问题，并把 Learning 预设真正融入桌面客户端对话体验。
 
 ## 新功能与体验优化
 
+- **原生 Learning 选择**：学习方向、深度和节奏改用 rc.7 客户端原生选择控件，不再展示自定义活动表单。
+- **对话内教学图示**：参数探索、过程分步和结构比较直接渲染在助手消息中，可随会话持久回放，并提供文字等价说明和非单纯依赖颜色的标注。
+- **历史会话向前兼容**：精确兼容旧版 `portable-runtime/mode-resolution` 事件，新写入事件标记为可忽略；其他未知且不可忽略事件仍会拒绝加载。
+- **覆盖安装首次启动可靠性**：始终优先使用 profile 依赖，并在 Setup Finish 启动恰逢 junction 替换窗口时回退到已安装 runtime。
+- **透明插件安装**：Marketplace 在确认前展示来源、运行环境、网络/图像外发、激活、降级、已知问题和验证信息；未知插件明确标记为未验证。
+- **rc.7 原生图片附件**：支持图片的模型使用客户端持久化附件链路；纯文本模型仍可显式调用外部 `view_image`，并清楚提示数据外发。
 - **macOS Apple Silicon 桌面分发**：Electron 外壳现在可以打包原生 `darwin-arm64` 应用和 DMG，并按目标平台暂存 `node-pty`、`sharp` 与 `koffi` 原生模块。
 - **macOS 原生极简模式**：官方预设通过 POSIX PTY 和 `/bin/bash` 运行，不使用 WSL 或容器兼容层。
 - **平台感知发布流程**：Windows 保留应用内便携更新，macOS 则打开发布页手动下载 DMG。
@@ -20,10 +26,10 @@ Windows x64 便携版与 macOS Apple Silicon DMG · 2026-08-17
 
 ## 组件版本
 
-- 分发：1.3.0
+- 分发：1.3.1
 - 桌面外壳：0.1.0-shell.2
-- 内核：0.1.0-rc.5（@deepseek-ai/dsh-web-app）
-- 标签：v1.3.0
+- 内核：0.1.0-rc.7（@deepseek-ai/dsh-web-app）
+- 标签：v1.3.1
 
 ## 校验和与安全
 

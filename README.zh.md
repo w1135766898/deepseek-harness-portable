@@ -38,21 +38,24 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
    - 用户数据位于应用目录之外：Windows 使用 `%USERPROFILE%\.dsh`，Linux/macOS 使用 `$HOME/.dsh`，也可通过 `$DSH_HOME` 覆盖。
    - Windows 使用 Windows 11 Mica 风格；Apple Silicon macOS 使用原生窗口与应用菜单行为。
 3. **视觉辅助多模态外挂（`@dsh-portable/vision-bridge`）**：
-   - 为纯文本大模型（如 DeepSeek-V3 / R1）接入外部 OpenAI 兼容端点与高性价比多模态模型（如 Gemini 3.7 Flash、Mimo V2.5 等），赋予模型看图、UI分析与图表识别能力。
+   - 所选模型支持图像时使用 rc.7 原生持久化附件链路；纯文本模型仍可显式调用外部 `view_image` 识图链路。
    - 全局 `view_image` 工具无缝集成至官方【设置 → 插件】槽位，支持服务商预设一键切换、即时测试与 API Key 纯写脱敏保护。
 4. **预装插件市场（`dsh-plugin-marketplace`）**：
    - 在【设置 → 插件】中增加可搜索的“插件市场”和“已安装”页签，实时读取 GitHub `dsh-plugin` 话题。
-   - 内置供 Agent 搜索、安装、检查和更新插件的工具。每个 Web profile 只预装一次，用户关闭或卸载后不会被自动恢复。
-5. **安全的平台适配更新**：
+   - 安装前展示来源、运行环境、网络/图像外发、激活、降级、已知问题和验证版本；未知插件明确标记为未验证。
+5. **交互式学习预设**：
+   - 学习方向、深度和节奏使用客户端原生选择控件，不再显示自定义的大型表单。
+   - 参数、过程和结构类教学图示直接出现在助手消息中，可随会话持久回放，并始终提供文字等价说明。
+6. **安全的平台适配更新**：
    - Windows 保留后台 Staging、SHA-256 校验、原子重启替换和事务回滚。
    - Linux/macOS 首个发行通道打开 GitHub 发布页，由用户手动下载并替换 AppImage/deb 或 DMG；应用不会自行替换已安装程序。
-6. **零侵入微内核架构**：
+7. **零侵入微内核架构**：
    - 所有 Windows 适配与功能插件均通过 Cordis 微内核插件机制与运行时 Overlay 动态挂载，保持 upstream `vendor/deepseek-harness` 100% 原生纯净，无缝跟随官方上游迭代。
 
 ## 快速开始
 
 1. 从[最新发布](https://github.com/wsnxxxs/deepseek-harness-portable/releases/latest)下载 Windows Setup/ZIP、macOS 的 `DeepSeek-Harness-<version>-darwin-arm64.dmg`，或 Linux 的 `DeepSeek-Harness-<version>-linux-x64.AppImage`。
-2. Windows 运行安装程序；macOS 打开 DMG 并将 **DeepSeek Harness** 拖入“应用程序”；Linux 为 AppImage 添加执行权限后运行，或安装 `.deb` 包。
+2. Windows 运行安装程序；Linux/macOS 下载并检查 Release 中的 `install.sh` 后运行 `sh install.sh`，也可继续手动安装 AppImage/deb 或 DMG。
 3. 启动 **DeepSeek Harness**，在 Web UI 的“设置”中配置 DeepSeek API key（或在启动进程的环境中提供）。
 
 ## 功能特性
@@ -68,10 +71,10 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
 
 | 项目 | 版本 |
 | --- | --- |
-| 发布 | DeepSeek Harness Desktop **v1.3.0**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.3.0)) |
-| 分发版本 | 1.3.0 |
+| 发布 | DeepSeek Harness Desktop **v1.3.1**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.3.1)) |
+| 分发版本 | 1.3.1 |
 | 桌面外壳 | 0.1.0-shell.2 |
-| 内核 | 0.1.0-rc.5 |
+| 内核 | 0.1.0-rc.7 |
 
 请阅读[中文发布说明](RELEASE_NOTES.zh.md)，或在桌面端托盘菜单中打开“更新日志”。
 
@@ -80,10 +83,11 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
 1. **Windows Setup 安装包：** 从 Releases 下载 `DeepSeek-Harness-Setup-<version>-win32-x64.exe` 并运行。
 2. **Windows 在线安装：** 运行仓库中的 `install.ps1`。脚本只接受带可信 SHA-256 摘要的 release ZIP。参数：`-InstallDir <路径>`（默认 `%LOCALAPPDATA%\Programs\DeepSeek Harness`）、`-NoDesktopShortcut`、`-Force`。
 3. **Windows 便携 ZIP：** 下载 `DeepSeek-Harness-<version>-win32-x64.zip`，先核对 `SHA256SUMS.txt`，再解压完整目录，不要重命名 `runtime`。
-4. **macOS Apple Silicon：** 下载 `DeepSeek-Harness-<version>-darwin-arm64.dmg`，核对 `SHA256SUMS-darwin-arm64.txt`，打开后将应用拖入“应用程序”。当前 DMG 未签名且未公证。
-5. **Linux x64 AppImage：** 下载 `DeepSeek-Harness-<version>-linux-x64.AppImage`，核对校验值，运行 `chmod +x DeepSeek-Harness-<version>-linux-x64.AppImage` 后启动。
-6. **Linux x64 deb：** 下载 `DeepSeek-Harness-<version>-linux-x64.deb`，运行 `sudo apt install ./DeepSeek-Harness-<version>-linux-x64.deb` 安装。
-7. **卸载：** 使用平台常规的应用移除流程。Windows 便携包包含卸载脚本；除非明确删除，否则会保留用户数据。
+4. **Linux/macOS 校验安装：** 从同一个 Release 下载 `install.sh` 与 `SHA256SUMS-install.txt`，校验并检查脚本后运行 `sh install.sh`。脚本只选择已支持的原生目标，并在安装前使用 `SHA256SUMS-<target>.txt` 校验 AppImage/DMG。Linux 默认安装到 `~/.local/opt/deepseek-harness`，同时创建 `~/.local/bin/deepseek-harness` 和桌面入口；macOS 默认安装到 `~/Applications`。可使用 `--version <版本>`、`--install-dir <路径>` 或 `--help`。
+5. **macOS Apple Silicon（手动）：** 下载 `DeepSeek-Harness-<version>-darwin-arm64.dmg`，核对 `SHA256SUMS-darwin-arm64.txt`，打开后将应用拖入“应用程序”。当前 DMG 未签名且未公证；安装脚本不会绕过 Gatekeeper。
+6. **Linux x64 AppImage（手动）：** 下载 `DeepSeek-Harness-<version>-linux-x64.AppImage`，核对校验值，运行 `chmod +x DeepSeek-Harness-<version>-linux-x64.AppImage` 后启动。
+7. **Linux x64 deb（手动）：** 下载 `DeepSeek-Harness-<version>-linux-x64.deb`，运行 `sudo apt install ./DeepSeek-Harness-<version>-linux-x64.deb` 安装。
+8. **卸载：** 使用平台常规的应用移除流程。Windows 便携包包含卸载脚本；除非明确删除，否则会保留用户数据。
 
 > **注意：** `setup-shortcuts.ps1`（安装程序以及便携包中的 `创建桌面快捷方式.bat` 会调用它）会创建桌面快捷方式，并把便携目录加入**用户 PATH**；卸载程序会一并移除这两项。
 

@@ -47,10 +47,8 @@ const {
   parseSha256Sums,
 } = require('./update-client.cjs')
 const {
-  OFFICIAL_KERNEL_REPO,
   PORTABLE_RELEASE_REPO,
-  evaluateUpdateChannels,
-  queryLatestOfficialKernelRelease,
+  evaluateReleaseUpdate,
 } = require('./update-sources.cjs')
 const {
   DEFAULT_WINDOW_BOUNDS,
@@ -1394,14 +1392,6 @@ async function queryLatestVersion(options = {}) {
   })
 }
 
-async function queryLatestKernelVersion(options = {}) {
-  return queryLatestOfficialKernelRelease({
-    fetchJson,
-    timeoutMs: options?.timeoutMs || 6000,
-    urls: options?.urls,
-  })
-}
-
 async function queryReleaseHistory() {
   const apiUrl = `https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases?per_page=${RELEASE_HISTORY_LIMIT}`
   const rawReleaseNotesUrl = `https://raw.githubusercontent.com/${PORTABLE_RELEASE_REPO}/main/apps/desktop/src/release-notes.json`
@@ -1546,26 +1536,18 @@ async function buildReleaseNotesData(context = {}, options = {}) {
   }, localInfo.distributionVersion)
   const cached = cachedReleaseHistory()
   let remote = []
-  let kernelUpdate = context.kernelUpdate
   const sourceErrors = { ...(context.sourceErrors || {}) }
   let offline = options.fetchRemote !== true
   if (options.fetchRemote === true) {
-    const [historyResult, kernelResult] = await Promise.allSettled([
-      queryReleaseHistory(),
-      queryLatestKernelVersion(),
-    ])
-    if (historyResult.status === 'fulfilled') {
-      remote = historyResult.value
+    try {
+      remote = await queryReleaseHistory()
       delete sourceErrors.portable
       if (remote.length > 0) saveReleaseHistory(remote)
-    } else {
-      sourceErrors.portable = errorMessage(historyResult.reason)
+      offline = false
+    } catch (error) {
+      sourceErrors.portable = errorMessage(error)
+      offline = true
     }
-    if (kernelResult.status === 'fulfilled') {
-      kernelUpdate = kernelResult.value
-      delete sourceErrors.kernel
-    } else sourceErrors.kernel = errorMessage(kernelResult.reason)
-    offline = historyResult.status === 'rejected' && kernelResult.status === 'rejected'
   }
 
   const update = context.update === undefined ? undefined : normalizePortableRelease(context.update)
@@ -1587,17 +1569,6 @@ async function buildReleaseNotesData(context = {}, options = {}) {
     latestRelease
       && compareVersions(latestRelease.version, localInfo.distributionVersion) > 0,
   )
-  const kernelUpdateAvailable = Boolean(
-    kernelUpdate
-      && isValidSemver(localInfo.kernelVersion)
-      && isValidSemver(kernelUpdate.version)
-      && evaluateUpdateChannels({
-        localDistributionVersion: localInfo.distributionVersion,
-        localKernelVersion: localInfo.kernelVersion,
-        portableRelease: latestRelease,
-        kernelRelease: kernelUpdate,
-      }).kernel.updateAvailable,
-  )
 
   return {
     mode: context.mode || 'history',
@@ -1608,10 +1579,8 @@ async function buildReleaseNotesData(context = {}, options = {}) {
     currentRelease,
     latestRelease: updateAvailable || context.mode === 'update' ? latestRelease : undefined,
     updateAvailable,
-    kernelUpdate: kernelUpdateAvailable || context.mode === 'update' ? kernelUpdate : undefined,
-    kernelUpdateAvailable,
     sourceErrors,
-    error: checkError || (offline ? [sourceErrors.portable, sourceErrors.kernel].filter(Boolean).join(' | ') : undefined),
+    error: checkError || (offline ? sourceErrors.portable : undefined),
     updateStatus: await getCurrentUpdateStatus(),
     selectedVersion: context.selectedVersion
       || (context.mode === 'update' ? latestRelease.version : currentRelease.version),
@@ -2106,12 +2075,6 @@ function registerReleaseNotesIpc() {
       return
     }
 
-    if (action.type === 'kernel-update') {
-      const releaseUrl = action.releaseUrl || releaseNotesContext.kernelUpdate?.releaseUrl
-      openExternalSafe(releaseUrl || `https://github.com/${OFFICIAL_KERNEL_REPO}/releases`)
-      return
-    }
-
     if (action.type === 'retry-update') {
       clearUpdateStatusForRetry(true)
       preparedPortableUpdate = undefined
@@ -2274,56 +2237,34 @@ function showAvailableUpdateNotice(latestInfo, currentVersion, force = false) {
   })
 }
 
-function showAvailableKernelNotice(latestInfo, currentVersion, force = false) {
-  const config = readConfig()
-  if (!force && config.lastNotifiedKernelVersion === latestInfo.version) return
-  updateConfig({ lastNotifiedKernelVersion: latestInfo.version })
-  showInAppNotice({
-    kind: 'kernel-available',
-    currentVersion,
-    release: latestInfo,
-  })
-}
-
 async function checkForUpdates(manual = true) {
   const localInfo = getLocalReleaseInfo()
-  const [portableResult, kernelResult] = await Promise.allSettled([
-    queryLatestVersion(),
-    queryLatestKernelVersion(),
-  ])
-  const portableRelease = portableResult.status === 'fulfilled' ? portableResult.value : undefined
-  const kernelRelease = kernelResult.status === 'fulfilled' ? kernelResult.value : undefined
-  const sourceErrors = {
-    ...(portableResult.status === 'rejected' ? { portable: errorMessage(portableResult.reason) } : {}),
-    ...(kernelResult.status === 'rejected' ? { kernel: errorMessage(kernelResult.reason) } : {}),
-  }
-  let channels = {
-    portable: { updateAvailable: false },
-    kernel: { updateAvailable: false },
-  }
-  if (isValidSemver(localInfo.distributionVersion) && isValidSemver(localInfo.kernelVersion)) {
-    channels = evaluateUpdateChannels({
-      localDistributionVersion: localInfo.distributionVersion,
-      localKernelVersion: localInfo.kernelVersion,
-      portableRelease,
-      kernelRelease,
-    })
+  let portableRelease
+  let release = { updateAvailable: false }
+  const sourceErrors = {}
+  try {
+    portableRelease = await queryLatestVersion()
+    if (isValidSemver(localInfo.distributionVersion)) {
+      release = evaluateReleaseUpdate({
+        localDistributionVersion: localInfo.distributionVersion,
+        release: portableRelease,
+      })
+    }
+  } catch (error) {
+    sourceErrors.portable = errorMessage(error)
   }
 
-  if (channels.portable.updateAvailable) {
+  if (release.updateAvailable) {
     if (manual) clearUpdateStatusForRetry()
     showAvailableUpdateNotice(portableRelease, localInfo.distributionVersion, manual)
-  } else if (channels.kernel.updateAvailable) {
-    showAvailableKernelNotice(kernelRelease, localInfo.kernelVersion, manual)
   }
 
   if (manual) {
     openInAppReleaseNotes({
-      mode: channels.portable.updateAvailable || channels.kernel.updateAvailable || Object.keys(sourceErrors).length > 0 ? 'update' : 'history',
+      mode: release.updateAvailable || Object.keys(sourceErrors).length > 0 ? 'update' : 'history',
       currentVersion: localInfo.distributionVersion,
       selectedVersion: localInfo.distributionVersion,
-      update: channels.portable.updateAvailable ? portableRelease : undefined,
-      kernelUpdate: channels.kernel.updateAvailable ? kernelRelease : undefined,
+      update: release.updateAvailable ? portableRelease : undefined,
       sourceErrors,
     })
   }

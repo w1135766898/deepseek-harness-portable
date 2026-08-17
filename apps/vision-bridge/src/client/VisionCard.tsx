@@ -26,6 +26,27 @@ export function VisionCard(props: VisionCardProps) {
   const title = t('cardTitle')
   const desc = t('cardDescription')
   const blocked = !state.dirty || state.saving || !state.writable
+  const routeLabel = t(state.route.kind === 'local'
+    ? 'routeLocal'
+    : state.route.kind === 'remote'
+      ? 'routeRemote'
+      : state.route.kind === 'disabled'
+        ? 'routeDisabled'
+        : 'routeInvalid')
+  const routeTitle = t(state.route.kind === 'local'
+    ? 'routeLocalTitle'
+    : state.route.kind === 'remote'
+      ? 'routeRemoteTitle'
+      : state.route.kind === 'disabled'
+        ? 'routeDisabledTitle'
+        : 'routeInvalidTitle')
+  const routeHint = t(state.route.kind === 'local'
+    ? 'routeLocalHint'
+    : state.route.kind === 'remote'
+      ? 'routeRemoteHint'
+      : state.route.kind === 'disabled'
+        ? 'routeDisabledHint'
+        : 'routeInvalidHint')
 
   return (
     <li className={`${css.card} ${open ? css.cardOpen : ''}`}>
@@ -41,6 +62,9 @@ export function VisionCard(props: VisionCardProps) {
           <span className={css.description}>{desc}</span>
         </span>
         {state.dirty && <span className={css.pending}>{t('unsaved')}</span>}
+        <span className={`${css.routeBadge} ${css[`route_${state.route.kind}`]}`}>
+          {routeLabel}
+        </span>
         <svg
           className={`${css.chevron} ${open ? css.chevronOpen : ''}`}
           viewBox="0 0 16 16"
@@ -59,6 +83,32 @@ export function VisionCard(props: VisionCardProps) {
           {!state.writable && (
             <p className={css.readOnly} role="status">{t('readOnly')}</p>
           )}
+
+          <div
+            className={`${css.routeSummary} ${css.nativeRoute}`}
+            data-route="native-attachment"
+            role="status"
+          >
+            <span className={css.routeDot} aria-hidden="true" />
+            <span className={css.routeText}>
+              <strong>{t('nativeRouteTitle')}</strong>
+              <span>{t('nativeRouteHint')}</span>
+            </span>
+          </div>
+
+          <div
+            className={`${css.routeSummary} ${css[`route_${state.route.kind}`]}`}
+            data-route={state.route.kind}
+            role="status"
+            aria-live="polite"
+          >
+            <span className={css.routeDot} aria-hidden="true" />
+            <span className={css.routeText}>
+              <strong>{routeTitle}</strong>
+              <span>{routeHint}</span>
+              {state.route.endpoint !== undefined && <code>{state.route.endpoint}</code>}
+            </span>
+          </div>
 
           {/* 1. Enable Switch */}
           <div className={css.fieldRow}>

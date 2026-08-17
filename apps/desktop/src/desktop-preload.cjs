@@ -359,23 +359,8 @@ if (!isSplashDocument) {
     return '<section class="dsh-hero-card ' + (ready ? 'dsh-hero-card-ready' : (busy ? 'dsh-hero-card-progress' : 'dsh-hero-card-available')) + '" role="status" aria-live="polite"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(ready ? desktopText('release.verifiedKicker') : (busy ? desktopText('release.transactionEngine') : desktopText('release.foundNew'))) + '</span><strong>' + escapeHtml(title) + '</strong><small>' + escapeHtml(detail) + '</small>' + (busy ? renderProgress({ ...persisted, ...live }) : '') + '</div><div class="dsh-hero-actions">' + action + '</div></section>'
   }
 
-  function renderKernelUpdateCard() {
-    const data = state.data || {}
-    const currentVersion = data.localInfo?.kernelVersion || 'unknown'
-    const update = data.kernelUpdate
-    const sourceError = data.sourceErrors?.kernel
-    if (sourceError && !update) {
-      return '<section class="dsh-hero-card dsh-hero-card-error" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.kernelChannel')) + '</span><strong>' + escapeHtml(desktopText('release.kernelUnavailable')) + '</strong><small>' + escapeHtml(sourceError) + '</small></div></section>'
-    }
-    if (!data.kernelUpdateAvailable || !update) {
-      return '<section class="dsh-hero-card dsh-hero-card-neutral" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.kernelChannel')) + '</span><strong>' + escapeHtml(desktopText('release.kernelLatestVersion', { version: currentVersion })) + '</strong><small>' + escapeHtml(desktopText('release.noUpdate')) + '</small></div></section>'
-    }
-    const releaseUrl = String(update.releaseUrl || '')
-    return '<section class="dsh-hero-card dsh-hero-card-available" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.kernelChannel')) + '</span><strong>' + escapeHtml(desktopText('release.kernelAvailableTitle', { current: currentVersion, version: update.version || '—' })) + '</strong><small>' + escapeHtml(desktopText('release.kernelAvailableDetail')) + '</small></div><div class="dsh-hero-actions"><button class="dsh-button secondary" type="button" data-action="kernel-update" data-release-url="' + escapeHtml(releaseUrl) + '">' + escapeHtml(desktopText('release.kernelUpdateAction')) + '</button></div></section>'
-  }
-
   function renderHeroCard() {
-    return '<div class="dsh-update-channels">' + renderPortableUpdateCard() + renderKernelUpdateCard() + '</div>'
+    return '<div class="dsh-update-channels">' + renderPortableUpdateCard() + '</div>'
   }
 
   function renderModalContent() {
@@ -428,7 +413,6 @@ if (!isSplashDocument) {
     const release = notice.release || {}
     const status = notice.updateStatus || {}
     const isAvailable = notice.kind === 'available'
-    const isKernelAvailable = notice.kind === 'kernel-available'
     const isProblem = notice.kind === 'failed' || notice.kind === 'interrupted'
     const isRolledBack = notice.kind === 'rolled-back'
     const isReady = notice.kind === 'ready'
@@ -436,12 +420,7 @@ if (!isSplashDocument) {
     let desc
     let actionLabel
     let action
-    if (isKernelAvailable) {
-      title = desktopText('release.kernelAvailableTitle', { current: notice.currentVersion || '—', version: release.version || '—' })
-      desc = desktopText('release.kernelAvailableDetail')
-      actionLabel = desktopText('release.kernelUpdateAction')
-      action = 'kernel-update'
-    } else if (isAvailable) {
+    if (isAvailable) {
       title = desktopText('release.availableTitle', { version: 'v' + (release.version || '—') })
       desc = desktopText('release.openFeaturesDescription')
       actionLabel = desktopText('release.openFeatures')
@@ -625,7 +604,7 @@ if (!isSplashDocument) {
     const position = state.menuPosition || defaultMenuPosition()
     const positionMarkup = ' style="--dsh-menu-left:' + escapeHtml(position.left) + 'px;--dsh-menu-top:' + escapeHtml(position.top) + 'px"'
     const shellLabel = shellEnvironmentLabel()
-    const hasUpdate = Boolean(state.data?.updateAvailable || state.data?.kernelUpdateAvailable || (state.notice && (state.notice.kind === 'available' || state.notice.kind === 'kernel-available')) || state.updateProgress)
+    const hasUpdate = Boolean(state.data?.updateAvailable || state.notice?.kind === 'available' || state.updateProgress)
     const updateDot = hasUpdate ? '<span class="dsh-menu-dot" title="' + escapeHtml(desktopText('release.foundNew')) + '">●</span>' : ''
 
     const isRecentOpen = state.menuSubmenu === 'workspaces'
@@ -1004,9 +983,7 @@ if (!isSplashDocument) {
     if (action === 'open-release-notes') {
       const context = state.notice?.kind === 'available'
         ? { mode: 'update', currentVersion: state.notice.currentVersion, update: state.notice.release }
-        : (state.notice?.kind === 'kernel-available'
-            ? { mode: 'update', kernelUpdate: state.notice.release }
-            : { mode: 'history', selectedVersion: state.notice?.currentVersion })
+        : { mode: 'history', selectedVersion: state.notice?.currentVersion }
       dismissNotice()
       void openModal(context)
       return
@@ -1037,12 +1014,6 @@ if (!isSplashDocument) {
       state.updateState = ready ? desktopText('release.restartUpdate') : desktopText('update.prepareDownload')
       render()
       sendAction('update', { targetVersion: version })
-      return
-    }
-    if (action === 'kernel-update') {
-      const releaseUrl = target.dataset.releaseUrl || state.data?.kernelUpdate?.releaseUrl || state.notice?.release?.releaseUrl || ''
-      dismissNotice()
-      sendAction('kernel-update', { releaseUrl })
       return
     }
     if (action === 'show-about') {

@@ -1,53 +1,41 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
-const {
-  evaluateUpdateChannels,
-  parseOfficialKernelTag,
-  queryLatestOfficialKernelRelease,
-} = require('./update-sources.cjs')
+const { evaluateReleaseUpdate } = require('./update-sources.cjs')
 
-test('parses only official dsh-v SemVer tags', () => {
-  assert.equal(parseOfficialKernelTag('dsh-v0.1.0-rc.7'), '0.1.0-rc.7')
-  assert.equal(parseOfficialKernelTag('v1.3.0'), undefined)
-  assert.equal(parseOfficialKernelTag('dsh-v0.1.0-01'), undefined)
-})
-
-test('compares portable shell and official kernel versions only within their channels', () => {
-  const result = evaluateUpdateChannels({
+test('compares only the portable distribution release version', () => {
+  const result = evaluateReleaseUpdate({
     localDistributionVersion: '1.3.0',
+    release: { version: '1.3.1' },
+    // Extra kernel-shaped input is deliberately irrelevant. Official kernel
+    // changes are delivered inside a later portable release package.
     localKernelVersion: '0.1.0-rc.5',
-    portableRelease: { version: '1.3.0' },
     kernelRelease: { version: '0.1.0-rc.7' },
   })
-  assert.equal(result.portable.updateAvailable, false)
-  assert.equal(result.kernel.updateAvailable, true)
+  assert.equal(result.currentVersion, '1.3.0')
+  assert.equal(result.latestVersion, '1.3.1')
+  assert.equal(result.updateAvailable, true)
+  assert.equal('kernel' in result, false)
 })
 
-test('one failed official mirror does not hide a valid release from another source', async () => {
-  const release = await queryLatestOfficialKernelRelease({
-    urls: ['https://failed.test/releases', 'https://working.test/releases'],
-    fetchJson: async url => {
-      if (url.includes('failed')) throw new Error('source unavailable')
-      return [
-        { tag_name: 'v9.0.0', draft: false },
-        { tag_name: 'dsh-v0.1.0-rc.5', draft: false, prerelease: true },
-        { tag_name: 'dsh-v0.1.0-rc.7', draft: false, prerelease: true },
-      ]
-    },
+test('does not report an update for the same or an invalid release version', () => {
+  assert.equal(evaluateReleaseUpdate({
+    localDistributionVersion: '1.3.0',
+    release: { version: 'v1.3.0' },
+  }).updateAvailable, false)
+  assert.deepEqual(evaluateReleaseUpdate({
+    localDistributionVersion: '1.3.0',
+    release: { version: 'dsh-v0.1.0-rc.7' },
+  }), {
+    currentVersion: '1.3.0',
+    latestVersion: undefined,
+    updateAvailable: false,
+    release: { version: 'dsh-v0.1.0-rc.7' },
   })
-  assert.equal(release.version, '0.1.0-rc.7')
-  assert.equal(release.channel, 'kernel')
 })
 
-test('portable source failure remains independent from a successful kernel result', async () => {
-  const [portable, kernel] = await Promise.allSettled([
-    Promise.reject(new Error('portable unavailable')),
-    queryLatestOfficialKernelRelease({
-      urls: ['https://working.test/releases'],
-      fetchJson: async () => [{ tag_name: 'dsh-v0.1.0-rc.7', draft: false, prerelease: true }],
-    }),
-  ])
-  assert.equal(portable.status, 'rejected')
-  assert.equal(kernel.status, 'fulfilled')
-  assert.equal(kernel.value.version, '0.1.0-rc.7')
+test('rejects an invalid installed distribution version', () => {
+  assert.throws(() => evaluateReleaseUpdate({
+    localDistributionVersion: 'rc.7',
+    release: { version: '1.3.1' },
+  }), /Invalid local distribution version/)
 })

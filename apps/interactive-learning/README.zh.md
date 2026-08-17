@@ -10,6 +10,9 @@ Standard、Code、Minimal 或 Cordis 增加模型工具或 standing prompt。
   协调服务。
 - `./agent` 只由 Learning preset 挂载，注册唯一的
   `learning_activity` 工具和精简教学策略。
+- Learning preset 还挂载 rc.7 原生 `ask_user_question`，只承接方向、深度、
+  节奏等用户自主选择；有合理默认时不弹问题，教学证据仍由
+  `learning_activity` 承接。
 - `./client` 注册 Learning 专属 composer、已完成工具视图和可扩展的活动
   renderer registry。
 - `./protocol` 定义版本化、声明式的 Activity/Response 协议。
@@ -21,12 +24,16 @@ Host 生成的 `dsh-learning/transport@1` envelope，并且 `sessionId` 与当�
 会话完全相同。因此普通问题和非 Learning preset 不会被接管，fork 也不会
 使父会话的 pending activity 复活。
 
-## rc.5 交互闭环
+## rc.7 交互闭环
 
 1. Agent 调用带 `dsh-learning/activity@1` 的 `learning_activity`。
 2. Host 严格校验 schema、生成可信 `activityId`，并创建 durable question
-   wait；detail 同时携带版本化 envelope 和可读 Markdown fallback。
-3. Client 渲染原生活动，把 `dsh-learning/response@1` 提交回同一个 wait。
+   wait；不可见的 question id 携带版本化 envelope，detail 只保留可读的
+   Markdown fallback，因此通用问答 UI 不会显示机器载荷。
+3. Client 在对话流里的 `learning_activity` 行渲染原生活动，把
+   `dsh-learning/response@1` 提交回同一个 wait。活动直接沿用 Assistant
+   消息的内容宽度和正文节奏，不使用 ToolRow 或卡片外框；composer takeover
+   为空，只负责阻止通用 question UI 重复渲染同一个 pending activity。
 4. broker 解除原工具调用，canonical result 随正常会话日志保存和回放；模型
    必须依据用户实际提交的证据续讲。
 
@@ -39,8 +46,8 @@ wait 中恢复；默认五分钟超时、session abort 或插件卸载都会生�
 
 MVP 提供三个固定组件：
 
-- `parameter_explorer`：1～2 个有界参数、1～3 条曲线。用户必须先写下并锁定
-  预测，之后才可用鼠标或方向键调参。
+- `parameter_explorer`：1～2 个有界参数、1～3 条曲线。教学 Skill 先在普通对话中
+  邀请用户预测，再让内联控件直接承接验证。
 - `process_stepper`：2～12 个步骤，可在 checkpoint 执行“先预测，再揭示”。
 - `structure_compare`：对齐两个结构的项目，选择关键差异并解释。
 
@@ -104,8 +111,8 @@ standing prompt。
 
 ## Phase 0 结论
 
-实现基于 pinned `ff70851` / kernel `0.1.0-rc.5`，没有假设 upstream master
-或 rc.6 API。当前 keyed tool renderer、question PendingWait、稳定 session/call
+实现基于 pinned kernel `0.1.0-rc.7`，不依赖尚未发布的 upstream API。当前
+keyed tool renderer、question PendingWait、稳定 session/call
 identity 和 canonical tool result replay 足以支持 MVP；Host、`./agent`、
 `./client`、协议、preset 和 Skill 均由同一可安装包提供。
 

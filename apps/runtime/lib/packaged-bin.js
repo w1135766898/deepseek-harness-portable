@@ -37,7 +37,9 @@ import { openBrowser } from './open-browser.js';
 import { ensureMarketplacePreinstalled, materializeMarketplaceSeed, MARKETPLACE_PACKAGE, } from './marketplace-bootstrap.js';
 import { createProfileFirstPackageJsonResolver } from './profile-module-resolver.js';
 import { composeAfterManagedFallback } from './profile-startup.js';
+import { appendPortableModeResolution, PORTABLE_MODE_RESOLUTION_EVENT_TYPE, registerPortableSessionCompatibility, } from './session-compatibility.js';
 import { adaptWin32SubprocessRuntime } from './win32-terminal-inspector.js';
+registerPortableSessionCompatibility();
 /** Diagnostic prefix for every fail-loud and load error. */
 const NAME = 'dsh-desktop';
 /** The profile the exe boots, matching the shipped `web` template. */
@@ -218,7 +220,7 @@ function homePatchPath() {
  * shipped-root overlay, then the telemetry switch.
  * @returns the profile, its bundle layers, and the composed row index.
  */
-function composeProfile(shippedPresetRoot) {
+function composeProfile(shippedPresetRoot, virtualRuntime) {
     const profileDir = resolveProfileDir(PROFILE_NAME);
     initProfile(profileDir, PROFILE_TEMPLATES[PROFILE_NAME] ?? []);
     const bundledMarketplace = marketplaceSourceDir();
@@ -226,67 +228,75 @@ function composeProfile(shippedPresetRoot) {
         homeDir: resolveDshHome(),
         bundledSourceDir: bundledMarketplace,
     });
-    const marketplace = ensureMarketplacePreinstalled({
-        profileDir,
-        sourceDir: marketplaceSeed.sourceDir,
-        legacySourceDirs: bundledMarketplace === undefined ? [] : [bundledMarketplace],
-        install: (sourceSpec, enabled) => {
-            const child = spawnSync(process.execPath, [
-                PNPM_CLI_ENTRY,
-                'add',
-                '-w',
-                sourceSpec,
-            ], {
-                cwd: profileDir,
-                env: {
-                    ...process.env,
-                    ELECTRON_RUN_AS_NODE: '1',
-                },
-                stdio: 'inherit',
-                windowsHide: true,
-            });
-            if (child.error !== undefined) {
-                console.error(`${NAME}: failed to start the embedded marketplace installer: ${child.error.message}`);
-                return 1;
-            }
-            const exitCode = child.status ?? 1;
-            if (exitCode !== 0)
-                return exitCode;
-            try {
-                // The public `dsh plugin` command performs this same reconciliation
-                // after pnpm exits. Run pnpm directly here because its Windows shell
-                // forwarder cannot preserve a file path containing spaces.
-                const manifest = readProfileManifest(NAME, profileDir);
-                const bundles = manifest.dsh?.profile?.bundles ?? [];
-                const nextBundles = enabled
-                    ? bundles.includes(MARKETPLACE_PACKAGE) ? bundles : [...bundles, MARKETPLACE_PACKAGE]
-                    : bundles.filter(bundle => bundle !== MARKETPLACE_PACKAGE);
-                if (nextBundles.length !== bundles.length || nextBundles.some((bundle, index) => bundle !== bundles[index])) {
-                    manifest.dsh = {
-                        ...manifest.dsh,
-                        profile: {
-                            ...manifest.dsh?.profile,
-                            bundles: nextBundles,
+    let marketplace;
+    const profile = composeAfterManagedFallback({
+        virtualRuntime,
+        installAnchor: INSTALL_ANCHOR,
+        mutate: () => {
+            marketplace = ensureMarketplacePreinstalled({
+                profileDir,
+                sourceDir: marketplaceSeed.sourceDir,
+                legacySourceDirs: bundledMarketplace === undefined ? [] : [bundledMarketplace],
+                install: (sourceSpec, enabled) => {
+                    const child = spawnSync(process.execPath, [
+                        PNPM_CLI_ENTRY,
+                        'add',
+                        '-w',
+                        sourceSpec,
+                    ], {
+                        cwd: profileDir,
+                        env: {
+                            ...process.env,
+                            ELECTRON_RUN_AS_NODE: '1',
                         },
-                    };
-                    writeProfileManifest(profileDir, manifest);
-                }
+                        stdio: 'inherit',
+                        windowsHide: true,
+                    });
+                    if (child.error !== undefined) {
+                        console.error(`${NAME}: failed to start the embedded marketplace installer: ${child.error.message}`);
+                        return 1;
+                    }
+                    const exitCode = child.status ?? 1;
+                    if (exitCode !== 0)
+                        return exitCode;
+                    try {
+                        // The public `dsh plugin` command performs this same reconciliation
+                        // after pnpm exits. Run pnpm directly here because its Windows shell
+                        // forwarder cannot preserve a file path containing spaces.
+                        const manifest = readProfileManifest(NAME, profileDir);
+                        const bundles = manifest.dsh?.profile?.bundles ?? [];
+                        const nextBundles = enabled
+                            ? bundles.includes(MARKETPLACE_PACKAGE) ? bundles : [...bundles, MARKETPLACE_PACKAGE]
+                            : bundles.filter(bundle => bundle !== MARKETPLACE_PACKAGE);
+                        if (nextBundles.length !== bundles.length || nextBundles.some((bundle, index) => bundle !== bundles[index])) {
+                            manifest.dsh = {
+                                ...manifest.dsh,
+                                profile: {
+                                    ...manifest.dsh?.profile,
+                                    bundles: nextBundles,
+                                },
+                            };
+                            writeProfileManifest(profileDir, manifest);
+                        }
+                    }
+                    catch (cause) {
+                        console.error(`${NAME}: failed to enable the preinstalled marketplace: ${cause instanceof Error ? cause.message : String(cause)}`);
+                        return 1;
+                    }
+                    return 0;
+                },
+            });
+            if (marketplace.diagnostic !== undefined) {
+                const reason = marketplace.error ?? marketplaceSeed.error ?? 'unknown error';
+                console.error(`${NAME}: ${marketplace.diagnostic.message}; ${reason}`);
             }
-            catch (cause) {
-                console.error(`${NAME}: failed to enable the preinstalled marketplace: ${cause instanceof Error ? cause.message : String(cause)}`);
-                return 1;
+            else if (marketplace.status === 'installed' || marketplace.status === 'repaired') {
+                console.log(`${NAME}: ${marketplace.status === 'installed' ? 'preinstalled' : 'repaired'} ${MARKETPLACE_PACKAGE} in the web profile`);
             }
-            return 0;
         },
+        heal: healProfilesModuleFallback,
+        compose: () => loadProfile(NAME, PROFILE_NAME, INSTALL_ANCHOR),
     });
-    if (marketplace.diagnostic !== undefined) {
-        const reason = marketplace.error ?? marketplaceSeed.error ?? 'unknown error';
-        console.error(`${NAME}: ${marketplace.diagnostic.message}; ${reason}`);
-    }
-    else if (marketplace.status === 'installed' || marketplace.status === 'repaired') {
-        console.log(`${NAME}: ${marketplace.status === 'installed' ? 'preinstalled' : 'repaired'} ${MARKETPLACE_PACKAGE} in the web profile`);
-    }
-    const profile = loadProfile(NAME, PROFILE_NAME, INSTALL_ANCHOR);
     const homePatches = loadOptionalPatches(NAME, homePatchPath()) ?? [];
     const bundlePatches = profile.layers.flatMap(layer => layer.patches);
     const rows = new Map();
@@ -506,7 +516,7 @@ function installRuntimeEvidenceSurface(ctx, state) {
         let previous;
         for (let index = agent.session.events.length - 1; index >= 0; index -= 1) {
             const event = agent.session.events[index];
-            if (event?.type !== 'portable-runtime/mode-resolution')
+            if (event?.type !== PORTABLE_MODE_RESOLUTION_EVENT_TYPE)
                 continue;
             previous = event.data;
             break;
@@ -516,7 +526,7 @@ function installRuntimeEvidenceSurface(ctx, state) {
             && previous.upstreamCommit === trace.upstreamCommit
             && previous.capabilitySnapshotHash === trace.capabilitySnapshotHash)
             return;
-        agent.session.append('portable-runtime/mode-resolution', trace);
+        appendPortableModeResolution(agent.session, trace);
     };
     const events = ctx;
     events.on('agent/created', ({ agent }) => { appendTrace(agent); });
@@ -555,20 +565,9 @@ async function main() {
         else
             webArgs.push(arg);
     }
-    // Repair the shared, installation-owned module fallback before loadProfile
-    // resolves any bundle. Old releases left absolute junctions pointing into
-    // their removed runtime; waiting until after composition makes the first
-    // process fail even though a later launch can see repaired links. The web
-    // profile's own node_modules remains first in resolution order, so external
-    // user-selected plugins are never replaced by this managed fallback heal.
     const virtualRuntime = Boolean(process.pkg);
     const presetState = await materializeShippedPresetRoot();
-    const composed = composeAfterManagedFallback({
-        virtualRuntime,
-        installAnchor: INSTALL_ANCHOR,
-        heal: healProfilesModuleFallback,
-        compose: () => composeProfile(presetState.root),
-    });
+    const composed = composeProfile(presetState.root, virtualRuntime);
     if (shellProtocol && composed.marketplaceDiagnostic !== undefined) {
         console.log(encodeRuntimeEvent({
             protocolVersion: RUNTIME_PROTOCOL_VERSION,
@@ -605,6 +604,7 @@ async function main() {
     // anchor, then its healed profiles/node_modules installation fallback. The
     // single-file VFS cannot be the target of real filesystem junctions.
     const bareModuleBaseUrl = pathToFileURL(virtualRuntime ? join(dirname(INSTALL_ANCHOR), 'node_modules') : composed.profile.dir).href + '/';
+    const installedModuleBaseUrl = pathToFileURL(dirname(INSTALL_ANCHOR)).href + '/';
     // The Loader tree captures `baseUrl` at construction, so app-boot's `boot()`
     // cannot point runtime-created bare-name entries (e.g. the
     // directory-picker child rows) at the packaged install: it sets ctx.baseUrl
@@ -633,14 +633,15 @@ async function main() {
     try {
         ctx.baseUrl = pathToFileURL(dirname(rootConfig)).href + '/';
         ctx.provide('dshHomePath', dshHomePath);
-        await ctx.plugin(Loader, { baseUrl: bareModuleBaseUrl });
+        await ctx.plugin(Loader, { baseUrl: virtualRuntime ? bareModuleBaseUrl : installedModuleBaseUrl });
         prepare(ctx);
-        await mountRootInclude(ctx, rootConfig, structuredClone([
+        const mountRootIncludeWithFallback = mountRootInclude;
+        await mountRootIncludeWithFallback(ctx, rootConfig, structuredClone([
             ...composed.bundlePatches,
             ...composed.profile.patches,
             ...composed.homePatches,
             ...composed.overlays,
-        ]), bareModuleBaseUrl);
+        ]), bareModuleBaseUrl, virtualRuntime ? undefined : installedModuleBaseUrl);
         await ctx.get('loader')?.await();
         if (ctx.get('loader') !== undefined)
             await assertEntriesActivated(ctx, NAME);

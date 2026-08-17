@@ -14,9 +14,9 @@ window.__ModuleLoader__.load({
 		*/
 		const zh = {
 			cardTitle: "视觉辅助 (Vision Bridge)",
-			cardDescription: "通过外部 OpenAI 兼容视觉模型分析文件，并让纯文本模型理解粘贴的图片",
+			cardDescription: "外部端点用于 view_image；会话图片使用 rc7 原生附件与当前模型路径",
 			enabled: "启用视觉辅助",
-			enabledHint: "纯文本模型会把视觉描述写入会话历史且不保留原图；原生视觉模型仍保留原图。智能体也可调用 view_image",
+			enabledHint: "此开关只控制 view_image 外部分析；不会接管或删除 rc7 原生会话附件",
 			provider: "服务商预设",
 			providerOpenAI: "OpenAI 官方 (gpt-4o-mini / gpt-4o)",
 			providerOllama: "本地 Ollama (llava / minicpm-v)",
@@ -37,14 +37,28 @@ window.__ModuleLoader__.load({
 			readOnly: "此配置当前处于只读模式",
 			saving: "正在保存...",
 			saveFailed: "保存失败，请检查网络或配置格式",
+			routeLocal: "本机端点",
+			routeRemote: "外部端点",
+			routeDisabled: "已停用",
+			routeInvalid: "检查地址",
+			nativeRouteTitle: "会话图片：rc7 原生附件路径",
+			nativeRouteHint: "粘贴图片先持久化为不可变 attachment ref，再交给当前支持图片的会话模型；纯文本模型会收到明确的不支持提示。",
+			routeLocalTitle: "view_image：发送到本机服务",
+			routeLocalHint: "只有显式 view_image 调用会把图片和提示词发送到下面的本机端点；若服务继续转发，请以其配置为准。",
+			routeRemoteTitle: "view_image：图片将离开本机",
+			routeRemoteHint: "只有显式 view_image 调用会把图片字节和提示词发送到下面的外部服务。处理敏感图片前，请确认其保留政策。",
+			routeDisabledTitle: "view_image 当前已停用",
+			routeDisabledHint: "原生会话附件不受影响；只有外部 view_image 分析不可用。",
+			routeInvalidTitle: "接口地址无效",
+			routeInvalidHint: "请输入完整的 http:// 或 https:// Base URL。",
 			collapse: "折叠",
 			expand: "展开"
 		};
 		const en = {
 			cardTitle: "Vision Bridge",
-			cardDescription: "Analyze image files and pasted images for text-only models through an OpenAI-compatible vision model",
+			cardDescription: "Use an external endpoint for view_image while conversation images stay on the native rc7 attachment/model path",
 			enabled: "Enable Vision Bridge",
-			enabledHint: "Text-only models store the visual description in chat history without the original image; native vision models keep it. Also enables view_image",
+			enabledHint: "This switch controls only external view_image analysis; it does not intercept or remove native rc7 conversation attachments",
 			provider: "Provider Preset",
 			providerOpenAI: "OpenAI Official (gpt-4o-mini / gpt-4o)",
 			providerOllama: "Local Ollama (llava / minicpm-v)",
@@ -65,12 +79,26 @@ window.__ModuleLoader__.load({
 			readOnly: "This configuration is currently read-only",
 			saving: "Saving...",
 			saveFailed: "Failed to save configuration",
+			routeLocal: "Local endpoint",
+			routeRemote: "External endpoint",
+			routeDisabled: "Disabled",
+			routeInvalid: "Check address",
+			nativeRouteTitle: "Conversation images: native rc7 attachment path",
+			nativeRouteHint: "Pasted images become immutable attachment refs and are passed to the selected image-capable model; text-only models receive a clear unsupported response.",
+			routeLocalTitle: "view_image: sent to a local service",
+			routeLocalHint: "Only an explicit view_image call sends image bytes and prompts to the local endpoint below. Check that service if it forwards requests.",
+			routeRemoteTitle: "view_image: images leave this device",
+			routeRemoteHint: "Only an explicit view_image call sends image bytes and prompts to the external service below. Review its retention policy first.",
+			routeDisabledTitle: "view_image is disabled",
+			routeDisabledHint: "Native conversation attachments are unaffected; only external view_image analysis is unavailable.",
+			routeInvalidTitle: "The endpoint address is invalid",
+			routeInvalidHint: "Enter a complete Base URL beginning with http:// or https://.",
 			collapse: "Collapse",
 			expand: "Expand"
 		};
 		//#endregion
 		//#region \0dsh-css:C:\Users\Ryan\Desktop\deepseek-harness-portable\apps\vision-bridge\src\client\VisionCard.module.css.mjs
-		const css = ".bICbtG_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;margin-bottom:12px;list-style:none;transition:border-color .16s,background .16s}.bICbtG_card:hover{border-color:var(--dsw-alias-label-dimmed)}.bICbtG_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}.bICbtG_header{appearance:none;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}.bICbtG_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}.bICbtG_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}.bICbtG_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}.bICbtG_description{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.5}.bICbtG_chevron{width:16px;height:16px;color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.bICbtG_chevronOpen{transform:rotate(180deg)}.bICbtG_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.bICbtG_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}.bICbtG_readOnly{color:var(--dsw-alias-label-tertiary);margin:12px 0 0;font-size:12px;line-height:1.5}.bICbtG_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}.bICbtG_field+.bICbtG_field,.bICbtG_fieldRow+.bICbtG_field{border-top:1px solid var(--dsw-alias-border-l2)}.bICbtG_fieldRow{justify-content:space-between;align-items:center;gap:16px;padding:12px 0;display:flex}.bICbtG_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}.bICbtG_hint{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px;line-height:1.5}.bICbtG_input,.bICbtG_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);box-sizing:border-box;border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.bICbtG_select{cursor:pointer}.bICbtG_textarea{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);min-height:60px;font:inherit;color:var(--dsw-alias-label-primary);resize:vertical;box-sizing:border-box;border-radius:8px;padding:8px 12px;font-size:13px;line-height:1.5}.bICbtG_input:focus-visible,.bICbtG_select:focus-visible,.bICbtG_textarea:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}.bICbtG_input:disabled,.bICbtG_select:disabled,.bICbtG_textarea:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}.bICbtG_switch{flex:none;width:38px;height:22px;display:inline-block;position:relative}.bICbtG_switch input{opacity:0;width:0;height:0;position:absolute}.bICbtG_slider{cursor:pointer;background-color:var(--dsw-alias-border-l1,#cbd5e1);border-radius:22px;transition:all .16s;position:absolute;inset:0}.bICbtG_slider:before{content:\"\";background-color:var(--dsw-alias-bg-layer-3,#fff);border-radius:50%;width:16px;height:16px;transition:all .16s;position:absolute;bottom:3px;left:3px;box-shadow:0 1px 3px #00000026}.bICbtG_switch input:checked+.bICbtG_slider{background-color:var(--dsw-alias-brand-primary,#3b82f6)}.bICbtG_switch input:checked+.bICbtG_slider:before{transform:translate(16px)}.bICbtG_switch input:disabled+.bICbtG_slider{opacity:.4;cursor:default}.bICbtG_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}.bICbtG_statusMsg,.bICbtG_failed{min-width:0;color:var(--dsw-alias-label-error,#ef4444);flex:1;margin:0;font-size:12px;line-height:1.5}.bICbtG_discard,.bICbtG_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.bICbtG_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}.bICbtG_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.bICbtG_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}.bICbtG_save:hover:not(:disabled){opacity:.9}.bICbtG_discard:disabled,.bICbtG_save:disabled{opacity:.4;cursor:default}.bICbtG_discard:focus-visible,.bICbtG_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}";
+		const css = ".bICbtG_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;margin-bottom:12px;list-style:none;transition:border-color .16s,background .16s}.bICbtG_card:hover{border-color:var(--dsw-alias-label-dimmed)}.bICbtG_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}.bICbtG_header{appearance:none;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}.bICbtG_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}.bICbtG_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}.bICbtG_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}.bICbtG_description{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.5}.bICbtG_chevron{width:16px;height:16px;color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.bICbtG_chevronOpen{transform:rotate(180deg)}.bICbtG_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.bICbtG_routeBadge{white-space:nowrap;border:1px solid;border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:600;line-height:17px}.bICbtG_route_local{color:var(--dsw-alias-label-success,#15803d)}.bICbtG_route_remote{color:var(--dsw-alias-label-warning,#b45309)}.bICbtG_route_disabled{color:var(--dsw-alias-label-tertiary,#64748b)}.bICbtG_route_invalid{color:var(--dsw-alias-label-error,#dc2626)}.bICbtG_nativeRoute{color:var(--dsw-alias-brand-primary,#2563eb)}.bICbtG_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}.bICbtG_readOnly{color:var(--dsw-alias-label-tertiary);margin:12px 0 0;font-size:12px;line-height:1.5}.bICbtG_routeSummary{background:var(--dsw-alias-bg-layer-3);border:1px solid;border-radius:9px;align-items:flex-start;gap:10px;margin:12px 0 0;padding:10px 12px;display:flex}.bICbtG_routeDot{background:currentColor;border-radius:50%;flex:none;width:8px;height:8px;margin-top:5px}.bICbtG_routeText{flex-direction:column;gap:2px;min-width:0;font-size:12px;line-height:1.5;display:flex}.bICbtG_routeText strong{color:var(--dsw-alias-label-primary);font-size:13px}.bICbtG_routeText span{color:var(--dsw-alias-label-secondary)}.bICbtG_routeText code{text-overflow:ellipsis;white-space:nowrap;color:currentColor;width:fit-content;max-width:100%;overflow:hidden}.bICbtG_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}.bICbtG_field+.bICbtG_field,.bICbtG_fieldRow+.bICbtG_field{border-top:1px solid var(--dsw-alias-border-l2)}.bICbtG_fieldRow{justify-content:space-between;align-items:center;gap:16px;padding:12px 0;display:flex}.bICbtG_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}.bICbtG_hint{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px;line-height:1.5}.bICbtG_input,.bICbtG_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);box-sizing:border-box;border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.bICbtG_select{cursor:pointer}.bICbtG_textarea{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);min-height:60px;font:inherit;color:var(--dsw-alias-label-primary);resize:vertical;box-sizing:border-box;border-radius:8px;padding:8px 12px;font-size:13px;line-height:1.5}.bICbtG_input:focus-visible,.bICbtG_select:focus-visible,.bICbtG_textarea:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}.bICbtG_input:disabled,.bICbtG_select:disabled,.bICbtG_textarea:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}.bICbtG_switch{flex:none;width:38px;height:22px;display:inline-block;position:relative}.bICbtG_switch input{opacity:0;width:0;height:0;position:absolute}.bICbtG_slider{cursor:pointer;background-color:var(--dsw-alias-border-l1,#cbd5e1);border-radius:22px;transition:all .16s;position:absolute;inset:0}.bICbtG_slider:before{content:\"\";background-color:var(--dsw-alias-bg-layer-3,#fff);border-radius:50%;width:16px;height:16px;transition:all .16s;position:absolute;bottom:3px;left:3px;box-shadow:0 1px 3px #00000026}.bICbtG_switch input:checked+.bICbtG_slider{background-color:var(--dsw-alias-brand-primary,#3b82f6)}.bICbtG_switch input:checked+.bICbtG_slider:before{transform:translate(16px)}.bICbtG_switch input:disabled+.bICbtG_slider{opacity:.4;cursor:default}.bICbtG_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}.bICbtG_statusMsg,.bICbtG_failed{min-width:0;color:var(--dsw-alias-label-error,#ef4444);flex:1;margin:0;font-size:12px;line-height:1.5}.bICbtG_discard,.bICbtG_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.bICbtG_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}.bICbtG_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.bICbtG_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}.bICbtG_save:hover:not(:disabled){opacity:.9}.bICbtG_discard:disabled,.bICbtG_save:disabled{opacity:.4;cursor:default}.bICbtG_discard:focus-visible,.bICbtG_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}";
 		const tagId = "@dsh-portable/vision-bridge/VisionCard.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -80,31 +108,40 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var VisionCard_module_css_default = {
-			"header": "bICbtG_header",
-			"label": "bICbtG_label",
-			"chevronOpen": "bICbtG_chevronOpen",
-			"select": "bICbtG_select",
-			"discard": "bICbtG_discard",
-			"textarea": "bICbtG_textarea",
-			"footer": "bICbtG_footer",
-			"switch": "bICbtG_switch",
-			"fieldRow": "bICbtG_fieldRow",
-			"input": "bICbtG_input",
-			"statusMsg": "bICbtG_statusMsg",
-			"chevron": "bICbtG_chevron",
-			"pending": "bICbtG_pending",
-			"cardOpen": "bICbtG_cardOpen",
-			"hint": "bICbtG_hint",
-			"card": "bICbtG_card",
-			"name": "bICbtG_name",
-			"headText": "bICbtG_headText",
-			"save": "bICbtG_save",
 			"slider": "bICbtG_slider",
-			"description": "bICbtG_description",
-			"field": "bICbtG_field",
+			"headText": "bICbtG_headText",
+			"input": "bICbtG_input",
+			"route_invalid": "bICbtG_route_invalid",
 			"failed": "bICbtG_failed",
+			"discard": "bICbtG_discard",
+			"body": "bICbtG_body",
+			"routeBadge": "bICbtG_routeBadge",
+			"textarea": "bICbtG_textarea",
+			"statusMsg": "bICbtG_statusMsg",
+			"header": "bICbtG_header",
+			"select": "bICbtG_select",
+			"routeDot": "bICbtG_routeDot",
+			"pending": "bICbtG_pending",
+			"switch": "bICbtG_switch",
+			"routeText": "bICbtG_routeText",
+			"nativeRoute": "bICbtG_nativeRoute",
 			"readOnly": "bICbtG_readOnly",
-			"body": "bICbtG_body"
+			"footer": "bICbtG_footer",
+			"route_local": "bICbtG_route_local",
+			"route_disabled": "bICbtG_route_disabled",
+			"chevronOpen": "bICbtG_chevronOpen",
+			"label": "bICbtG_label",
+			"save": "bICbtG_save",
+			"cardOpen": "bICbtG_cardOpen",
+			"route_remote": "bICbtG_route_remote",
+			"routeSummary": "bICbtG_routeSummary",
+			"description": "bICbtG_description",
+			"fieldRow": "bICbtG_fieldRow",
+			"field": "bICbtG_field",
+			"name": "bICbtG_name",
+			"chevron": "bICbtG_chevron",
+			"card": "bICbtG_card",
+			"hint": "bICbtG_hint"
 		};
 		//#endregion
 		//#region src/client/VisionCard.tsx
@@ -120,6 +157,9 @@ window.__ModuleLoader__.load({
 			const title = t("cardTitle");
 			const desc = t("cardDescription");
 			const blocked = !state.dirty || state.saving || !state.writable;
+			const routeLabel = t(state.route.kind === "local" ? "routeLocal" : state.route.kind === "remote" ? "routeRemote" : state.route.kind === "disabled" ? "routeDisabled" : "routeInvalid");
+			const routeTitle = t(state.route.kind === "local" ? "routeLocalTitle" : state.route.kind === "remote" ? "routeRemoteTitle" : state.route.kind === "disabled" ? "routeDisabledTitle" : "routeInvalidTitle");
+			const routeHint = t(state.route.kind === "local" ? "routeLocalHint" : state.route.kind === "remote" ? "routeRemoteHint" : state.route.kind === "disabled" ? "routeDisabledHint" : "routeInvalidHint");
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 				className: `${VisionCard_module_css_default.card} ${open ? VisionCard_module_css_default.cardOpen : ""}`,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
@@ -143,6 +183,10 @@ window.__ModuleLoader__.load({
 							className: VisionCard_module_css_default.pending,
 							children: t("unsaved")
 						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: `${VisionCard_module_css_default.routeBadge} ${VisionCard_module_css_default[`route_${state.route.kind}`]}`,
+							children: routeLabel
+						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
 							className: `${VisionCard_module_css_default.chevron} ${open ? VisionCard_module_css_default.chevronOpen : ""}`,
 							viewBox: "0 0 16 16",
@@ -161,6 +205,35 @@ window.__ModuleLoader__.load({
 							className: VisionCard_module_css_default.readOnly,
 							role: "status",
 							children: t("readOnly")
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: `${VisionCard_module_css_default.routeSummary} ${VisionCard_module_css_default.nativeRoute}`,
+							"data-route": "native-attachment",
+							role: "status",
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: VisionCard_module_css_default.routeDot,
+								"aria-hidden": "true"
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+								className: VisionCard_module_css_default.routeText,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: t("nativeRouteTitle") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("nativeRouteHint") })]
+							})]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: `${VisionCard_module_css_default.routeSummary} ${VisionCard_module_css_default[`route_${state.route.kind}`]}`,
+							"data-route": state.route.kind,
+							role: "status",
+							"aria-live": "polite",
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: VisionCard_module_css_default.routeDot,
+								"aria-hidden": "true"
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+								className: VisionCard_module_css_default.routeText,
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: routeTitle }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: routeHint }),
+									state.route.endpoint !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: state.route.endpoint })
+								]
+							})]
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: VisionCard_module_css_default.fieldRow,
@@ -311,6 +384,29 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region src/client/vision-route.ts
+		function isLoopbackHost(hostname) {
+			const normalized = hostname.toLowerCase();
+			return normalized === "localhost" || normalized.endsWith(".localhost") || normalized === "127.0.0.1" || normalized === "::1" || normalized === "[::1]";
+		}
+		/**
+		* Classify the configured endpoint without probing it or exposing credentials.
+		* The summary is deliberately descriptive rather than a readiness claim.
+		*/
+		function describeVisionRoute(enabled, baseURL) {
+			if (!enabled) return { kind: "disabled" };
+			try {
+				const url = new URL(baseURL.trim());
+				if (url.protocol !== "http:" && url.protocol !== "https:") return { kind: "invalid" };
+				return {
+					kind: isLoopbackHost(url.hostname) ? "local" : "remote",
+					endpoint: url.host
+				};
+			} catch {
+				return { kind: "invalid" };
+			}
+		}
+		//#endregion
 		//#region src/client/vision-card-controller.ts
 		/**
 		* State controller for the VisionCard settings UI.
@@ -351,7 +447,8 @@ window.__ModuleLoader__.load({
 					model,
 					baseURL,
 					apiKey,
-					prompt
+					prompt,
+					route: describeVisionRoute(enabled, baseURL)
 				};
 			}
 			edit = (field, value) => {
@@ -422,8 +519,7 @@ window.__ModuleLoader__.load({
 			const controller = new VisionCardController(ctx.settingsScope.bind({ namespace: "vision" }));
 			ctx.slots.inject("settings.plugin.item", () => ctx.slots.register({
 				name: "settings.plugin.item",
-				id: "vision",
-				order: 35,
+				key: "vision",
 				locale: "vision-bridge",
 				inject: () => controller.inject()
 			}, VisionCard));

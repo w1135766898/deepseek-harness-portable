@@ -1,21 +1,20 @@
 import { jsx as _jsx } from "react/jsx-runtime";
 import { useMemo, useState } from 'react';
 import { RESPONSE_PROTOCOL, } from "../protocol.js";
-import { decodeLearningDetail } from "../transport.js";
+import { decodeLearningDetail, decodeLearningQuestionId } from "../transport.js";
 import { ActivityFrame } from "./ActivityFrame.js";
 import { ActivityRenderer } from "./ActivityRenderer.js";
-function envelopeOf(wait) {
+export function envelopeOf(wait) {
     if (wait.payload.questions.length !== 1)
         return undefined;
     const question = wait.payload.questions[0];
-    const envelope = decodeLearningDetail(question?.detail);
-    if (envelope === undefined || question?.id !== `learning:${envelope.activityId}`)
+    if (question === undefined)
         return undefined;
-    return envelope;
+    return decodeLearningQuestionId(question.id) ?? decodeLearningDetail(question.detail);
 }
 /** Pure composer-chain selector: only package-owned question envelopes are claimed. */
 export function selectLearningActivity({ interactions, session }) {
-    const currentSessionId = session?.id;
+    const currentSessionId = session?.sessionId;
     for (const interaction of interactions) {
         if (interaction.kind !== 'question')
             continue;
@@ -30,6 +29,14 @@ export function selectLearningActivity({ interactions, session }) {
     return null;
 }
 export function LearningComposer({ matched, t }) {
+    // Claim the package-owned question so the generic question composer does
+    // not duplicate it. The actual interaction lives in the tool call's place
+    // in the assistant turn; a pending activity intentionally has no bottom UI.
+    void matched;
+    void t;
+    return null;
+}
+export function LearningInteraction({ matched, t }) {
     const envelope = useMemo(() => envelopeOf(matched), [matched]);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState(null);
@@ -81,6 +88,6 @@ export function LearningComposer({ matched, t }) {
             setError(t('error', { message: cause instanceof Error ? cause.message : String(cause) }));
         });
     };
-    return (_jsx(ActivityFrame, { activity: envelope.activity, busy: busy, error: error, onSkip: skip, onCancel: cancel, t: t, children: _jsx(ActivityRenderer, { activity: envelope.activity, busy: busy, onSubmit: submit, t: t }) }, matched.key));
+    return (_jsx(ActivityFrame, { activityId: envelope.activityId, activity: envelope.activity, busy: busy, error: error, onSkip: skip, onCancel: cancel, t: t, children: _jsx(ActivityRenderer, { activity: envelope.activity, busy: busy, onSubmit: submit, t: t }) }, matched.key));
 }
 //# sourceMappingURL=LearningComposer.js.map

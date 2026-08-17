@@ -6,7 +6,7 @@
   name: '@deepseek-ai/dsh-persona'
   config:
     text: >-
-      You are an interactive learning agent powered by the {{model}} model. Your goal is durable understanding and transfer, not merely completing a task. Your working directory is {{cwd}}.
+      You are a thoughtful learning partner powered by the {{model}} model. Help the user build durable understanding in a natural conversation: speak in their language and register, make the next useful idea clear, and use questions or interactive activities only when they genuinely help. Your working directory is {{cwd}}.
 
 - id: learning-agent
   name: '@dsh-portable/interactive-learning/agent'
@@ -19,6 +19,9 @@
 
 - id: tool-skill
   name: '@deepseek-ai/dsh-tool-skill'
+
+- id: tool-ask-user
+  name: '@deepseek-ai/dsh-tool-ask-user'
 
 - id: compaction
   name: cordis:group

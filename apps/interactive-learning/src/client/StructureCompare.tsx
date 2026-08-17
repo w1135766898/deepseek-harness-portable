@@ -6,10 +6,10 @@ import css from './LearningActivity.module.css'
 
 type CompareActivity = Extract<ActivityRendererProps['activity'], { kind: 'structure_compare' }>
 
-function Item({ item }: { item?: StructureItemV1 }) {
-  if (item === undefined) return <span className={css.emptyCell}>—</span>
+function Item({ item, side }: { item?: StructureItemV1; side: 'left' | 'right' }) {
+  if (item === undefined) return <span className={css.emptyCell} data-side={side}>—</span>
   return (
-    <div className={css.compareItem}>
+    <div className={css.compareItem} data-side={side}>
       <strong>{item.label}</strong>
       {item.detail === undefined ? null : <MarkdownText text={item.detail} />}
     </div>
@@ -39,23 +39,32 @@ export function StructureCompare({ activity, busy, onSubmit, t }: ActivityRender
   return (
     <div className={css.activityContent}>
       <p className={css.prompt}>{payload.question ?? activity.prompt}</p>
-      <div className={css.compareHeader}>
-        <span />
-        <strong>{payload.left.title}</strong>
-        <strong>{payload.right.title}</strong>
+      <div className={css.compareHeader} aria-hidden="true">
+        <strong data-side="left">{payload.left.title}</strong>
+        <span className={css.compareHeaderLink}>↔</span>
+        <strong data-side="right">{payload.right.title}</strong>
       </div>
-      <div className={css.compareRows}>
+      <div className={css.compareRows} role="group" aria-label={t('compareMap')} data-structure-map="true">
         {payload.alignments.map(alignment => (
-          <label className={css.compareRow} key={alignment.id}>
-            <input
-              type="checkbox"
-              checked={selected.has(alignment.id)}
-              disabled={busy}
-              aria-label={alignment.prompt ?? alignment.id}
-              onChange={() => toggle(alignment.id)}
-            />
-            <Item item={alignment.leftId === undefined ? undefined : left.get(alignment.leftId)} />
-            <Item item={alignment.rightId === undefined ? undefined : right.get(alignment.rightId)} />
+          <label
+            className={css.compareRow}
+            key={alignment.id}
+            data-alignment-id={alignment.id}
+            data-selected={selected.has(alignment.id) || undefined}
+          >
+            <Item item={alignment.leftId === undefined ? undefined : left.get(alignment.leftId)} side="left" />
+            <span className={css.compareLine} aria-hidden="true" />
+            <span className={css.compareSelector}>
+              <input
+                type="checkbox"
+                checked={selected.has(alignment.id)}
+                disabled={busy}
+                aria-label={alignment.prompt ?? alignment.id}
+                onChange={() => toggle(alignment.id)}
+              />
+            </span>
+            <span className={css.compareLine} aria-hidden="true" />
+            <Item item={alignment.rightId === undefined ? undefined : right.get(alignment.rightId)} side="right" />
             {alignment.prompt === undefined ? null : <span className={css.rowPrompt}>{alignment.prompt}</span>}
           </label>
         ))}

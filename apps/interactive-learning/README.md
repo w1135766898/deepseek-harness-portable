@@ -11,6 +11,9 @@ Cordis.
   `learningActivities` broker service.
 - `./agent` is mounted only by the Learning preset. It registers the single
   `learning_activity` tool and the compact standing teaching policy.
+- The Learning preset also mounts rc.7's native `ask_user_question` tool for
+  user-owned choices about direction, depth, or pace. Reasonable defaults do
+  not open a question; teaching evidence stays in `learning_activity`.
 - `./client` supplies the composer takeover, completed-call renderer, and the
   native activity registry.
 - `./protocol` is the versioned, declarative Activity/Response contract.
@@ -23,7 +26,7 @@ matching session id. An ordinary question, including one from another preset,
 is ignored. A fork therefore cannot revive an ancestor session's pending
 activity.
 
-## Pinned rc.5 transport
+## Pinned rc.7 transport
 
 The pinned kernel already exposes stable pending `ToolCallBlock.callId` values,
 keyed `tool.call.toolview` slots, and durable question `PendingWait` replay. The
@@ -31,11 +34,15 @@ MVP reuses that question wait instead of patching the wire protocol:
 
 1. The Agent calls `learning_activity` with an `activity@1` value.
 2. The Host validates it, generates `activityId`, and starts a durable question
-   wait whose detail contains a package-owned Base64URL envelope plus readable
-   Markdown fallback. The envelope declares
+   wait whose non-rendered question id carries a package-owned Base64URL
+   envelope while its visible detail contains only readable Markdown fallback.
+   The envelope declares
    `dsh-learning/transport@1`; incompatible Clients ignore it.
-3. The Learning composer renders the native activity and submits a
-   `response@1` JSON value to the same wait.
+3. The keyed `learning_activity` row renders the native activity in the
+   Assistant turn's normal content width and submits a `response@1` JSON value
+   to the same wait. It uses prose-and-control flow rather than ToolRow or card
+   chrome; the composer takeover is intentionally empty and only prevents the
+   generic question UI from duplicating the pending activity.
 4. The broker resolves the original tool call, whose canonical result is saved
    and replayed by the normal conversation log.
 
@@ -56,7 +63,7 @@ changing the model tool or activity renderers.
 The supported kinds are:
 
 - `parameter_explorer`: one or two bounded parameters and one to three curves;
-  the learner must commit a prediction before pointer or keyboard adjustment;
+  the teaching skill asks for a prediction in ordinary dialogue before the inline controls appear;
 - `process_stepper`: two to twelve steps with optional predict-before-reveal
   checkpoints;
 - `structure_compare`: two aligned structures whose significant differences
@@ -137,8 +144,8 @@ their immutable shipped preset catalog, as this repository does.
 
 ## Phase 0 compatibility result
 
-The implementation is based on the pinned `ff70851`/kernel `0.1.0-rc.5`
-checkout, not upstream master. Focused composition tests boot the actual pinned
+The implementation is based on the pinned kernel `0.1.0-rc.7` checkout rather
+than unreleased upstream contracts. Focused composition tests boot the actual pinned
 Web layers and prove that Standard, Code, Minimal and Cordis retain byte-for-byte
 equivalent model-visible tool schemas and assembled standing prompts before and
 after the Host broker is mounted. The pinned keyed tool renderer, pending wait,
@@ -146,7 +153,7 @@ cancellation/duplicate-response guard, stable session/call identity, and
 replayable canonical tool result path are sufficient for the MVP.
 
 The real-browser fixture uses the production components and native DOM events.
-It verifies predict-before-drag, range-key interaction, all three renderers,
+It verifies conversational prediction, range-key interaction, all three renderers,
 submit/cancel, evidence-based continuation, completed replay after refresh,
 non-revival after fork, Standard-mode UI isolation, and zero Learning network
 requests. The clean tarball gate additionally verifies external Host/Client

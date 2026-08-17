@@ -6,7 +6,7 @@ import { LearningComposer, selectLearningActivity } from '../../src/client/Learn
 import { LearningToolView } from '../../src/client/LearningToolView.tsx'
 import { en } from '../../src/client/locales.ts'
 import { RESPONSE_PROTOCOL, type LearningActivityV1, type LearningResponseV1 } from '../../src/protocol.ts'
-import { encodeLearningDetail } from '../../src/transport.ts'
+import { encodeLearningQuestionId } from '../../src/transport.ts'
 import { offlineContinuation } from '../../src/eval.ts'
 import { compareActivity, parameterActivity, processActivity } from '../fixtures.ts'
 import './page.css'
@@ -66,6 +66,19 @@ function replayBlock(run: StoredRun) {
   }
 }
 
+function runningBlock(activityId: string, activity: LearningActivityV1) {
+  return {
+    callId: `call:${activityId}`,
+    name: 'learning_activity',
+    argsRaw: JSON.stringify(activity),
+    turn: 1,
+    step: 1,
+    time: 2_000,
+    callView: null,
+    subCalls: [],
+  }
+}
+
 function BrowserAcceptance() {
   const [mode, setMode] = useState<'learning' | 'standard'>('learning')
   const [sessionId, setSessionId] = useState('learning-browser-root')
@@ -82,10 +95,10 @@ function BrowserAcceptance() {
     key: `q:${activityId}`,
     sessionId,
     payload: {
-      questions: [{
-        id: `learning:${activityId}`,
-        question: activity.prompt,
-        detail: encodeLearningDetail({ activityId, activity }),
+        questions: [{
+          id: encodeLearningQuestionId({ activityId, activity }),
+          question: activity.prompt,
+          detail: activity.fallbackMarkdown,
       }],
     },
     async respond(result: { ok: boolean; value?: { answer?: { answers?: Array<{ custom?: string }> } } }) {
@@ -126,7 +139,7 @@ function BrowserAcceptance() {
     const forkSession = `${sessionId}-fork`
     setForkPendingClaimed(selectLearningActivity({
       interactions: [matched as never],
-      session: { id: forkSession } as never,
+      session: { sessionId: forkSession } as never,
     }) !== null)
     setSessionId(forkSession)
     setPending(false)
@@ -134,10 +147,14 @@ function BrowserAcceptance() {
 
   const Composer = LearningComposer as unknown as ComponentType<{ matched: typeof matched; t: typeof t }>
   const ToolView = LearningToolView as unknown as ComponentType<{
-    block: ReturnType<typeof replayBlock>
+    block: ReturnType<typeof replayBlock> | ReturnType<typeof runningBlock>
     inspect(): void
     t: typeof t
+    sessionId: string
+    useSession(selector: (snapshot: { pending: typeof matched[] }) => unknown): unknown
   }>
+  const usePendingSession = (selector: (snapshot: { pending: typeof matched[] }) => unknown): unknown =>
+    selector({ pending: pending ? [matched] : [] })
 
   return (
     <main>
@@ -174,13 +191,28 @@ function BrowserAcceptance() {
           Standard owns no Learning composer, tool, prompt, or network request.
         </section>
       ) : pending ? (
-        <Composer matched={matched} t={t} />
+        <section className="completed-flow" data-testid="inline-learning-flow">
+          <ToolView
+            block={runningBlock(activityId, activity)}
+            inspect={() => {}}
+            t={t}
+            sessionId={sessionId}
+            useSession={usePendingSession}
+          />
+          <Composer matched={matched} t={t} />
+        </section>
       ) : run === undefined ? (
         <section className="standard-clean">This fork has no revived pending activity.</section>
       ) : (
         <section className="completed-flow">
           <div data-testid="continuation" aria-label="Tutor continuation">{run.continuation}</div>
-          <ToolView block={replayBlock(run)} inspect={() => {}} t={t} />
+          <ToolView
+            block={replayBlock(run)}
+            inspect={() => {}}
+            t={t}
+            sessionId={sessionId}
+            useSession={usePendingSession}
+          />
         </section>
       )}
     </main>

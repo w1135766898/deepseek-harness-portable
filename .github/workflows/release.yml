@@ -44,6 +44,8 @@ jobs:
           pnpm exec tsx scripts/release-windows.ts --input verified/verified-win32-x64 --output release "${extra[@]}"
           pnpm exec tsx scripts/release-linux.ts --input verified/verified-linux-x64 --output release "${extra[@]}"
           pnpm exec tsx scripts/release-macos.ts --input verified/verified-darwin-arm64 --output release "${extra[@]}"
+          install -m 0755 install.sh release/install.sh
+          (cd release && sha256sum install.sh > SHA256SUMS-install.txt)
       - uses: softprops/action-gh-release@v2
         with:
           files: release/*

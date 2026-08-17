@@ -103,6 +103,13 @@ async function renameWithTransientWindowsRetry(source: string, destination: stri
   }
 }
 
+async function moveDirectoryContents(source: string, destination: string): Promise<void> {
+  await mkdir(destination, { recursive: true })
+  for (const entry of await readdir(source)) {
+    await renameWithTransientWindowsRetry(join(source, entry), join(destination, entry))
+  }
+}
+
 const FINGERPRINT_EXCLUDED_DIRECTORIES = new Set([
   '.cache',
   '.git',
@@ -1356,14 +1363,29 @@ class DesktopExeBuild {
       }
       await mkdir(nextPortableRoot, { recursive: true })
       await renameWithTransientWindowsRetry(packagedRoot, join(nextPortableRoot, 'runtime'))
-      if (existsSync(portableRoot)) await renameWithTransientWindowsRetry(portableRoot, previousPortableRoot)
-      try {
-        await renameWithTransientWindowsRetry(nextPortableRoot, portableRoot)
-      } catch (error) {
-        if (existsSync(previousPortableRoot) && !existsSync(portableRoot)) {
-          await renameWithTransientWindowsRetry(previousPortableRoot, portableRoot)
+      let reusedLockedPortableRoot = false
+      if (existsSync(portableRoot)) {
+        try {
+          await renameWithTransientWindowsRetry(portableRoot, previousPortableRoot)
+        } catch (error) {
+          const code = filesystemErrorCode(error)
+          if (process.platform !== 'win32' || (code !== 'EPERM' && code !== 'EBUSY')) throw error
+          await moveDirectoryContents(portableRoot, previousPortableRoot)
+          await moveDirectoryContents(nextPortableRoot, portableRoot)
+          await rm(nextPortableRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
+          reusedLockedPortableRoot = true
+          console.log('build-desktop-web-exe: reused a locked Windows output root and promoted its contents')
         }
-        throw error
+      }
+      if (!reusedLockedPortableRoot) {
+        try {
+          await renameWithTransientWindowsRetry(nextPortableRoot, portableRoot)
+        } catch (error) {
+          if (existsSync(previousPortableRoot) && !existsSync(portableRoot)) {
+            await renameWithTransientWindowsRetry(previousPortableRoot, portableRoot)
+          }
+          throw error
+        }
       }
       await rm(previousPortableRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
       await rm(packagerOutDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })

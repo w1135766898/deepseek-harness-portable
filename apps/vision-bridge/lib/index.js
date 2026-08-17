@@ -20,11 +20,11 @@ const DEFAULT_SYSTEM_PROMPT = "You are an expert visual analysis assistant. Care
 /** Return the earliest actionable configuration problem, if any. */
 function visionConfigurationIssue(cfg) {
 	if (!cfg.enabled) return {
-		message: "Vision Bridge is currently disabled. Enable it in Settings → Plugins before sending images to a text-only model.",
+		message: "Vision Bridge is currently disabled. Enable it in Settings → Plugins before using view_image.",
 		reason: "VISION_BRIDGE_DISABLED"
 	};
 	if (cfg.provider !== "ollama" && (!cfg.apiKey || cfg.apiKey.trim().length === 0)) return {
-		message: "Vision Bridge has no API key configured. Add one in Settings → Plugins before sending images to a text-only model.",
+		message: "Vision Bridge has no API key configured. Add one in Settings → Plugins before using view_image.",
 		reason: "VISION_BRIDGE_NOT_CONFIGURED"
 	};
 }
@@ -193,37 +193,6 @@ function renderViewImageContent(result) {
 	}];
 }
 //#endregion
-//#region lib/types/prompt-image.js
-/** Image-to-text routing for pasted prompt images. */
-function escapeAttribute(value) {
-	return value.replaceAll("&", "&amp;").replaceAll("\"", "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-}
-/**
-* Create the host waterfall listener that supplies visual text to text-only
-* conversation models.
-* @param getConfig - live resolved Vision Bridge configuration.
-* @returns one image-to-text listener suitable for `ctx.on`.
-*/
-function createPromptImageTextHandler(getConfig) {
-	return async (request) => {
-		const analysis = await analyzeImageBytes({
-			data: request.data,
-			mediaType: request.mediaType,
-			...request.prompt.length === 0 ? {} : { prompt: request.prompt }
-		}, getConfig());
-		if (!analysis.ok) return {
-			kind: "reject",
-			message: analysis.message,
-			reason: analysis.reason
-		};
-		const name = request.name === void 0 ? "" : ` name="${escapeAttribute(request.name)}"`;
-		return {
-			kind: "accept",
-			text: `<image_analysis source="vision-bridge" model="${escapeAttribute(analysis.model)}"${name}>\n${analysis.text}\n</image_analysis>`
-		};
-	};
-}
-//#endregion
 //#region lib/types/index.js
 /**
 * Host-side Cordis plugin entrypoint for @dsh-portable/vision-bridge.
@@ -280,7 +249,6 @@ function apply(ctx, config = {}) {
 		},
 		onChange: () => {}
 	});
-	ctx.on("api-proxy/image-to-text", createPromptImageTextHandler(() => currentConfig()));
 	ctx.inject(["apiProxy", "settings"], (scopeCtx) => {
 		const settingsApi = scopeCtx.apiProxy.settings;
 		const owner = Symbol("vision-bridge-settings-owner");
@@ -379,7 +347,16 @@ function apply(ctx, config = {}) {
 					isError: { type: "boolean" }
 				}
 			},
-			render: (_args, value) => renderViewImageContent(value)
+			render: (_args, value) => renderViewImageContent(value),
+			presentationMeta: (_args, value) => {
+				const result = value;
+				return {
+					path: result.path,
+					model: result.model,
+					bytes: result.bytes ?? 0,
+					isError: result.isError === true
+				};
+			}
 		},
 		timeoutMs: resolved.timeoutMs,
 		isConcurrencySafe: () => true,
@@ -393,12 +370,20 @@ function apply(ctx, config = {}) {
 				kind: "read",
 				locations: [{ path: args.path }]
 			};
+		},
+		presentResult(_args, result) {
+			const meta = result.meta;
+			const leaf = (typeof meta === "object" && meta !== null && "path" in meta && typeof meta.path === "string" ? meta.path : void 0)?.replaceAll("\\", "/").split("/").at(-1);
+			return {
+				card: "generic",
+				title: result.isError ? `Image inspection failed${leaf === void 0 ? "" : ` · ${leaf}`}` : `Image analyzed${leaf === void 0 ? "" : ` · ${leaf}`}`
+			};
 		}
 	}));
 	ctx.systemPrompt.section({
 		name: "tool:view_image",
 		order: 150,
-		text: "Use the view_image tool when the user provides or asks about an image file: it inspects and describes the image with an external vision model."
+		text: "Use view_image for image files on disk that need external visual analysis. Images pasted into the conversation use the native rc7 attachment path and the selected image-capable model instead."
 	});
 }
 //#endregion

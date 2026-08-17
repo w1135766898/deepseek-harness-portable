@@ -14,12 +14,10 @@ import {
   type LearningActivityV1,
   type LearningResponseV1,
 } from './protocol.ts'
-import { encodeLearningDetail } from './transport.ts'
+import { encodeLearningQuestionId } from './transport.ts'
 
 export const INTERACTIVE_LEARNING_PACKAGE = '@dsh-portable/interactive-learning'
 export const DEFAULT_LEARNING_WAIT_TIMEOUT_MS = 5 * 60_000
-const QUESTION_HEADER = 'Interactive learning activity'
-const QUESTION_ID_PREFIX = 'learning:'
 
 type LearningAbortReason = 'session-aborted' | 'client-response-timeout' | 'plugin-disposed'
 
@@ -61,14 +59,19 @@ function answerOf(
   const item = answer.answers[0]
   const custom = item?.custom?.trim()
   if (custom === undefined || custom === '') return fallback(activityId, activity, 'user-skipped')
+  let decoded: unknown
   try {
-    const decoded = JSON.parse(custom) as unknown
-    if (typeof decoded === 'object' && decoded !== null
-      && (decoded as { protocol?: unknown }).protocol === RESPONSE_PROTOCOL) {
-      return parseLearningResponse(decoded, activityId)
-    }
+    decoded = JSON.parse(custom) as unknown
   } catch {
     // A generic question renderer returns ordinary free text, not protocol JSON.
+  }
+  if (typeof decoded === 'object' && decoded !== null
+    && (decoded as { protocol?: unknown }).protocol === RESPONSE_PROTOCOL) {
+    try {
+      return parseLearningResponse(decoded, activityId)
+    } catch {
+      return fallback(activityId, activity, 'client-response-invalid')
+    }
   }
   return {
     protocol: RESPONSE_PROTOCOL,
@@ -139,10 +142,9 @@ export class LearningActivityBroker extends Service {
       const questions = (this.ctx as Context & { userQuestions: UserQuestionService }).userQuestions
       const ask = questions.ask({
         questions: [{
-          id: `${QUESTION_ID_PREFIX}${activityId}`,
-          header: QUESTION_HEADER,
+          id: encodeLearningQuestionId({ activityId, activity }),
           question: activity.prompt,
-          detail: encodeLearningDetail({ activityId, activity }),
+          detail: activity.fallbackMarkdown,
         }],
         agent: request.agent,
         signal: controller.signal,

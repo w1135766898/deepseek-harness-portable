@@ -47,8 +47,8 @@ Electron runtime。构建期间会使用 `musl-gcc` 编译官方上游 Landlock 
 
 ## 发布身份
 
-- 发布：DeepSeek Harness Desktop v1.3.0
-- 分发：1.3.0
+- 发布：DeepSeek Harness Desktop v1.3.1
+- 分发：1.3.1
 - 外壳：0.1.0-shell.2
 - 内核：读取打包后的 @deepseek-ai/dsh-web-app manifest
 

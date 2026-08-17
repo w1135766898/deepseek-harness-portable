@@ -33,8 +33,7 @@ export function apply(ctx: ClientContext): void {
     ctx.slots.register(
       {
         name: 'settings.plugin.item',
-        id: 'vision',
-        order: 35,
+        key: 'vision',
         locale: 'vision-bridge',
         inject: () => controller.inject(),
       },

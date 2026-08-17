@@ -17,6 +17,21 @@ patches:
       - path: node_modules/@deepseek-ai/dsh-client-ui-settings-models/lib/client.js
         guards:
           - WelcomeNoticeStore
+  - id: app-boot-profile-runtime-fallback
+    targets: ['*']
+    files:
+      - path: node_modules/@deepseek-ai/dsh-app-boot/lib/index.js
+        guards:
+          - mountRootInclude
+          - HostResolvedRootInclude
+  - id: portable-session-event-metadata
+    targets: ['*']
+    files:
+      - path: node_modules/@deepseek-ai/dsh-session/lib/index.js
+        guards:
+          - KNOWN_SESSION_EVENT_TYPES
+          - append(type, data, ...opts)
+          - snapshotJsonValue
   - id: marketplace-self-update-fallback
     targets: ['*']
     files:
@@ -24,3 +39,14 @@ patches:
         guards:
           - repositoryGitHubSpec
           - installedManifest
+  - id: marketplace-install-transparency
+    targets: ['*']
+    files:
+      - path: node_modules/dsh-plugin-marketplace/lib/index.js
+        guards:
+          - pluginLoadable
+          - buildInstalledList
+      - path: node_modules/dsh-plugin-marketplace/lib/client.js
+        guards:
+          - MarketTab
+          - InstalledTab

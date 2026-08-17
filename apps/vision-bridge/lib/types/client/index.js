@@ -16,8 +16,7 @@ export function apply(ctx) {
     // 3) Register card into official settings.plugin.item slot
     ctx.slots.inject('settings.plugin.item', () => ctx.slots.register({
         name: 'settings.plugin.item',
-        id: 'vision',
-        order: 35,
+        key: 'vision',
         locale: 'vision-bridge',
         inject: () => controller.inject(),
     }, VisionCard));

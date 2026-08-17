@@ -7,24 +7,23 @@ import {
   type LearningActivityEnvelopeV1,
   type LearningResponseV1,
 } from '../protocol.ts'
-import { decodeLearningDetail } from '../transport.ts'
+import { decodeLearningDetail, decodeLearningQuestionId } from '../transport.ts'
 import { ActivityFrame } from './ActivityFrame.tsx'
 import { ActivityRenderer } from './ActivityRenderer.tsx'
 import type { ActivitySubmission } from './types.ts'
 
 export type LearningQuestionWait = PendingWait<'question'>
 
-function envelopeOf(wait: LearningQuestionWait): LearningActivityEnvelopeV1 | undefined {
+export function envelopeOf(wait: LearningQuestionWait): LearningActivityEnvelopeV1 | undefined {
   if (wait.payload.questions.length !== 1) return undefined
   const question = wait.payload.questions[0]
-  const envelope = decodeLearningDetail(question?.detail)
-  if (envelope === undefined || question?.id !== `learning:${envelope.activityId}`) return undefined
-  return envelope
+  if (question === undefined) return undefined
+  return decodeLearningQuestionId(question.id) ?? decodeLearningDetail(question.detail)
 }
 
 /** Pure composer-chain selector: only package-owned question envelopes are claimed. */
 export function selectLearningActivity({ interactions, session }: ComposerChainProps): LearningQuestionWait | null {
-  const currentSessionId = session?.id
+  const currentSessionId = session?.sessionId
   for (const interaction of interactions) {
     if (interaction.kind !== 'question') continue
     const wait = interaction as LearningQuestionWait
@@ -41,6 +40,15 @@ type LearningComposerProps =
   & PropsLocale<'interactive-learning'>
 
 export function LearningComposer({ matched, t }: LearningComposerProps) {
+  // Claim the package-owned question so the generic question composer does
+  // not duplicate it. The actual interaction lives in the tool call's place
+  // in the assistant turn; a pending activity intentionally has no bottom UI.
+  void matched
+  void t
+  return null
+}
+
+export function LearningInteraction({ matched, t }: LearningComposerProps) {
   const envelope = useMemo(() => envelopeOf(matched), [matched])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -96,6 +104,7 @@ export function LearningComposer({ matched, t }: LearningComposerProps) {
   return (
     <ActivityFrame
       key={matched.key}
+      activityId={envelope.activityId}
       activity={envelope.activity}
       busy={busy}
       error={error}

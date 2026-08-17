@@ -4,6 +4,7 @@
  * @module @dsh-portable/vision-bridge/client/vision-card-controller
  */
 import { createSnapshotStore, } from '@deepseek-ai/dsh-client-runtime/client';
+import { describeVisionRoute } from "./vision-route.js";
 export class VisionCardController {
     scope;
     store;
@@ -51,6 +52,7 @@ export class VisionCardController {
             baseURL,
             apiKey,
             prompt,
+            route: describeVisionRoute(enabled, baseURL),
         };
     }
     edit = (field, value) => {

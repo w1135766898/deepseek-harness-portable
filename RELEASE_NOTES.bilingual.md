@@ -1,11 +1,16 @@
-# DeepSeek Harness for Win v1.3.0
+# DeepSeek Harness for Win v1.3.1
 
-Windows x64 便携版 · 2026-08-17
+Windows x64 便携版 · 2026-08-18
 
-这是本 Windows 分发版的 v1.3.0 版本，新增内置插件市场流程，修复基于已验证暂存内容的更新启动边界问题，并让 Windows 打包更快、更可复现。
+这是本 Windows 分发版的 v1.3.1 版本，修复覆盖安装首次启动和历史会话兼容问题，并将 Learning 原生选择与对话内图示带入 rc.7 客户端。
 
 ## 新功能与体验优化
 
+- **Learning 原生交互**：方向、深度和节奏使用客户端原生选择；教学图示直接出现在助手消息中，并支持持久回放与文字等价说明。
+- **覆盖安装首次启动修复**：profile 依赖保持优先，Setup Finish 启动遇到 junction 替换窗口时回退到已安装 runtime。
+- **历史兼容修复**：兼容旧版 `portable-runtime/mode-resolution` 事件，并将新写入事件标记为可忽略。
+- **插件透明度**：安装确认前展示来源、运行环境、网络/图像外发、激活、降级与验证信息；未知插件明确标记为未验证。
+- **rc.7 原生图片链路**：支持图像的模型使用持久化附件；纯文本模型保留显式、可见外发的 `view_image` 路径。
 - **内置插件市场**：每个 Web profile 首次使用时预装固定版本的 `dsh-plugin-marketplace`。用户可以关闭或卸载它，选择会在重启和升级后保持。
 - **市场工具自包含**：便携版通过 Electron 内置 Node.js 运行时提供 DSH 插件 CLI 和 pnpm，市场操作无需系统 Node.js 环境。
 - **已验证更新恢复**：启动器和更新器可从已验证的暂存目录修复发行版自有文件，同时保留事务与回滚安全性。
@@ -17,20 +22,25 @@ Windows x64 便携版 · 2026-08-17
 
 ## 组件版本
 
-- 分发：1.3.0
+- 分发：1.3.1
 - 桌面外壳：0.1.0-shell.2
-- 运行时内核：0.1.0-rc.5
+- 运行时内核：0.1.0-rc.7
 
 ---
 
 ## English Release Notes
 
-Windows x64 portable release · 2026-08-17
+Windows x64 portable release · 2026-08-18
 
-This is the v1.3.0 release of this Windows distribution. It adds a bundled plugin marketplace workflow, repairs update bootstrap edge-cases from verified staging, and makes Windows packaging faster and more reproducible.
+This is the v1.3.1 Windows distribution. It fixes overwrite-install first launch and session history compatibility, and brings native Learning choices and inline teaching graphics to the rc.7 client.
 
 ### New Features & Improvements
 
+- **Native Learning interaction**: direction, depth, and pace use the client choice control; teaching graphics render inside assistant messages with durable replay and text equivalents.
+- **Overwrite-install first-launch fix**: profile dependencies retain priority, with an installed-runtime fallback during the Setup Finish junction replacement window.
+- **Session compatibility fix**: legacy `portable-runtime/mode-resolution` events load, and new events are explicitly marked ignorable.
+- **Plugin transparency**: confirmation shows source, runtime, network/image egress, activation, degradation, and verification details; unknown plugins are marked unverified.
+- **Native rc.7 image path**: image-capable models use persisted attachments, while text-only models retain the explicit, disclosed external `view_image` path.
 - **Bundled plugin marketplace**: each Web profile receives the pinned `dsh-plugin-marketplace` package once. Users can disable or remove it, and that choice persists across restarts and upgrades.
 - **Self-contained marketplace tooling**: the portable release includes the DSH plugin CLI and pnpm behind the embedded Electron Node.js runtime, so marketplace operations do not require a system Node.js installation.
 - **Verified update recovery**: startup and updater flows can repair release-owned payload files from verified staging while preserving transaction and rollback safety.
@@ -42,9 +52,9 @@ This is the v1.3.0 release of this Windows distribution. It adds a bundled plugi
 
 ### Component Versions
 
-- Distribution: 1.3.0
+- Distribution: 1.3.1
 - Desktop Shell: 0.1.0-shell.2
-- Runtime Kernel: 0.1.0-rc.5
+- Runtime Kernel: 0.1.0-rc.7
 
 ---
 
@@ -55,6 +65,6 @@ This is the v1.3.0 release of this Windows distribution. It adds a bundled plugi
 The final portable ZIP and Setup installer SHA-256 values are recorded in SHA256SUMS.txt and attached to the GitHub Release.
 
 ```
-2240B6AF1CA851346FB1ED7B31B48ADC1D4EC907430DD37054FDE49A5DEE0F0D *DeepSeek-Harness-1.3.0-win32-x64.zip
-CDB371A2A12917B937CA895E22C036DB1F5BB20701F583BF4B7E3ECC0067A97E *DeepSeek-Harness-Setup-1.3.0-win32-x64.exe
+E804FFD1EBBFF508151579CAE4766521F8D8618D5833810C16D0B202F6524CDD *DeepSeek-Harness-1.3.1-win32-x64.zip
+6D3C36166BB1F41012E61AC81D8B82FD2AF61D5E9DB303830C4C884545408B80 *DeepSeek-Harness-Setup-1.3.1-win32-x64.exe
 ```

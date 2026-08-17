@@ -18,13 +18,13 @@ const DEFAULT_SYSTEM_PROMPT = 'You are an expert visual analysis assistant. Care
 export function visionConfigurationIssue(cfg) {
     if (!cfg.enabled) {
         return {
-            message: 'Vision Bridge is currently disabled. Enable it in Settings → Plugins before sending images to a text-only model.',
+            message: 'Vision Bridge is currently disabled. Enable it in Settings → Plugins before using view_image.',
             reason: 'VISION_BRIDGE_DISABLED',
         };
     }
     if (cfg.provider !== 'ollama' && (!cfg.apiKey || cfg.apiKey.trim().length === 0)) {
         return {
-            message: 'Vision Bridge has no API key configured. Add one in Settings → Plugins before sending images to a text-only model.',
+            message: 'Vision Bridge has no API key configured. Add one in Settings → Plugins before using view_image.',
             reason: 'VISION_BRIDGE_NOT_CONFIGURED',
         };
     }

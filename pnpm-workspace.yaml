@@ -28,6 +28,11 @@ overrides:
   '@deepseek-ai/cosmokit': 'link:vendor/deepseek-harness/vendor/cosmokit'
   '@deepseek-ai/schemastery': 'link:vendor/deepseek-harness/vendor/schemastery'
 
+# Keep the embedded runtime on the exact native PTY patch reviewed and shipped
+# by the pinned upstream release.
+patchedDependencies:
+  node-pty@1.2.0-beta.15: vendor/deepseek-harness/patches/node-pty@1.2.0-beta.15.patch
+
 allowBuilds:
   esbuild: true
   lefthook: true

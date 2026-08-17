@@ -1,62 +1,243 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, } from 'react';
 import { evaluateMathExpression } from "../math-expression.js";
 import css from './LearningActivity.module.css';
+const MAX_RENDERABLE_VALUE = 1e12;
+const MAX_PARAMETER_DOMAIN_SAMPLES = 33;
 function formatNumber(value) {
     return Number.isInteger(value) ? String(value) : String(Number(value.toPrecision(6)));
 }
-function pathsFor(payload, values) {
+function uniqueNumbers(values) {
+    return [...new Set(values.map(value => Number(value.toPrecision(12))))];
+}
+function parameterCandidates(parameter) {
+    const discreteSteps = Math.max(1, Math.ceil((parameter.max - parameter.min) / parameter.step));
+    const sampleCount = Math.min(discreteSteps + 1, MAX_PARAMETER_DOMAIN_SAMPLES);
+    const candidates = Array.from({ length: sampleCount }, (_, index) => {
+        const stepIndex = sampleCount === 1 ? 0 : Math.round(index * discreteSteps / (sampleCount - 1));
+        return Math.min(parameter.max, parameter.min + stepIndex * parameter.step);
+    });
+    return uniqueNumbers([
+        ...candidates,
+        parameter.min,
+        parameter.max,
+        parameter.initial,
+        ...(parameter.min <= 0 && parameter.max >= 0 ? [0] : []),
+    ]);
+}
+function parameterStates(payload) {
+    return payload.parameters.reduce((states, parameter) => {
+        const candidates = parameterCandidates(parameter);
+        return states.flatMap(state => candidates.map(value => ({ ...state, [parameter.id]: value })));
+    }, [{}]);
+}
+function niceStep(rawStep) {
+    if (!Number.isFinite(rawStep) || rawStep <= 0)
+        return 1;
+    const power = 10 ** Math.floor(Math.log10(rawStep));
+    const normalized = rawStep / power;
+    const multiple = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+    return multiple * power;
+}
+function paddedYDomain(min, max) {
+    if (min === max) {
+        const radius = Math.max(Math.abs(min) * 0.2, 1);
+        return { min: min - radius, max: max + radius };
+    }
+    const span = max - min;
+    const padding = span * 0.08;
+    const step = niceStep((span + padding * 2) / 5);
+    let domainMin = Math.floor((min - padding) / step) * step;
+    let domainMax = Math.ceil((max + padding) / step) * step;
+    if (domainMin === domainMax) {
+        domainMin -= step;
+        domainMax += step;
+    }
+    return { min: domainMin, max: domainMax };
+}
+function stableYDomain(payload) {
+    const samples = Math.min(payload.xAxis.samples ?? 96, 96);
+    let min = 0;
+    let max = 0;
+    let found = false;
+    for (const values of parameterStates(payload)) {
+        for (let index = 0; index < samples; index += 1) {
+            const x = payload.xAxis.min + (payload.xAxis.max - payload.xAxis.min) * index / (samples - 1);
+            for (const curve of payload.curves) {
+                const y = evaluateMathExpression(curve.expression, { ...values, x });
+                if (!Number.isFinite(y) || Math.abs(y) > MAX_RENDERABLE_VALUE)
+                    continue;
+                min = found ? Math.min(min, y) : Math.min(0, y);
+                max = found ? Math.max(max, y) : Math.max(0, y);
+                found = true;
+            }
+        }
+    }
+    if (!found)
+        return { min: -1, max: 1 };
+    return paddedYDomain(min, max);
+}
+function yDomainForState(payload, values, stable) {
     const samples = payload.xAxis.samples ?? 96;
+    let min = stable.min;
+    let max = stable.max;
+    let expanded = false;
+    for (let index = 0; index < samples; index += 1) {
+        const x = payload.xAxis.min + (payload.xAxis.max - payload.xAxis.min) * index / (samples - 1);
+        for (const curve of payload.curves) {
+            const y = evaluateMathExpression(curve.expression, { ...values, x });
+            if (!Number.isFinite(y) || Math.abs(y) > MAX_RENDERABLE_VALUE)
+                continue;
+            if (y < min) {
+                min = y;
+                expanded = true;
+            }
+            if (y > max) {
+                max = y;
+                expanded = true;
+            }
+        }
+    }
+    return expanded ? paddedYDomain(min, max) : stable;
+}
+function ticksFor(domain, targetCount = 5) {
+    const step = niceStep((domain.max - domain.min) / targetCount);
+    const first = Math.ceil(domain.min / step) * step;
+    const ticks = [];
+    for (let value = first; value <= domain.max + step * 1e-8; value += step) {
+        ticks.push(Number(value.toPrecision(12)));
+    }
+    return ticks;
+}
+function chartGeometry(width) {
+    const safeWidth = Math.max(280, Math.round(width));
+    const height = safeWidth < 480 ? 260 : 300;
+    const left = safeWidth < 360 ? 56 : 64;
+    const right = 18;
+    const top = 18;
+    const bottom = 40;
+    return {
+        width: safeWidth,
+        height,
+        left,
+        right,
+        top,
+        bottom,
+        plotWidth: safeWidth - left - right,
+        plotHeight: height - top - bottom,
+    };
+}
+function scaleX(value, domain, geometry) {
+    return geometry.left + (value - domain.min) / (domain.max - domain.min) * geometry.plotWidth;
+}
+function scaleY(value, domain, geometry) {
+    return geometry.top + (domain.max - value) / (domain.max - domain.min) * geometry.plotHeight;
+}
+function pathsFor(payload, values, yDomain, geometry) {
+    const samples = payload.xAxis.samples ?? 96;
+    const xDomain = { min: payload.xAxis.min, max: payload.xAxis.max };
     const series = payload.curves.map(() => []);
-    const finiteY = [];
     for (let index = 0; index < samples; index += 1) {
         const x = payload.xAxis.min + (payload.xAxis.max - payload.xAxis.min) * index / (samples - 1);
         for (const [curveIndex, curve] of payload.curves.entries()) {
-            const y = evaluateMathExpression(curve.expression, { ...values, x });
-            series[curveIndex]?.push({ x, y });
-            if (Number.isFinite(y) && Math.abs(y) <= 1e12)
-                finiteY.push(y);
+            series[curveIndex]?.push({ x, y: evaluateMathExpression(curve.expression, { ...values, x }) });
         }
     }
-    if (finiteY.length === 0)
-        return series.map(() => '');
-    let minY = Math.min(...finiteY);
-    let maxY = Math.max(...finiteY);
-    if (minY === maxY) {
-        minY -= 1;
-        maxY += 1;
-    }
-    const width = 640;
-    const height = 220;
     return series.map(points => {
         let open = false;
+        let previousY = null;
         return points.map(point => {
-            if (!Number.isFinite(point.y) || Math.abs(point.y) > 1e12) {
+            if (!Number.isFinite(point.y) || Math.abs(point.y) > MAX_RENDERABLE_VALUE) {
                 open = false;
+                previousY = null;
                 return '';
             }
-            const px = (point.x - payload.xAxis.min) / (payload.xAxis.max - payload.xAxis.min) * width;
-            const py = height - (point.y - minY) / (maxY - minY) * height;
+            const px = scaleX(point.x, xDomain, geometry);
+            const py = scaleY(point.y, yDomain, geometry);
+            if (previousY !== null && Math.abs(py - previousY) > geometry.plotHeight * 1.5)
+                open = false;
             const command = open ? 'L' : 'M';
             open = true;
+            previousY = py;
             return `${command}${px.toFixed(2)},${py.toFixed(2)}`;
         }).filter(Boolean).join(' ');
     });
 }
+function rangeStyle(parameter, value) {
+    const span = parameter.max - parameter.min;
+    const valuePercent = (value - parameter.min) / span * 100;
+    const anchorValue = parameter.min <= 0 && parameter.max >= 0 ? 0 : parameter.min;
+    const anchorPercent = (anchorValue - parameter.min) / span * 100;
+    return {
+        '--range-low': `${Math.min(valuePercent, anchorPercent)}%`,
+        '--range-high': `${Math.max(valuePercent, anchorPercent)}%`,
+    };
+}
+function shiftedValue(parameter, current, direction) {
+    const shifted = current + parameter.step * direction;
+    const clamped = Math.min(parameter.max, Math.max(parameter.min, shifted));
+    return Number(clamped.toPrecision(12));
+}
 export function ParameterExplorer({ activity, busy, onSubmit, t }) {
     const payload = activity.payload;
+    const chartId = useId();
+    const chartContainer = useRef(null);
+    const [chartWidth, setChartWidth] = useState(640);
     const [values, setValues] = useState(() => Object.fromEntries(payload.parameters.map(parameter => [parameter.id, parameter.initial])));
     const [answer, setAnswer] = useState('');
-    const [prediction, setPrediction] = useState('');
-    const [predictionCommitted, setPredictionCommitted] = useState(false);
-    const paths = useMemo(() => pathsFor(payload, values), [payload, values]);
+    const stableDomain = useMemo(() => stableYDomain(payload), [payload]);
+    const yDomain = useMemo(() => yDomainForState(payload, values, stableDomain), [payload, stableDomain, values]);
+    const geometry = useMemo(() => chartGeometry(chartWidth), [chartWidth]);
+    const xDomain = useMemo(() => ({ min: payload.xAxis.min, max: payload.xAxis.max }), [payload.xAxis.max, payload.xAxis.min]);
+    const xTicks = useMemo(() => ticksFor(xDomain), [xDomain]);
+    const yTicks = useMemo(() => ticksFor(yDomain), [yDomain]);
+    const paths = useMemo(() => pathsFor(payload, values, yDomain, geometry), [geometry, payload, values, yDomain]);
+    const chartDescription = t('chartDescription', {
+        parameters: payload.parameters.map(parameter => (`${parameter.label} ${formatNumber(values[parameter.id] ?? parameter.initial)} (${formatNumber(parameter.min)}–${formatNumber(parameter.max)})`)).join('; '),
+        xAxis: `${payload.xAxis.label ?? 'x'} ${formatNumber(xDomain.min)}–${formatNumber(xDomain.max)}`,
+        yAxis: `y ${formatNumber(yDomain.min)}–${formatNumber(yDomain.max)}`,
+        curves: payload.curves.map(curve => curve.label).join('; '),
+    });
+    useEffect(() => {
+        const container = chartContainer.current;
+        if (!container)
+            return;
+        const updateWidth = (width) => {
+            if (width >= 280)
+                setChartWidth(current => Math.abs(current - width) < 1 ? current : width);
+        };
+        updateWidth(container.getBoundingClientRect().width);
+        if (typeof ResizeObserver === 'undefined')
+            return;
+        const observer = new ResizeObserver(entries => {
+            const entry = entries[0];
+            if (entry)
+                updateWidth(entry.contentRect.width);
+        });
+        observer.observe(container);
+        return () => observer.disconnect();
+    }, []);
+    const setParameter = (parameter, value) => {
+        setValues(current => ({ ...current, [parameter.id]: value }));
+    };
     const submit = () => {
         const parameters = { ...values };
         onSubmit({
-            answer: { prediction: prediction.trim(), parameters, explanation: answer.trim() },
-            interactionState: { prediction: prediction.trim(), predictionCommitted, parameters },
+            answer: { parameters, explanation: answer.trim() },
+            interactionState: { parameters },
         });
     };
-    return (_jsxs("div", { className: css.activityContent, children: [_jsx("p", { className: css.prompt, children: payload.question ?? activity.prompt }), _jsxs("section", { className: css.predictionGate, "aria-labelledby": "parameter-prediction-title", children: [_jsxs("label", { className: css.answerField, children: [_jsx("strong", { id: "parameter-prediction-title", children: t('predict') }), _jsx("span", { children: t('parameterPredictionPrompt') }), _jsx("textarea", { value: prediction, disabled: busy || predictionCommitted, placeholder: t('parameterPredictionPlaceholder'), onChange: event => setPrediction(event.target.value) })] }), predictionCommitted ? (_jsx("p", { className: css.predictionStatus, role: "status", children: t('predictionCommitted') })) : (_jsx("div", { className: css.primaryRow, children: _jsx("button", { className: css.primaryButton, type: "button", disabled: busy || prediction.trim() === '', onClick: () => setPredictionCommitted(true), children: t('commitPrediction') }) }))] }), _jsxs("div", { className: css.explorerGrid, "aria-disabled": !predictionCommitted, children: [_jsxs("div", { className: css.controls, children: [payload.parameters.map(parameter => (_jsxs("label", { className: css.rangeField, children: [_jsx("span", { children: t('rangeValue', { label: parameter.label, value: formatNumber(values[parameter.id] ?? parameter.initial) }) }), _jsx("input", { type: "range", min: parameter.min, max: parameter.max, step: parameter.step, value: values[parameter.id] ?? parameter.initial, disabled: busy || !predictionCommitted, "aria-valuetext": formatNumber(values[parameter.id] ?? parameter.initial), onChange: event => setValues(current => ({ ...current, [parameter.id]: Number(event.target.value) })) }), _jsxs("span", { className: css.rangeEnds, children: [_jsx("span", { children: formatNumber(parameter.min) }), _jsx("span", { children: formatNumber(parameter.max) })] })] }, parameter.id))), _jsx("ul", { className: css.legend, children: payload.curves.map((curve, index) => _jsx("li", { "data-curve": index, children: curve.label }, curve.id)) })] }), _jsxs("svg", { className: css.chart, viewBox: "0 0 640 220", role: "img", "aria-label": t('chartLabel'), "aria-hidden": !predictionCommitted, children: [_jsx("line", { className: css.axis, x1: "0", x2: "640", y1: "110", y2: "110" }), _jsx("line", { className: css.axis, x1: "320", x2: "320", y1: "0", y2: "220" }), paths.map((path, index) => _jsx("path", { className: css.curve, "data-curve": index, d: path }, payload.curves[index]?.id))] })] }), _jsxs("label", { className: css.answerField, children: [_jsx("span", { children: t('answer') }), _jsx("textarea", { value: answer, disabled: busy || !predictionCommitted, placeholder: t('answerPlaceholder'), onChange: event => setAnswer(event.target.value) })] }), _jsx("div", { className: css.primaryRow, children: _jsx("button", { className: css.primaryButton, type: "button", disabled: busy || !predictionCommitted || answer.trim() === '', onClick: submit, children: busy ? t('submitting') : t('submit') }) })] }));
+    return (_jsxs("div", { className: css.activityContent, children: [_jsx("p", { className: css.prompt, children: payload.question ?? activity.prompt }), _jsxs("div", { className: css.explorer, children: [_jsx("div", { className: css.controls, children: payload.parameters.map(parameter => {
+                            const value = values[parameter.id] ?? parameter.initial;
+                            const inputId = `${chartId}-${parameter.id}`;
+                            const zeroPercent = (0 - parameter.min) / (parameter.max - parameter.min) * 100;
+                            return (_jsxs("div", { className: css.rangeField, children: [_jsxs("div", { className: css.rangeHeader, children: [_jsx("label", { htmlFor: inputId, children: parameter.label }), _jsx("output", { htmlFor: inputId, "aria-live": "polite", children: formatNumber(value) })] }), _jsxs("div", { className: css.rangeControl, children: [_jsx("button", { className: css.stepButton, type: "button", disabled: busy || value <= parameter.min, "aria-label": t('decreaseParameter', { label: parameter.label }), onClick: () => setParameter(parameter, shiftedValue(parameter, value, -1)), children: "\u2212" }), _jsx("input", { id: inputId, className: css.rangeInput, style: rangeStyle(parameter, value), type: "range", min: parameter.min, max: parameter.max, step: parameter.step, value: value, disabled: busy, "aria-valuetext": formatNumber(value), onChange: event => setParameter(parameter, Number(event.target.value)) }), _jsx("button", { className: css.stepButton, type: "button", disabled: busy || value >= parameter.max, "aria-label": t('increaseParameter', { label: parameter.label }), onClick: () => setParameter(parameter, shiftedValue(parameter, value, 1)), children: "+" }), _jsxs("div", { className: css.rangeEnds, "aria-hidden": "true", children: [_jsx("span", { children: formatNumber(parameter.min) }), parameter.min < 0 && parameter.max > 0 ? (_jsx("span", { className: css.rangeZero, style: { left: `${zeroPercent}%` }, children: "0" })) : null, _jsx("span", { children: formatNumber(parameter.max) })] })] })] }, parameter.id));
+                        }) }), _jsxs("div", { className: css.chartRegion, ref: chartContainer, children: [_jsx("ul", { className: css.legend, children: payload.curves.map((curve, index) => _jsx("li", { "data-curve": index, children: curve.label }, curve.id)) }), _jsxs("svg", { className: css.chart, viewBox: `0 0 ${geometry.width} ${geometry.height}`, role: "img", "aria-labelledby": `${chartId}-title ${chartId}-description`, children: [_jsx("title", { id: `${chartId}-title`, children: t('chartLabel') }), _jsx("desc", { id: `${chartId}-description`, children: chartDescription }), _jsx("defs", { children: _jsx("clipPath", { id: `${chartId}-clip`, children: _jsx("rect", { x: geometry.left, y: geometry.top, width: geometry.plotWidth, height: geometry.plotHeight }) }) }), _jsx("rect", { className: css.plotFrame, x: geometry.left, y: geometry.top, width: geometry.plotWidth, height: geometry.plotHeight, rx: "6" }), yTicks.map(tick => {
+                                        const y = scaleY(tick, yDomain, geometry);
+                                        return (_jsxs("g", { children: [_jsx("line", { className: tick === 0 ? `${css.gridLine} ${css.zeroAxis}` : css.gridLine, x1: geometry.left, x2: geometry.left + geometry.plotWidth, y1: y, y2: y }), _jsx("text", { className: css.tickLabel, x: geometry.left - 9, y: y, textAnchor: "end", dominantBaseline: "middle", children: formatNumber(tick) })] }, `y-${tick}`));
+                                    }), xTicks.map(tick => {
+                                        const x = scaleX(tick, xDomain, geometry);
+                                        return (_jsxs("g", { children: [_jsx("line", { className: tick === 0 ? `${css.gridLine} ${css.zeroAxis}` : css.gridLine, x1: x, x2: x, y1: geometry.top, y2: geometry.top + geometry.plotHeight }), _jsx("text", { className: css.tickLabel, x: x, y: geometry.top + geometry.plotHeight + 20, textAnchor: "middle", children: formatNumber(tick) })] }, `x-${tick}`));
+                                    }), _jsx("text", { className: css.axisLabel, "data-axis": "y", x: geometry.left, y: geometry.top - 7, textAnchor: "start", children: "y" }), _jsx("text", { className: css.axisLabel, "data-axis": "x", x: geometry.left + geometry.plotWidth, y: geometry.height - 5, textAnchor: "end", children: payload.xAxis.label ?? 'x' }), _jsx("g", { clipPath: `url(#${chartId}-clip)`, children: paths.map((path, index) => (_jsx("path", { className: css.curve, "data-curve": index, d: path }, payload.curves[index]?.id))) })] })] })] }), _jsxs("label", { className: css.answerField, children: [_jsx("span", { children: t('answer') }), _jsx("textarea", { value: answer, disabled: busy, placeholder: t('answerPlaceholder'), onChange: event => setAnswer(event.target.value) })] }), _jsx("div", { className: css.primaryRow, children: _jsx("button", { className: css.primaryButton, type: "button", disabled: busy || answer.trim() === '', onClick: submit, children: busy ? t('submitting') : t('submit') }) })] }));
 }
 //# sourceMappingURL=ParameterExplorer.js.map

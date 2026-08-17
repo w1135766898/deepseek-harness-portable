@@ -1,0 +1,2 @@
+{"type":"session","version":0,"id":"session-portable-mode-resolution-v0","createdAt":0,"cwd":"C:\\Users\\Ryan\\Downloads","delegationDepth":0}
+{"type":"portable-runtime/mode-resolution","seq":0,"time":1,"data":{"modeId":"code","variantId":"native","supportLevel":"native","presetHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","upstreamCommit":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","capabilitySnapshotHash":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","limitations":[]}}

@@ -61,8 +61,8 @@ replacement instead of self-updating the installed application.
 
 ## Release identity
 
-- Release: DeepSeek Harness Desktop v1.3.0
-- Distribution: 1.3.0
+- Release: DeepSeek Harness Desktop v1.3.1
+- Distribution: 1.3.1
 - Desktop shell: 0.1.0-shell.2
 - Kernel: read from the packaged @deepseek-ai/dsh-web-app manifest
 

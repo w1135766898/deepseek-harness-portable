@@ -1,3 +1,4 @@
 # cmd.exe requires CRLF line endings when parsing parenthesized blocks.
 *.cmd text eol=crlf
 *.bat text eol=crlf
+*.sh text eol=lf

@@ -10,7 +10,6 @@ import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-sett
 import type { SettingsDescriptor, SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import type { RpcResponse, SettingsNamespaceView } from '@deepseek-ai/dsh-host-apiproxy'
 import type { ViewImageResult, VisionConfig } from './types.ts'
-import { createPromptImageTextHandler } from './prompt-image.ts'
 import { executeViewImage, renderViewImageContent } from './view-image.ts'
 
 export * from './types.ts'
@@ -94,9 +93,9 @@ export function apply(ctx: Context, config: Config = {}): void {
     },
   )
 
-  // Text-only conversation models receive a durable, model-visible analysis
-  // in place of raw pixels. Image-capable models never dispatch this event.
-  ctx.on('api-proxy/image-to-text', createPromptImageTextHandler(() => currentConfig()))
+  // rc7 owns pasted/conversation images end-to-end: the attachment store
+  // persists immutable refs and the selected model's inputModalities gates
+  // admission. Vision Bridge deliberately does not replace that durable path.
 
   // 2) Hook apiProxy.settings to expose 'vision' to web clients and handle its mutations
   ctx.inject(['apiProxy', 'settings'], (scopeCtx) => {
@@ -201,6 +200,18 @@ export function apply(ctx: Context, config: Config = {}): void {
           },
         },
         render: (_args, value) => renderViewImageContent(value as ViewImageResult),
+        // Persist the result identity needed by a replayed generic tool card.
+        // The model-facing text remains the fallback if this plugin is later
+        // disabled or absent and no presenter is available.
+        presentationMeta: (_args, value) => {
+          const result = value as ViewImageResult
+          return {
+            path: result.path,
+            model: result.model,
+            bytes: result.bytes ?? 0,
+            isError: result.isError === true,
+          }
+        },
       },
       timeoutMs: resolved.timeoutMs,
       isConcurrencySafe: () => true,
@@ -215,6 +226,19 @@ export function apply(ctx: Context, config: Config = {}): void {
           locations: [{ path: args.path }],
         }
       },
+      presentResult(_args, result) {
+        const meta = result.meta
+        const path = typeof meta === 'object' && meta !== null && 'path' in meta && typeof meta.path === 'string'
+          ? meta.path
+          : undefined
+        const leaf = path?.replaceAll('\\', '/').split('/').at(-1)
+        return {
+          card: 'generic',
+          title: result.isError
+            ? `Image inspection failed${leaf === undefined ? '' : ` · ${leaf}`}`
+            : `Image analyzed${leaf === undefined ? '' : ` · ${leaf}`}`,
+        }
+      },
     }),
   )
 
@@ -222,6 +246,6 @@ export function apply(ctx: Context, config: Config = {}): void {
   ctx.systemPrompt.section({
     name: 'tool:view_image',
     order: 150,
-    text: 'Use the view_image tool when the user provides or asks about an image file: it inspects and describes the image with an external vision model.',
+    text: 'Use view_image for image files on disk that need external visual analysis. Images pasted into the conversation use the native rc7 attachment path and the selected image-capable model instead.',
   })
 }

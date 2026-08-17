@@ -30,6 +30,7 @@ jobs:
       - run: pnpm --filter @dsh-portable/runtime run build
       - run: pnpm run packaging:test
       - run: pnpm run runtime:test
+      - run: sh scripts/install-unix.test.sh
       - run: pnpm run readme:check
       - name: Presets contain no host-platform branches
         shell: bash

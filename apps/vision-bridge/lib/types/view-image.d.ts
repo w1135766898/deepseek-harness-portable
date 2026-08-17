@@ -11,7 +11,7 @@ export interface VisionByteInput {
     mediaType: string;
     prompt?: string;
 }
-/** Provider-neutral result used by both pasted-image routing and `view_image`. */
+/** Provider-neutral result returned by the explicit `view_image` path. */
 export type VisionAnalysisOutcome = {
     ok: true;
     text: string;

@@ -3,8 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Service } from "@deepseek-ai/cordis";
 import { UserQuestionError } from "@deepseek-ai/dsh-user-questions";
 //#region lib/types/transport.js
-const MARKER_PREFIX = "<!--dsh-learning/transport@1:";
-const MARKER_SUFFIX = "-->";
+const QUESTION_ID_PREFIX = "dsh-learning/transport@1:";
 const BASE64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 function encodeBase64Url(value) {
 	const bytes = new TextEncoder().encode(value);
@@ -21,19 +20,21 @@ function encodeBase64Url(value) {
 	}
 	return result;
 }
-/** Hide the structured activity envelope in a Markdown comment before the readable fallback. */
-function encodeLearningDetail(input) {
+/**
+* Encode the package-owned envelope in the question id. Generic question
+* clients do not render ids, so an incompatible Client sees only the readable
+* prompt and Markdown fallback instead of a Base64 transport marker.
+*/
+function encodeLearningQuestionId(input) {
 	const envelope = {
 		transport: TRANSPORT_PROTOCOL,
 		...input
 	};
-	return `${MARKER_PREFIX}${encodeBase64Url(JSON.stringify(envelope))}${MARKER_SUFFIX}\n${envelope.activity.fallbackMarkdown}`;
+	return `${QUESTION_ID_PREFIX}${encodeBase64Url(JSON.stringify(envelope))}`;
 }
 //#endregion
 //#region lib/types/broker.js
 const INTERACTIVE_LEARNING_PACKAGE = "@dsh-portable/interactive-learning";
-const QUESTION_HEADER = "Interactive learning activity";
-const QUESTION_ID_PREFIX = "learning:";
 var LearningWaitAbort = class extends Error {
 	reason;
 	constructor(reason) {
@@ -56,10 +57,15 @@ function fallback(activityId, activity, reason) {
 function answerOf(answer, activityId, activity) {
 	const custom = answer.answers[0]?.custom?.trim();
 	if (custom === void 0 || custom === "") return fallback(activityId, activity, "user-skipped");
+	let decoded;
 	try {
-		const decoded = JSON.parse(custom);
-		if (typeof decoded === "object" && decoded !== null && decoded.protocol === "dsh-learning/response@1") return parseLearningResponse(decoded, activityId);
+		decoded = JSON.parse(custom);
 	} catch {}
+	if (typeof decoded === "object" && decoded !== null && decoded.protocol === "dsh-learning/response@1") try {
+		return parseLearningResponse(decoded, activityId);
+	} catch {
+		return fallback(activityId, activity, "client-response-invalid");
+	}
 	return {
 		protocol: RESPONSE_PROTOCOL,
 		activityId,
@@ -117,13 +123,12 @@ var LearningActivityBroker = class extends Service {
 		try {
 			const ask = this.ctx.userQuestions.ask({
 				questions: [{
-					id: `${QUESTION_ID_PREFIX}${activityId}`,
-					header: QUESTION_HEADER,
-					question: activity.prompt,
-					detail: encodeLearningDetail({
+					id: encodeLearningQuestionId({
 						activityId,
 						activity
-					})
+					}),
+					question: activity.prompt,
+					detail: activity.fallbackMarkdown
 				}],
 				agent: request.agent,
 				signal: controller.signal

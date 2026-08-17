@@ -21,24 +21,28 @@ test('legacy compose-before-heal reproduces code 1 first and success only after 
   assert.equal(legacyLaunch(), 0)
 })
 
-test('a fresh process heals managed fallbacks before its first profile compose', () => {
+test('marketplace mutation is followed by fallback heal before the first loadProfile', () => {
   const events: string[] = []
-  let broken = true
+  let fallbackPresent = true
   const result = composeAfterManagedFallback({
     virtualRuntime: false,
     installAnchor: 'C:\\release\\resources\\app\\package.json',
+    mutate: () => {
+      events.push('marketplace')
+      fallbackPresent = false
+    },
     heal: () => {
       events.push('heal')
-      broken = false
+      fallbackPresent = true
     },
     compose: () => {
-      events.push('compose')
-      if (broken) throw new Error('cannot resolve profile bundle from stale fallback')
+      events.push('loadProfile')
+      if (!fallbackPresent) throw new Error('cannot resolve profile bundle from removed fallback')
       return 'ready'
     },
   })
   assert.equal(result, 'ready')
-  assert.deepEqual(events, ['heal', 'compose'])
+  assert.deepEqual(events, ['marketplace', 'heal', 'loadProfile'])
 })
 
 test('single-file virtual runtime composes without writing filesystem fallbacks', () => {
@@ -46,6 +50,7 @@ test('single-file virtual runtime composes without writing filesystem fallbacks'
   assert.equal(composeAfterManagedFallback({
     virtualRuntime: true,
     installAnchor: '/virtual/package.json',
+    mutate: () => {},
     heal: () => { healed = true },
     compose: () => 'ready',
   }), 'ready')

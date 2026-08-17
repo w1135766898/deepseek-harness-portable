@@ -17,6 +17,26 @@ const { patchWelcomeNoticeStore } = require('../../patches/dsh-client-ui-setting
 const { patchMarketplaceSelfUpdate } = require('../../patches/dsh-plugin-marketplace-self-update.js') as {
   patchMarketplaceSelfUpdate(source: string): string
 }
+const {
+  patchMarketplaceLifecycleHost,
+  patchMarketplaceTransparencyClient,
+} = require('../../patches/dsh-plugin-marketplace-transparency.js') as {
+  patchMarketplaceLifecycleHost(source: string): string
+  patchMarketplaceTransparencyClient(source: string): string
+}
+const { patchAppBootProfileRuntimeFallback } = require('../../patches/dsh-app-boot-profile-runtime-fallback.js') as {
+  patchAppBootProfileRuntimeFallback(source: string): string
+}
+const { patchSessionPortableEventMetadata } = require('../../patches/dsh-session-portable-event-metadata.js') as {
+  patchSessionPortableEventMetadata(source: string): string
+}
+
+export {
+  patchAppBootProfileRuntimeFallback,
+  patchMarketplaceLifecycleHost,
+  patchMarketplaceTransparencyClient,
+  patchSessionPortableEventMetadata,
+}
 
 export interface RuntimePatchOptions {
   readonly root: string
@@ -85,9 +105,12 @@ export async function applyRuntimePatchLayer(options: RuntimePatchOptions): Prom
   const definitions = await loadPatchManifest(resolve(options.root, 'patches/manifest.yml'))
   const directoryPicker = definitionById(definitions, 'directory-picker-electron-ipc')
   const welcome = definitionById(definitions, 'settings-model-welcome-retry')
+  const appBoot = definitionById(definitions, 'app-boot-profile-runtime-fallback')
+  const portableSession = definitionById(definitions, 'portable-session-event-metadata')
   const marketplace = definitionById(definitions, 'marketplace-self-update-fallback')
+  const marketplaceTransparency = definitionById(definitions, 'marketplace-install-transparency')
   const directoryIndex = await readFile(resolve(options.root, 'patches/dsh-host-directory-picker-native-index.js'), 'utf8')
-  const attestations = await Promise.all([
+  const baseAttestations = await Promise.all([
     applyDefinition(options, directoryPicker, {
       'node_modules/@deepseek-ai/dsh-host-directory-picker-native/lib/index.js': () => directoryIndex,
       'node_modules/@deepseek-ai/dsh-host-directory-picker-native/lib/worker.cjs': patchDirectoryPickerWorker,
@@ -97,10 +120,24 @@ export async function applyRuntimePatchLayer(options: RuntimePatchOptions): Prom
         source.includes('scheduleRetry(operation)') ? source : patchWelcomeNoticeStore(source)
       ),
     }),
+    applyDefinition(options, appBoot, {
+      'node_modules/@deepseek-ai/dsh-app-boot/lib/index.js': patchAppBootProfileRuntimeFallback,
+    }),
+    applyDefinition(options, portableSession, {
+      'node_modules/@deepseek-ai/dsh-session/lib/index.js': patchSessionPortableEventMetadata,
+    }),
     applyDefinition(options, marketplace, {
       'node_modules/dsh-plugin-marketplace/lib/index.js': patchMarketplaceSelfUpdate,
     }),
   ])
+  // Both reviewed Marketplace patches touch lib/index.js. Apply the
+  // transparency/lifecycle layer after the self-update fallback so concurrent
+  // reads cannot race and overwrite one another in the staging tree.
+  const transparencyAttestation = await applyDefinition(options, marketplaceTransparency, {
+    'node_modules/dsh-plugin-marketplace/lib/index.js': patchMarketplaceLifecycleHost,
+    'node_modules/dsh-plugin-marketplace/lib/client.js': patchMarketplaceTransparencyClient,
+  })
+  const attestations = [...baseAttestations, transparencyAttestation]
   const declared = new Set(definitions.map(item => item.id))
   const implemented = new Set(attestations.map(item => item.id))
   const missing = [...declared].filter(id => !implemented.has(id))

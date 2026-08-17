@@ -425,6 +425,7 @@ window.__ModuleLoader__.load({
 		//#region src/transport.ts
 		const MARKER_PREFIX = "<!--dsh-learning/transport@1:";
 		const MARKER_SUFFIX = "-->";
+		const QUESTION_ID_PREFIX = "dsh-learning/transport@1:";
 		const BASE64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 		function decodeBase64Url(value) {
 			if (!/^[A-Za-z0-9_-]+$/.test(value) || value.length % 4 === 1) return void 0;
@@ -446,12 +447,8 @@ window.__ModuleLoader__.load({
 				return;
 			}
 		}
-		/** Decode and revalidate a package-owned question detail; ordinary questions return undefined. */
-		function decodeLearningDetail(detail) {
-			if (typeof detail !== "string" || !detail.startsWith(MARKER_PREFIX)) return void 0;
-			const end = detail.indexOf(MARKER_SUFFIX, 29);
-			if (end < 0) return void 0;
-			const json = decodeBase64Url(detail.slice(29, end));
+		function decodeEnvelope(value) {
+			const json = decodeBase64Url(value);
 			if (json === void 0) return void 0;
 			try {
 				const parsed = JSON.parse(json);
@@ -465,9 +462,21 @@ window.__ModuleLoader__.load({
 				return;
 			}
 		}
+		/** Decode and revalidate a package-owned question id. */
+		function decodeLearningQuestionId(value) {
+			if (typeof value !== "string" || !value.startsWith(QUESTION_ID_PREFIX)) return void 0;
+			return decodeEnvelope(value.slice(25));
+		}
+		/** Decode and revalidate a package-owned question detail; ordinary questions return undefined. */
+		function decodeLearningDetail(detail) {
+			if (typeof detail !== "string" || !detail.startsWith(MARKER_PREFIX)) return void 0;
+			const end = detail.indexOf(MARKER_SUFFIX, 29);
+			if (end < 0) return void 0;
+			return decodeEnvelope(detail.slice(29, end));
+		}
 		//#endregion
 		//#region \0dsh-css:C:\Users\Ryan\Desktop\deepseek-harness-portable\apps\interactive-learning\src\client\LearningActivity.module.css.mjs
-		const css = "._7ar4Xq_frame{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);width:min(920px,100% - 24px);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-shadow-l2,0 8px 30px #00000014);border-radius:16px;margin:0 auto 12px;overflow:hidden}._7ar4Xq_header{border-bottom:1px solid var(--dsw-alias-border-l2);background:linear-gradient(135deg, var(--dsw-alias-bg-module-platform), transparent 70%);padding:18px 20px 14px}._7ar4Xq_eyebrow{color:var(--dsw-alias-brand-primary);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;font-size:11px;font-weight:700;display:block}._7ar4Xq_title{margin:0;font-size:20px;line-height:1.35}._7ar4Xq_objective{color:var(--dsw-alias-label-secondary);gap:8px;margin-top:8px;font-size:13px;line-height:1.55;display:flex}._7ar4Xq_objective strong{color:var(--dsw-alias-label-primary);flex:none}._7ar4Xq_scaffold{color:var(--dsw-alias-label-secondary);margin-top:10px;font-size:13px}._7ar4Xq_scaffold summary,._7ar4Xq_replay summary{cursor:pointer}._7ar4Xq_body{padding:18px 20px}._7ar4Xq_footer{border-top:1px solid var(--dsw-alias-border-l2);align-items:center;gap:8px;padding:10px 20px 14px;display:flex}._7ar4Xq_footerSpacer{flex:1}._7ar4Xq_error{color:var(--dsw-alias-label-error);flex:1;margin:0;font-size:12px}._7ar4Xq_activityContent,._7ar4Xq_controls,._7ar4Xq_answerField,._7ar4Xq_stepCard,._7ar4Xq_prediction,._7ar4Xq_predictionGate{flex-direction:column;display:flex}._7ar4Xq_activityContent{gap:16px}._7ar4Xq_predictionGate{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;gap:10px;padding:14px}._7ar4Xq_predictionStatus{color:var(--dsw-alias-label-success,var(--dsw-alias-brand-primary));margin:0;font-size:12px}._7ar4Xq_prompt{color:var(--dsw-alias-label-primary);margin:0;font-size:15px;font-weight:550;line-height:1.55}._7ar4Xq_explorerGrid{grid-template-columns:minmax(190px,.75fr) minmax(320px,1.5fr);align-items:stretch;gap:18px;display:grid}._7ar4Xq_controls{justify-content:center;gap:16px}._7ar4Xq_rangeField{color:var(--dsw-alias-label-secondary);gap:6px;font-size:13px;display:grid}._7ar4Xq_rangeField input{width:100%;accent-color:var(--dsw-alias-brand-primary)}._7ar4Xq_rangeField input:focus-visible,._7ar4Xq_compareRow input:focus-visible,._7ar4Xq_option input:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}._7ar4Xq_rangeEnds{color:var(--dsw-alias-label-tertiary);justify-content:space-between;font-size:11px;display:flex}._7ar4Xq_chart{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;width:100%;min-height:220px}._7ar4Xq_axis{stroke:var(--dsw-alias-border-l1);stroke-width:1px}._7ar4Xq_curve{fill:none;stroke:var(--dsw-alias-brand-primary);stroke-width:3px;vector-effect:non-scaling-stroke}._7ar4Xq_curve[data-curve=\"1\"]{stroke:var(--dsw-alias-label-success,var(--dsw-alias-label-secondary))}._7ar4Xq_curve[data-curve=\"2\"]{stroke:var(--dsw-alias-label-warning,var(--dsw-alias-label-tertiary))}._7ar4Xq_legend{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;gap:8px 14px;margin:0;padding:0;font-size:12px;list-style:none;display:flex}._7ar4Xq_legend li:before{content:\"\";background:var(--dsw-alias-brand-primary);border-radius:50%;width:9px;height:9px;margin-right:5px;display:inline-block}._7ar4Xq_answerField{color:var(--dsw-alias-label-secondary);gap:6px;font-size:13px}._7ar4Xq_answerField textarea,._7ar4Xq_prediction textarea{box-sizing:border-box;resize:vertical;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);min-height:76px;color:var(--dsw-alias-label-primary);font:inherit;border-radius:10px;padding:9px 11px;line-height:1.5}._7ar4Xq_answerField textarea:focus-visible,._7ar4Xq_prediction textarea:focus-visible,._7ar4Xq_frame button:focus-visible,._7ar4Xq_toolRow:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}._7ar4Xq_primaryRow,._7ar4Xq_navigation{justify-content:flex-end;gap:8px;display:flex}._7ar4Xq_primaryButton,._7ar4Xq_ghostButton,._7ar4Xq_revealButton,._7ar4Xq_textButton{appearance:none;font:inherit;cursor:pointer;border-radius:9px;padding:7px 13px;font-size:13px}._7ar4Xq_primaryButton,._7ar4Xq_revealButton{border:1px solid var(--dsw-alias-brand-primary);background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-on-primary,white)}._7ar4Xq_ghostButton{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}._7ar4Xq_textButton{color:var(--dsw-alias-brand-primary);background:0 0;border:0}._7ar4Xq_primaryButton:disabled,._7ar4Xq_ghostButton:disabled,._7ar4Xq_revealButton:disabled,._7ar4Xq_textButton:disabled{cursor:default;opacity:.45}._7ar4Xq_stepMeta{color:var(--dsw-alias-label-tertiary);justify-content:space-between;align-items:center;font-size:12px;display:flex}._7ar4Xq_progress{gap:6px;margin:0;padding:0;list-style:none;display:flex}._7ar4Xq_progress li{background:var(--dsw-alias-border-l1);border-radius:999px;flex:1;height:4px}._7ar4Xq_progress li[data-active],._7ar4Xq_progress li[data-done]{background:var(--dsw-alias-brand-primary)}._7ar4Xq_stepCard{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;gap:14px;min-height:180px;padding:16px}._7ar4Xq_stepCard h3,._7ar4Xq_prediction p{margin:0}._7ar4Xq_prediction{border:0;gap:9px;margin:0;padding:0}._7ar4Xq_prediction legend{color:var(--dsw-alias-brand-primary);margin-bottom:8px;font-size:12px;font-weight:700}._7ar4Xq_option{border:1px solid var(--dsw-alias-border-l2);cursor:pointer;border-radius:9px;align-items:flex-start;gap:8px;padding:8px 10px;display:flex}._7ar4Xq_option input{accent-color:var(--dsw-alias-brand-primary);margin-top:3px}._7ar4Xq_revealed{color:var(--dsw-alias-label-secondary);line-height:1.6}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:28px minmax(0,1fr) minmax(0,1fr);gap:10px;display:grid}._7ar4Xq_compareHeader{color:var(--dsw-alias-label-secondary);padding:0 10px;font-size:13px}._7ar4Xq_compareRows{border:1px solid var(--dsw-alias-border-l2);border-radius:12px;overflow:hidden}._7ar4Xq_compareRow{background:var(--dsw-alias-bg-layer-3);cursor:pointer;align-items:stretch;padding:10px;position:relative}._7ar4Xq_compareRow+._7ar4Xq_compareRow{border-top:1px solid var(--dsw-alias-border-l2)}._7ar4Xq_compareRow>input{accent-color:var(--dsw-alias-brand-primary);margin:7px 0 0}._7ar4Xq_compareItem{background:var(--dsw-alias-bg-layer-2);border-radius:8px;min-width:0;padding:7px 9px;font-size:13px;line-height:1.5}._7ar4Xq_compareItem p{color:var(--dsw-alias-label-tertiary);margin:4px 0 0}._7ar4Xq_emptyCell{color:var(--dsw-alias-label-tertiary);padding:7px 9px}._7ar4Xq_rowPrompt{color:var(--dsw-alias-label-tertiary);grid-column:2/4;font-size:11px}._7ar4Xq_toolRow{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);width:100%;color:var(--dsw-alias-label-primary);text-align:left;font:inherit;border-radius:10px;justify-content:space-between;align-items:center;gap:10px;padding:9px 11px;display:flex}button._7ar4Xq_toolRow{cursor:pointer}._7ar4Xq_toolRow>span:first-child,._7ar4Xq_replay summary>span{flex-direction:column;gap:2px;min-width:0;display:flex}._7ar4Xq_toolRow small,._7ar4Xq_replay small{color:var(--dsw-alias-label-tertiary);font-size:11px}._7ar4Xq_runningDot{background:var(--dsw-alias-brand-primary);border-radius:50%;flex:none;width:8px;height:8px;animation:1.2s ease-in-out infinite _7ar4Xq_pulse}._7ar4Xq_replay{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:10px}._7ar4Xq_replay>summary{padding:9px 11px;list-style-position:inside}._7ar4Xq_replayBody{color:var(--dsw-alias-label-secondary);gap:14px;padding:0 14px 14px;font-size:13px;display:grid}._7ar4Xq_replayOutline,._7ar4Xq_replayCompare{grid-template-columns:1fr 1fr;gap:12px;display:grid}._7ar4Xq_replaySteps{gap:10px;display:grid}._7ar4Xq_replayCompare section{border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:9px}._7ar4Xq_response{min-width:0}._7ar4Xq_response pre{background:var(--dsw-alias-bg-layer-2);white-space:pre-wrap;word-break:break-word;border-radius:8px;max-height:220px;padding:9px;overflow:auto}@keyframes _7ar4Xq_pulse{0%,to{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}@media (width<=720px){._7ar4Xq_explorerGrid{grid-template-columns:1fr}._7ar4Xq_frame{width:calc(100% - 16px)}._7ar4Xq_header,._7ar4Xq_body{padding-left:14px;padding-right:14px}._7ar4Xq_footer{flex-wrap:wrap;padding-left:14px;padding-right:14px}}@media (prefers-reduced-motion:reduce){._7ar4Xq_runningDot{animation:none}}";
+		const css = "._7ar4Xq_inlineActivity{min-width:0;color:var(--dsw-alias-label-primary);flex-direction:column;gap:16px;font-size:16px;line-height:28px;display:flex}._7ar4Xq_scaffold{color:var(--dsw-alias-label-secondary);align-self:flex-start;font-size:13px;line-height:22px}._7ar4Xq_scaffold summary{cursor:pointer}._7ar4Xq_activityActions{align-items:center;gap:12px;margin-top:-6px;font-size:12px;line-height:20px;display:flex}._7ar4Xq_error{color:var(--dsw-alias-label-error);margin:0;font-size:13px;line-height:22px}._7ar4Xq_activityContent,._7ar4Xq_controls,._7ar4Xq_answerField,._7ar4Xq_stepFocus,._7ar4Xq_prediction{flex-direction:column;display:flex}._7ar4Xq_activityContent{gap:16px}._7ar4Xq_prompt{color:var(--dsw-alias-label-primary);margin:0;font-size:16px;font-weight:400;line-height:28px}._7ar4Xq_explorer{flex-direction:column;gap:16px;min-width:0;display:flex}._7ar4Xq_controls{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:14px 24px;display:grid}._7ar4Xq_rangeField{min-width:0;color:var(--dsw-alias-label-secondary);font-size:13px}._7ar4Xq_rangeHeader{justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px;display:flex}._7ar4Xq_rangeHeader label{color:var(--dsw-alias-label-primary);font-weight:500}._7ar4Xq_rangeHeader output{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;font-size:14px;font-weight:650}._7ar4Xq_rangeControl{grid-template-rows:30px 16px;grid-template-columns:28px minmax(0,1fr) 28px;align-items:center;column-gap:9px;display:grid}._7ar4Xq_stepButton{appearance:none;border:1px solid var(--dsw-alias-border-l3);width:28px;height:28px;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer;background:0 0;border-radius:7px;padding:0;font-size:17px;line-height:26px}._7ar4Xq_stepButton:hover:not(:disabled){border-color:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-state-business-primary)}._7ar4Xq_stepButton:disabled{cursor:default;opacity:.35}._7ar4Xq_rangeInput{appearance:none;background:linear-gradient(to right, var(--dsw-alias-border-l4) 0 var(--range-low), var(--dsw-alias-state-business-primary) var(--range-low) var(--range-high), var(--dsw-alias-border-l4) var(--range-high) 100%);cursor:pointer;border-radius:999px;width:100%;height:4px}._7ar4Xq_rangeInput:disabled{cursor:default;opacity:.55}._7ar4Xq_rangeInput::-webkit-slider-runnable-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_rangeInput::-webkit-slider-thumb{appearance:none;border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:16px;height:16px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%;margin-top:-6px}._7ar4Xq_rangeInput::-moz-range-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_rangeInput::-moz-range-thumb{border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:10px;height:10px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%}._7ar4Xq_rangeInput:focus-visible,._7ar4Xq_compareRow input:focus-visible,._7ar4Xq_option input:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:4px}._7ar4Xq_rangeEnds{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;grid-column:2;justify-content:space-between;font-size:11px;line-height:16px;display:flex;position:relative}._7ar4Xq_rangeZero{position:absolute;transform:translate(-50%)}._7ar4Xq_chartRegion{min-width:0}._7ar4Xq_chart{width:100%;height:auto;display:block;overflow:visible}._7ar4Xq_plotFrame{fill:var(--dsw-alias-bg-layer-1);stroke:var(--dsw-alias-border-l3);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_gridLine{stroke:var(--dsw-alias-border-l1);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_zeroAxis{stroke:var(--dsw-alias-border-l4);stroke-width:1.25px}._7ar4Xq_tickLabel{fill:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;font-size:11px}._7ar4Xq_axisLabel{fill:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500}._7ar4Xq_curve{fill:none;stroke:var(--dsw-alias-state-business-primary);stroke-width:3px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}._7ar4Xq_curve[data-curve=\"1\"]{stroke:var(--dsw-alias-state-success-primary);stroke-dasharray:9 5}._7ar4Xq_curve[data-curve=\"2\"]{stroke:var(--dsw-alias-state-warn-primary);stroke-dasharray:2 6}._7ar4Xq_legend{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;gap:8px 14px;margin:0 0 5px 64px;padding:0;font-size:12px;list-style:none;display:flex}._7ar4Xq_legend li:before{content:\"\";border-top:3px solid var(--dsw-alias-state-business-primary);vertical-align:middle;width:18px;height:0;margin-right:5px;display:inline-block}._7ar4Xq_legend li[data-curve=\"1\"]:before{border-top-color:var(--dsw-alias-state-success-primary);border-top-style:dashed}._7ar4Xq_legend li[data-curve=\"2\"]:before{border-top-color:var(--dsw-alias-state-warn-primary);border-top-style:dotted}._7ar4Xq_answerField{color:var(--dsw-alias-label-secondary);gap:6px;font-size:13px}._7ar4Xq_answerField textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--dsw-alias-border-l2);min-height:52px;color:var(--dsw-alias-label-primary);font:inherit;background:0 0;border-radius:0;padding:5px 0;line-height:1.5}._7ar4Xq_answerField textarea:focus-visible,._7ar4Xq_prediction textarea:focus-visible,._7ar4Xq_inlineActivity button:focus-visible,._7ar4Xq_inlineStatus:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}._7ar4Xq_primaryRow,._7ar4Xq_navigation{gap:8px;display:flex}._7ar4Xq_primaryRow{justify-content:flex-start}._7ar4Xq_navigation{justify-content:space-between}._7ar4Xq_primaryButton,._7ar4Xq_ghostButton,._7ar4Xq_revealButton,._7ar4Xq_textButton{appearance:none;font:inherit;cursor:pointer;border-radius:8px;padding:4px 10px;font-size:13px;line-height:20px}._7ar4Xq_primaryButton,._7ar4Xq_revealButton{border:1px solid var(--dsw-alias-brand-primary);background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-on-primary,white)}._7ar4Xq_ghostButton{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}._7ar4Xq_textButton{color:var(--dsw-alias-brand-primary);background:0 0;border:0;border-radius:0;padding:2px 0}._7ar4Xq_primaryButton:disabled,._7ar4Xq_ghostButton:disabled,._7ar4Xq_revealButton:disabled,._7ar4Xq_textButton:disabled{cursor:default;opacity:.45}._7ar4Xq_stepMeta{color:var(--dsw-alias-label-tertiary);justify-content:space-between;align-items:center;font-size:12px;display:flex}._7ar4Xq_processMap{grid-template-columns:repeat(var(--process-step-count), minmax(0, 1fr));margin:0;padding:0;list-style:none;display:grid}._7ar4Xq_processStep{min-width:0;position:relative}._7ar4Xq_processStep:not(:last-child):after{z-index:0;background:var(--dsw-alias-border-l2);content:\"\";height:2px;position:absolute;top:13px;left:calc(50% + 16px);right:calc(16px - 50%)}._7ar4Xq_processStep[data-connector-complete]:after{background:var(--dsw-alias-state-business-primary)}._7ar4Xq_processStepButton{z-index:1;width:100%;min-width:0;color:var(--dsw-alias-label-tertiary);text-align:center;font:inherit;cursor:pointer;background:0 0;border:0;flex-direction:column;align-items:center;gap:6px;padding:0 4px;font-size:12px;line-height:18px;display:flex;position:relative}._7ar4Xq_processStepButton:disabled{cursor:default}._7ar4Xq_processNode{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l4);background:var(--dsw-alias-bg-layer-1);width:28px;height:28px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;border-radius:50%;place-items:center;font-size:12px;line-height:1;display:grid}._7ar4Xq_processTitle{-webkit-line-clamp:2;-webkit-box-orient:vertical;min-width:0;display:-webkit-box;overflow:hidden}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processNode{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-tertiary);color:var(--dsw-alias-state-business-primary)}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processTitle{color:var(--dsw-alias-label-primary);font-weight:500}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processNode{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-primary-inverted)}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processTitle{color:var(--dsw-alias-label-secondary)}._7ar4Xq_processMapVertical{grid-template-columns:1fr}._7ar4Xq_processMapVertical ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMapVertical ._7ar4Xq_processStepButton{text-align:left;flex-direction:row;align-items:flex-start;gap:10px;padding:4px 0 10px}._7ar4Xq_processMapVertical ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMapVertical ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_stepFocus{border-left:2px solid var(--dsw-alias-state-business-primary);gap:12px;padding-left:16px}._7ar4Xq_stepFocus h3,._7ar4Xq_prediction p{margin:0}._7ar4Xq_stepFocus h3{color:var(--dsw-alias-label-primary);font-size:16px;font-weight:500;line-height:24px}._7ar4Xq_stepFocus>._7ar4Xq_revealButton{align-self:flex-start}._7ar4Xq_prediction{border:0;gap:9px;margin:0;padding:0}._7ar4Xq_prediction legend{color:var(--dsw-alias-state-business-primary);margin-bottom:8px;font-size:12px;font-weight:500}._7ar4Xq_prediction textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--dsw-alias-border-l2);min-height:52px;color:var(--dsw-alias-label-primary);font:inherit;background:0 0;padding:5px 0}._7ar4Xq_predictionOptions{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:0 18px;display:grid}._7ar4Xq_option{border-bottom:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);cursor:pointer;align-items:flex-start;gap:8px;padding:7px 0;display:flex}._7ar4Xq_option[data-selected]{color:var(--dsw-alias-label-primary)}._7ar4Xq_option input{accent-color:var(--dsw-alias-state-business-primary);margin-top:3px}._7ar4Xq_revealed{color:var(--dsw-alias-label-secondary);line-height:1.6}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) minmax(16px,36px) 24px minmax(16px,36px) minmax(0,1fr);align-items:center;display:grid}._7ar4Xq_compareHeader{color:var(--dsw-alias-label-secondary);padding-bottom:4px;font-size:13px}._7ar4Xq_compareHeader strong{min-width:0;font-weight:500}._7ar4Xq_compareHeader strong[data-side=left]{text-align:right;grid-column:1}._7ar4Xq_compareHeader strong[data-side=right]{text-align:left;grid-column:5}._7ar4Xq_compareHeaderLink{color:var(--dsw-alias-label-tertiary);text-align:center;grid-column:3}._7ar4Xq_compareRows{min-width:0}._7ar4Xq_compareRow{cursor:pointer;background:0 0;min-width:0;padding:12px 0;position:relative}._7ar4Xq_compareRow+._7ar4Xq_compareRow{border-top:1px solid var(--dsw-alias-border-l2)}._7ar4Xq_compareLine{background:var(--dsw-alias-border-l3);height:1px}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareLine{background:var(--dsw-alias-state-business-primary);height:2px}._7ar4Xq_compareSelector{place-items:center;display:grid}._7ar4Xq_compareSelector input{width:16px;height:16px;accent-color:var(--dsw-alias-state-business-primary);margin:0}._7ar4Xq_compareItem{min-width:0;color:var(--dsw-alias-label-primary);padding:0 5px;font-size:13px;line-height:1.5}._7ar4Xq_compareItem[data-side=left]{text-align:right}._7ar4Xq_compareItem[data-side=right]{text-align:left}._7ar4Xq_compareItem strong{font-weight:500}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareItem strong{color:var(--dsw-alias-state-business-primary)}._7ar4Xq_compareItem p{color:var(--dsw-alias-label-tertiary);margin:4px 0 0}._7ar4Xq_emptyCell{color:var(--dsw-alias-label-tertiary);padding:0 5px}._7ar4Xq_emptyCell[data-side=left]{text-align:right}._7ar4Xq_emptyCell[data-side=right]{text-align:left}._7ar4Xq_rowPrompt{max-width:80%;color:var(--dsw-alias-label-tertiary);text-align:center;grid-column:1/6;justify-self:center;margin-top:6px;font-size:11px;line-height:17px}._7ar4Xq_inlineStatus{width:max-content;max-width:100%;color:var(--dsw-alias-label-tertiary);text-align:left;font:inherit;background:0 0;border:0;align-items:center;gap:8px;margin:0;padding:0;font-size:13px;line-height:22px;display:flex}._7ar4Xq_runningDot{background:var(--dsw-alias-brand-primary);border-radius:50%;flex:none;width:6px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_pulse}._7ar4Xq_skeletonLine{background:var(--dsw-alias-border-l2);border-radius:999px;width:64px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_skeletonPulse}._7ar4Xq_inlineResult{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;align-items:baseline;gap:7px;margin:0;font-size:13px;line-height:22px;display:flex}._7ar4Xq_inlineFallback{flex-direction:column;gap:4px;display:flex}._7ar4Xq_fallbackText{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:22px}._7ar4Xq_resultMark{color:var(--dsw-alias-label-success,var(--dsw-alias-brand-primary))}._7ar4Xq_resultEvidence{color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}._7ar4Xq_resultAnswer{color:var(--dsw-alias-label-tertiary)}@keyframes _7ar4Xq_pulse{0%,to{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}@keyframes _7ar4Xq_skeletonPulse{0%,to{opacity:.35}50%{opacity:.75}}@media (width<=560px){._7ar4Xq_processMap{grid-template-columns:1fr}._7ar4Xq_processMap ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMap ._7ar4Xq_processStepButton{text-align:left;flex-direction:row;align-items:flex-start;gap:10px;padding:4px 0 10px}._7ar4Xq_processMap ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMap ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) 12px 22px 12px minmax(0,1fr)}._7ar4Xq_rowPrompt{max-width:100%}}@media (width<=420px){._7ar4Xq_legend{margin-left:56px}._7ar4Xq_stepFocus{padding-left:12px}}@media (prefers-reduced-motion:reduce){._7ar4Xq_runningDot,._7ar4Xq_skeletonLine{animation:none}}";
 		const tagId = "@dsh-portable/interactive-learning/LearningActivity.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -477,114 +486,105 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var LearningActivity_module_css_default = {
-			"toolRow": "_7ar4Xq_toolRow",
-			"activityContent": "_7ar4Xq_activityContent",
-			"revealButton": "_7ar4Xq_revealButton",
-			"rangeField": "_7ar4Xq_rangeField",
-			"body": "_7ar4Xq_body",
-			"replayOutline": "_7ar4Xq_replayOutline",
-			"revealed": "_7ar4Xq_revealed",
-			"eyebrow": "_7ar4Xq_eyebrow",
-			"replay": "_7ar4Xq_replay",
+			"stepFocus": "_7ar4Xq_stepFocus",
+			"curve": "_7ar4Xq_curve",
 			"error": "_7ar4Xq_error",
-			"controls": "_7ar4Xq_controls",
-			"predictionStatus": "_7ar4Xq_predictionStatus",
-			"primaryRow": "_7ar4Xq_primaryRow",
-			"emptyCell": "_7ar4Xq_emptyCell",
-			"rowPrompt": "_7ar4Xq_rowPrompt",
-			"replayBody": "_7ar4Xq_replayBody",
-			"scaffold": "_7ar4Xq_scaffold",
-			"axis": "_7ar4Xq_axis",
-			"replayCompare": "_7ar4Xq_replayCompare",
-			"footerSpacer": "_7ar4Xq_footerSpacer",
-			"stepMeta": "_7ar4Xq_stepMeta",
-			"pulse": "_7ar4Xq_pulse",
-			"chart": "_7ar4Xq_chart",
-			"title": "_7ar4Xq_title",
-			"footer": "_7ar4Xq_footer",
-			"legend": "_7ar4Xq_legend",
-			"rangeEnds": "_7ar4Xq_rangeEnds",
-			"explorerGrid": "_7ar4Xq_explorerGrid",
-			"ghostButton": "_7ar4Xq_ghostButton",
-			"stepCard": "_7ar4Xq_stepCard",
-			"compareHeader": "_7ar4Xq_compareHeader",
-			"header": "_7ar4Xq_header",
-			"predictionGate": "_7ar4Xq_predictionGate",
-			"navigation": "_7ar4Xq_navigation",
-			"answerField": "_7ar4Xq_answerField",
-			"compareItem": "_7ar4Xq_compareItem",
-			"textButton": "_7ar4Xq_textButton",
 			"runningDot": "_7ar4Xq_runningDot",
-			"objective": "_7ar4Xq_objective",
-			"prediction": "_7ar4Xq_prediction",
-			"compareRow": "_7ar4Xq_compareRow",
-			"option": "_7ar4Xq_option",
+			"tickLabel": "_7ar4Xq_tickLabel",
+			"answerField": "_7ar4Xq_answerField",
+			"chart": "_7ar4Xq_chart",
+			"rangeZero": "_7ar4Xq_rangeZero",
+			"plotFrame": "_7ar4Xq_plotFrame",
+			"compareLine": "_7ar4Xq_compareLine",
+			"emptyCell": "_7ar4Xq_emptyCell",
+			"resultAnswer": "_7ar4Xq_resultAnswer",
 			"primaryButton": "_7ar4Xq_primaryButton",
-			"prompt": "_7ar4Xq_prompt",
-			"response": "_7ar4Xq_response",
-			"progress": "_7ar4Xq_progress",
-			"frame": "_7ar4Xq_frame",
-			"replaySteps": "_7ar4Xq_replaySteps",
+			"textButton": "_7ar4Xq_textButton",
+			"inlineFallback": "_7ar4Xq_inlineFallback",
+			"resultEvidence": "_7ar4Xq_resultEvidence",
+			"fallbackText": "_7ar4Xq_fallbackText",
+			"resultMark": "_7ar4Xq_resultMark",
+			"inlineResult": "_7ar4Xq_inlineResult",
+			"ghostButton": "_7ar4Xq_ghostButton",
+			"controls": "_7ar4Xq_controls",
 			"compareRows": "_7ar4Xq_compareRows",
-			"curve": "_7ar4Xq_curve"
+			"activityActions": "_7ar4Xq_activityActions",
+			"pulse": "_7ar4Xq_pulse",
+			"skeletonPulse": "_7ar4Xq_skeletonPulse",
+			"option": "_7ar4Xq_option",
+			"processNode": "_7ar4Xq_processNode",
+			"zeroAxis": "_7ar4Xq_zeroAxis",
+			"rangeControl": "_7ar4Xq_rangeControl",
+			"compareHeaderLink": "_7ar4Xq_compareHeaderLink",
+			"gridLine": "_7ar4Xq_gridLine",
+			"chartRegion": "_7ar4Xq_chartRegion",
+			"rangeEnds": "_7ar4Xq_rangeEnds",
+			"processMap": "_7ar4Xq_processMap",
+			"explorer": "_7ar4Xq_explorer",
+			"processStepButton": "_7ar4Xq_processStepButton",
+			"rowPrompt": "_7ar4Xq_rowPrompt",
+			"axisLabel": "_7ar4Xq_axisLabel",
+			"rangeHeader": "_7ar4Xq_rangeHeader",
+			"activityContent": "_7ar4Xq_activityContent",
+			"compareSelector": "_7ar4Xq_compareSelector",
+			"compareItem": "_7ar4Xq_compareItem",
+			"legend": "_7ar4Xq_legend",
+			"navigation": "_7ar4Xq_navigation",
+			"primaryRow": "_7ar4Xq_primaryRow",
+			"compareRow": "_7ar4Xq_compareRow",
+			"prediction": "_7ar4Xq_prediction",
+			"revealed": "_7ar4Xq_revealed",
+			"skeletonLine": "_7ar4Xq_skeletonLine",
+			"inlineStatus": "_7ar4Xq_inlineStatus",
+			"stepButton": "_7ar4Xq_stepButton",
+			"stepMeta": "_7ar4Xq_stepMeta",
+			"prompt": "_7ar4Xq_prompt",
+			"processTitle": "_7ar4Xq_processTitle",
+			"inlineActivity": "_7ar4Xq_inlineActivity",
+			"predictionOptions": "_7ar4Xq_predictionOptions",
+			"rangeField": "_7ar4Xq_rangeField",
+			"scaffold": "_7ar4Xq_scaffold",
+			"revealButton": "_7ar4Xq_revealButton",
+			"rangeInput": "_7ar4Xq_rangeInput",
+			"processStep": "_7ar4Xq_processStep",
+			"compareHeader": "_7ar4Xq_compareHeader",
+			"processMapVertical": "_7ar4Xq_processMapVertical"
 		};
 		//#endregion
 		//#region src/client/ActivityFrame.tsx
-		function ActivityFrame({ activity, busy, error, children, onSkip, onCancel, t }) {
+		function ActivityFrame({ activityId, activity, busy, error, children, onSkip, onCancel, t }) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-				className: LearningActivity_module_css_default.frame,
-				"aria-labelledby": "learning-activity-title",
+				className: LearningActivity_module_css_default.inlineActivity,
+				"aria-label": activity.title,
 				"data-learning-activity": activity.kind,
+				"data-learning-activity-id": activityId,
+				"data-learning-surface": "inline",
 				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
-						className: LearningActivity_module_css_default.header,
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: LearningActivity_module_css_default.eyebrow,
-								children: t("activity")
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
-								id: "learning-activity-title",
-								className: LearningActivity_module_css_default.title,
-								children: activity.title
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: LearningActivity_module_css_default.objective,
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: t("objective") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: activity.objective })]
-							}),
-							activity.scaffold === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
-								className: LearningActivity_module_css_default.scaffold,
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("summary", { children: t("scaffold") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: activity.scaffold })]
-							})
-						]
+					children,
+					activity.scaffold === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
+						className: LearningActivity_module_css_default.scaffold,
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("summary", { children: t("scaffold") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: activity.scaffold })]
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: LearningActivity_module_css_default.body,
-						children
+					error === null ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningActivity_module_css_default.error,
+						role: "alert",
+						children: error
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("footer", {
-						className: LearningActivity_module_css_default.footer,
-						children: [
-							error === null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { className: LearningActivity_module_css_default.footerSpacer }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-								className: LearningActivity_module_css_default.error,
-								role: "alert",
-								children: error
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								className: LearningActivity_module_css_default.ghostButton,
-								type: "button",
-								disabled: busy,
-								onClick: onCancel,
-								children: t("cancel")
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								className: LearningActivity_module_css_default.ghostButton,
-								type: "button",
-								disabled: busy,
-								onClick: onSkip,
-								children: t("skip")
-							})
-						]
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: LearningActivity_module_css_default.activityActions,
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							className: LearningActivity_module_css_default.textButton,
+							type: "button",
+							disabled: busy,
+							onClick: onSkip,
+							children: t("skip")
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							className: LearningActivity_module_css_default.textButton,
+							type: "button",
+							disabled: busy,
+							onClick: onCancel,
+							children: t("cancel")
+						})]
 					})
 				]
 			});
@@ -615,71 +615,256 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client/ParameterExplorer.tsx
+		const MAX_RENDERABLE_VALUE = 0xe8d4a51000;
+		const MAX_PARAMETER_DOMAIN_SAMPLES = 33;
 		function formatNumber(value) {
 			return Number.isInteger(value) ? String(value) : String(Number(value.toPrecision(6)));
 		}
-		function pathsFor(payload, values) {
-			const samples = payload.xAxis.samples ?? 96;
-			const series = payload.curves.map(() => []);
-			const finiteY = [];
-			for (let index = 0; index < samples; index += 1) {
+		function uniqueNumbers(values) {
+			return [...new Set(values.map((value) => Number(value.toPrecision(12))))];
+		}
+		function parameterCandidates(parameter) {
+			const discreteSteps = Math.max(1, Math.ceil((parameter.max - parameter.min) / parameter.step));
+			const sampleCount = Math.min(discreteSteps + 1, MAX_PARAMETER_DOMAIN_SAMPLES);
+			return uniqueNumbers([
+				...Array.from({ length: sampleCount }, (_, index) => {
+					const stepIndex = sampleCount === 1 ? 0 : Math.round(index * discreteSteps / (sampleCount - 1));
+					return Math.min(parameter.max, parameter.min + stepIndex * parameter.step);
+				}),
+				parameter.min,
+				parameter.max,
+				parameter.initial,
+				...parameter.min <= 0 && parameter.max >= 0 ? [0] : []
+			]);
+		}
+		function parameterStates(payload) {
+			return payload.parameters.reduce((states, parameter) => {
+				const candidates = parameterCandidates(parameter);
+				return states.flatMap((state) => candidates.map((value) => ({
+					...state,
+					[parameter.id]: value
+				})));
+			}, [{}]);
+		}
+		function niceStep(rawStep) {
+			if (!Number.isFinite(rawStep) || rawStep <= 0) return 1;
+			const power = 10 ** Math.floor(Math.log10(rawStep));
+			const normalized = rawStep / power;
+			return (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10) * power;
+		}
+		function paddedYDomain(min, max) {
+			if (min === max) {
+				const radius = Math.max(Math.abs(min) * .2, 1);
+				return {
+					min: min - radius,
+					max: max + radius
+				};
+			}
+			const span = max - min;
+			const padding = span * .08;
+			const step = niceStep((span + padding * 2) / 5);
+			let domainMin = Math.floor((min - padding) / step) * step;
+			let domainMax = Math.ceil((max + padding) / step) * step;
+			if (domainMin === domainMax) {
+				domainMin -= step;
+				domainMax += step;
+			}
+			return {
+				min: domainMin,
+				max: domainMax
+			};
+		}
+		function stableYDomain(payload) {
+			const samples = Math.min(payload.xAxis.samples ?? 96, 96);
+			let min = 0;
+			let max = 0;
+			let found = false;
+			for (const values of parameterStates(payload)) for (let index = 0; index < samples; index += 1) {
 				const x = payload.xAxis.min + (payload.xAxis.max - payload.xAxis.min) * index / (samples - 1);
-				for (const [curveIndex, curve] of payload.curves.entries()) {
+				for (const curve of payload.curves) {
 					const y = evaluateMathExpression(curve.expression, {
 						...values,
 						x
 					});
-					series[curveIndex]?.push({
-						x,
-						y
-					});
-					if (Number.isFinite(y) && Math.abs(y) <= 0xe8d4a51000) finiteY.push(y);
+					if (!Number.isFinite(y) || Math.abs(y) > MAX_RENDERABLE_VALUE) continue;
+					min = found ? Math.min(min, y) : Math.min(0, y);
+					max = found ? Math.max(max, y) : Math.max(0, y);
+					found = true;
 				}
 			}
-			if (finiteY.length === 0) return series.map(() => "");
-			let minY = Math.min(...finiteY);
-			let maxY = Math.max(...finiteY);
-			if (minY === maxY) {
-				minY -= 1;
-				maxY += 1;
+			if (!found) return {
+				min: -1,
+				max: 1
+			};
+			return paddedYDomain(min, max);
+		}
+		function yDomainForState(payload, values, stable) {
+			const samples = payload.xAxis.samples ?? 96;
+			let min = stable.min;
+			let max = stable.max;
+			let expanded = false;
+			for (let index = 0; index < samples; index += 1) {
+				const x = payload.xAxis.min + (payload.xAxis.max - payload.xAxis.min) * index / (samples - 1);
+				for (const curve of payload.curves) {
+					const y = evaluateMathExpression(curve.expression, {
+						...values,
+						x
+					});
+					if (!Number.isFinite(y) || Math.abs(y) > MAX_RENDERABLE_VALUE) continue;
+					if (y < min) {
+						min = y;
+						expanded = true;
+					}
+					if (y > max) {
+						max = y;
+						expanded = true;
+					}
+				}
 			}
-			const width = 640;
-			const height = 220;
+			return expanded ? paddedYDomain(min, max) : stable;
+		}
+		function ticksFor(domain, targetCount = 5) {
+			const step = niceStep((domain.max - domain.min) / targetCount);
+			const first = Math.ceil(domain.min / step) * step;
+			const ticks = [];
+			for (let value = first; value <= domain.max + step * 1e-8; value += step) ticks.push(Number(value.toPrecision(12)));
+			return ticks;
+		}
+		function chartGeometry(width) {
+			const safeWidth = Math.max(280, Math.round(width));
+			const height = safeWidth < 480 ? 260 : 300;
+			const left = safeWidth < 360 ? 56 : 64;
+			const right = 18;
+			const top = 18;
+			const bottom = 40;
+			return {
+				width: safeWidth,
+				height,
+				left,
+				right,
+				top,
+				bottom,
+				plotWidth: safeWidth - left - right,
+				plotHeight: height - top - bottom
+			};
+		}
+		function scaleX(value, domain, geometry) {
+			return geometry.left + (value - domain.min) / (domain.max - domain.min) * geometry.plotWidth;
+		}
+		function scaleY(value, domain, geometry) {
+			return geometry.top + (domain.max - value) / (domain.max - domain.min) * geometry.plotHeight;
+		}
+		function pathsFor(payload, values, yDomain, geometry) {
+			const samples = payload.xAxis.samples ?? 96;
+			const xDomain = {
+				min: payload.xAxis.min,
+				max: payload.xAxis.max
+			};
+			const series = payload.curves.map(() => []);
+			for (let index = 0; index < samples; index += 1) {
+				const x = payload.xAxis.min + (payload.xAxis.max - payload.xAxis.min) * index / (samples - 1);
+				for (const [curveIndex, curve] of payload.curves.entries()) series[curveIndex]?.push({
+					x,
+					y: evaluateMathExpression(curve.expression, {
+						...values,
+						x
+					})
+				});
+			}
 			return series.map((points) => {
 				let open = false;
+				let previousY = null;
 				return points.map((point) => {
-					if (!Number.isFinite(point.y) || Math.abs(point.y) > 0xe8d4a51000) {
+					if (!Number.isFinite(point.y) || Math.abs(point.y) > MAX_RENDERABLE_VALUE) {
 						open = false;
+						previousY = null;
 						return "";
 					}
-					const px = (point.x - payload.xAxis.min) / (payload.xAxis.max - payload.xAxis.min) * width;
-					const py = height - (point.y - minY) / (maxY - minY) * height;
+					const px = scaleX(point.x, xDomain, geometry);
+					const py = scaleY(point.y, yDomain, geometry);
+					if (previousY !== null && Math.abs(py - previousY) > geometry.plotHeight * 1.5) open = false;
 					const command = open ? "L" : "M";
 					open = true;
+					previousY = py;
 					return `${command}${px.toFixed(2)},${py.toFixed(2)}`;
 				}).filter(Boolean).join(" ");
 			});
 		}
+		function rangeStyle(parameter, value) {
+			const span = parameter.max - parameter.min;
+			const valuePercent = (value - parameter.min) / span * 100;
+			const anchorPercent = ((parameter.min <= 0 && parameter.max >= 0 ? 0 : parameter.min) - parameter.min) / span * 100;
+			return {
+				"--range-low": `${Math.min(valuePercent, anchorPercent)}%`,
+				"--range-high": `${Math.max(valuePercent, anchorPercent)}%`
+			};
+		}
+		function shiftedValue(parameter, current, direction) {
+			const shifted = current + parameter.step * direction;
+			const clamped = Math.min(parameter.max, Math.max(parameter.min, shifted));
+			return Number(clamped.toPrecision(12));
+		}
 		function ParameterExplorer({ activity, busy, onSubmit, t }) {
 			const payload = activity.payload;
+			const chartId = (0, react.useId)();
+			const chartContainer = (0, react.useRef)(null);
+			const [chartWidth, setChartWidth] = (0, react.useState)(640);
 			const [values, setValues] = (0, react.useState)(() => Object.fromEntries(payload.parameters.map((parameter) => [parameter.id, parameter.initial])));
 			const [answer, setAnswer] = (0, react.useState)("");
-			const [prediction, setPrediction] = (0, react.useState)("");
-			const [predictionCommitted, setPredictionCommitted] = (0, react.useState)(false);
-			const paths = (0, react.useMemo)(() => pathsFor(payload, values), [payload, values]);
+			const stableDomain = (0, react.useMemo)(() => stableYDomain(payload), [payload]);
+			const yDomain = (0, react.useMemo)(() => yDomainForState(payload, values, stableDomain), [
+				payload,
+				stableDomain,
+				values
+			]);
+			const geometry = (0, react.useMemo)(() => chartGeometry(chartWidth), [chartWidth]);
+			const xDomain = (0, react.useMemo)(() => ({
+				min: payload.xAxis.min,
+				max: payload.xAxis.max
+			}), [payload.xAxis.max, payload.xAxis.min]);
+			const xTicks = (0, react.useMemo)(() => ticksFor(xDomain), [xDomain]);
+			const yTicks = (0, react.useMemo)(() => ticksFor(yDomain), [yDomain]);
+			const paths = (0, react.useMemo)(() => pathsFor(payload, values, yDomain, geometry), [
+				geometry,
+				payload,
+				values,
+				yDomain
+			]);
+			const chartDescription = t("chartDescription", {
+				parameters: payload.parameters.map((parameter) => `${parameter.label} ${formatNumber(values[parameter.id] ?? parameter.initial)} (${formatNumber(parameter.min)}–${formatNumber(parameter.max)})`).join("; "),
+				xAxis: `${payload.xAxis.label ?? "x"} ${formatNumber(xDomain.min)}–${formatNumber(xDomain.max)}`,
+				yAxis: `y ${formatNumber(yDomain.min)}–${formatNumber(yDomain.max)}`,
+				curves: payload.curves.map((curve) => curve.label).join("; ")
+			});
+			(0, react.useEffect)(() => {
+				const container = chartContainer.current;
+				if (!container) return;
+				const updateWidth = (width) => {
+					if (width >= 280) setChartWidth((current) => Math.abs(current - width) < 1 ? current : width);
+				};
+				updateWidth(container.getBoundingClientRect().width);
+				if (typeof ResizeObserver === "undefined") return;
+				const observer = new ResizeObserver((entries) => {
+					const entry = entries[0];
+					if (entry) updateWidth(entry.contentRect.width);
+				});
+				observer.observe(container);
+				return () => observer.disconnect();
+			}, []);
+			const setParameter = (parameter, value) => {
+				setValues((current) => ({
+					...current,
+					[parameter.id]: value
+				}));
+			};
 			const submit = () => {
 				const parameters = { ...values };
 				onSubmit({
 					answer: {
-						prediction: prediction.trim(),
 						parameters,
 						explanation: answer.trim()
 					},
-					interactionState: {
-						prediction: prediction.trim(),
-						predictionCommitted,
-						parameters
-					}
+					interactionState: { parameters }
 				});
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -689,110 +874,181 @@ window.__ModuleLoader__.load({
 						className: LearningActivity_module_css_default.prompt,
 						children: payload.question ?? activity.prompt
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-						className: LearningActivity_module_css_default.predictionGate,
-						"aria-labelledby": "parameter-prediction-title",
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
-							className: LearningActivity_module_css_default.answerField,
-							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", {
-									id: "parameter-prediction-title",
-									children: t("predict")
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("parameterPredictionPrompt") }),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
-									value: prediction,
-									disabled: busy || predictionCommitted,
-									placeholder: t("parameterPredictionPlaceholder"),
-									onChange: (event) => setPrediction(event.target.value)
-								})
-							]
-						}), predictionCommitted ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-							className: LearningActivity_module_css_default.predictionStatus,
-							role: "status",
-							children: t("predictionCommitted")
-						}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-							className: LearningActivity_module_css_default.primaryRow,
-							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								className: LearningActivity_module_css_default.primaryButton,
-								type: "button",
-								disabled: busy || prediction.trim() === "",
-								onClick: () => setPredictionCommitted(true),
-								children: t("commitPrediction")
-							})
-						})]
-					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: LearningActivity_module_css_default.explorerGrid,
-						"aria-disabled": !predictionCommitted,
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: LearningActivity_module_css_default.explorer,
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 							className: LearningActivity_module_css_default.controls,
-							children: [payload.parameters.map((parameter) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
-								className: LearningActivity_module_css_default.rangeField,
-								children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("rangeValue", {
-										label: parameter.label,
-										value: formatNumber(values[parameter.id] ?? parameter.initial)
-									}) }),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-										type: "range",
-										min: parameter.min,
-										max: parameter.max,
-										step: parameter.step,
-										value: values[parameter.id] ?? parameter.initial,
-										disabled: busy || !predictionCommitted,
-										"aria-valuetext": formatNumber(values[parameter.id] ?? parameter.initial),
-										onChange: (event) => setValues((current) => ({
-											...current,
-											[parameter.id]: Number(event.target.value)
-										}))
-									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-										className: LearningActivity_module_css_default.rangeEnds,
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatNumber(parameter.min) }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatNumber(parameter.max) })]
-									})
-								]
-							}, parameter.id)), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
+							children: payload.parameters.map((parameter) => {
+								const value = values[parameter.id] ?? parameter.initial;
+								const inputId = `${chartId}-${parameter.id}`;
+								const zeroPercent = (0 - parameter.min) / (parameter.max - parameter.min) * 100;
+								return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: LearningActivity_module_css_default.rangeField,
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: LearningActivity_module_css_default.rangeHeader,
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
+											htmlFor: inputId,
+											children: parameter.label
+										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("output", {
+											htmlFor: inputId,
+											"aria-live": "polite",
+											children: formatNumber(value)
+										})]
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: LearningActivity_module_css_default.rangeControl,
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+												className: LearningActivity_module_css_default.stepButton,
+												type: "button",
+												disabled: busy || value <= parameter.min,
+												"aria-label": t("decreaseParameter", { label: parameter.label }),
+												onClick: () => setParameter(parameter, shiftedValue(parameter, value, -1)),
+												children: "−"
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+												id: inputId,
+												className: LearningActivity_module_css_default.rangeInput,
+												style: rangeStyle(parameter, value),
+												type: "range",
+												min: parameter.min,
+												max: parameter.max,
+												step: parameter.step,
+												value,
+												disabled: busy,
+												"aria-valuetext": formatNumber(value),
+												onChange: (event) => setParameter(parameter, Number(event.target.value))
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+												className: LearningActivity_module_css_default.stepButton,
+												type: "button",
+												disabled: busy || value >= parameter.max,
+												"aria-label": t("increaseParameter", { label: parameter.label }),
+												onClick: () => setParameter(parameter, shiftedValue(parameter, value, 1)),
+												children: "+"
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+												className: LearningActivity_module_css_default.rangeEnds,
+												"aria-hidden": "true",
+												children: [
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatNumber(parameter.min) }),
+													parameter.min < 0 && parameter.max > 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: LearningActivity_module_css_default.rangeZero,
+														style: { left: `${zeroPercent}%` },
+														children: "0"
+													}) : null,
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatNumber(parameter.max) })
+												]
+											})
+										]
+									})]
+								}, parameter.id);
+							})
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: LearningActivity_module_css_default.chartRegion,
+							ref: chartContainer,
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
 								className: LearningActivity_module_css_default.legend,
 								children: payload.curves.map((curve, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", {
 									"data-curve": index,
 									children: curve.label
 								}, curve.id))
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+								className: LearningActivity_module_css_default.chart,
+								viewBox: `0 0 ${geometry.width} ${geometry.height}`,
+								role: "img",
+								"aria-labelledby": `${chartId}-title ${chartId}-description`,
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("title", {
+										id: `${chartId}-title`,
+										children: t("chartLabel")
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("desc", {
+										id: `${chartId}-description`,
+										children: chartDescription
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("defs", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("clipPath", {
+										id: `${chartId}-clip`,
+										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+											x: geometry.left,
+											y: geometry.top,
+											width: geometry.plotWidth,
+											height: geometry.plotHeight
+										})
+									}) }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+										className: LearningActivity_module_css_default.plotFrame,
+										x: geometry.left,
+										y: geometry.top,
+										width: geometry.plotWidth,
+										height: geometry.plotHeight,
+										rx: "6"
+									}),
+									yTicks.map((tick) => {
+										const y = scaleY(tick, yDomain, geometry);
+										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+											className: tick === 0 ? `${LearningActivity_module_css_default.gridLine} ${LearningActivity_module_css_default.zeroAxis}` : LearningActivity_module_css_default.gridLine,
+											x1: geometry.left,
+											x2: geometry.left + geometry.plotWidth,
+											y1: y,
+											y2: y
+										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+											className: LearningActivity_module_css_default.tickLabel,
+											x: geometry.left - 9,
+											y,
+											textAnchor: "end",
+											dominantBaseline: "middle",
+											children: formatNumber(tick)
+										})] }, `y-${tick}`);
+									}),
+									xTicks.map((tick) => {
+										const x = scaleX(tick, xDomain, geometry);
+										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+											className: tick === 0 ? `${LearningActivity_module_css_default.gridLine} ${LearningActivity_module_css_default.zeroAxis}` : LearningActivity_module_css_default.gridLine,
+											x1: x,
+											x2: x,
+											y1: geometry.top,
+											y2: geometry.top + geometry.plotHeight
+										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+											className: LearningActivity_module_css_default.tickLabel,
+											x,
+											y: geometry.top + geometry.plotHeight + 20,
+											textAnchor: "middle",
+											children: formatNumber(tick)
+										})] }, `x-${tick}`);
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+										className: LearningActivity_module_css_default.axisLabel,
+										"data-axis": "y",
+										x: geometry.left,
+										y: geometry.top - 7,
+										textAnchor: "start",
+										children: "y"
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+										className: LearningActivity_module_css_default.axisLabel,
+										"data-axis": "x",
+										x: geometry.left + geometry.plotWidth,
+										y: geometry.height - 5,
+										textAnchor: "end",
+										children: payload.xAxis.label ?? "x"
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", {
+										clipPath: `url(#${chartId}-clip)`,
+										children: paths.map((path, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+											className: LearningActivity_module_css_default.curve,
+											"data-curve": index,
+											d: path
+										}, payload.curves[index]?.id))
+									})
+								]
 							})]
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
-							className: LearningActivity_module_css_default.chart,
-							viewBox: "0 0 640 220",
-							role: "img",
-							"aria-label": t("chartLabel"),
-							"aria-hidden": !predictionCommitted,
-							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-									className: LearningActivity_module_css_default.axis,
-									x1: "0",
-									x2: "640",
-									y1: "110",
-									y2: "110"
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-									className: LearningActivity_module_css_default.axis,
-									x1: "320",
-									x2: "320",
-									y1: "0",
-									y2: "220"
-								}),
-								paths.map((path, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-									className: LearningActivity_module_css_default.curve,
-									"data-curve": index,
-									d: path
-								}, payload.curves[index]?.id))
-							]
 						})]
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
 						className: LearningActivity_module_css_default.answerField,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("answer") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
 							value: answer,
-							disabled: busy || !predictionCommitted,
+							disabled: busy,
 							placeholder: t("answerPlaceholder"),
 							onChange: (event) => setAnswer(event.target.value)
 						})]
@@ -802,7 +1058,7 @@ window.__ModuleLoader__.load({
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 							className: LearningActivity_module_css_default.primaryButton,
 							type: "button",
-							disabled: busy || !predictionCommitted || answer.trim() === "",
+							disabled: busy || answer.trim() === "",
 							onClick: submit,
 							children: busy ? t("submitting") : t("submit")
 						})
@@ -814,7 +1070,9 @@ window.__ModuleLoader__.load({
 		//#region src/client/ProcessStepper.tsx
 		function ProcessStepper({ activity, busy, onSubmit, t }) {
 			const { steps } = activity.payload;
+			const headingId = (0, react.useId)();
 			const [index, setIndex] = (0, react.useState)(0);
+			const [furthest, setFurthest] = (0, react.useState)(0);
 			const [answers, setAnswers] = (0, react.useState)({});
 			const [revealed, setRevealed] = (0, react.useState)(() => new Set(steps.filter((step) => step.checkpoint === void 0).map((step) => step.id)));
 			const step = steps[index];
@@ -824,8 +1082,14 @@ window.__ModuleLoader__.load({
 			const reveal = () => setRevealed((current) => /* @__PURE__ */ new Set([...current, step.id]));
 			const restart = () => {
 				setIndex(0);
+				setFurthest(0);
 				setAnswers({});
 				setRevealed(new Set(steps.filter((item) => item.checkpoint === void 0).map((item) => item.id)));
+			};
+			const advance = () => {
+				const next = Math.min(index + 1, steps.length - 1);
+				setIndex(next);
+				setFurthest((current) => Math.max(current, next));
 			};
 			const submit = () => {
 				onSubmit({
@@ -842,6 +1106,10 @@ window.__ModuleLoader__.load({
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: LearningActivity_module_css_default.activityContent,
 				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningActivity_module_css_default.prompt,
+						children: activity.payload.question ?? activity.prompt
+					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: LearningActivity_module_css_default.stepMeta,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("step", {
@@ -856,20 +1124,43 @@ window.__ModuleLoader__.load({
 						})]
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ol", {
-						className: LearningActivity_module_css_default.progress,
-						"aria-label": t("step", {
-							current: index + 1,
-							total: steps.length
-						}),
-						children: steps.map((item, itemIndex) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", {
-							"data-active": itemIndex === index || void 0,
-							"data-done": itemIndex < index || void 0
-						}, item.id))
+						className: `${LearningActivity_module_css_default.processMap} ${steps.length > 6 ? LearningActivity_module_css_default.processMapVertical : ""}`,
+						style: { "--process-step-count": steps.length },
+						"aria-label": t("processMap"),
+						"data-process-map": "true",
+						children: steps.map((item, itemIndex) => {
+							const state = itemIndex === index ? "current" : itemIndex <= furthest ? "complete" : "upcoming";
+							const connectorComplete = itemIndex < furthest || itemIndex === index && revealed.has(item.id);
+							return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", {
+								className: LearningActivity_module_css_default.processStep,
+								"data-state": state,
+								"data-connector-complete": connectorComplete || void 0,
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+									className: LearningActivity_module_css_default.processStepButton,
+									type: "button",
+									disabled: busy || itemIndex > furthest,
+									"aria-current": itemIndex === index ? "step" : void 0,
+									onClick: () => setIndex(itemIndex),
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: LearningActivity_module_css_default.processNode,
+										"aria-hidden": "true",
+										children: state === "complete" ? "✓" : itemIndex + 1
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: LearningActivity_module_css_default.processTitle,
+										children: item.title
+									})]
+								})
+							}, item.id);
+						})
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-						className: LearningActivity_module_css_default.stepCard,
+						className: LearningActivity_module_css_default.stepFocus,
+						"aria-labelledby": headingId,
 						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: step.title }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+								id: headingId,
+								children: step.title
+							}),
 							step.checkpoint === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("fieldset", {
 								className: LearningActivity_module_css_default.prediction,
 								disabled: busy || isRevealed,
@@ -877,24 +1168,29 @@ window.__ModuleLoader__.load({
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("legend", { children: t("predict") }),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: step.checkpoint.question }),
 									step.checkpoint.options === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
+										"aria-label": step.checkpoint.question,
 										value: prediction,
 										onChange: (event) => setAnswers((current) => ({
 											...current,
 											[step.id]: event.target.value
 										}))
-									}) : step.checkpoint.options.map((option) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
-										className: LearningActivity_module_css_default.option,
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-											type: "radio",
-											name: `prediction-${step.id}`,
-											value: option,
-											checked: prediction === option,
-											onChange: () => setAnswers((current) => ({
-												...current,
-												[step.id]: option
-											}))
-										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: option })]
-									}, option))
+									}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										className: LearningActivity_module_css_default.predictionOptions,
+										children: step.checkpoint.options.map((option) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+											className: LearningActivity_module_css_default.option,
+											"data-selected": prediction === option || void 0,
+											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+												type: "radio",
+												name: `prediction-${step.id}`,
+												value: option,
+												checked: prediction === option,
+												onChange: () => setAnswers((current) => ({
+													...current,
+													[step.id]: option
+												}))
+											}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: option })]
+										}, option))
+									})
 								]
 							}),
 							!isRevealed ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
@@ -921,7 +1217,7 @@ window.__ModuleLoader__.load({
 							className: LearningActivity_module_css_default.primaryButton,
 							type: "button",
 							disabled: busy || !isRevealed,
-							onClick: () => setIndex((current) => current + 1),
+							onClick: advance,
 							children: t("next")
 						}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 							className: LearningActivity_module_css_default.primaryButton,
@@ -936,13 +1232,15 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client/StructureCompare.tsx
-		function Item({ item }) {
+		function Item({ item, side }) {
 			if (item === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 				className: LearningActivity_module_css_default.emptyCell,
+				"data-side": side,
 				children: "—"
 			});
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: LearningActivity_module_css_default.compareItem,
+				"data-side": side,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: item.label }), item.detail === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: item.detail })]
 			});
 		}
@@ -977,26 +1275,58 @@ window.__ModuleLoader__.load({
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: LearningActivity_module_css_default.compareHeader,
+						"aria-hidden": "true",
 						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: payload.left.title }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: payload.right.title })
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", {
+								"data-side": "left",
+								children: payload.left.title
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: LearningActivity_module_css_default.compareHeaderLink,
+								children: "↔"
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", {
+								"data-side": "right",
+								children: payload.right.title
+							})
 						]
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						className: LearningActivity_module_css_default.compareRows,
+						role: "group",
+						"aria-label": t("compareMap"),
+						"data-structure-map": "true",
 						children: payload.alignments.map((alignment) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
 							className: LearningActivity_module_css_default.compareRow,
+							"data-alignment-id": alignment.id,
+							"data-selected": selected.has(alignment.id) || void 0,
 							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-									type: "checkbox",
-									checked: selected.has(alignment.id),
-									disabled: busy,
-									"aria-label": alignment.prompt ?? alignment.id,
-									onChange: () => toggle(alignment.id)
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Item, {
+									item: alignment.leftId === void 0 ? void 0 : left.get(alignment.leftId),
+									side: "left"
 								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Item, { item: alignment.leftId === void 0 ? void 0 : left.get(alignment.leftId) }),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Item, { item: alignment.rightId === void 0 ? void 0 : right.get(alignment.rightId) }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: LearningActivity_module_css_default.compareLine,
+									"aria-hidden": "true"
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: LearningActivity_module_css_default.compareSelector,
+									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+										type: "checkbox",
+										checked: selected.has(alignment.id),
+										disabled: busy,
+										"aria-label": alignment.prompt ?? alignment.id,
+										onChange: () => toggle(alignment.id)
+									})
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: LearningActivity_module_css_default.compareLine,
+									"aria-hidden": "true"
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(Item, {
+									item: alignment.rightId === void 0 ? void 0 : right.get(alignment.rightId),
+									side: "right"
+								}),
 								alignment.prompt === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 									className: LearningActivity_module_css_default.rowPrompt,
 									children: alignment.prompt
@@ -1062,13 +1392,12 @@ window.__ModuleLoader__.load({
 		function envelopeOf(wait) {
 			if (wait.payload.questions.length !== 1) return void 0;
 			const question = wait.payload.questions[0];
-			const envelope = decodeLearningDetail(question?.detail);
-			if (envelope === void 0 || question?.id !== `learning:${envelope.activityId}`) return void 0;
-			return envelope;
+			if (question === void 0) return void 0;
+			return decodeLearningQuestionId(question.id) ?? decodeLearningDetail(question.detail);
 		}
 		/** Pure composer-chain selector: only package-owned question envelopes are claimed. */
 		function selectLearningActivity({ interactions, session }) {
-			const currentSessionId = session?.id;
+			const currentSessionId = session?.sessionId;
 			for (const interaction of interactions) {
 				if (interaction.kind !== "question") continue;
 				const wait = interaction;
@@ -1078,6 +1407,9 @@ window.__ModuleLoader__.load({
 			return null;
 		}
 		function LearningComposer({ matched, t }) {
+			return null;
+		}
+		function LearningInteraction({ matched, t }) {
 			const envelope = (0, react.useMemo)(() => envelopeOf(matched), [matched]);
 			const [busy, setBusy] = (0, react.useState)(false);
 			const [error, setError] = (0, react.useState)(null);
@@ -1134,6 +1466,7 @@ window.__ModuleLoader__.load({
 				});
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActivityFrame, {
+				activityId: envelope.activityId,
 				activity: envelope.activity,
 				busy,
 				error,
@@ -1150,6 +1483,15 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client/LearningToolView.tsx
+		function pendingActivity(interactions, sessionId, activity) {
+			if (activity === void 0) return void 0;
+			const canonical = JSON.stringify(activity);
+			return interactions.find((interaction) => {
+				if (interaction.kind !== "question" || String(interaction.sessionId) !== sessionId) return false;
+				const envelope = envelopeOf(interaction);
+				return envelope !== void 0 && JSON.stringify(envelope.activity) === canonical;
+			});
+		}
 		function activityOf(block) {
 			const raw = "kind" in block ? block.call?.argsRaw : block.argsRaw;
 			if (raw === void 0 || raw === "") return void 0;
@@ -1169,131 +1511,178 @@ window.__ModuleLoader__.load({
 				return;
 			}
 		}
-		function ActivityOutline({ activity }) {
-			switch (activity.kind) {
-				case "parameter_explorer": return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: LearningActivity_module_css_default.replayOutline,
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", { children: activity.payload.parameters.map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", { children: [
-						item.label,
-						": ",
-						item.min,
-						"–",
-						item.max
-					] }, item.id)) }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", { children: activity.payload.curves.map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", { children: item.label }, item.id)) })]
-				});
-				case "process_stepper": return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ol", {
-					className: LearningActivity_module_css_default.replaySteps,
-					children: activity.payload.steps.map((step) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: step.title }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: step.content })] }, step.id))
-				});
-				case "structure_compare": return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: LearningActivity_module_css_default.replayCompare,
-					children: [activity.payload.left, activity.payload.right].map((side) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: side.title }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", { children: side.items.map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", { children: item.label }, item.id)) })] }, side.title))
-				});
-			}
+		function explanationOf(response) {
+			if (response?.action !== "submit" || typeof response.answer !== "object" || response.answer === null || Array.isArray(response.answer)) return void 0;
+			const explanation = response.answer.explanation;
+			return typeof explanation === "string" && explanation.trim() !== "" ? explanation.trim() : void 0;
 		}
-		function LearningToolView({ block, inspect, t }) {
+		function answerRecord(response) {
+			if (response?.action !== "submit" || typeof response.answer !== "object" || response.answer === null || Array.isArray(response.answer)) return void 0;
+			return response.answer;
+		}
+		function evidenceOf(activity, response, t) {
+			const answer = answerRecord(response);
+			if (answer === void 0) return void 0;
+			if (activity.kind === "parameter_explorer") {
+				const parameters = answer.parameters;
+				if (typeof parameters !== "object" || parameters === null || Array.isArray(parameters)) return void 0;
+				const values = activity.payload.parameters.flatMap((parameter) => {
+					const value = parameters[parameter.id];
+					return typeof value === "number" ? [t("rangeValue", {
+						label: parameter.label,
+						value
+					})] : [];
+				});
+				return values.length === 0 ? void 0 : values.join(" · ");
+			}
+			if (activity.kind === "process_stepper") {
+				const checkpoints = answer.checkpoints;
+				return Array.isArray(checkpoints) && checkpoints.length > 0 ? t("processEvidence", { count: checkpoints.length }) : void 0;
+			}
+			const selected = answer.selectedDifferences;
+			return Array.isArray(selected) ? t("structureEvidence", { count: selected.length }) : void 0;
+		}
+		function LearningToolView({ block, inspect, t, useSession, sessionId }) {
 			const activity = activityOf(block);
 			const done = "kind" in block;
 			const response = responseOf(block);
-			if (activity === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: LearningActivity_module_css_default.toolRow,
+			const matched = pendingActivity(useSession((snapshot) => snapshot.pending), String(sessionId), activity);
+			if (activity === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+				className: LearningActivity_module_css_default.inlineStatus,
 				"data-state": done ? "done" : "running",
 				children: t("invalidActivity")
 			});
-			if (!done) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-				className: LearningActivity_module_css_default.toolRow,
-				"data-state": "running",
-				type: "button",
-				onClick: inspect,
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: activity.title }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", { children: t("waiting") })] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-					className: LearningActivity_module_css_default.runningDot,
-					"aria-hidden": "true"
-				})]
-			});
-			const status = response?.action === "submit" ? t("completed") : response?.action === "skip" ? t("skipped") : response?.action === "cancel" ? t("cancelled") : t("noResponse");
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", {
-				className: LearningActivity_module_css_default.replay,
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("summary", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: activity.title }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", { children: status })] }) }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: LearningActivity_module_css_default.replayBody,
+			if (!done) {
+				if (matched !== void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningInteraction, {
+					matched,
+					t
+				});
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+					className: LearningActivity_module_css_default.inlineStatus,
+					"data-state": "running",
+					role: "status",
+					"aria-live": "polite",
 					children: [
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: activity.objective }),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(ActivityOutline, { activity }),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("summary", { children: t("fallback") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: activity.fallbackMarkdown })] }),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-							className: LearningActivity_module_css_default.response,
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: t("response") }), response === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: t("noResponse") }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", { children: JSON.stringify(response, null, 2) })]
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: LearningActivity_module_css_default.runningDot,
+							"aria-hidden": "true"
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("waiting") }),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: LearningActivity_module_css_default.skeletonLine,
+							"aria-hidden": "true"
 						})
 					]
+				});
+			}
+			if (response === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningActivity_module_css_default.inlineFallback,
+				"data-learning-result": "unknown",
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+					className: LearningActivity_module_css_default.inlineResult,
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: LearningActivity_module_css_default.resultMark,
+						"aria-hidden": "true",
+						children: "!"
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("invalidResult") })]
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: LearningActivity_module_css_default.fallbackText,
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: activity.fallbackMarkdown })
 				})]
+			});
+			const status = response?.action === "submit" ? t("completed") : response?.action === "skip" ? t("skipped") : response?.action === "cancel" ? t("cancelled") : t("invalidResult");
+			const evidence = evidenceOf(activity, response, t);
+			const explanation = explanationOf(response);
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+				className: LearningActivity_module_css_default.inlineResult,
+				"data-learning-result": response?.action ?? "unknown",
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: LearningActivity_module_css_default.resultMark,
+						"aria-hidden": "true",
+						children: "✓"
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: status }),
+					evidence === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: LearningActivity_module_css_default.resultEvidence,
+						children: evidence
+					}),
+					explanation === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+						className: LearningActivity_module_css_default.resultAnswer,
+						children: [
+							"“",
+							explanation,
+							"”"
+						]
+					})
+				]
 			});
 		}
 		//#endregion
 		//#region src/client/locales.ts
 		const zh = {
-			activity: "互动学习活动",
-			objective: "学习目标",
 			scaffold: "提示",
 			submit: "提交回答",
-			skip: "跳过活动",
-			cancel: "取消活动",
+			skip: "先跳过",
+			cancel: "结束这里",
 			submitting: "正在提交…",
-			waiting: "等待你完成活动",
-			completed: "已完成互动活动",
-			skipped: "已跳过互动活动",
-			cancelled: "已取消互动活动",
+			waiting: "准备交互内容…",
+			completed: "已提交你的回答",
+			skipped: "已跳过",
+			cancelled: "已结束",
+			noResponse: "未记录回答",
+			invalidResult: "互动已结束，但结果无法恢复",
+			processEvidence: "完成了 {count} 个检查点",
+			structureEvidence: "选择了 {count} 项差异",
 			answer: "你的解释",
 			answerPlaceholder: "用一两句话解释你观察到的关系…",
-			response: "学习者回应",
-			selected: "已选择的关键差异",
 			predict: "先预测",
-			parameterPredictionPrompt: "在移动参数前，先写下你预计曲线会怎样变化。",
-			parameterPredictionPlaceholder: "例如：参数变为负数时，曲线方向会反转。",
-			commitPrediction: "锁定预测并开始探索",
-			predictionCommitted: "预测已锁定。现在可以用键盘方向键或鼠标调整参数。",
 			reveal: "揭示这一步",
 			previous: "上一步",
 			next: "下一步",
 			restart: "重新开始",
 			step: "第 {current} / {total} 步",
+			processMap: "流程步骤",
+			compareMap: "结构对应关系",
 			rangeValue: "{label}：{value}",
+			decreaseParameter: "减小{label}",
+			increaseParameter: "增大{label}",
 			chartLabel: "参数变化曲线",
+			chartDescription: "参数：{parameters}。横轴：{xAxis}。纵轴：{yAxis}。曲线：{curves}。",
 			invalidActivity: "该互动活动无法安全显示，已保留 Markdown 降级内容。",
-			error: "提交失败：{message}",
-			noResponse: "未记录结构化回应。",
-			fallback: "Markdown 降级内容"
+			error: "提交失败：{message}"
 		};
 		const en = {
-			activity: "Interactive learning activity",
-			objective: "Learning objective",
 			scaffold: "Hint",
 			submit: "Submit response",
-			skip: "Skip activity",
-			cancel: "Cancel activity",
+			skip: "Skip for now",
+			cancel: "End here",
 			submitting: "Submitting…",
-			waiting: "Waiting for you to complete the activity",
-			completed: "Interactive activity completed",
-			skipped: "Interactive activity skipped",
-			cancelled: "Interactive activity cancelled",
+			waiting: "Preparing the interaction…",
+			completed: "Response submitted",
+			skipped: "Skipped",
+			cancelled: "Ended",
+			noResponse: "No response recorded",
+			invalidResult: "The interaction ended, but its result could not be restored",
+			processEvidence: "{count} checkpoints completed",
+			structureEvidence: "{count} differences selected",
 			answer: "Your explanation",
 			answerPlaceholder: "Explain the relationship you noticed in one or two sentences…",
-			response: "Learner response",
-			selected: "Selected key differences",
 			predict: "Predict first",
-			parameterPredictionPrompt: "Before moving a parameter, write down how you expect the curve to change.",
-			parameterPredictionPlaceholder: "For example: a negative value will reverse the direction of the curve.",
-			commitPrediction: "Lock prediction and explore",
-			predictionCommitted: "Prediction locked. You can now adjust parameters with arrow keys or a pointer.",
 			reveal: "Reveal this step",
 			previous: "Previous",
 			next: "Next",
 			restart: "Restart",
 			step: "Step {current} / {total}",
+			processMap: "Process steps",
+			compareMap: "Structural relationships",
 			rangeValue: "{label}: {value}",
+			decreaseParameter: "Decrease {label}",
+			increaseParameter: "Increase {label}",
 			chartLabel: "Parameter relationship chart",
+			chartDescription: "Parameters: {parameters}. X axis: {xAxis}. Y axis: {yAxis}. Curves: {curves}.",
 			invalidActivity: "This activity could not be displayed safely. Its Markdown fallback is preserved.",
-			error: "Submission failed: {message}",
-			noResponse: "No structured response was recorded.",
-			fallback: "Markdown fallback"
+			error: "Submission failed: {message}"
 		};
 		//#endregion
 		//#region src/client/index.ts

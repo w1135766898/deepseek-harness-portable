@@ -28,7 +28,7 @@ export interface VisionByteInput {
   prompt?: string
 }
 
-/** Provider-neutral result used by both pasted-image routing and `view_image`. */
+/** Provider-neutral result returned by the explicit `view_image` path. */
 export type VisionAnalysisOutcome =
   | { ok: true; text: string; model: string }
   | { ok: false; message: string; model: string; reason: string }
@@ -39,13 +39,13 @@ export function visionConfigurationIssue(
 ): { message: string; reason: string } | undefined {
   if (!cfg.enabled) {
     return {
-      message: 'Vision Bridge is currently disabled. Enable it in Settings → Plugins before sending images to a text-only model.',
+      message: 'Vision Bridge is currently disabled. Enable it in Settings → Plugins before using view_image.',
       reason: 'VISION_BRIDGE_DISABLED',
     }
   }
   if (cfg.provider !== 'ollama' && (!cfg.apiKey || cfg.apiKey.trim().length === 0)) {
     return {
-      message: 'Vision Bridge has no API key configured. Add one in Settings → Plugins before sending images to a text-only model.',
+      message: 'Vision Bridge has no API key configured. Add one in Settings → Plugins before using view_image.',
       reason: 'VISION_BRIDGE_NOT_CONFIGURED',
     }
   }

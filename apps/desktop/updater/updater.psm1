@@ -9,8 +9,6 @@ foreach ($compressionAssembly in @('System.IO.Compression', 'System.IO.Compressi
 }
 
 $DISTRIBUTION_REPO = 'wsnxxxs/deepseek-harness-portable'
-$OFFICIAL_KERNEL_REPO = 'deepseek-ai/deepseek-harness'
-$OFFICIAL_KERNEL_TAG_PREFIX = 'dsh-v'
 $RELEASE_MANIFEST_NAME = 'release-manifest.json'
 $TRANSACTION_FILE_NAME = '.update-transaction.json'
 $BACKUPS_DIR_NAME = '.update-backups'
@@ -431,82 +429,20 @@ function Get-RemoteRelease {
     }
 }
 
-function Normalize-OfficialKernelTag {
-    param([Parameter(Mandatory = $true)][string]$Tag)
-    if (-not $Tag.StartsWith($OFFICIAL_KERNEL_TAG_PREFIX, [StringComparison]::Ordinal)) {
-        throw ('Not an official kernel tag: ' + $Tag)
-    }
-    return Assert-ValidVersion -Version $Tag.Substring($OFFICIAL_KERNEL_TAG_PREFIX.Length)
-}
-
-function Get-RemoteKernelRelease {
-    param(
-        [string]$Repository = $OFFICIAL_KERNEL_REPO,
-        [string[]]$ApiUrls = @()
-    )
-    if ($ApiUrls.Count -eq 0) {
-        $ApiUrls = @(Get-MirrorUrls ('https://api.github.com/repos/' + $Repository + '/releases?per_page=30'))
-    }
-    $candidates = @()
-    $errors = @()
-    foreach ($url in $ApiUrls) {
-        try {
-            $headers = @{ 'User-Agent' = 'DeepSeek-Harness-Portable-Updater' }
-            $payload = @(Invoke-RestMethod -Uri $url -Headers $headers -MaximumRedirection 5 -TimeoutSec 8)
-            foreach ($candidate in $payload) {
-                if (-not $candidate -or $candidate.draft) { continue }
-                try { $version = Normalize-OfficialKernelTag -Tag ([string]$candidate.tag_name) } catch { continue }
-                $candidates += [PSCustomObject]@{
-                    channel = 'kernel'
-                    version = $version
-                    tag_name = [string]$candidate.tag_name
-                    release_url = if ($candidate.html_url) { [string]$candidate.html_url } else { 'https://github.com/' + $Repository + '/releases/tag/' + [uri]::EscapeDataString([string]$candidate.tag_name) }
-                    prerelease = [bool]$candidate.prerelease
-                    source = $url
-                }
-            }
-        } catch {
-            $errors += $_.Exception.Message
-        }
-    }
-    if ($candidates.Count -eq 0) {
-        $detail = if ($errors.Count -gt 0) { ' ' + ($errors -join ' | ') } else { '' }
-        throw ('Unable to obtain an official dsh-v* kernel release.' + $detail)
-    }
-    $latest = $candidates[0]
-    foreach ($candidate in $candidates | Select-Object -Skip 1) {
-        if ((Compare-Version -Left $candidate.version -Right $latest.version) -gt 0) { $latest = $candidate }
-    }
-    return $latest
-}
-
-function Get-UpdateChannelStatus {
+function Get-ReleaseUpdateStatus {
     param(
         [Parameter(Mandatory = $true)]$LocalInfo,
-        [scriptblock]$PortableQuery = { Get-RemoteRelease },
-        [scriptblock]$KernelQuery = { Get-RemoteKernelRelease }
+        [scriptblock]$ReleaseQuery = { Get-RemoteRelease }
     )
-    $portable = $null
-    $kernel = $null
-    $portableError = ''
-    $kernelError = ''
-    try { $portable = & $PortableQuery } catch { $portableError = $_.Exception.Message }
-    try { $kernel = & $KernelQuery } catch { $kernelError = $_.Exception.Message }
+    $release = $null
+    $releaseError = ''
+    try { $release = & $ReleaseQuery } catch { $releaseError = $_.Exception.Message }
     return [PSCustomObject]@{
-        portable = [PSCustomObject]@{
-            currentVersion = [string]$LocalInfo.distributionVersion
-            latestVersion = if ($portable) { [string]$portable.version } else { '' }
-            updateAvailable = [bool]($portable -and ((Compare-Version -Left $portable.version -Right $LocalInfo.distributionVersion) -gt 0))
-            release = $portable
-            error = $portableError
-        }
-        kernel = [PSCustomObject]@{
-            currentVersion = [string]$LocalInfo.kernelVersion
-            latestVersion = if ($kernel) { [string]$kernel.version } else { '' }
-            updateAvailable = [bool]($kernel -and ((Compare-Version -Left $kernel.version -Right $LocalInfo.kernelVersion) -gt 0))
-            release = $kernel
-            error = $kernelError
-        }
+        currentVersion = [string]$LocalInfo.distributionVersion
+        latestVersion = if ($release) { [string]$release.version } else { '' }
+        updateAvailable = [bool]($release -and ((Compare-Version -Left $release.version -Right $LocalInfo.distributionVersion) -gt 0))
+        release = $release
+        error = $releaseError
     }
 }
 
@@ -1181,24 +1117,6 @@ function Invoke-Updater {
         Write-Host ('  Local desktop:      ' + $localInfo.desktopVersion) -ForegroundColor Gray
         Write-Host ('  Local kernel:       ' + $localInfo.kernelVersion) -ForegroundColor Gray
 
-        # The official kernel and the custom portable shell are independent
-        # SemVer channels. A failed upstream probe is informational and must
-        # never block a shell package update (or vice versa).
-        if ([string]::IsNullOrWhiteSpace($PackagePath) -and [string]::IsNullOrWhiteSpace($StagingPath)) {
-            try {
-                $kernelRelease = Get-RemoteKernelRelease
-                $kernelComparison = Compare-Version -Left $kernelRelease.version -Right $localInfo.kernelVersion -AppRoot $APP_ROOT
-                if ($kernelComparison -gt 0) {
-                    Write-Host ('  Official kernel update: ' + $localInfo.kernelVersion + ' -> ' + $kernelRelease.version) -ForegroundColor Yellow
-                    Write-Host ('  Official release: ' + $kernelRelease.release_url) -ForegroundColor Gray
-                } else {
-                    Write-Host ('  Official kernel: current (' + $localInfo.kernelVersion + ')') -ForegroundColor Gray
-                }
-            } catch {
-                Write-Host ('  Official kernel channel unavailable: ' + $_.Exception.Message) -ForegroundColor DarkYellow
-            }
-        }
-
         $usingStaging = $false
         if (-not [string]::IsNullOrWhiteSpace($StagingPath) -and (Test-Path -LiteralPath $StagingPath -PathType Container)) {
             try {
@@ -1342,9 +1260,7 @@ Export-ModuleMember -Function `
     Get-ChecksumFromSource, `
     Get-RemoteRelease, `
     Get-RemoteReleaseByVersion, `
-    Normalize-OfficialKernelTag, `
-    Get-RemoteKernelRelease, `
-    Get-UpdateChannelStatus, `
+    Get-ReleaseUpdateStatus, `
     Verify-LocalPackage, `
     Find-CachedUpdatePackage, `
     Download-And-Verify, `

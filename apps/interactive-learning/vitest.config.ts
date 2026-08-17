@@ -48,6 +48,9 @@ function pinnedWorkspaceAliases(): Record<string, string> {
 
 export default defineConfig({
   resolve: {
+    // Vendored UI packages are built in place and may otherwise resolve their
+    // own React copy. Keep hooks and the test renderer on one instance.
+    dedupe: ['react', 'react-dom'],
     // Behavior-neutral in a healthy install; keeps focused tests usable if a
     // Windows pnpm relink leaves one vendored junction temporarily unreadable.
     alias: pinnedWorkspaceAliases(),

@@ -5,6 +5,7 @@
  */
 import { type SettingsScope, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client';
 import type { VisionConfig } from '../types.ts';
+import { type VisionRouteSummary } from './vision-route.ts';
 export interface VisionSettings extends VisionConfig {
 }
 export interface VisionCardState {
@@ -19,6 +20,7 @@ export interface VisionCardState {
     baseURL: string;
     apiKey: string;
     prompt: string;
+    route: VisionRouteSummary;
 }
 export interface VisionCardFace {
     hooks: {

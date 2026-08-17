@@ -1,13 +1,19 @@
-# DeepSeek Harness Desktop v1.3.0
+# DeepSeek Harness Desktop v1.3.1
 
 [中文](RELEASE_NOTES.zh.md)
 
-Windows x64 portable release and macOS Apple Silicon DMG · 2026-08-17
+Windows x64, macOS Apple Silicon, and Linux x64 desktop release · 2026-08-18
 
-This is the v1.3.0 desktop release. It adds the macOS Apple Silicon Electron/DMG lane and native POSIX Minimal mode while retaining the Windows portable flow, bundled plugin marketplace workflow, verified update recovery, and reproducible packaging cache.
+This is the v1.3.1 desktop release. It moves the runtime to DeepSeek Harness rc.7, fixes overwrite-install first launch and forward-compatible session history, and brings the Learning preset into the native desktop conversation experience.
 
 ## New Features & Improvements
 
+- **Native Learning choices**: learning direction, depth, and pace now use the rc.7 client choice control instead of a custom activity form.
+- **Inline teaching graphics**: parameter explorers, process steppers, and structure comparisons render inside the assistant message, persist in session replay, and include text equivalents and non-color-only labels.
+- **Forward-compatible session history**: the portable runtime accepts the exact legacy `portable-runtime/mode-resolution` event and marks new occurrences ignorable; unrelated unknown non-ignorable events remain rejected.
+- **Reliable overwrite-install first launch**: profile dependencies stay authoritative, with an installed-runtime fallback during the brief junction replacement window used by Setup Finish startup.
+- **Transparent plugin installation**: Marketplace now shows source, runtime, network/image-egress, activation, degradation, known-issue, and verification details before confirmation; unknown plugins are marked unverified.
+- **Native rc.7 image attachments**: supported models use the persisted client attachment path, while the explicit external `view_image` route remains available for text-only models with clear egress disclosure.
 - **macOS Apple Silicon desktop distribution**: the Electron shell now packages a native `darwin-arm64` app and DMG with target-specific `node-pty`, `sharp`, and `koffi` addons.
 - **Native macOS Minimal mode**: the official preset runs through the POSIX PTY and `/bin/bash` without WSL or a container compatibility layer.
 - **Platform-aware release flow**: Windows keeps in-app portable updates, while macOS opens the release page for manual DMG downloads.
@@ -20,10 +26,10 @@ This is the v1.3.0 desktop release. It adds the macOS Apple Silicon Electron/DMG
 
 ## Components
 
-- Distribution: 1.3.0
+- Distribution: 1.3.1
 - Desktop shell: 0.1.0-shell.2
-- Kernel: 0.1.0-rc.5 (@deepseek-ai/dsh-web-app)
-- Tag: v1.3.0
+- Kernel: 0.1.0-rc.7 (@deepseek-ai/dsh-web-app)
+- Tag: v1.3.1
 
 ## Checksums and security
 

@@ -35,10 +35,10 @@ describe('teaching behavior evaluation gate', () => {
     const root = resolve(import.meta.dirname, '..')
     const agent = readFileSync(join(root, 'src/agent.ts'), 'utf8')
     const skill = readFileSync(join(root, 'preset/learning/skills/interactive-teaching/SKILL.md'), 'utf8')
-    for (const phrase of ['Do not use it for facts', 'Adapt to the learner', 'End the teaching segment explicitly']) {
+    for (const phrase of ['Do not use it for facts', 'Adapt to the learner', 'End the teaching segment explicitly', 'ask_user_question', 'user-owned choices', 'exactly two or three broad']) {
       expect(agent).toContain(phrase)
     }
-    for (const phrase of ['Choose one teaching move', 'Continue from evidence', 'Know when to stop']) {
+    for (const phrase of ['Choose one teaching move', 'Route choices and evidence', 'Continue from evidence', 'Know when to stop', 'one teaching goal', 'distinct line pattern']) {
       expect(skill).toContain(phrase)
     }
   })

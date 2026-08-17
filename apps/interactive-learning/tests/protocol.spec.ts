@@ -8,7 +8,12 @@ import {
   parseLearningActivity,
   parseLearningResponse,
 } from '../src/protocol.ts'
-import { decodeLearningDetail, encodeLearningDetail } from '../src/transport.ts'
+import {
+  decodeLearningDetail,
+  decodeLearningQuestionId,
+  encodeLearningDetail,
+  encodeLearningQuestionId,
+} from '../src/transport.ts'
 import { compareActivity, parameterActivity, processActivity } from './fixtures.ts'
 
 describe('Learning Activity Protocol v1', () => {
@@ -60,11 +65,21 @@ describe('Learning Activity Protocol v1', () => {
     }, 'a1')).toThrow(/does not match/)
   })
 
-  it('round-trips the private question marker without exposing executable content', () => {
+  it('round-trips the hidden question id without putting transport bytes in visible detail', () => {
+    const activity = parameterActivity()
+    const questionId = encodeLearningQuestionId({ activityId: 'host-id', activity })
+    expect(questionId).not.toContain('"curves"')
+    expect(questionId).toMatch(/^dsh-learning\/transport@1:/)
+    expect(decodeLearningQuestionId(questionId)).toEqual({
+      transport: TRANSPORT_PROTOCOL, activityId: 'host-id', activity,
+    })
+    expect(decodeLearningQuestionId('ordinary-question')).toBeUndefined()
+  })
+
+  it('decodes legacy detail markers for already-pending activities', () => {
     const activity = parameterActivity()
     const detail = encodeLearningDetail({ activityId: 'host-id', activity })
     expect(detail).toContain(activity.fallbackMarkdown)
-    expect(detail).not.toContain('"curves"')
     expect(detail).toContain('<!--dsh-learning/transport@1:')
     expect(decodeLearningDetail(detail)).toEqual({
       transport: TRANSPORT_PROTOCOL, activityId: 'host-id', activity,

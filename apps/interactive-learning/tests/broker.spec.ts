@@ -13,7 +13,7 @@ import { CallId } from '@deepseek-ai/dsh-llm'
 import { LearningActivityBroker } from '../src/broker.ts'
 import * as learningAgent from '../src/agent.ts'
 import { RESPONSE_PROTOCOL } from '../src/protocol.ts'
-import { decodeLearningDetail } from '../src/transport.ts'
+import { decodeLearningQuestionId } from '../src/transport.ts'
 import { parameterActivity } from './fixtures.ts'
 
 interface MockLlmServer {
@@ -106,7 +106,33 @@ describe('LearningActivityBroker', () => {
   it('falls back immediately when the Client capability is absent', async () => {
     const ctx = await setup(false)
     const result = await ctx.learningActivities.present({ activity: parameterActivity() })
-    expect(result).toMatchObject({ action: 'skip', interactionState: { reason: 'client-capability-unavailable' } })
+    expect(result).toMatchObject({
+      action: 'skip',
+      interactionState: {
+        reason: 'client-capability-unavailable',
+        fallbackMarkdown: parameterActivity().fallbackMarkdown,
+      },
+    })
+
+    const malformedCtx = await setup(true)
+    const agent = stubAgent('malformed-client')
+    malformedCtx.agents.enter(agent, undefined)
+    malformedCtx.userQuestions.registerProvider({
+      ask: async request => ({
+        answers: [{
+          id: request.questions[0]?.id ?? '',
+          selected: [],
+          custom: JSON.stringify({ protocol: RESPONSE_PROTOCOL, action: 'submit' }),
+        }],
+      }),
+    })
+    await expect(malformedCtx.learningActivities.present({ activity: parameterActivity(), agent })).resolves.toMatchObject({
+      action: 'skip',
+      interactionState: {
+        reason: 'client-response-invalid',
+        fallbackMarkdown: parameterActivity().fallbackMarkdown,
+      },
+    })
   })
 
   it('generates the trusted activity id and returns a structured Client response', async () => {
@@ -117,7 +143,7 @@ describe('LearningActivityBroker', () => {
     ctx.userQuestions.registerProvider({
       async ask(request) {
         seen.push(request)
-        const envelope = decodeLearningDetail(request.questions[0]?.detail)
+        const envelope = decodeLearningQuestionId(request.questions[0]?.id)
         if (envelope === undefined) throw new Error('missing learning envelope')
         return {
           answers: [{
@@ -135,9 +161,10 @@ describe('LearningActivityBroker', () => {
     })
 
     const result = await ctx.learningActivities.present({ activity: parameterActivity(), agent })
-    const envelope = decodeLearningDetail(seen[0]?.questions[0]?.detail)
+    const envelope = decodeLearningQuestionId(seen[0]?.questions[0]?.id)
     expect(envelope?.activityId).toMatch(/^[0-9a-f-]{36}$/)
-    expect(seen[0]?.questions[0]?.id).toBe(`learning:${envelope?.activityId}`)
+    expect(seen[0]?.questions[0]?.detail).toBe(parameterActivity().fallbackMarkdown)
+    expect(seen[0]?.questions[0]?.header).toBeUndefined()
     expect(result).toMatchObject({ activityId: envelope?.activityId, action: 'submit' })
   })
 
@@ -175,7 +202,7 @@ describe('LearningActivityBroker', () => {
     ctx.agents.enter(agent, undefined)
     ctx.userQuestions.registerProvider({
       ask: request => new Promise(resolveAnswer => {
-        const envelope = decodeLearningDetail(request.questions[0]?.detail)
+        const envelope = decodeLearningQuestionId(request.questions[0]?.id)
         if (envelope === undefined) throw new Error('missing learning envelope')
         setTimeout(() => resolveAnswer({ answers: [{
           id: request.questions[0]?.id ?? '',
@@ -265,7 +292,7 @@ describe('LearningActivityBroker', () => {
     let activityId = ''
     ctx.userQuestions.registerProvider({
       async ask(request) {
-        const envelope = decodeLearningDetail(request.questions[0]?.detail)
+        const envelope = decodeLearningQuestionId(request.questions[0]?.id)
         if (envelope === undefined) throw new Error('missing learning envelope')
         activityId = envelope.activityId
         return {
@@ -360,7 +387,7 @@ describe('LearningActivityBroker', () => {
       ctx.agents.enter(agent, undefined)
       ctx.userQuestions.registerProvider({
         async ask(request) {
-          const envelope = decodeLearningDetail(request.questions[0]?.detail)
+          const envelope = decodeLearningQuestionId(request.questions[0]?.id)
           if (envelope === undefined) throw new Error('missing learning envelope')
           return {
             answers: [{

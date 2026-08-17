@@ -38,21 +38,24 @@ Upstream [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) is 
    - User data is isolated outside the app under `%USERPROFILE%\.dsh` on Windows or `$HOME/.dsh` on Linux/macOS (`$DSH_HOME` overrides either path).
    - Uses Windows 11 Mica styling where available and native macOS window/menu behavior on Apple Silicon.
 3. **Multimodal Vision Bridge (`@dsh-portable/vision-bridge`)**:
-   - Equips text-only models with multimodal visual inspection capabilities by connecting to external OpenAI-compatible endpoints with high cost-performance vision models (Gemini 3.7 Flash, Mimo V2.5, etc.).
+   - Uses the rc.7 native persisted image-attachment path when the selected model supports images, while retaining an explicit external `view_image` path for text-only models.
    - Global `view_image` tool registered directly into the official `Settings → Plugins` slot with live provider presets, connection validation, and write-only API key security protection.
 4. **Preinstalled Plugin Marketplace (`dsh-plugin-marketplace`)**:
    - Adds searchable **Plugin Marketplace** and **Installed** tabs under `Settings → Plugins`, backed by the live GitHub `dsh-plugin` topic.
-   - Ships with agent tools for searching, installing, inspecting, and updating plugins. It is preinstalled once per Web profile and remains removed or disabled when the user chooses so.
-5. **Safe platform-aware updates**:
+   - Shows source, runtime, network, image-egress, activation, degradation, and verification information before installation. Unknown plugins are explicitly marked unverified.
+5. **Interactive Learning preset**:
+   - Uses the client's native choice control for learning direction, depth, and pace instead of a custom form.
+   - Renders pedagogical parameter, process, and structure graphics inline in the assistant message, preserves them in session replay, and always provides a text equivalent.
+6. **Safe platform-aware updates**:
    - Windows keeps background staging, SHA-256 verification, atomic restart, and transactional rollback.
    - Linux and macOS first-release updates open the GitHub release page so users can manually download and replace the AppImage/deb or DMG; the app does not self-replace its installed application.
-6. **Zero-Modification Architecture**:
+7. **Zero-Modification Architecture**:
    - Cleanly wired through Cordis microkernel plugin slots and profile overlays without modifying upstream `vendor/deepseek-harness` code.
 
 ## Quick start
 
 1. Download the Windows Setup/ZIP, `DeepSeek-Harness-<version>-darwin-arm64.dmg`, or `DeepSeek-Harness-<version>-linux-x64.AppImage` from the [latest release](https://github.com/wsnxxxs/deepseek-harness-portable/releases/latest).
-2. On Windows, run the installer. On macOS, open the DMG and drag **DeepSeek Harness** to **Applications**. On Linux, make the AppImage executable and run it, or install the `.deb` package.
+2. On Windows, run the installer. On Linux/macOS, download and inspect the release's `install.sh`, then run `sh install.sh`; manual AppImage/deb and DMG installation remains available.
 3. Launch **DeepSeek Harness** and open **Settings** in the Web UI to add your DeepSeek API key (or provide it in the environment before launching).
 
 ## Features
@@ -68,10 +71,10 @@ Upstream [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) is 
 
 | Item | Version |
 | --- | --- |
-| Release | DeepSeek Harness Desktop **v1.3.0** ([download](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.3.0)) |
-| Distribution | 1.3.0 |
+| Release | DeepSeek Harness Desktop **v1.3.1** ([download](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.3.1)) |
+| Distribution | 1.3.1 |
 | Desktop shell | 0.1.0-shell.2 |
-| Kernel | 0.1.0-rc.5 |
+| Kernel | 0.1.0-rc.7 |
 
 Read the [English release notes](RELEASE_NOTES.md) or open **Release Notes** from the desktop tray menu.
 
@@ -80,10 +83,11 @@ Read the [English release notes](RELEASE_NOTES.md) or open **Release Notes** fro
 1. **Windows Setup installer:** download `DeepSeek-Harness-Setup-<version>-win32-x64.exe` from Releases and run it.
 2. **Windows online installer:** run `install.ps1` from this repository. It only accepts a release ZIP with a trusted SHA-256 digest. Options: `-InstallDir <path>` (default `%LOCALAPPDATA%\Programs\DeepSeek Harness`), `-NoDesktopShortcut`, `-Force`.
 3. **Windows portable ZIP:** download `DeepSeek-Harness-<version>-win32-x64.zip`, verify `SHA256SUMS.txt`, then extract the complete directory without renaming `runtime`.
-4. **macOS Apple Silicon:** download `DeepSeek-Harness-<version>-darwin-arm64.dmg`, verify `SHA256SUMS-darwin-arm64.txt`, open it, and drag the app to **Applications**. The DMG is currently unsigned and not notarized.
-5. **Linux x64 AppImage:** download `DeepSeek-Harness-<version>-linux-x64.AppImage`, verify its checksum, run `chmod +x DeepSeek-Harness-<version>-linux-x64.AppImage`, and launch it.
-6. **Linux x64 deb:** download `DeepSeek-Harness-<version>-linux-x64.deb` and install it with `sudo apt install ./DeepSeek-Harness-<version>-linux-x64.deb`.
-7. **Uninstall:** use the platform's normal app removal flow. Windows uninstall scripts are included; user data is kept unless explicitly removed.
+4. **Verified Linux/macOS install:** download `install.sh` and `SHA256SUMS-install.txt` from the same release, verify the script, inspect it, then run `sh install.sh`. It selects only the supported native target and verifies the AppImage/DMG against `SHA256SUMS-<target>.txt` before installation. Linux defaults to `~/.local/opt/deepseek-harness` plus `~/.local/bin/deepseek-harness` and a desktop entry; macOS defaults to `~/Applications`. Use `--version <version>`, `--install-dir <path>`, or `--help` as needed.
+5. **macOS Apple Silicon (manual):** download `DeepSeek-Harness-<version>-darwin-arm64.dmg`, verify `SHA256SUMS-darwin-arm64.txt`, open it, and drag the app to **Applications**. The DMG is currently unsigned and not notarized; the installer does not bypass Gatekeeper.
+6. **Linux x64 AppImage (manual):** download `DeepSeek-Harness-<version>-linux-x64.AppImage`, verify its checksum, run `chmod +x DeepSeek-Harness-<version>-linux-x64.AppImage`, and launch it.
+7. **Linux x64 deb (manual):** download `DeepSeek-Harness-<version>-linux-x64.deb` and install it with `sudo apt install ./DeepSeek-Harness-<version>-linux-x64.deb`.
+8. **Uninstall:** use the platform's normal app removal flow. Windows uninstall scripts are included; user data is kept unless explicitly removed.
 
 > **Note:** `setup-shortcuts.ps1` (called by the installer and by `创建桌面快捷方式.bat` in the portable package) creates a desktop shortcut and adds the portable directory to your **user PATH**. The uninstaller removes both.
 
