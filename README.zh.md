@@ -3,10 +3,10 @@
 [English](README.md) · [发布说明](RELEASE_NOTES.zh.md) · [Issues](https://github.com/wsnxxxs/deepseek-harness-portable/issues)
 
 [![Release](https://img.shields.io/github/v/release/wsnxxxs/deepseek-harness-portable)](https://github.com/wsnxxxs/deepseek-harness-portable/releases/latest)
-[![Platform](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-blue)](https://github.com/wsnxxxs/deepseek-harness-portable/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%7C%20Linux%20x64-blue)](https://github.com/wsnxxxs/deepseek-harness-portable/releases)
 [![License](https://img.shields.io/github/license/wsnxxxs/deepseek-harness-portable)](LICENSE)
 
-DeepSeek Harness Desktop 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的社区 Windows x64 与 macOS Apple Silicon 分发版，由 Electron 桌面外壳和平台原生 runtime 组成，不是 Microsoft 官方签名或 Apple 公证版本。
+DeepSeek Harness Desktop 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的社区 Windows x64、macOS Apple Silicon 与 Linux x64 分发版，由 Electron 桌面外壳和平台原生 runtime 组成，不是 Microsoft 官方签名、Apple 公证或 Linux 发行版签名版本。
 
 ## 目录
 
@@ -31,10 +31,11 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
    - **强化学习环境对齐**：DeepSeek 官方模型（如 DeepSeek-R1、DeepSeek-V3 Agent 循环）的强化学习（RL）训练基于标准 Linux Bash 环境，模型形成了鲜明的链式规划与分步推理模式（标志性的 *"We need to...", "Let's check...", "Let's run..."* 思考链）。
    - **规避 Windows PowerShell 差异**：在 Windows 原生环境下，PowerShell 的语法规则、路径反斜杠（`\`）、参数格式及别名机制容易打破模型的 Token 概率分布，导致指令幻觉、语法报错或思维链中断。
    - **Windows**：极简预设通过 WSL 运行真正的 Linux Bash，并使用 Windows 进程桥接与沙箱适配器。
+   - **Linux**：极简预设直接通过原生 POSIX PTY 和 `/bin/bash` 运行；标准/Agent 模式使用上游 Linux 沙箱链（`bwrap`，再回退到失败即关闭的 Landlock）。
    - **macOS**：极简预设直接通过原生 POSIX PTY 和 `/bin/bash` 运行，不使用 WSL 或容器兼容层。
 2. **开箱即用便携桌面版**：
    - 内置独立 Node.js 与 Electron 桌面外壳，免装 Node/pnpm 等开发环境，双击即开即用。
-   - 用户数据位于应用目录之外：Windows 使用 `%USERPROFILE%\.dsh`，macOS 使用 `$HOME/.dsh`，也可通过 `$DSH_HOME` 覆盖。
+   - 用户数据位于应用目录之外：Windows 使用 `%USERPROFILE%\.dsh`，Linux/macOS 使用 `$HOME/.dsh`，也可通过 `$DSH_HOME` 覆盖。
    - Windows 使用 Windows 11 Mica 风格；Apple Silicon macOS 使用原生窗口与应用菜单行为。
 3. **视觉辅助多模态外挂（`@dsh-portable/vision-bridge`）**：
    - 为纯文本大模型（如 DeepSeek-V3 / R1）接入外部 OpenAI 兼容端点与高性价比多模态模型（如 Gemini 3.7 Flash、Mimo V2.5 等），赋予模型看图、UI分析与图表识别能力。
@@ -44,31 +45,31 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
    - 内置供 Agent 搜索、安装、检查和更新插件的工具。每个 Web profile 只预装一次，用户关闭或卸载后不会被自动恢复。
 5. **安全的平台适配更新**：
    - Windows 保留后台 Staging、SHA-256 校验、原子重启替换和事务回滚。
-   - macOS 首个发行通道打开 GitHub 发布页，由用户手动下载并替换 DMG；应用不会自行替换 `.app` Bundle。
+   - Linux/macOS 首个发行通道打开 GitHub 发布页，由用户手动下载并替换 AppImage/deb 或 DMG；应用不会自行替换已安装程序。
 6. **零侵入微内核架构**：
    - 所有 Windows 适配与功能插件均通过 Cordis 微内核插件机制与运行时 Overlay 动态挂载，保持 upstream `vendor/deepseek-harness` 100% 原生纯净，无缝跟随官方上游迭代。
 
 ## 快速开始
 
-1. 从[最新发布](https://github.com/wsnxxxs/deepseek-harness-portable/releases/latest)下载 Windows Setup/ZIP，或为 Apple Silicon Mac 下载 `DeepSeek-Harness-<version>-darwin-arm64.dmg`。
-2. Windows 运行安装程序；macOS 打开 DMG 并将 **DeepSeek Harness** 拖入“应用程序”。首发版本未签名，首次启动请在右键菜单中选择“打开”。
+1. 从[最新发布](https://github.com/wsnxxxs/deepseek-harness-portable/releases/latest)下载 Windows Setup/ZIP、macOS 的 `DeepSeek-Harness-<version>-darwin-arm64.dmg`，或 Linux 的 `DeepSeek-Harness-<version>-linux-x64.AppImage`。
+2. Windows 运行安装程序；macOS 打开 DMG 并将 **DeepSeek Harness** 拖入“应用程序”；Linux 为 AppImage 添加执行权限后运行，或安装 `.deb` 包。
 3. 启动 **DeepSeek Harness**，在 Web UI 的“设置”中配置 DeepSeek API key（或在启动进程的环境中提供）。
 
 ## 功能特性
 
 - 内置原生 Electron 桌面外壳与 DeepSeek Harness Web runtime，在回环地址启动。
 - 支持工作区选择、浏览器模式、托盘/应用菜单、更新历史、关于信息和诊断导出。
-- Windows 支持应用内检查更新、下载进度、SHA-256 校验、重启确认和回滚；macOS 提供发布页手动下载流程。
+- Windows 支持应用内检查更新、下载进度、SHA-256 校验、重启确认和回滚；Linux/macOS 提供发布页手动下载流程。
 - 原生侧边栏 Logo 集成桌面菜单、系统主题同步、Windows 11 Mica/标题栏样式、macOS 原生菜单、分阶段启动过渡，以及适配多显示器的窗口状态记忆。
-- 极简模式在 Windows 使用 WSL Bash，在 macOS 使用原生 `/bin/bash` POSIX PTY。
+- 极简模式在 Windows 使用 WSL Bash，在 Linux/macOS 使用原生 `/bin/bash` POSIX PTY；Linux 沙箱模式遵循上游 bwrap/Landlock 失败关闭策略。
 - 预装可移除的插件市场，支持 GitHub 分页搜索、一键安装、插件更新管理和 Agent 市场工具。
 
 ## 最新发布
 
 | 项目 | 版本 |
 | --- | --- |
-| 发布 | DeepSeek Harness Desktop **v1.2.7**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.2.7)) |
-| 分发版本 | 1.2.7 |
+| 发布 | DeepSeek Harness Desktop **v1.3.0**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.3.0)) |
+| 分发版本 | 1.3.0 |
 | 桌面外壳 | 0.1.0-shell.2 |
 | 内核 | 0.1.0-rc.5 |
 
@@ -80,13 +81,15 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
 2. **Windows 在线安装：** 运行仓库中的 `install.ps1`。脚本只接受带可信 SHA-256 摘要的 release ZIP。参数：`-InstallDir <路径>`（默认 `%LOCALAPPDATA%\Programs\DeepSeek Harness`）、`-NoDesktopShortcut`、`-Force`。
 3. **Windows 便携 ZIP：** 下载 `DeepSeek-Harness-<version>-win32-x64.zip`，先核对 `SHA256SUMS.txt`，再解压完整目录，不要重命名 `runtime`。
 4. **macOS Apple Silicon：** 下载 `DeepSeek-Harness-<version>-darwin-arm64.dmg`，核对 `SHA256SUMS-darwin-arm64.txt`，打开后将应用拖入“应用程序”。当前 DMG 未签名且未公证。
-5. **卸载：** 使用平台常规的应用移除流程。Windows 便携包包含卸载脚本；除非明确删除，否则会保留用户数据。
+5. **Linux x64 AppImage：** 下载 `DeepSeek-Harness-<version>-linux-x64.AppImage`，核对校验值，运行 `chmod +x DeepSeek-Harness-<version>-linux-x64.AppImage` 后启动。
+6. **Linux x64 deb：** 下载 `DeepSeek-Harness-<version>-linux-x64.deb`，运行 `sudo apt install ./DeepSeek-Harness-<version>-linux-x64.deb` 安装。
+7. **卸载：** 使用平台常规的应用移除流程。Windows 便携包包含卸载脚本；除非明确删除，否则会保留用户数据。
 
 > **注意：** `setup-shortcuts.ps1`（安装程序以及便携包中的 `创建桌面快捷方式.bat` 会调用它）会创建桌面快捷方式，并把便携目录加入**用户 PATH**；卸载程序会一并移除这两项。
 
 安装器和更新器会校验 ZIP 摘要、发布清单、应用清单以及必要的原生模块，不会创建证书，也不会修改 Windows 信任存储。
 
-## Windows 便携目录结构
+## 便携目录结构
 
     DeepSeek Harness-win32-x64/
     ├─ dsh.cmd                     命令行入口：网页模式、`dsh update`、`dsh desktop`、`dsh trust`
@@ -108,19 +111,21 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
 
 不要删除或重命名 Windows 的 `runtime` 目录。macOS 使用正常的 `.app` Bundle 结构。
 
+Linux AppImage 和 deb 包内含原生 Electron runtime 与桌面入口。未压缩的 Linux 构建目录还会在 `runtime/` 旁提供 `start-desktop.sh`、`start-web.sh`、`dsh.sh` 和 `portable-pnpm.sh`。
+
 ## 用户数据与API密钥
 
-- 会话、凭据、设置、附件和桌面偏好保存在**应用目录之外**：Windows 为 `%USERPROFILE%\.dsh`，macOS 为 `$HOME/.dsh`（可通过 `DSH_HOME` 环境变量覆盖）。更新后数据保留，除非明确删除否则不会移除。
+- 会话、凭据、设置、附件和桌面偏好保存在**应用目录之外**：Windows 为 `%USERPROFILE%\.dsh`，Linux/macOS 为 `$HOME/.dsh`（可通过 `DSH_HOME` 环境变量覆盖）。更新后数据保留，除非明确删除否则不会移除。
 - 在 Web UI **设置**中配置 DeepSeek API key，或在启动进程的环境中提供。
 - 桌面外壳将 Web 服务绑定到回环地址，并设置 `DSH_TELEMETRY_DISABLED=1`。
 
 ## 启动与更新
 
-- Windows 使用 `start-desktop.cmd`（或 `启动桌面版.bat`）启动内置 Electron 桌面端；macOS 从“应用程序”启动应用。
-- Windows 使用 `start-web.cmd`（或 `启动网页版.bat`）通过内置 Electron/Node runtime 启动网页版，无需安装系统 Node.js。
+- Windows 使用 `start-desktop.cmd`（或 `启动桌面版.bat`）启动内置 Electron 桌面端；Linux 使用 AppImage/deb 的桌面入口或未压缩目录中的 `start-desktop.sh`；macOS 从“应用程序”启动应用。
+- Windows 使用 `start-web.cmd`（或 `启动网页版.bat`），Linux 使用 `start-web.sh`，通过内置 Electron/Node runtime 启动网页版，无需安装系统 Node.js。
 - Windows 的 `dsh.cmd` 提供同样的网页版入口、内置插件管理 CLI，并支持分发版子命令：`dsh update`、`dsh desktop`、`dsh trust`。
 - 桌面托盘菜单提供“检查更新”“更新日志”和“关于”。
-- 检测到 Windows 新版本时，桌面外壳会在应用内显示下载与校验进度，完成后再询问是否重启。macOS 使用同一个菜单打开发布页，由用户手动下载最新 DMG。
+- 检测到 Windows 新版本时，桌面外壳会在应用内显示下载与校验进度，完成后再询问是否重启。Linux/macOS 使用同一个菜单打开发布页，由用户手动下载最新 AppImage/deb 或 DMG；应用不会自行替换安装目录。
 - 更新通知以标题栏下方的轻量横幅显示，可按版本选择“不再提示”；“更新日志”和“关于”在卡片式更新中心内打开。具体行为详见[发布说明](RELEASE_NOTES.zh.md)。
 
 ## 常见问题
@@ -138,19 +143,22 @@ Smart App Control 可能直接阻止未签名的应用。如果设备已启用�
 在 `%USERPROFILE%\.dsh`（或 `$DSH_HOME`），位于应用目录之外。见[用户数据与API密钥](#用户数据与api密钥)。
 
 **更新检查失败了怎么办？**
-更新中心会显示错误状态和重试入口，不会阻塞主界面。Windows 也可以直接运行便携版更新器：`dsh update`、`在线更新.bat` 或 `update.ps1`；macOS 请打开发布页手动下载最新 DMG。
+更新中心会显示错误状态和重试入口，不会阻塞主界面。Windows 也可以直接运行便携版更新器：`dsh update`、`在线更新.bat` 或 `update.ps1`；Linux/macOS 请打开发布页手动下载最新平台产物。
 
 **macOS 极简模式需要 WSL 或 Docker 吗？**
 不需要。Apple Silicon macOS 上，极简模式通过原生 POSIX PTY 和 `/bin/bash` 运行，并使用 macOS runtime 的原生进程与沙箱支持。
 
+**Linux 极简模式需要 WSL 或 Docker 吗？**
+不需要。Linux 直接使用原生 POSIX PTY 和 `/bin/bash`；沙箱模式优先使用上游 `bwrap`，回退到 Landlock 时若无法实际执行约束会失败关闭，不会静默降级为无沙箱运行。
+
 **为什么极简模式中的长命令会超时？**
-极简模式会原样执行模型给出的 Shell 命令。对 vendor 工作区使用递归 `grep` 还会扫描嵌套依赖目录，确实可能超过工具超时；建议改用会遵守忽略规则的 `rg`，或显式排除 `node_modules`。Windows 超时时，桌面桥接只会强制终止该终端对应的 `wsl.exe` 进程树并等待 PTY 释放。
+极简模式会原样执行模型给出的 Shell 命令。对 vendor 工作区使用递归 `grep` 还会扫描嵌套依赖目录，确实可能超过工具超时；建议改用会遵守忽略规则的 `rg`，或显式排除 `node_modules`。Windows 超时时，桌面桥接只会强制终止该终端对应的 `wsl.exe` 进程树；Linux/macOS 终止原生 POSIX PTY。
 
 ## 构建与发布
 
 *面向维护者和贡献者。*
 
-环境要求：Node.js ^22.19.0 或 >=24、pnpm。Windows 发布构建运行于 Windows x64；首个 macOS 发布构建运行于 Apple Silicon macOS，并使用系统自带的 `hdiutil`、`sips` 和 `iconutil`。
+环境要求：Node.js ^22.19.0 或 >=24、pnpm。Windows 发布构建运行于 Windows x64；macOS 发布构建运行于 Apple Silicon macOS，并使用系统自带的 `hdiutil`、`sips` 和 `iconutil`；Linux 发布构建运行于原生 Linux x64，需要 `musl-gcc`、`bwrap`/Landlock 测试环境和 `dpkg-deb`。AppImage/deb 由 `electron-builder` 负责打包。
 
 仓库通过固定 Git submodule `vendor/deepseek-harness` 内置匹配版本的 DeepSeek Harness 源码 workspace。它提供桌面外壳所需的 `@deepseek-ai/*` 包，并在本地构建嵌入式 Web runtime；发布流程不再需要把已有便携 ZIP 作为构建输入。
 
@@ -158,34 +166,48 @@ Smart App Control 可能直接阻止未签名的应用。如果设备已启用�
 
     pnpm run desktop:bootstrap
 
-之后使用常规构建与发布命令：
+之后必须在目标原生主机上打包。打包流程会执行真实能力探测、写入实测模式目录和文件清单、对含 manifest 的最终应用字节再次冒烟、生成平台容器，最后写出不可变的已验证 bundle：
 
     pnpm install
-    pnpm run desktop:test
     pnpm run desktop:package:win
-    pnpm run desktop:release:win
+
+Windows 已验证 bundle 位于 `dist-desktop/verified/win32-x64/`。发布是独立的只复制操作，必须显式传入该目录：
+
+    pnpm run desktop:release:win -- --input dist-desktop/verified/win32-x64
 
 构建 macOS Apple Silicon DMG：
 
     pnpm run desktop:package:mac
-    pnpm run desktop:release:mac
+    pnpm run desktop:release:mac -- --input dist-desktop/verified/darwin-arm64
 
-打包流程会为源码 workspace 生成指纹，并在输入未变化时复用已成功的构建、运行时部署和 Electron 产物层。排查干净的发布构建时，可使用 `pnpm run desktop:release:win -- --no-cache`，也可向底层打包脚本传入 `--no-cache`；需要有意打包现有编译产物时，仍可使用 `--skip-build`。
+构建 Linux x64 AppImage 和 deb（必须在原生 Linux x64 主机执行）：
+
+    pnpm run desktop:package:linux
+    pnpm run desktop:release:linux -- --input dist-desktop/verified/linux-x64
+
+产物位于 `dist-desktop/electron/linux-artifacts/`，未压缩 runtime 位于
+`dist-desktop/electron/DeepSeek Harness-linux-x64/`。官方上游 Landlock launcher
+会使用 `musl-gcc` 本地编译并暂存进 Linux runtime；launcher 缺失或 Landlock
+内核不可用时，运行时仍保持失败关闭。
+
+打包流程会为源码 workspace 生成指纹，并在输入未变化时复用已成功的编译、运行时部署、补丁和 Electron 产物层。排查干净构建时，可向 package 命令传入 `--no-cache`；需要有意打包现有编译产物时，仍可使用 `--skip-build`。release 命令不接受构建参数、不运行测试、不打补丁、不签名、也不重建压缩包；它只会重新校验 `artifact-verification.json` 指定的精确字节并复制它们。
 
 桌面包保留三层独立版本：
 
-- `distributionVersion`：公开 release 标签，以及对应平台的 ZIP、Setup 或 DMG 产物版本。
+- `distributionVersion`：公开 release 标签，以及对应平台的 ZIP、Setup、AppImage/deb 或 DMG 产物版本。
 - 桌面外壳版本：Electron 外壳包版本。
 - 内核版本：打包进来的 `@deepseek-ai/dsh-web-app` 版本。
 
-发布命令会构建或安全复用上游 Web runtime 和桌面外壳，始终执行发布测试，并最后写入对应平台的校验文件。macOS 通道生成未签名、未公证的 Apple Silicon DMG。准备新版本时，请同步更新 `RELEASE_NOTES.md`、`RELEASE_NOTES.zh.md` 和 `apps/desktop/src/release-notes.json`。
+原生 package CI matrix 是平台支持的唯一权威：Linux 使用原生 Linux x64，Windows 使用带可用 WSL distribution 和 Inno Setup 的原生 x64 runner，macOS 使用原生 Apple Silicon runner。交叉构建或未在本机实测的产物不能获得 verification record；release workflow 只消费这些记录，不重新构建。
+
+当前本地包均标记为 `non-official-unsigned`。正式发布会失败关闭，直至附加目标特定证据：Windows Authenticode、macOS 签名与公证、Linux 外部包签名。`--allow-non-official` 仅是维护者发布 prerelease 的显式开关，不会改变产物分类。详见[运行时架构与发布门禁](docs/runtime-architecture.md)。准备新版本时，请同步更新 `RELEASE_NOTES.md`、`RELEASE_NOTES.zh.md` 和 `apps/desktop/src/release-notes.json`。
 
 `dist-desktop/` 是可重建的临时构建目录，发布后可以删除。下一次构建所需的源码保存在 `vendor/deepseek-harness` 中；不要用 `node_modules/` 或便携 ZIP 替代源码提交到仓库。
 
 ## 安全与限制
 
 - 运行下载文件前请先核对发布的 SHA-256 值。
-- macOS DMG 当前未签名且未公证；首次启动如 Gatekeeper 提示，请在 Finder 右键菜单中选择“打开”。
+- 当前本地 Windows、Linux、macOS 包均明确属于非正式未签名产物；正式发布通道在缺少 TargetSpec 的签名/公证证据时会拒绝发布。
 - 本地 Web 服务默认只绑定回环地址。
 - 不要把 API key 放入仓库或发布目录。
 - 市场条目是从 GitHub 发现的第三方代码。安装前请审查插件仓库和权限；安装过程可能运行包构建脚本，插件会获得其 Cordis 组合所声明的能力。

@@ -2,7 +2,7 @@
 
 [中文](README.zh.md)
 
-This workspace package builds the native Electron desktop shell for DeepSeek Harness Desktop. It starts the existing Web runtime on loopback, embeds it in a BrowserWindow, and keeps tray/app-menu actions for desktop workflows on Windows and macOS.
+This workspace package builds the native Electron desktop shell for DeepSeek Harness Desktop. It starts the existing Web runtime on loopback, embeds it in a BrowserWindow, and keeps tray/app-menu actions for desktop workflows on Windows, macOS, and Linux.
 
 ## Runtime features
 
@@ -11,11 +11,11 @@ This workspace package builds the native Electron desktop shell for DeepSeek Har
 - Keeps user data under the official DSH_HOME root, %USERPROFILE%\.dsh by default.
 - Provides tray and application menu actions for workspace, browser mode, updates, release notes, and About.
 - Fetches release notes from GitHub or the configured mirror, with cached and bundled offline fallback.
-- Downloads and verifies Windows portable updates in-app with progress before asking the user to restart; macOS opens the release page for manual DMG download.
+- Downloads and verifies Windows portable updates in-app with progress before asking the user to restart; Linux/macOS open the release page for manual AppImage/deb or DMG download.
 - Shows update availability in a compact, centered banner below the title bar; it auto-destroys after seven seconds or dismissal, supports per-version suppression, and keeps the full release history in a centered card-style Update Hub.
 - Fuses the native sidebar logo with the desktop menu: expanded left click opens the menu, while collapsed left click expands the sidebar and right click opens the menu.
 - Uses a Windows 11 Mica title-bar overlay where supported, native macOS title/menu behavior, system theme synchronization, startup splash, and persisted multi-monitor-safe window bounds.
-- Runs Minimal mode through WSL Bash on Windows and native `/bin/bash` through a POSIX PTY on macOS; macOS does not require WSL or Docker.
+- Runs Minimal mode through WSL Bash on Windows and native `/bin/bash` through a POSIX PTY on Linux/macOS; Linux sandbox-capable modes retain the upstream bwrap/Landlock fail-closed chain.
 - Preinstalls the pinned `dsh-plugin-marketplace` once per Web profile; users can disable or remove it without the distribution restoring it on restart.
 - Bundles the DSH plugin CLI and pnpm behind Electron's Node mode, so marketplace operations do not require a system Node.js toolchain.
 
@@ -34,6 +34,7 @@ they do not depend on an existing portable ZIP.
     pnpm run desktop:dev
     pnpm run desktop:package:win
     pnpm run desktop:package:mac
+    pnpm run desktop:package:linux
 
 The Windows native build downloads Electron and targets Windows x64. The packaged output is a portable directory:
 
@@ -50,10 +51,18 @@ DMG creation and the build-time `.icns` conversion require macOS system tools
 unsigned and not notarized. Use `pnpm run desktop:release:mac` to run tests,
 build the DMG, copy it into `release/`, and write its SHA-256 checksum.
 
+The Linux x64 build targets `linux-x64` and produces an unpacked Electron
+runtime plus `DeepSeek-Harness-<distributionVersion>-linux-x64.AppImage` and
+`.deb` artifacts. It must run on native Linux x64: the official upstream
+Landlock launcher is compiled with `musl-gcc`, then staged into the deploy
+closure. `electron-builder` creates the AppImage and deb from the unpacked
+runtime. Linux and macOS update checks open the release page for manual
+replacement instead of self-updating the installed application.
+
 ## Release identity
 
-- Release: DeepSeek Harness Desktop v1.2.7
-- Distribution: 1.2.7
+- Release: DeepSeek Harness Desktop v1.3.0
+- Distribution: 1.3.0
 - Desktop shell: 0.1.0-shell.2
 - Kernel: read from the packaged @deepseek-ai/dsh-web-app manifest
 
@@ -61,7 +70,7 @@ The release manifest is written beside runtime and records the distribution, des
 
 ## User data and security
 
-The shell binds the Web server to loopback and sets DSH_TELEMETRY_DISABLED=1. Workspace settings and desktop release-note state are stored in Electron user data, not inside the packaged application directory. Windows uses `%USERPROFILE%\.dsh`; macOS uses `$HOME/.dsh` unless `DSH_HOME` is set. Marketplace plugins are third-party code and should be reviewed before installation.
+The shell binds the Web server to loopback and sets DSH_TELEMETRY_DISABLED=1. Workspace settings and desktop release-note state are stored in Electron user data, not inside the packaged application directory. Windows uses `%USERPROFILE%\.dsh`; Linux/macOS use `$HOME/.dsh` unless `DSH_HOME` is set. Marketplace plugins are third-party code and should be reviewed before installation.
 
 Set the DeepSeek API key in the Web UI settings or in the environment used to launch the application. The Windows executable is not signed by a trusted commercial CA, and the macOS DMG is not signed or notarized, so the operating system may require an explicit first-launch confirmation.
 

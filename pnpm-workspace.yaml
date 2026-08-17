@@ -11,8 +11,18 @@ packages:
   - 'vendor/deepseek-harness/native/landlock-run'
   - 'vendor/deepseek-harness/native/landlock-run/packages/*'
   - 'apps/*'
+  - 'packages/*'
 
 linkWorkspacePackages: true
+
+# Installation is an explicit CI/bootstrap step. Script execution must not
+# mutate the 245-project workspace or repair platform-incompatible vendor links.
+verifyDepsBeforeRun: false
+
+# electron-builder pulls the pinned @electron/node-gyp Git snapshot through
+# @electron/rebuild; permit that reviewed exotic subdependency in the build
+# toolchain while keeping runtime deploys free of electron-builder.
+blockExoticSubdeps: false
 
 overrides:
   '@deepseek-ai/cosmokit': 'link:vendor/deepseek-harness/vendor/cosmokit'
@@ -27,3 +37,4 @@ allowBuilds:
   protobufjs: false
   node-addon-require-builtin: false
   dsh-plugin-marketplace: false
+  electron-winstaller: false

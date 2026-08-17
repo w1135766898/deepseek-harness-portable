@@ -1,0 +1,65 @@
+id: code
+baseConfig: agent.cordis.yml
+
+contract:
+  persona:
+    complete: false
+    includeRuntimeContext: true
+  tools:
+    requiredRows:
+      - tool-fs
+      - tool-fs-search
+      - tool-jobs
+      - tool-skill
+      - tool-goal
+      - tool-subagent-control
+      - tool-subagent-list-agents
+      - tool-subagent
+      - tool-subagent-fork
+      - tool-workflow
+      - tool-ralph
+      - tool-ask-user
+      - tool-todo
+      - tool-web
+      - tool-presentation
+    variantSlots:
+      shell:
+        - tool-bash
+        - tool-pwsh
+  composition:
+    requiredRows:
+      - persona
+      - agent-instructions
+      - plan-mode
+      - compaction-basic
+      - command-compact
+      - tool-result-pruner
+      - tool-presentation
+  compaction: enabled
+  filesystem: policy-mediated
+  sandbox: workspace-write
+  presentation: code-sdk
+
+variants:
+  - id: posix-bash
+    supportLevel: native
+    requires:
+      - shell.bash
+      - sandbox.workspace-write
+      - process.posix-signals
+    acceptsDegraded:
+      - sandbox.workspace-write
+    config: variants/posix-bash.cordis.yml
+    provides:
+      shell: tool-bash
+
+  - id: win32-powershell
+    supportLevel: native
+    requires:
+      - shell.powershell
+      - sandbox.workspace-write
+    acceptsDegraded:
+      - sandbox.workspace-write
+    config: variants/win32-powershell.cordis.yml
+    provides:
+      shell: tool-pwsh

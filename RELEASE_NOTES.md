@@ -1,10 +1,10 @@
-# DeepSeek Harness Desktop v1.2.7
+# DeepSeek Harness Desktop v1.3.0
 
 [中文](RELEASE_NOTES.zh.md)
 
 Windows x64 portable release and macOS Apple Silicon DMG · 2026-08-17
 
-This is the v1.2.7 desktop release. It adds the macOS Apple Silicon Electron/DMG lane and native POSIX Minimal mode while retaining the Windows portable flow, bundled plugin marketplace workflow, verified update recovery, and reproducible packaging cache.
+This is the v1.3.0 desktop release. It adds the macOS Apple Silicon Electron/DMG lane and native POSIX Minimal mode while retaining the Windows portable flow, bundled plugin marketplace workflow, verified update recovery, and reproducible packaging cache.
 
 ## New Features & Improvements
 
@@ -20,10 +20,10 @@ This is the v1.2.7 desktop release. It adds the macOS Apple Silicon Electron/DMG
 
 ## Components
 
-- Distribution: 1.2.7
+- Distribution: 1.3.0
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.0-rc.5 (@deepseek-ai/dsh-web-app)
-- Tag: v1.2.7
+- Tag: v1.3.0
 
 ## Checksums and security
 

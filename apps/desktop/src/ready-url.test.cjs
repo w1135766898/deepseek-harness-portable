@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { createServer } = require('node:http')
-const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
+const { readyUrl, settingsDescribeUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 
 test('extracts only the loopback readiness URL', () => {
   assert.equal(readyUrl('dsh web: http://127.0.0.1:43127\n'), 'http://127.0.0.1:43127')
@@ -11,6 +11,17 @@ test('extracts only the loopback readiness URL', () => {
   assert.equal(readyUrl('starting...\n'), undefined)
   assert.equal(readyUrl(''), undefined)
   assert.equal(readyUrl(null), undefined)
+})
+
+test('normalizes a trailing listening slash to the exact settings RPC route', () => {
+  assert.equal(
+    settingsDescribeUrl('http://127.0.0.1:43127/'),
+    'http://127.0.0.1:43127/api/settings.describe',
+  )
+  assert.equal(
+    settingsDescribeUrl('http://127.0.0.1:43127'),
+    'http://127.0.0.1:43127/api/settings.describe',
+  )
 })
 
 test('waits for onboarding and the complete client graph instead of trusting the first HTTP 200', async () => {
@@ -39,7 +50,7 @@ test('waits for onboarding and the complete client graph instead of trusting the
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
   try {
     const address = server.address()
-    await waitForOnboardingReady(`http://127.0.0.1:${address.port}`, { timeoutMs: 2_000, intervalMs: 1 })
+    await waitForOnboardingReady(`http://127.0.0.1:${address.port}/`, { timeoutMs: 2_000, intervalMs: 1 })
     assert.equal(settingsAttempts, 3)
     assert.equal(indexAttempts, 3)
   } finally {

@@ -1,0 +1,89 @@
+name: package-native
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    uses: ./.github/workflows/verify.yml
+
+  linux-x64:
+    needs: verify
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: sudo apt-get update && sudo apt-get install -y musl-tools bubblewrap
+      - run: test "$(node -p 'process.platform + "-" + process.arch')" = linux-x64
+      - run: pnpm run desktop:package:linux -- --no-cache
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-linux-x64
+          path: dist-desktop/verified/linux-x64
+          if-no-files-found: error
+          compression-level: 0
+
+  windows-x64-wsl:
+    needs: verify
+    runs-on: [self-hosted, Windows, X64, dsh-wsl, inno-setup]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - shell: pwsh
+        run: |
+          if ((node -p "process.platform + '-' + process.arch") -ne 'win32-x64') { throw 'native win32-x64 runner required' }
+          wsl.exe --status
+          if ($LASTEXITCODE -ne 0) { throw 'working WSL distribution required' }
+      - run: pnpm run desktop:package:win -- --no-cache
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-win32-x64
+          path: dist-desktop/verified/win32-x64
+          if-no-files-found: error
+          compression-level: 0
+
+  macos-arm64:
+    needs: verify
+    runs-on: [self-hosted, macOS, ARM64]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: test "$(node -p 'process.platform + "-" + process.arch')" = darwin-arm64
+      - run: pnpm run desktop:package:mac -- --no-cache
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-darwin-arm64
+          path: dist-desktop/verified/darwin-arm64
+          if-no-files-found: error
+          compression-level: 0

@@ -1,0 +1,14 @@
+{
+  "name": "@dsh-portable/release-manifest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@dsh-portable/platform-contract": "workspace:^"
+  }
+}

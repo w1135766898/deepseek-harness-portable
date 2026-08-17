@@ -1,0 +1,7 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives';
+import css from './LearningActivity.module.css';
+export function ActivityFrame({ activity, busy, error, children, onSkip, onCancel, t, }) {
+    return (_jsxs("section", { className: css.frame, "aria-labelledby": "learning-activity-title", "data-learning-activity": activity.kind, children: [_jsxs("header", { className: css.header, children: [_jsx("span", { className: css.eyebrow, children: t('activity') }), _jsx("h2", { id: "learning-activity-title", className: css.title, children: activity.title }), _jsxs("div", { className: css.objective, children: [_jsx("strong", { children: t('objective') }), _jsx("span", { children: activity.objective })] }), activity.scaffold === undefined ? null : (_jsxs("details", { className: css.scaffold, children: [_jsx("summary", { children: t('scaffold') }), _jsx(MarkdownText, { text: activity.scaffold })] }))] }), _jsx("div", { className: css.body, children: children }), _jsxs("footer", { className: css.footer, children: [error === null ? _jsx("span", { className: css.footerSpacer }) : _jsx("p", { className: css.error, role: "alert", children: error }), _jsx("button", { className: css.ghostButton, type: "button", disabled: busy, onClick: onCancel, children: t('cancel') }), _jsx("button", { className: css.ghostButton, type: "button", disabled: busy, onClick: onSkip, children: t('skip') })] })] }));
+}
+//# sourceMappingURL=ActivityFrame.js.map

@@ -17,6 +17,11 @@ const REQUIRED_CLIENT_ENTRIES = [
   '@deepseek-ai/dsh-client-ui-layout',
 ]
 
+/** Build the settings RPC endpoint without producing a double-slash path. */
+function settingsDescribeUrl(baseUrl) {
+  return new URL('/api/settings.describe', baseUrl).href
+}
+
 /**
  * Parse the JSON boot graph injected into the web index document.
  *
@@ -81,6 +86,8 @@ function hasRequiredClientGraph(manifest) {
 async function waitForOnboardingReady(baseUrl, options = {}) {
   const timeoutMs = options.timeoutMs ?? 20_000
   const intervalMs = options.intervalMs ?? 120
+  const settingsUrl = settingsDescribeUrl(baseUrl)
+  const indexUrl = new URL('/', baseUrl).href
   const deadline = Date.now() + timeoutMs
   let lastReason = 'settings.describe has not completed'
   let onboardingReady = false
@@ -89,7 +96,7 @@ async function waitForOnboardingReady(baseUrl, options = {}) {
     const remainingMs = () => Math.min(1500, Math.max(1, deadline - Date.now()))
     if (!onboardingReady) {
       try {
-        const response = await fetch(`${baseUrl}/api/settings.describe`, {
+        const response = await fetch(settingsUrl, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
@@ -116,7 +123,7 @@ async function waitForOnboardingReady(baseUrl, options = {}) {
     }
     if (!clientGraphReady) {
       try {
-        const response = await fetch(`${baseUrl}/`, {
+        const response = await fetch(indexUrl, {
           headers: { 'cache-control': 'no-cache' },
           signal: AbortSignal.timeout(remainingMs()),
         })
@@ -141,5 +148,6 @@ module.exports = {
   hasRequiredClientGraph,
   parseBootManifest,
   readyUrl,
+  settingsDescribeUrl,
   waitForOnboardingReady,
 }

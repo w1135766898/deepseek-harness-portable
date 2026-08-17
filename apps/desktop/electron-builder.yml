@@ -1,0 +1,18 @@
+appId: com.deepseek.harness
+productName: DeepSeek Harness
+executableName: deepseek-harness
+electronVersion: 43.4.0
+asar: false
+extraMetadata:
+  name: deepseek-harness
+linux:
+  category: Development
+  maintainer: DeepSeek Harness contributors
+  target:
+    - AppImage
+    - deb
+  synopsis: Native DeepSeek Harness desktop shell
+  description: Electron desktop shell and Web runtime for DeepSeek Harness.
+directories:
+  output: dist-desktop/electron/linux-artifacts
+artifactName: DeepSeek-Harness-${version}-linux-x64.${ext}

@@ -14,9 +14,9 @@ window.__ModuleLoader__.load({
 		*/
 		const zh = {
 			cardTitle: "视觉辅助 (Vision Bridge)",
-			cardDescription: "通过外部 OpenAI 兼容的视觉多模态大模型查看与分析图片文件",
+			cardDescription: "通过外部 OpenAI 兼容视觉模型分析文件，并让纯文本模型理解粘贴的图片",
 			enabled: "启用视觉辅助",
-			enabledHint: "开启后，模型可调用 view_image 工具查看图片",
+			enabledHint: "纯文本模型会把视觉描述写入会话历史且不保留原图；原生视觉模型仍保留原图。智能体也可调用 view_image",
 			provider: "服务商预设",
 			providerOpenAI: "OpenAI 官方 (gpt-4o-mini / gpt-4o)",
 			providerOllama: "本地 Ollama (llava / minicpm-v)",
@@ -42,9 +42,9 @@ window.__ModuleLoader__.load({
 		};
 		const en = {
 			cardTitle: "Vision Bridge",
-			cardDescription: "Inspect and describe image files using an external OpenAI-compatible vision model",
+			cardDescription: "Analyze image files and pasted images for text-only models through an OpenAI-compatible vision model",
 			enabled: "Enable Vision Bridge",
-			enabledHint: "Allows the model to call the view_image tool to inspect images",
+			enabledHint: "Text-only models store the visual description in chat history without the original image; native vision models keep it. Also enables view_image",
 			provider: "Provider Preset",
 			providerOpenAI: "OpenAI Official (gpt-4o-mini / gpt-4o)",
 			providerOllama: "Local Ollama (llava / minicpm-v)",
@@ -81,30 +81,30 @@ window.__ModuleLoader__.load({
 		}
 		var VisionCard_module_css_default = {
 			"header": "bICbtG_header",
-			"statusMsg": "bICbtG_statusMsg",
-			"card": "bICbtG_card",
-			"name": "bICbtG_name",
+			"label": "bICbtG_label",
 			"chevronOpen": "bICbtG_chevronOpen",
-			"hint": "bICbtG_hint",
-			"failed": "bICbtG_failed",
-			"save": "bICbtG_save",
+			"select": "bICbtG_select",
+			"discard": "bICbtG_discard",
+			"textarea": "bICbtG_textarea",
 			"footer": "bICbtG_footer",
 			"switch": "bICbtG_switch",
-			"select": "bICbtG_select",
-			"headText": "bICbtG_headText",
-			"label": "bICbtG_label",
-			"textarea": "bICbtG_textarea",
 			"fieldRow": "bICbtG_fieldRow",
 			"input": "bICbtG_input",
-			"cardOpen": "bICbtG_cardOpen",
+			"statusMsg": "bICbtG_statusMsg",
 			"chevron": "bICbtG_chevron",
 			"pending": "bICbtG_pending",
-			"description": "bICbtG_description",
-			"readOnly": "bICbtG_readOnly",
+			"cardOpen": "bICbtG_cardOpen",
+			"hint": "bICbtG_hint",
+			"card": "bICbtG_card",
+			"name": "bICbtG_name",
+			"headText": "bICbtG_headText",
+			"save": "bICbtG_save",
 			"slider": "bICbtG_slider",
-			"discard": "bICbtG_discard",
-			"body": "bICbtG_body",
-			"field": "bICbtG_field"
+			"description": "bICbtG_description",
+			"field": "bICbtG_field",
+			"failed": "bICbtG_failed",
+			"readOnly": "bICbtG_readOnly",
+			"body": "bICbtG_body"
 		};
 		//#endregion
 		//#region src/client/VisionCard.tsx

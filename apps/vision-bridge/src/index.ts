@@ -10,6 +10,7 @@ import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-sett
 import type { SettingsDescriptor, SettingsPathOp } from '@deepseek-ai/dsh-settings'
 import type { RpcResponse, SettingsNamespaceView } from '@deepseek-ai/dsh-host-apiproxy'
 import type { ViewImageResult, VisionConfig } from './types.ts'
+import { createPromptImageTextHandler } from './prompt-image.ts'
 import { executeViewImage, renderViewImageContent } from './view-image.ts'
 
 export * from './types.ts'
@@ -33,6 +34,33 @@ export const Config: z<VisionConfig> = z.object({
 export const VISION_SETTINGS_NAMESPACE = settingsNamespace('vision')
 
 const HOOKED = Symbol('vision-bridge-settings-hook')
+
+type SettingsApi = Context['apiProxy']['settings']
+
+interface SettingsApiPatch {
+  owners: Map<symbol, Context>
+  rawDescribe: SettingsApi['describe']
+  rawMutate: SettingsApi['mutate']
+  describe: SettingsApi['describe']
+  mutate: SettingsApi['mutate']
+}
+
+type HookedSettingsApi = SettingsApi & { [HOOKED]?: SettingsApiPatch }
+
+function activeSettingsContext(patch: SettingsApiPatch): Context {
+  const contexts = [...patch.owners.values()]
+  const active = contexts.at(-1)
+  if (active === undefined) throw new Error('vision settings API hook has no active owner')
+  return active
+}
+
+function releaseSettingsApiPatch(api: HookedSettingsApi, patch: SettingsApiPatch, owner: symbol): void {
+  patch.owners.delete(owner)
+  if (patch.owners.size > 0 || api[HOOKED] !== patch) return
+  if (api.describe === patch.describe) api.describe = patch.rawDescribe
+  if (api.mutate === patch.mutate) api.mutate = patch.rawMutate
+  delete api[HOOKED]
+}
 
 /** Map one redacted settings descriptor to its wire view (matching api-proxy.ts:1929). */
 function toView(descriptor: SettingsDescriptor): SettingsNamespaceView {
@@ -66,33 +94,51 @@ export function apply(ctx: Context, config: Config = {}): void {
     },
   )
 
+  // Text-only conversation models receive a durable, model-visible analysis
+  // in place of raw pixels. Image-capable models never dispatch this event.
+  ctx.on('api-proxy/image-to-text', createPromptImageTextHandler(() => currentConfig()))
+
   // 2) Hook apiProxy.settings to expose 'vision' to web clients and handle its mutations
   ctx.inject(['apiProxy', 'settings'], (scopeCtx) => {
-    const settingsApi = scopeCtx.apiProxy.settings
-    if (settingsApi === undefined || (settingsApi as unknown as Record<symbol, boolean>)[HOOKED]) return
-    ;(settingsApi as unknown as Record<symbol, boolean>)[HOOKED] = true
+    const settingsApi = scopeCtx.apiProxy.settings as HookedSettingsApi
+    const owner = Symbol('vision-bridge-settings-owner')
+    const existing = settingsApi[HOOKED]
+    if (existing !== undefined) {
+      existing.owners.set(owner, scopeCtx)
+      scopeCtx.effect(
+        () => () => { releaseSettingsApiPatch(settingsApi, existing, owner) },
+        'vision-bridge: shared settings API hook owner',
+      )
+      return
+    }
 
-    const rawDescribe = settingsApi.describe.bind(settingsApi)
-    const rawMutate = settingsApi.mutate.bind(settingsApi)
+    const rawDescribe = settingsApi.describe
+    const rawMutate = settingsApi.mutate
+    const patch = {
+      owners: new Map([[owner, scopeCtx]]),
+      rawDescribe,
+      rawMutate,
+    } as SettingsApiPatch
 
-    settingsApi.describe = async (request) => {
-      const response = await rawDescribe(request)
+    patch.describe = async (request) => {
+      const response = await rawDescribe.call(settingsApi, request)
       if (!response.result.ok) return response
       const namespaces = response.result.value.namespaces
       if (namespaces.some(entry => entry.ns === 'vision')) return response
-      const descriptor = scopeCtx.settings
+      const descriptor = activeSettingsContext(patch).settings
         .describe({ redactSecrets: true })
         .find(entry => String(entry.ns) === 'vision')
       if (descriptor !== undefined) namespaces.push(toView(descriptor))
       return response
     }
 
-    settingsApi.mutate = async (request) => {
+    patch.mutate = async (request) => {
       const { ns, ops, expectedRevision } = request.payload
-      if (ns !== 'vision') return rawMutate(request)
+      if (ns !== 'vision') return rawMutate.call(settingsApi, request)
       try {
-        await scopeCtx.settings.mutate(VISION_SETTINGS_NAMESPACE, ops as SettingsPathOp[], expectedRevision)
-        const updated = scopeCtx.settings
+        const settings = activeSettingsContext(patch).settings
+        await settings.mutate(VISION_SETTINGS_NAMESPACE, ops as SettingsPathOp[], expectedRevision)
+        const updated = settings
           .describe({ redactSecrets: true })
           .find(entry => String(entry.ns) === 'vision')
         if (updated === undefined) throw new Error('vision namespace vanished after write')
@@ -114,6 +160,14 @@ export function apply(ctx: Context, config: Config = {}): void {
         } as RpcResponse<SettingsNamespaceView>
       }
     }
+
+    settingsApi[HOOKED] = patch
+    settingsApi.describe = patch.describe
+    settingsApi.mutate = patch.mutate
+    scopeCtx.effect(
+      () => () => { releaseSettingsApiPatch(settingsApi, patch, owner) },
+      'vision-bridge: settings API hook',
+    )
   })
 
   // 3) Register global view_image tool on Host level (visible to all agents without modifying presets)

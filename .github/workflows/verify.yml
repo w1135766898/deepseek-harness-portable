@@ -1,0 +1,40 @@
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts-and-static-gates:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run runtime:deps:check
+      - run: pnpm --filter @dsh-portable/platform-contract run build
+      - run: pnpm --filter @dsh-portable/release-manifest run build
+      - run: pnpm --filter @dsh-portable/runtime run build
+      - run: pnpm run packaging:test
+      - run: pnpm run runtime:test
+      - run: pnpm run readme:check
+      - name: Presets contain no host-platform branches
+        shell: bash
+        run: |
+          if rg -n 'process\.platform' apps/runtime/config/agent-presets; then
+            echo 'Mode presets must be target-neutral; use declared variants.' >&2
+            exit 1
+          fi

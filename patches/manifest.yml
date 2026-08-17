@@ -1,0 +1,26 @@
+schemaVersion: 1
+patches:
+  - id: directory-picker-electron-ipc
+    targets: [win32-x64]
+    files:
+      - path: node_modules/@deepseek-ai/dsh-host-directory-picker-native/lib/index.js
+        guards:
+          - spawnDialogWorker
+          - pickNativeDirectory
+      - path: node_modules/@deepseek-ai/dsh-host-directory-picker-native/lib/worker.cjs
+        guards:
+          - runFolderDialog
+          - process.send
+  - id: settings-model-welcome-retry
+    targets: ['*']
+    files:
+      - path: node_modules/@deepseek-ai/dsh-client-ui-settings-models/lib/client.js
+        guards:
+          - WelcomeNoticeStore
+  - id: marketplace-self-update-fallback
+    targets: ['*']
+    files:
+      - path: node_modules/dsh-plugin-marketplace/lib/index.js
+        guards:
+          - repositoryGitHubSpec
+          - installedManifest

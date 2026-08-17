@@ -1,0 +1,1 @@
+{"version":3,"file":"profile-startup.js","sourceRoot":"","sources":["../src/profile-startup.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AACH,MAAM,UAAU,2BAA2B,CAAI,OAK9C;IACC,IAAI,CAAC,OAAO,CAAC,cAAc;QAAE,OAAO,CAAC,IAAI,CAAC,OAAO,CAAC,aAAa,CAAC,CAAA;IAChE,OAAO,OAAO,CAAC,OAAO,EAAE,CAAA;AAC1B,CAAC"}

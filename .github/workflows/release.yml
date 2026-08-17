@@ -1,0 +1,51 @@
+name: release-verified-artifacts
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish_non_official:
+        description: Publish explicitly non-official unsigned artifacts as a prerelease
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    uses: ./.github/workflows/package.yml
+
+  publish:
+    needs: package
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: verified-*
+          path: verified
+      - name: Consume verified bytes without rebuilding
+        shell: bash
+        env:
+          ALLOW_NON_OFFICIAL: ${{ inputs.publish_non_official }}
+        run: |
+          extra=()
+          if [[ "$ALLOW_NON_OFFICIAL" == 'true' ]]; then extra+=(--allow-non-official); fi
+          pnpm exec tsx scripts/release-windows.ts --input verified/verified-win32-x64 --output release "${extra[@]}"
+          pnpm exec tsx scripts/release-linux.ts --input verified/verified-linux-x64 --output release "${extra[@]}"
+          pnpm exec tsx scripts/release-macos.ts --input verified/verified-darwin-arm64 --output release "${extra[@]}"
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          prerelease: ${{ inputs.publish_non_official == true }}
+          fail_on_unmatched_files: true

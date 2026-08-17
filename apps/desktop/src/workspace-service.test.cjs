@@ -11,11 +11,14 @@ const {
 } = require('./workspace-service.cjs')
 
 test('resolveTargetDshHome respects DSH_HOME and falls back to userHome/.dsh', () => {
-  const custom = resolveTargetDshHome({ DSH_HOME: 'C:\\custom\\dsh' }, 'C:\\Users\\test')
-  assert.equal(custom.toLowerCase(), 'c:\\custom\\dsh')
+  const customHome = process.platform === 'win32' ? 'C:\\custom\\dsh' : '/tmp/custom/dsh'
+  const userHome = process.platform === 'win32' ? 'C:\\Users\\test' : '/tmp/test-user'
+  const custom = resolveTargetDshHome({ DSH_HOME: customHome }, userHome)
+  assert.equal(custom.toLowerCase(), customHome.toLowerCase())
 
-  const fallback = resolveTargetDshHome({}, 'C:\\Users\\test')
-  assert.equal(fallback.toLowerCase(), 'c:\\users\\test\\.dsh')
+  const fallback = resolveTargetDshHome({}, userHome)
+  const expected = process.platform === 'win32' ? 'c:\\users\\test\\.dsh' : '/tmp/test-user/.dsh'
+  assert.equal(fallback.toLowerCase(), expected)
 })
 
 test('migrateLegacySessions migrates when target sessions directory does not exist', () => {

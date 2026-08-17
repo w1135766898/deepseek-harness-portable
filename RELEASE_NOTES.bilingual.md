@@ -1,8 +1,8 @@
-# DeepSeek Harness for Win v1.2.7
+# DeepSeek Harness for Win v1.3.0
 
 Windows x64 便携版 · 2026-08-17
 
-这是本 Windows 分发版的 v1.2.7 版本，新增内置插件市场流程，修复基于已验证暂存内容的更新启动边界问题，并让 Windows 打包更快、更可复现。
+这是本 Windows 分发版的 v1.3.0 版本，新增内置插件市场流程，修复基于已验证暂存内容的更新启动边界问题，并让 Windows 打包更快、更可复现。
 
 ## 新功能与体验优化
 
@@ -17,7 +17,7 @@ Windows x64 便携版 · 2026-08-17
 
 ## 组件版本
 
-- 分发：1.2.7
+- 分发：1.3.0
 - 桌面外壳：0.1.0-shell.2
 - 运行时内核：0.1.0-rc.5
 
@@ -27,7 +27,7 @@ Windows x64 便携版 · 2026-08-17
 
 Windows x64 portable release · 2026-08-17
 
-This is the v1.2.7 release of this Windows distribution. It adds a bundled plugin marketplace workflow, repairs update bootstrap edge-cases from verified staging, and makes Windows packaging faster and more reproducible.
+This is the v1.3.0 release of this Windows distribution. It adds a bundled plugin marketplace workflow, repairs update bootstrap edge-cases from verified staging, and makes Windows packaging faster and more reproducible.
 
 ### New Features & Improvements
 
@@ -42,7 +42,7 @@ This is the v1.2.7 release of this Windows distribution. It adds a bundled plugi
 
 ### Component Versions
 
-- Distribution: 1.2.7
+- Distribution: 1.3.0
 - Desktop Shell: 0.1.0-shell.2
 - Runtime Kernel: 0.1.0-rc.5
 
@@ -55,6 +55,6 @@ This is the v1.2.7 release of this Windows distribution. It adds a bundled plugi
 The final portable ZIP and Setup installer SHA-256 values are recorded in SHA256SUMS.txt and attached to the GitHub Release.
 
 ```
-469F24F9BFBCF010780E2B7E58435DA3596DCCD18832E7104E2256DFA9191EE6 *DeepSeek-Harness-1.2.7-win32-x64.zip
-0A5C42D172E5D4D0D9D48B9F633EB1A75EBEFFF6670228889B85D86C2ECA02A0 *DeepSeek-Harness-Setup-1.2.7-win32-x64.exe
+2240B6AF1CA851346FB1ED7B31B48ADC1D4EC907430DD37054FDE49A5DEE0F0D *DeepSeek-Harness-1.3.0-win32-x64.zip
+CDB371A2A12917B937CA895E22C036DB1F5BB20701F583BF4B7E3ECC0067A97E *DeepSeek-Harness-Setup-1.3.0-win32-x64.exe
 ```

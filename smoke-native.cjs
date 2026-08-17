@@ -1,9 +1,6 @@
-// Native-addon smoke for the packaged DeepSeek Harness desktop runtime.
-// Run with the packaged Electron binary in Node mode:
-//   ELECTRON_RUN_AS_NODE=1 "DeepSeek Harness.exe" smoke-native.cjs
-// Exercises the three Windows-native addons the web closure loads lazily:
-// node-pty (persistent PTY shell), koffi (windows-acl sandbox FFI), sharp
-// (attachment image processing).
+// Cross-platform native-addon smoke for the packaged desktop runtime. Run with
+// the target Electron executable in Node mode. Exercises node-pty, koffi, and
+// sharp against the exact Electron ABI shipped to users.
 'use strict'
 
 const { existsSync, readFileSync } = require('node:fs')
@@ -51,8 +48,12 @@ check('node-pty load', () => {
 
 check('node-pty real session', () => new Promise((resolve, reject) => {
   const pty = require(join(APP, 'node_modules', 'node-pty'))
-  const child = pty.spawn('cmd.exe', ['/d', '/s', '/c', 'echo PTY_OK'], {
-    cols: 80, rows: 24, name: 'xterm', cwd: process.env.TEMP,
+  const command = process.platform === 'win32' ? 'cmd.exe' : '/bin/bash'
+  const args = process.platform === 'win32'
+    ? ['/d', '/s', '/c', 'echo PTY_OK']
+    : ['--noprofile', '--norc', '-c', 'printf PTY_OK']
+  const child = pty.spawn(command, args, {
+    cols: 80, rows: 24, name: 'xterm', cwd: process.env.TEMP || process.cwd(),
   })
   let output = ''
   const timeout = setTimeout(() => reject(new Error(`timed out; output=${JSON.stringify(output.slice(0, 100))}`)), 20_000)
@@ -72,12 +73,24 @@ check('node-pty real session', () => new Promise((resolve, reject) => {
 
 check('koffi FFI call', () => {
   const koffi = require(join(APP, 'node_modules', 'koffi'))
-  const kernel32 = koffi.load('kernel32.dll')
-  const getPid = kernel32.func('unsigned int __stdcall GetCurrentProcessId()')
+  const library = process.platform === 'win32'
+    ? koffi.load('kernel32.dll')
+    : koffi.load(process.platform === 'darwin' ? '/usr/lib/libSystem.B.dylib' : 'libc.so.6')
+  const getPid = process.platform === 'win32'
+    ? library.func('unsigned int __stdcall GetCurrentProcessId()')
+    : library.func('int getpid()')
   const pid = getPid()
   if (typeof pid !== 'number' || pid === 0) throw new Error(`bad pid ${pid}`)
-  return `kernel32 GetCurrentProcessId=${pid}`
+  return `${process.platform === 'win32' ? 'kernel32 GetCurrentProcessId' : 'libc getpid'}=${pid}`
 })
+
+if (process.platform === 'linux') {
+  check('Landlock launcher payload', () => {
+    const launcher = join(APP, 'node_modules', '@deepseek-ai', 'node-addon-landlock-run-linux-x64', 'bin', 'landlock-run')
+    if (!existsSync(launcher)) throw new Error(`missing ${launcher}`)
+    return launcher
+  })
+}
 
 check('sharp resize', () => new Promise((resolve, reject) => {
   const sharp = require(join(APP, 'node_modules', 'sharp'))

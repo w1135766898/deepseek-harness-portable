@@ -52,6 +52,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "{#MyReleaseDir}\{#MyZipName}"; DestDir: "{tmp}"; Flags: deleteafterinstall nocompression
 Source: "{#MyIconPath}"; DestDir: "{app}\assets"; Flags: ignoreversion
+Source: "setup-runtime-preflight.ps1"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\start-desktop.cmd"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}"
@@ -69,6 +70,7 @@ Type: filesandordirs; Name: "{app}"
 [Code]
 var
   DeleteUserData: Boolean;
+  RuntimePreflightResultCode: Integer;
 
 function DshHomePath(): String;
 var
@@ -114,27 +116,54 @@ begin
     SamePath(DataRoot, DriveRoot);
 end;
 
+function QuotePowerShellArgument(const Value: String): String;
+begin
+  // A Windows filesystem path cannot contain a double quote.
+  Result := '"' + Value + '"';
+end;
+
+procedure RunRuntimePreflight(
+  const Mode, ResourcePath, DestinationPath, ReportPath: String
+);
+var
+  PowerShellExe, ScriptPath, Parameters: String;
+begin
+  PowerShellExe := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
+  if not FileExists(PowerShellExe) then
+    PowerShellExe := ExpandConstant('{sysnative}\WindowsPowerShell\v1.0\powershell.exe');
+  ScriptPath := AddBackslash(ExpandConstant('{app}')) + 'setup-runtime-preflight.ps1';
+  Parameters := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File ' +
+    QuotePowerShellArgument(ScriptPath) + ' -Mode ' + Mode + ' -InstallRoot ' +
+    QuotePowerShellArgument(ExpandConstant('{app}')) + ' -ResourcePath ' +
+    QuotePowerShellArgument(ResourcePath) + ' -DestinationPath ' +
+    QuotePowerShellArgument(DestinationPath) + ' -ReportPath ' +
+    QuotePowerShellArgument(ReportPath);
+  RuntimePreflightResultCode := -1;
+  Log('DSH_SETUP_TRACE preflight-files');
+  if not FileExists(PowerShellExe) then
+    Exit;
+  if not FileExists(ScriptPath) then
+    Exit;
+  Log('DSH_SETUP_TRACE preflight-exec');
+  if not Exec(PowerShellExe, Parameters, '', SW_HIDE,
+    ewWaitUntilTerminated, RuntimePreflightResultCode) then
+    Exit;
+  Log(Format('DSH_SETUP_TRACE preflight-exit-%d', [RuntimePreflightResultCode]));
+  Log('DSH_SETUP_TRACE preflight-return');
+end;
+
 procedure StopRunningApp;
 var
-  ResultCode: Integer;
-  TaskKillExe, CmdExe: String;
+  AppDir, RuntimePath, ReportPath: String;
 begin
-  TaskKillExe := ExpandConstant('{sys}\taskkill.exe');
-  if not FileExists(TaskKillExe) then
-    TaskKillExe := ExpandConstant('{sysnative}\taskkill.exe');
-  if FileExists(TaskKillExe) then
-  begin
-    if (not Exec(TaskKillExe, '/F /T /IM "DeepSeek Harness.exe"', '',
-      SW_HIDE, ewWaitUntilTerminated, ResultCode)) or (ResultCode <> 0) then
-    begin
-      // Run the same command through cmd.exe as a fallback. This preserves the
-      // quoted image name on Windows builds where CreateProcess argument
-      // parsing differs for an executable launched directly by Setup.
-      CmdExe := ExpandConstant('{cmd}');
-      Exec(CmdExe, '/C taskkill.exe /F /T /IM "DeepSeek Harness.exe"', '',
-        SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    end;
-  end;
+  AppDir := ExpandConstant('{app}');
+  RuntimePath := AddBackslash(AppDir) + 'runtime';
+  ReportPath := AddBackslash(AppDir) + 'setup-runtime-process-report.json';
+  Log('DSH_SETUP_TRACE stop-enter');
+  RunRuntimePreflight('Stop', RuntimePath, '', ReportPath);
+  Log('DSH_SETUP_TRACE stop-returned');
+  if RuntimePreflightResultCode <> 0 then
+    Log(Format('Runtime preflight could not stop every verified product process (exit code %d); the critical swap will check again.', [RuntimePreflightResultCode]));
 end;
 
 procedure RemoveDirectoryWithRetry(const Path: String);
@@ -148,7 +177,9 @@ begin
     DelTree(Path, True, True, True);
     if not DirExists(Path) then
       Exit;
+    Log('DSH_SETUP_TRACE postinstall-enter');
     StopRunningApp;
+    Log('DSH_SETUP_TRACE postinstall-stopped');
     Sleep(500);
   end;
 end;
@@ -216,26 +247,30 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
-  ZipPath, AppDir, StageDir, TarExe, RobocopyExe, TaskKillExe: String;
+  ZipPath, AppDir, StageDir, TarExe, RobocopyExe, RunId: String;
   MainExe, SafeLauncher, TransactionGate, PickerWorker, MarketplaceManifest, ReleaseManifest: String;
-  OldRuntime, NewRuntime, BackupRuntime, FailedRuntime: String;
+  OldRuntime, NewRuntime, BackupRuntime, FailedRuntime, LockReport, OrphanRuntime: String;
+  ReportText: AnsiString;
   HadOldRuntime, RuntimeSwapped: Boolean;
 begin
   if CurStep = ssPostInstall then
   begin
     ZipPath := ExpandConstant('{tmp}\{#MyZipName}');
     AppDir := ExpandConstant('{app}');
-    // Stop an existing shell before touching a previous staging tree. A prior
-    // interrupted Setup may have left a locked stage or backup directory;
-    // cleanup below retries after the same process-tree termination.
+    // Every Setup attempt uses fresh transaction paths. An interrupted older
+    // attempt may have a partially deleted fixed backup or stage; those paths
+    // are retained as evidence and can never collide with this swap.
     StopRunningApp;
     // Keep the staging tree on the target volume. The runtime activation below
     // uses RenameFile, which is an atomic same-volume move and cannot cross
     // from the system TEMP drive to a user-selected D: or E: installation.
-    StageDir := AddBackslash(AppDir) + '.setup-stage-{#MyAppVersion}';
-    RemoveDirectoryWithRetry(StageDir);
+    Log('DSH_SETUP_TRACE pre-runid');
+    RunId := GetMD5OfString(ExpandConstant('{tmp}'));
+    Log('DSH_SETUP_TRACE runid-' + RunId);
+    StageDir := AddBackslash(AppDir) + '.setup-stage-{#MyAppVersion}-' + RunId;
     if not ForceDirectories(StageDir) then
       RaiseException('Unable to create the setup staging directory.');
+    Log('DSH_SETUP_TRACE stage-created-' + StageDir);
 
     // Extract and validate the complete release in a separate directory on the
     // target volume. A corrupt or incomplete archive therefore cannot partially
@@ -273,28 +308,30 @@ begin
     if not FileExists(MarketplaceManifest) then
       RaiseException('Staged release is missing the plugin marketplace manifest.');
 
-    // Restart Manager cannot see files inside the ZIP. Stop the prior tree both
-    // before and after extraction, then require the runtime directory rename to
-    // succeed before exposing any staged payload. The retry loop handles the
-    // short release delay of Electron/Node DLL handles.
-    TaskKillExe := ExpandConstant('{sys}\taskkill.exe');
-    if FileExists(TaskKillExe) then
-    begin
-      Exec(TaskKillExe, '/F /T /IM "DeepSeek Harness.exe"', '', SW_HIDE,
-        ewWaitUntilTerminated, ResultCode);
-      Sleep(1500);
-    end;
-
     OldRuntime := AddBackslash(AppDir) + 'runtime';
     NewRuntime := AddBackslash(StageDir) + 'runtime';
-    BackupRuntime := AddBackslash(AppDir) + '.setup-runtime-backup';
+    BackupRuntime := AddBackslash(AppDir) + '.setup-runtime-backup-' + RunId;
     FailedRuntime := AddBackslash(StageDir) + 'failed-runtime';
-    StopRunningApp;
-    RemoveDirectoryWithRetry(BackupRuntime);
+    LockReport := AddBackslash(AppDir) + 'setup-runtime-lock-report.json';
+    RunRuntimePreflight('Stop', OldRuntime, BackupRuntime, LockReport);
+    if RuntimePreflightResultCode <> 0 then
+      RaiseException(Format('Unable to stop the verified DeepSeek Harness process tree (exit code %d). Details: %s', [RuntimePreflightResultCode, LockReport]));
     HadOldRuntime := DirExists(OldRuntime);
     RuntimeSwapped := False;
     if HadOldRuntime and (not RenameDirectoryWithRetry(OldRuntime, BackupRuntime)) then
-      RaiseException('The existing runtime is still in use. Close DeepSeek Harness and retry Setup.');
+    begin
+      RunRuntimePreflight('Diagnose', OldRuntime, BackupRuntime, LockReport);
+      if RuntimePreflightResultCode <> 0 then
+        Log(Format('Runtime lock diagnostics exited with code %d.', [RuntimePreflightResultCode]));
+      ReportText := '';
+      if not LoadStringFromFile(LockReport, ReportText) then
+        ReportText := 'The lock report could not be read.';
+      RaiseException(
+        'Unable to move the existing runtime.' + #13#10 +
+        'Source: ' + OldRuntime + #13#10 +
+        'Destination: ' + BackupRuntime + #13#10 +
+        'Lock report: ' + LockReport + #13#10#13#10 + ReportText);
+    end;
 
     if not RenameDirectoryWithRetry(NewRuntime, OldRuntime) then
     begin
@@ -325,7 +362,18 @@ begin
       RaiseException(GetExceptionMessage);
     end;
 
-    if HadOldRuntime then DelTree(BackupRuntime, True, True, True);
+    if HadOldRuntime then
+    begin
+      DelTree(BackupRuntime, True, True, True);
+      if DirExists(BackupRuntime) then
+      begin
+        OrphanRuntime := AddBackslash(AppDir) + '.setup-orphan-runtime-' + RunId;
+        if RenameFile(BackupRuntime, OrphanRuntime) then
+          Log('Retained an undeletable previous runtime as isolated evidence: ' + OrphanRuntime)
+        else
+          Log('Unable to delete or isolate the unique previous runtime: ' + BackupRuntime);
+      end;
+    end;
     // Setup has just committed a fully validated runtime. Do not let an old,
     // abandoned portable-updater journal roll this installation backward on
     // the first shortcut launch.

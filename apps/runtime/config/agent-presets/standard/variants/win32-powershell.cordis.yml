@@ -1,0 +1,3 @@
+# Native Win32 shell implementation for the Standard contract.
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'

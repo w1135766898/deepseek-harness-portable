@@ -17,7 +17,8 @@ test('terminateProcessTree terminates child and its grandchildren', async () => 
     `
       const { spawn } = require('node:child_process');
       const sub = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
-      process.stdout.write(String(sub.pid) + '\\n');
+      // fs.writeSync avoids stdout stream buffering in WSL's Node runtime.
+      require('node:fs').writeSync(1, String(sub.pid) + '\\n');
       setInterval(() => {}, 1000);
     `,
   ], {

@@ -17,6 +17,87 @@ const SUPPORTED_MIME_TYPES = {
 	".gif": "image/gif"
 };
 const DEFAULT_SYSTEM_PROMPT = "You are an expert visual analysis assistant. Carefully inspect the provided image and describe its contents with high accuracy. Extract any visible text, user interface elements, error messages, code blocks, diagrams, chart trends, or technical layouts.";
+/** Return the earliest actionable configuration problem, if any. */
+function visionConfigurationIssue(cfg) {
+	if (!cfg.enabled) return {
+		message: "Vision Bridge is currently disabled. Enable it in Settings → Plugins before sending images to a text-only model.",
+		reason: "VISION_BRIDGE_DISABLED"
+	};
+	if (cfg.provider !== "ollama" && (!cfg.apiKey || cfg.apiKey.trim().length === 0)) return {
+		message: "Vision Bridge has no API key configured. Add one in Settings → Plugins before sending images to a text-only model.",
+		reason: "VISION_BRIDGE_NOT_CONFIGURED"
+	};
+}
+/** Analyze validated image bytes through the configured OpenAI-compatible endpoint. */
+async function analyzeImageBytes(input, cfg, signal) {
+	const issue = visionConfigurationIssue(cfg);
+	if (issue !== void 0) return {
+		ok: false,
+		model: cfg.model,
+		...issue
+	};
+	const endpoint = `${cfg.baseURL.replace(/\/+$/, "")}/chat/completions`;
+	const requestPrompt = input.prompt && input.prompt.trim().length > 0 ? input.prompt.trim() : "Please analyze and describe the contents of this image in detail.";
+	const headers = { "Content-Type": "application/json" };
+	if (cfg.apiKey && cfg.apiKey.trim().length > 0) headers.Authorization = `Bearer ${cfg.apiKey.trim()}`;
+	const payload = {
+		model: cfg.model,
+		messages: [{
+			role: "system",
+			content: cfg.prompt && cfg.prompt.trim().length > 0 ? cfg.prompt.trim() : DEFAULT_SYSTEM_PROMPT
+		}, {
+			role: "user",
+			content: [{
+				type: "text",
+				text: requestPrompt
+			}, {
+				type: "image_url",
+				image_url: { url: `data:${input.mediaType};base64,${Buffer.from(input.data).toString("base64")}` }
+			}]
+		}],
+		temperature: .1
+	};
+	const timeoutSignal = AbortSignal.timeout(cfg.timeoutMs);
+	const combinedSignal = signal === void 0 ? timeoutSignal : AbortSignal.any([signal, timeoutSignal]);
+	try {
+		const response = await fetch(endpoint, {
+			method: "POST",
+			headers,
+			body: JSON.stringify(payload),
+			redirect: "error",
+			signal: combinedSignal
+		});
+		if (!response.ok) {
+			const errorText = await response.text().catch(() => "");
+			const truncated = errorText.length > 300 ? `${errorText.slice(0, 300)}...` : errorText;
+			return {
+				ok: false,
+				message: `Vision API call failed with HTTP ${response.status}: ${truncated}`,
+				model: cfg.model,
+				reason: "VISION_ANALYSIS_FAILED"
+			};
+		}
+		const content = (await response.json()).choices?.[0]?.message?.content;
+		if (!content || typeof content !== "string") return {
+			ok: false,
+			message: "Vision API returned an empty or invalid response.",
+			model: cfg.model,
+			reason: "VISION_ANALYSIS_FAILED"
+		};
+		return {
+			ok: true,
+			text: content,
+			model: cfg.model
+		};
+	} catch (error) {
+		return {
+			ok: false,
+			message: `Vision inspection failed: ${error instanceof Error ? error.message : String(error)}`,
+			model: cfg.model,
+			reason: "VISION_ANALYSIS_FAILED"
+		};
+	}
+}
 /**
 * Detect image MIME type from its file extension.
 * @param filePath - Path to the file.
@@ -35,15 +116,9 @@ function mimeTypeForPath(filePath) {
 */
 async function executeViewImage(args, exec, getConfig) {
 	const cfg = getConfig();
-	if (!cfg.enabled) return {
-		text: "Error: Vision Bridge is currently disabled. Enable it in Settings → Plugins.",
-		model: cfg.model,
-		path: args.path,
-		bytes: 0,
-		isError: true
-	};
-	if (cfg.provider !== "ollama" && (!cfg.apiKey || cfg.apiKey.trim().length === 0)) return {
-		text: "Error: Vision Bridge has no API key configured. Please set your API key in Settings → Plugins.",
+	const configIssue = visionConfigurationIssue(cfg);
+	if (configIssue !== void 0) return {
+		text: `Error: ${configIssue.message}`,
 		model: cfg.model,
 		path: args.path,
 		bytes: 0,
@@ -88,72 +163,23 @@ async function executeViewImage(args, exec, getConfig) {
 		isError: true
 	};
 	const buffer = await readFile(targetPath);
-	const dataUrl = `data:${mime};base64,${buffer.toString("base64")}`;
-	const endpoint = `${cfg.baseURL.replace(/\/+$/, "")}/chat/completions`;
-	const requestPrompt = args.prompt && args.prompt.trim().length > 0 ? args.prompt.trim() : "Please analyze and describe the contents of this image in detail.";
-	const headers = { "Content-Type": "application/json" };
-	if (cfg.apiKey && cfg.apiKey.trim().length > 0) headers.Authorization = `Bearer ${cfg.apiKey.trim()}`;
-	const payload = {
-		model: cfg.model,
-		messages: [{
-			role: "system",
-			content: cfg.prompt && cfg.prompt.trim().length > 0 ? cfg.prompt.trim() : DEFAULT_SYSTEM_PROMPT
-		}, {
-			role: "user",
-			content: [{
-				type: "text",
-				text: requestPrompt
-			}, {
-				type: "image_url",
-				image_url: { url: dataUrl }
-			}]
-		}],
-		temperature: .1
+	const analysis = await analyzeImageBytes({
+		data: buffer,
+		mediaType: mime,
+		...args.prompt === void 0 ? {} : { prompt: args.prompt }
+	}, cfg, exec.signal);
+	return analysis.ok ? {
+		text: analysis.text,
+		model: analysis.model,
+		path: targetPath,
+		bytes: buffer.length
+	} : {
+		text: analysis.message,
+		model: analysis.model,
+		path: targetPath,
+		bytes: buffer.length,
+		isError: true
 	};
-	const timeoutSignal = AbortSignal.timeout(cfg.timeoutMs);
-	const combinedSignal = exec.signal ? AbortSignal.any([exec.signal, timeoutSignal]) : timeoutSignal;
-	try {
-		const response = await fetch(endpoint, {
-			method: "POST",
-			headers,
-			body: JSON.stringify(payload),
-			redirect: "error",
-			signal: combinedSignal
-		});
-		if (!response.ok) {
-			const errorText = await response.text().catch(() => "");
-			const truncated = errorText.length > 300 ? `${errorText.slice(0, 300)}...` : errorText;
-			return {
-				text: `Vision API call failed with HTTP ${response.status}: ${truncated}`,
-				model: cfg.model,
-				path: targetPath,
-				bytes: buffer.length,
-				isError: true
-			};
-		}
-		const content = (await response.json()).choices?.[0]?.message?.content;
-		if (!content || typeof content !== "string") return {
-			text: "Vision API returned an empty or invalid response.",
-			model: cfg.model,
-			path: targetPath,
-			bytes: buffer.length,
-			isError: true
-		};
-		return {
-			text: content,
-			model: cfg.model,
-			path: targetPath,
-			bytes: buffer.length
-		};
-	} catch (error) {
-		return {
-			text: `Vision inspection failed: ${error instanceof Error ? error.message : String(error)}`,
-			model: cfg.model,
-			path: targetPath,
-			bytes: buffer.length,
-			isError: true
-		};
-	}
 }
 /** Format output for model context. */
 function renderViewImageContent(result) {
@@ -165,6 +191,37 @@ function renderViewImageContent(result) {
 		type: "text",
 		text: `<image_analysis path="${result.path}" model="${result.model}">\n${result.text}\n</image_analysis>`
 	}];
+}
+//#endregion
+//#region lib/types/prompt-image.js
+/** Image-to-text routing for pasted prompt images. */
+function escapeAttribute(value) {
+	return value.replaceAll("&", "&amp;").replaceAll("\"", "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+/**
+* Create the host waterfall listener that supplies visual text to text-only
+* conversation models.
+* @param getConfig - live resolved Vision Bridge configuration.
+* @returns one image-to-text listener suitable for `ctx.on`.
+*/
+function createPromptImageTextHandler(getConfig) {
+	return async (request) => {
+		const analysis = await analyzeImageBytes({
+			data: request.data,
+			mediaType: request.mediaType,
+			...request.prompt.length === 0 ? {} : { prompt: request.prompt }
+		}, getConfig());
+		if (!analysis.ok) return {
+			kind: "reject",
+			message: analysis.message,
+			reason: analysis.reason
+		};
+		const name = request.name === void 0 ? "" : ` name="${escapeAttribute(request.name)}"`;
+		return {
+			kind: "accept",
+			text: `<image_analysis source="vision-bridge" model="${escapeAttribute(analysis.model)}"${name}>\n${analysis.text}\n</image_analysis>`
+		};
+	};
 }
 //#endregion
 //#region lib/types/index.js
@@ -186,6 +243,18 @@ const Config = z.object({
 });
 const VISION_SETTINGS_NAMESPACE = settingsNamespace("vision");
 const HOOKED = Symbol("vision-bridge-settings-hook");
+function activeSettingsContext(patch) {
+	const active = [...patch.owners.values()].at(-1);
+	if (active === void 0) throw new Error("vision settings API hook has no active owner");
+	return active;
+}
+function releaseSettingsApiPatch(api, patch, owner) {
+	patch.owners.delete(owner);
+	if (patch.owners.size > 0 || api[HOOKED] !== patch) return;
+	if (api.describe === patch.describe) api.describe = patch.rawDescribe;
+	if (api.mutate === patch.mutate) api.mutate = patch.rawMutate;
+	delete api[HOOKED];
+}
 /** Map one redacted settings descriptor to its wire view (matching api-proxy.ts:1929). */
 function toView(descriptor) {
 	return {
@@ -211,27 +280,41 @@ function apply(ctx, config = {}) {
 		},
 		onChange: () => {}
 	});
+	ctx.on("api-proxy/image-to-text", createPromptImageTextHandler(() => currentConfig()));
 	ctx.inject(["apiProxy", "settings"], (scopeCtx) => {
 		const settingsApi = scopeCtx.apiProxy.settings;
-		if (settingsApi === void 0 || settingsApi[HOOKED]) return;
-		settingsApi[HOOKED] = true;
-		const rawDescribe = settingsApi.describe.bind(settingsApi);
-		const rawMutate = settingsApi.mutate.bind(settingsApi);
-		settingsApi.describe = async (request) => {
-			const response = await rawDescribe(request);
+		const owner = Symbol("vision-bridge-settings-owner");
+		const existing = settingsApi[HOOKED];
+		if (existing !== void 0) {
+			existing.owners.set(owner, scopeCtx);
+			scopeCtx.effect(() => () => {
+				releaseSettingsApiPatch(settingsApi, existing, owner);
+			}, "vision-bridge: shared settings API hook owner");
+			return;
+		}
+		const rawDescribe = settingsApi.describe;
+		const rawMutate = settingsApi.mutate;
+		const patch = {
+			owners: /* @__PURE__ */ new Map([[owner, scopeCtx]]),
+			rawDescribe,
+			rawMutate
+		};
+		patch.describe = async (request) => {
+			const response = await rawDescribe.call(settingsApi, request);
 			if (!response.result.ok) return response;
 			const namespaces = response.result.value.namespaces;
 			if (namespaces.some((entry) => entry.ns === "vision")) return response;
-			const descriptor = scopeCtx.settings.describe({ redactSecrets: true }).find((entry) => String(entry.ns) === "vision");
+			const descriptor = activeSettingsContext(patch).settings.describe({ redactSecrets: true }).find((entry) => String(entry.ns) === "vision");
 			if (descriptor !== void 0) namespaces.push(toView(descriptor));
 			return response;
 		};
-		settingsApi.mutate = async (request) => {
+		patch.mutate = async (request) => {
 			const { ns, ops, expectedRevision } = request.payload;
-			if (ns !== "vision") return rawMutate(request);
+			if (ns !== "vision") return rawMutate.call(settingsApi, request);
 			try {
-				await scopeCtx.settings.mutate(VISION_SETTINGS_NAMESPACE, ops, expectedRevision);
-				const updated = scopeCtx.settings.describe({ redactSecrets: true }).find((entry) => String(entry.ns) === "vision");
+				const settings = activeSettingsContext(patch).settings;
+				await settings.mutate(VISION_SETTINGS_NAMESPACE, ops, expectedRevision);
+				const updated = settings.describe({ redactSecrets: true }).find((entry) => String(entry.ns) === "vision");
 				if (updated === void 0) throw new Error("vision namespace vanished after write");
 				return {
 					rpcId: request.rpcId,
@@ -254,6 +337,12 @@ function apply(ctx, config = {}) {
 				};
 			}
 		};
+		settingsApi[HOOKED] = patch;
+		settingsApi.describe = patch.describe;
+		settingsApi.mutate = patch.mutate;
+		scopeCtx.effect(() => () => {
+			releaseSettingsApiPatch(settingsApi, patch, owner);
+		}, "vision-bridge: settings API hook");
 	});
 	ctx.tools.register(defineTool({
 		name: "view_image",

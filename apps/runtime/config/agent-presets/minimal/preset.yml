@@ -1,0 +1,3 @@
+name: 极简模式
+description: 仅提供持久 Bash 与 str_replace_editor；运行时按能力选择原生 POSIX 或 WSL 兼容实现，均为无沙箱 Full Access。
+order: 3

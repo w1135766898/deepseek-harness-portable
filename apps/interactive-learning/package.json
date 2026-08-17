@@ -1,0 +1,101 @@
+{
+  "name": "@dsh-portable/interactive-learning",
+  "version": "0.1.0",
+  "description": "Installable Interactive Learning Agent experience pack for DeepSeek Harness",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "bin": {
+    "dsh-learning-preset": "lib/installer-cli.js",
+    "dsh-learning-eval": "lib/eval-cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./agent": {
+      "types": "./lib/types/agent.d.ts",
+      "default": "./lib/agent.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./protocol": {
+      "types": "./lib/types/protocol.d.ts",
+      "default": "./lib/protocol.js"
+    },
+    "./installer": {
+      "types": "./lib/types/installer.d.ts",
+      "default": "./lib/installer.js"
+    },
+    "./preset": {
+      "types": "./lib/types/preset.d.ts",
+      "default": "./lib/preset.js"
+    },
+    "./eval": {
+      "types": "./lib/types/eval.d.ts",
+      "default": "./lib/eval.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-tool",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-api-remotes"
+      ],
+      "platform": "web"
+    }
+  },
+  "files": [
+    "lib/**/*.js",
+    "lib/**/*.js.map",
+    "lib/types/**/*.d.ts",
+    "preset/**/*",
+    "README.zh.md"
+  ],
+  "scripts": {
+    "build": "tsc -b && tsdown",
+    "bundle": "tsdown",
+    "test": "vitest run",
+    "eval": "node lib/eval-cli.js",
+    "test:package": "node tests/package-lifecycle.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-agent": "workspace:^",
+    "@deepseek-ai/dsh-client-locale": "workspace:^",
+    "@deepseek-ai/dsh-client-runtime": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-conversation": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-primitives": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-tool": "workspace:^",
+    "@deepseek-ai/dsh-host-apiproxy": "workspace:^",
+    "@deepseek-ai/dsh-client-modules": "workspace:^",
+    "@deepseek-ai/dsh-llm": "workspace:^",
+    "@deepseek-ai/dsh-system-prompt": "workspace:^",
+    "@deepseek-ai/dsh-tools": "workspace:^",
+    "@deepseek-ai/dsh-user-questions": "workspace:^",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-api-remotes": "workspace:^",
+    "@testing-library/react": "^16.1.0",
+    "@types/node": "^22.20.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "react-dom": "^18.3.1",
+    "tsdown": "^0.22.2",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.8"
+  }
+}

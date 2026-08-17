@@ -94,7 +94,7 @@ if (!isSplashDocument) {
     modalReturnFocus: undefined,
     updateState: '',
     updateProgress: undefined,
-    wslState: undefined,
+    shellState: undefined,
   }
 
   function desktopText(key, values = {}) {
@@ -106,12 +106,12 @@ if (!isSplashDocument) {
   }
 
   function shellEnvironmentLabel() {
-    if (state.wslState?.native === true) {
-      return desktopText('wsl.menuStatusNative', { distros: state.wslState?.distros?.[0] || 'POSIX Bash' })
+    if (state.shellState?.native === true) {
+      return desktopText('shell.menuStatusNative', { distros: state.shellState?.distros?.[0] || 'POSIX Bash' })
     }
-    return state.wslState?.available
-      ? desktopText('wsl.menuStatusReady', { distros: state.wslState?.distros?.[0] || 'Linux' })
-      : desktopText('wsl.menuStatusMissing')
+    return state.shellState?.available
+      ? desktopText('shell.menuStatusReady', { distros: state.shellState?.distros?.[0] || 'Linux' })
+      : desktopText('shell.menuStatusMissing')
   }
 
   let chromeRefs
@@ -316,7 +316,7 @@ if (!isSplashDocument) {
     return '<div class="dsh-update-progress" role="group" aria-label="' + escapeHtml(desktopText('release.progressAria')) + '"><div class="dsh-progress-track"><span class="dsh-progress-fill' + (value === undefined ? ' indeterminate' : '') + '"' + (value === undefined ? '' : ' style="width:' + value + '%"') + '></span></div><span class="dsh-progress-label" role="status">' + (value === undefined ? escapeHtml(desktopText('release.processing')) : value + '%') + '</span></div>'
   }
 
-  function renderHeroCard() {
+  function renderPortableUpdateCard() {
     const data = state.data || {}
     const persisted = data.updateStatus || {}
     const live = state.updateProgress || {}
@@ -332,6 +332,7 @@ if (!isSplashDocument) {
     const size = formatBytes(update.assetSize)
     const versionLabel = targetVersion ? 'v' + escapeHtml(targetVersion) : escapeHtml(desktopText('release.currentVersion'))
     const button = (action, label, kind = 'primary', extra = '') => '<button class="dsh-button ' + kind + '" type="button" data-action="' + action + '"' + extra + '>' + escapeHtml(label) + '</button>'
+    const rollbackButton = manualDownload ? '' : button('desktop-rollback', desktopText('release.rollback'), 'ghost')
 
     if (state.modalLoading) return '<div class="dsh-loading">' + escapeHtml(desktopText('release.loadingLocal')) + '</div>'
     if (data.error) return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.unavailableKicker')) + '</span><strong>' + escapeHtml(desktopText('release.unavailableTitle')) + '</strong><small>' + escapeHtml(data.error) + '</small></div><div class="dsh-hero-actions">' + button('retry-update', desktopText('release.retry'), 'secondary') + '</div></section>'
@@ -339,12 +340,12 @@ if (!isSplashDocument) {
       const retryButtons = (data.updateAvailable
         ? button('update', desktopText(manualDownload ? 'release.openDownloadPage' : 'release.downloadNow'), 'primary') + button('retry-update', desktopText('release.retry'), 'secondary')
         : button('retry-update', desktopText('release.retry'), 'secondary')
-      ) + button('desktop-rollback', desktopText('release.rollback'), 'ghost')
+      ) + rollbackButton
       return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(rawState === 'interrupted' ? desktopText('release.failedInterrupted') : desktopText('release.transactionError')) + '</span><strong>' + escapeHtml(message || desktopText('release.failedFallback')) + '</strong><small>' + escapeHtml(desktopText('release.targetVersion', { version: versionLabel })) + '</small></div><div class="dsh-hero-actions">' + retryButtons + '</div></section>'
     }
-    if (completed && targetVersion === (data.currentVersion || '')) return '<section class="dsh-hero-card dsh-hero-card-success" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.completed')) + '</span><strong>' + escapeHtml(desktopText('release.updatedTo', { version: versionLabel })) + '</strong><small>' + escapeHtml(message || desktopText('release.healthPassed')) + '</small></div><div class="dsh-hero-actions">' + button('desktop-rollback', desktopText('release.rollback'), 'ghost') + '</div></section>'
+    if (completed && targetVersion === (data.currentVersion || '')) return '<section class="dsh-hero-card dsh-hero-card-success" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.completed')) + '</span><strong>' + escapeHtml(desktopText('release.updatedTo', { version: versionLabel })) + '</strong><small>' + escapeHtml(message || desktopText('release.healthPassed')) + '</small></div><div class="dsh-hero-actions">' + rollbackButton + '</div></section>'
     if (rawState === 'rolled-back') return '<section class="dsh-hero-card dsh-hero-card-success" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.rollbackKicker')) + '</span><strong>' + escapeHtml(desktopText('release.rolledBackTo', { version: versionLabel })) + '</strong><small>' + escapeHtml(message || desktopText('release.rollbackDetail')) + '</small></div></section>'
-    if (rawState === 'idle' && !data.updateAvailable) return '<section class="dsh-hero-card dsh-hero-card-neutral" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.normalKicker')) + '</span><strong>' + escapeHtml(desktopText('release.latestVersion', { version: data.currentVersion || '—' })) + '</strong><small>' + escapeHtml(data.offline ? desktopText('release.offline') : desktopText('release.noUpdate')) + '</small></div></section>'
+    if (rawState === 'idle' && !data.updateAvailable) return '<section class="dsh-hero-card dsh-hero-card-neutral" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.portableChannel')) + '</span><strong>' + escapeHtml(desktopText('release.latestVersion', { version: data.currentVersion || '—' })) + '</strong><small>' + escapeHtml(data.sourceErrors?.portable || (data.offline ? desktopText('release.offline') : desktopText('release.noUpdate'))) + '</small></div></section>'
 
     const title = ready
       ? desktopText('release.readyTitle', { version: versionLabel })
@@ -356,6 +357,25 @@ if (!isSplashDocument) {
       ? button('update', desktopText(manualDownload ? 'release.openDownloadPage' : 'release.restartUpdate'))
       : (busy ? button('update', desktopText('release.updating'), 'secondary', ' disabled') : button('update', desktopText(manualDownload ? 'release.openDownloadPage' : 'release.downloadNow')))
     return '<section class="dsh-hero-card ' + (ready ? 'dsh-hero-card-ready' : (busy ? 'dsh-hero-card-progress' : 'dsh-hero-card-available')) + '" role="status" aria-live="polite"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(ready ? desktopText('release.verifiedKicker') : (busy ? desktopText('release.transactionEngine') : desktopText('release.foundNew'))) + '</span><strong>' + escapeHtml(title) + '</strong><small>' + escapeHtml(detail) + '</small>' + (busy ? renderProgress({ ...persisted, ...live }) : '') + '</div><div class="dsh-hero-actions">' + action + '</div></section>'
+  }
+
+  function renderKernelUpdateCard() {
+    const data = state.data || {}
+    const currentVersion = data.localInfo?.kernelVersion || 'unknown'
+    const update = data.kernelUpdate
+    const sourceError = data.sourceErrors?.kernel
+    if (sourceError && !update) {
+      return '<section class="dsh-hero-card dsh-hero-card-error" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.kernelChannel')) + '</span><strong>' + escapeHtml(desktopText('release.kernelUnavailable')) + '</strong><small>' + escapeHtml(sourceError) + '</small></div></section>'
+    }
+    if (!data.kernelUpdateAvailable || !update) {
+      return '<section class="dsh-hero-card dsh-hero-card-neutral" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.kernelChannel')) + '</span><strong>' + escapeHtml(desktopText('release.kernelLatestVersion', { version: currentVersion })) + '</strong><small>' + escapeHtml(desktopText('release.noUpdate')) + '</small></div></section>'
+    }
+    const releaseUrl = String(update.releaseUrl || '')
+    return '<section class="dsh-hero-card dsh-hero-card-available" role="status"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.kernelChannel')) + '</span><strong>' + escapeHtml(desktopText('release.kernelAvailableTitle', { current: currentVersion, version: update.version || '—' })) + '</strong><small>' + escapeHtml(desktopText('release.kernelAvailableDetail')) + '</small></div><div class="dsh-hero-actions"><button class="dsh-button secondary" type="button" data-action="kernel-update" data-release-url="' + escapeHtml(releaseUrl) + '">' + escapeHtml(desktopText('release.kernelUpdateAction')) + '</button></div></section>'
+  }
+
+  function renderHeroCard() {
+    return '<div class="dsh-update-channels">' + renderPortableUpdateCard() + renderKernelUpdateCard() + '</div>'
   }
 
   function renderModalContent() {
@@ -408,6 +428,7 @@ if (!isSplashDocument) {
     const release = notice.release || {}
     const status = notice.updateStatus || {}
     const isAvailable = notice.kind === 'available'
+    const isKernelAvailable = notice.kind === 'kernel-available'
     const isProblem = notice.kind === 'failed' || notice.kind === 'interrupted'
     const isRolledBack = notice.kind === 'rolled-back'
     const isReady = notice.kind === 'ready'
@@ -415,7 +436,12 @@ if (!isSplashDocument) {
     let desc
     let actionLabel
     let action
-    if (isAvailable) {
+    if (isKernelAvailable) {
+      title = desktopText('release.kernelAvailableTitle', { current: notice.currentVersion || '—', version: release.version || '—' })
+      desc = desktopText('release.kernelAvailableDetail')
+      actionLabel = desktopText('release.kernelUpdateAction')
+      action = 'kernel-update'
+    } else if (isAvailable) {
       title = desktopText('release.availableTitle', { version: 'v' + (release.version || '—') })
       desc = desktopText('release.openFeaturesDescription')
       actionLabel = desktopText('release.openFeatures')
@@ -447,7 +473,8 @@ if (!isSplashDocument) {
     const neverButton = isReady
       ? ''
       : '<button class="dsh-button ghost dsh-notice-never" data-action="notice-dismiss-forever" data-version="' + escapeHtml(version) + '"' + (version ? '' : ' disabled') + '>' + escapeHtml(desktopText('release.never')) + '</button>'
-    return actionMarkup + '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">' + logoMarkup('dsh-notice-logo') + '</div><div class="dsh-notice-copy"><strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(desc) + '</span></div><button class="dsh-button primary" data-action="' + action + '">' + escapeHtml(actionLabel) + '</button>' + neverButton + '<button class="dsh-notice-dismiss" data-action="notice-dismiss" aria-label="' + escapeHtml(desktopText('release.closeNotice')) + '">×</button></section>'
+    const releaseUrl = isKernelAvailable ? ' data-release-url="' + escapeHtml(release.releaseUrl || '') + '"' : ''
+    return actionMarkup + '<section class="dsh-notice" role="status"><div class="dsh-notice-icon">' + logoMarkup('dsh-notice-logo') + '</div><div class="dsh-notice-copy"><strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(desc) + '</span></div><button class="dsh-button primary" data-action="' + action + '"' + releaseUrl + '>' + escapeHtml(actionLabel) + '</button>' + neverButton + '<button class="dsh-notice-dismiss" data-action="notice-dismiss" aria-label="' + escapeHtml(desktopText('release.closeNotice')) + '">×</button></section>'
   }
 
   function showActionMessage(message) {
@@ -577,7 +604,7 @@ if (!isSplashDocument) {
     state.menuFocusIndex = 0
     state.menuSubmenu = undefined
     state.menuPosition = menuPositionForButton(anchor || findNativeMenuAnchor())
-    ipcRenderer.send('desktop:wsl:probe')
+    ipcRenderer.send('desktop:shell:probe')
     render()
   }
 
@@ -597,8 +624,8 @@ if (!isSplashDocument) {
     if (!state.menuOpen) return ''
     const position = state.menuPosition || defaultMenuPosition()
     const positionMarkup = ' style="--dsh-menu-left:' + escapeHtml(position.left) + 'px;--dsh-menu-top:' + escapeHtml(position.top) + 'px"'
-    const wslLabel = shellEnvironmentLabel()
-    const hasUpdate = Boolean(state.data?.updateAvailable || (state.notice && state.notice.kind === 'available') || state.updateProgress)
+    const shellLabel = shellEnvironmentLabel()
+    const hasUpdate = Boolean(state.data?.updateAvailable || state.data?.kernelUpdateAvailable || (state.notice && (state.notice.kind === 'available' || state.notice.kind === 'kernel-available')) || state.updateProgress)
     const updateDot = hasUpdate ? '<span class="dsh-menu-dot" title="' + escapeHtml(desktopText('release.foundNew')) + '">●</span>' : ''
 
     const isRecentOpen = state.menuSubmenu === 'workspaces'
@@ -610,7 +637,7 @@ if (!isSplashDocument) {
 
     const maintenanceSubmenu = '<div class="dsh-submenu-wrapper dsh-maintenance-submenu' + (isMaintenanceOpen ? ' is-expanded' : '') + '" aria-hidden="' + (isMaintenanceOpen ? 'false' : 'true') + '">' +
       '<div class="dsh-submenu-container">' +
-        '<button class="dsh-menu-item" data-action="desktop-wsl-guide" role="menuitem"><span>' + MENU_ICONS.terminal + '</span><strong>' + escapeHtml(wslLabel) + '</strong></button>' +
+        '<button class="dsh-menu-item" data-action="desktop-shell-guide" role="menuitem"><span>' + MENU_ICONS.terminal + '</span><strong>' + escapeHtml(shellLabel) + '</strong></button>' +
         '<button class="dsh-menu-item" data-action="desktop-export-diagnostics" role="menuitem"><span>' + MENU_ICONS.log + '</span><strong>' + escapeHtml(desktopText('menu.copyDiagnostics')) + '</strong></button>' +
         '<button class="dsh-menu-item" data-action="desktop-clear-storage" role="menuitem"><span>' + MENU_ICONS.resetCache + '</span><strong>' + escapeHtml(desktopText('menu.clearWebStorage')) + '</strong></button>' +
       '</div>' +
@@ -625,7 +652,7 @@ if (!isSplashDocument) {
       '<button class="dsh-menu-item" data-action="desktop-restart" role="menuitem"><span>' + MENU_ICONS.restart + '</span><strong>' + escapeHtml(desktopText('menu.restartHarness')) + '</strong><kbd>Ctrl+Shift+R</kbd></button>' +
       '<button class="dsh-menu-item" data-action="desktop-open-browser" role="menuitem"><span>' + MENU_ICONS.browser + '</span><strong>' + escapeHtml(desktopText('menu.openBrowser')) + '</strong></button>' +
       '<div class="dsh-menu-separator"></div>' +
-      '<button class="dsh-menu-item dsh-menu-item-expandable' + (isMaintenanceOpen ? ' is-expanded' : '') + '" data-action="desktop-toggle-maintenance" role="menuitem" aria-expanded="' + (isMaintenanceOpen ? 'true' : 'false') + '"><span>' + MENU_ICONS.advanced + '</span><strong>' + escapeHtml(desktopText('menu.maintenance')) + '</strong>' + (!state.wslState?.available && state.wslState?.native !== true && state.wslState !== undefined ? '<span class="dsh-menu-warn">⚠️</span>' : '') + MENU_ICONS.expandChevron + '</button>' +
+      '<button class="dsh-menu-item dsh-menu-item-expandable' + (isMaintenanceOpen ? ' is-expanded' : '') + '" data-action="desktop-toggle-maintenance" role="menuitem" aria-expanded="' + (isMaintenanceOpen ? 'true' : 'false') + '"><span>' + MENU_ICONS.advanced + '</span><strong>' + escapeHtml(desktopText('menu.maintenance')) + '</strong>' + (!state.shellState?.available && state.shellState?.native !== true && state.shellState !== undefined ? '<span class="dsh-menu-warn">⚠️</span>' : '') + MENU_ICONS.expandChevron + '</button>' +
       maintenanceSubmenu +
       '<div class="dsh-menu-separator"></div>' +
       '<button class="dsh-menu-item" data-action="desktop-about-and-updates" role="menuitem"><span>' + MENU_ICONS.about + '</span><strong>' + escapeHtml(desktopText('menu.aboutAndUpdates')) + '</strong>' + updateDot + '</button>' +
@@ -715,11 +742,11 @@ if (!isSplashDocument) {
       maintenanceWrapper.setAttribute('aria-hidden', isMaintenanceOpen ? 'false' : 'true')
     }
 
-    const wslItem = popover.querySelector('[data-action="desktop-wsl-guide"] strong')
-    if (wslItem) {
-      const wslLabel = shellEnvironmentLabel()
-      if (wslItem.textContent !== wslLabel) {
-        wslItem.textContent = wslLabel
+    const shellItem = popover.querySelector('[data-action="desktop-shell-guide"] strong')
+    if (shellItem) {
+      const shellLabel = shellEnvironmentLabel()
+      if (shellItem.textContent !== shellLabel) {
+        shellItem.textContent = shellLabel
       }
     }
   }
@@ -938,8 +965,8 @@ if (!isSplashDocument) {
       sendMenuAction('reload-ui')
       return
     }
-    if (action === 'desktop-wsl-guide') {
-      sendMenuAction('wsl-guide')
+    if (action === 'desktop-shell-guide') {
+      sendMenuAction('shell-guide')
       return
     }
     if (action === 'desktop-export-diagnostics') {
@@ -977,7 +1004,9 @@ if (!isSplashDocument) {
     if (action === 'open-release-notes') {
       const context = state.notice?.kind === 'available'
         ? { mode: 'update', currentVersion: state.notice.currentVersion, update: state.notice.release }
-        : { mode: 'history', selectedVersion: state.notice?.currentVersion }
+        : (state.notice?.kind === 'kernel-available'
+            ? { mode: 'update', kernelUpdate: state.notice.release }
+            : { mode: 'history', selectedVersion: state.notice?.currentVersion })
       dismissNotice()
       void openModal(context)
       return
@@ -1008,6 +1037,12 @@ if (!isSplashDocument) {
       state.updateState = ready ? desktopText('release.restartUpdate') : desktopText('update.prepareDownload')
       render()
       sendAction('update', { targetVersion: version })
+      return
+    }
+    if (action === 'kernel-update') {
+      const releaseUrl = target.dataset.releaseUrl || state.data?.kernelUpdate?.releaseUrl || state.notice?.release?.releaseUrl || ''
+      dismissNotice()
+      sendAction('kernel-update', { releaseUrl })
       return
     }
     if (action === 'show-about') {
@@ -1099,7 +1134,8 @@ if (!isSplashDocument) {
     .dsh-modal-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; scroll-behavior: smooth; padding: 20px 24px 30px; -webkit-overflow-scrolling: touch; }
     .dsh-modal-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 10px 20px; border-top: 1px solid rgba(42, 61, 92, .1); }
     .dsh-footer-left, .dsh-footer-right { gap: 6px; }
-    .dsh-hero-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; padding: 16px; border: 1px solid rgba(61, 129, 240, .25); border-left-width: 4px; border-radius: 12px; background: rgba(74, 143, 247, .08); }
+    .dsh-update-channels { display: grid; gap: 10px; margin-bottom: 20px; }
+    .dsh-hero-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0; padding: 16px; border: 1px solid rgba(61, 129, 240, .25); border-left-width: 4px; border-radius: 12px; background: rgba(74, 143, 247, .08); }
     .dsh-hero-card-success, .dsh-hero-card-ready { border-color: rgba(40, 116, 81, .28); border-left-color: #287451; background: #e5f6ee; }
     .dsh-hero-card-error { border-color: rgba(224, 71, 95, .28); border-left-color: #bd3e56; background: #fde8ed; }
     .dsh-hero-card-available, .dsh-hero-card-progress { border-left-color: #307bf0; }
@@ -1294,8 +1330,8 @@ if (!isSplashDocument) {
     state.recentWorkspaces = Array.isArray(payload?.workspaces) ? payload.workspaces.filter(value => typeof value === 'string') : []
     render()
   })
-  ipcRenderer.on('desktop:wsl-state', (_event, payload) => {
-    state.wslState = payload && typeof payload === 'object' ? payload : undefined
+  ipcRenderer.on('desktop:shell-state', (_event, payload) => {
+    state.shellState = payload && typeof payload === 'object' ? payload : undefined
     render()
   })
   ipcRenderer.on('desktop:harness-status', (_event, status) => {

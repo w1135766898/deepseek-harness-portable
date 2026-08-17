@@ -1,10 +1,10 @@
-# DeepSeek Harness Desktop v1.2.7
+# DeepSeek Harness Desktop v1.3.0
 
 [English](RELEASE_NOTES.md)
 
 Windows x64 便携版与 macOS Apple Silicon DMG · 2026-08-17
 
-这是 v1.2.7 桌面版发布，新增 macOS Apple Silicon Electron/DMG 通道和原生 POSIX 极简模式，同时保留 Windows 便携流程、内置插件市场、已验证更新恢复与可复现打包缓存。
+这是 v1.3.0 桌面版发布，新增 macOS Apple Silicon Electron/DMG 通道和原生 POSIX 极简模式，同时保留 Windows 便携流程、内置插件市场、已验证更新恢复与可复现打包缓存。
 
 ## 新功能与体验优化
 
@@ -20,10 +20,10 @@ Windows x64 便携版与 macOS Apple Silicon DMG · 2026-08-17
 
 ## 组件版本
 
-- 分发：1.2.7
+- 分发：1.3.0
 - 桌面外壳：0.1.0-shell.2
 - 内核：0.1.0-rc.5（@deepseek-ai/dsh-web-app）
-- 标签：v1.2.7
+- 标签：v1.3.0
 
 ## 校验和与安全
 

@@ -1,0 +1,44 @@
+id: minimal
+
+contract:
+  persona:
+    complete: true
+    includeRuntimeContext: false
+  tools:
+    exact:
+      - persistent-shell
+      - str-replace-editor
+    exactRows:
+      - persistent-bash
+      - str-replace-editor
+  compaction: disabled
+  filesystem: bare-local
+  sandbox: danger-full-access
+
+variants:
+  - id: posix-bash
+    supportLevel: native
+    requires:
+      - terminal.pty.native
+      - shell.bash
+      - shell.bash.persistent
+      - process.posix-signals
+    config: variants/posix-bash.cordis.yml
+    provides:
+      shell: persistent-bash
+
+  - id: win32-wsl
+    supportLevel: compatible
+    requires:
+      - terminal.conpty
+      - wsl.executable
+      - wsl.distribution
+      - wsl.bash
+      - wsl.bash.persistent
+      - bridge.win32-wsl-terminal
+    limitations:
+      - process-tree-unobservable
+      - process-group-signals-emulated
+    config: variants/win32-wsl.cordis.yml
+    provides:
+      shell: persistent-bash

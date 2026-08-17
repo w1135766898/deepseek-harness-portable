@@ -17,7 +17,6 @@ const {
 } = require('node:fs')
 const { homedir } = require('node:os')
 const { basename, delimiter, dirname, join, resolve } = require('node:path')
-const { readyUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 const { messageForLocale, localeFromSystem, normalizePreference } = require('./desktop-locale.cjs')
 const { readLocalePreference } = require('./desktop-locale-store.cjs')
 const { countSectionBadges, mergeReleaseHistory, normalizeReleaseNotes, normalizeReleaseNotesHistory } = require('./release-notes.cjs')
@@ -26,7 +25,14 @@ const { evaluateUpdateLaunch } = require('./update-transaction.cjs')
 const { buildUpdaterArguments, launchDetachedPowerShell, resolveUpdaterEntrypoint } = require('./update-launcher.cjs')
 const { ensureUnifiedDshHome } = require('./workspace-service.cjs')
 const { readConfigStore, updateConfigStore } = require('./config-store.cjs')
-const { terminateProcessTree } = require('./process-tree.cjs')
+const { RuntimeSupervisor, runtimeStartupError } = require('./runtime-supervisor.cjs')
+const { settingsDescribeUrl } = require('./ready-url.cjs')
+const { shouldDisplayDesktopWindows } = require('./window-display-policy.cjs')
+const {
+  iconPath: platformIconPath,
+  nativeShellState,
+  releaseAssetName: platformReleaseAssetName,
+} = require('./desktop-platform.cjs')
 const {
   GITHUB_MIRROR_PREFIXES,
   compareVersions,
@@ -40,6 +46,12 @@ const {
   normalizeSha256,
   parseSha256Sums,
 } = require('./update-client.cjs')
+const {
+  OFFICIAL_KERNEL_REPO,
+  PORTABLE_RELEASE_REPO,
+  evaluateUpdateChannels,
+  queryLatestOfficialKernelRelease,
+} = require('./update-sources.cjs')
 const {
   DEFAULT_WINDOW_BOUNDS,
   restoreWindowBounds,
@@ -57,7 +69,6 @@ const {
 } = require('./update-status.cjs')
 
 const APP_NAME = 'DeepSeek Harness'
-const PORTABLE_RELEASE_REPO = 'wsnxxxs/deepseek-harness-portable'
 const RELEASE_MANIFEST_NAME = 'release-manifest.json'
 const RELEASE_NOTES_FILE_NAME = 'release-notes.json'
 const RELEASE_HISTORY_FILE_NAME = 'release-history.json'
@@ -88,11 +99,16 @@ const HARNESS_HEALTH_FAILURE_THRESHOLD = 3
 // checks from the menu are never throttled.
 const AUTO_UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 const SUPPORTS_IN_APP_PORTABLE_UPDATE = process.platform === 'win32'
+const DISPLAY_DESKTOP_WINDOWS = shouldDisplayDesktopWindows()
+
+if (!DISPLAY_DESKTOP_WINDOWS) {
+  globalThis.__DSH_ELECTRON_TEST__ = { app, BrowserWindow, Menu, installed: true }
+}
 
 let window
 let splashWindow
 let tray
-let harness
+const runtimeSupervisor = new RuntimeSupervisor({ logger: console })
 let harnessUrl
 let restartPromise
 let activeStartupController
@@ -352,6 +368,10 @@ function syncSplashBounds() {
 
 function showSplashWindow() {
   if (splashWindow === undefined || splashWindow.isDestroyed()) return
+  if (!DISPLAY_DESKTOP_WINDOWS) {
+    splashWindow.hide()
+    return
+  }
   syncSplashBounds()
   const theme = themePayload()
   if (typeof splashWindow.setBackgroundColor === 'function') {
@@ -457,7 +477,7 @@ function startupLog(error) {
   return lastStartupLog
 }
 
-let wslState = { probed: false, available: false, distros: [] }
+let shellState = nativeShellState()
 
 /**
  * Decode the raw stdout of `wsl.exe -l -q`. WSL writes UTF-16LE (optionally
@@ -489,15 +509,11 @@ function decodeWslDistroList(raw) {
     .filter(Boolean)
 }
 
-function probeWslAvailability() {
+function probeShellAvailability() {
   if (process.platform !== 'win32') {
-    wslState = {
-      probed: true,
-      available: true,
-      native: true,
-      distros: [process.platform === 'darwin' ? 'macOS Bash' : 'POSIX Bash'],
-    }
-    return Promise.resolve(wslState)
+    shellState = nativeShellState()
+    sendShellState()
+    return Promise.resolve(shellState)
   }
   return new Promise((resolve) => {
     const child = spawn('wsl.exe', ['-l', '-q'], {
@@ -507,43 +523,44 @@ function probeWslAvailability() {
     const chunks = []
     child.stdout.on('data', chunk => { chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)) })
     child.on('error', () => {
-      wslState = { probed: true, available: false, distros: [] }
-      sendWslState()
-      resolve(wslState)
+      shellState = { ...nativeShellState('win32'), probed: true, available: false, distros: [] }
+      sendShellState()
+      resolve(shellState)
     })
     child.on('close', code => {
       const distros = decodeWslDistroList(Buffer.concat(chunks))
       const isAvailable = code === 0 && distros.length > 0
-      wslState = { probed: true, available: isAvailable, distros }
-      sendWslState()
-      resolve(wslState)
+      shellState = { ...nativeShellState('win32'), probed: true, available: isAvailable, distros }
+      sendShellState()
+      resolve(shellState)
     })
   })
 }
 
-function sendWslState(sender) {
+function sendShellState(sender) {
   if (sender !== undefined) {
-    try { sender.send('desktop:wsl-state', wslState) } catch {}
+    try { sender.send('desktop:shell-state', shellState) } catch {}
   } else {
-    sendRenderer('desktop:wsl-state', wslState)
+    sendRenderer('desktop:shell-state', shellState)
   }
 }
 
-async function showWslGuideDialog(sender) {
-  await probeWslAvailability().catch(() => {})
-  const isInstalled = wslState.available
-  const isNative = wslState.native === true
-  const title = desktopText(isNative ? 'wsl.nativeDialogTitle' : 'wsl.dialogTitle')
+async function showShellGuideDialog(sender) {
+  await probeShellAvailability().catch(() => {})
+  const isInstalled = shellState.available
+  const isNative = shellState.native === true
+  const nativeMissing = isNative && !isInstalled
+  const title = desktopText(isNative ? 'shell.nativeDialogTitle' : 'shell.dialogTitle')
   const message = isInstalled
-    ? desktopText(isNative ? 'wsl.nativeMessage' : 'wsl.readyMessage')
-    : desktopText('wsl.missingMessage')
+    ? desktopText(isNative ? 'shell.nativeMessage' : 'shell.readyMessage')
+    : desktopText(nativeMissing ? 'shell.nativeMissingMessage' : 'shell.missingMessage')
   const detail = isInstalled
-    ? desktopText(isNative ? 'wsl.nativeDetail' : 'wsl.readyDetail', { distros: wslState.distros.join(', ') || 'Default' })
-    : desktopText('wsl.missingDetail')
+    ? desktopText(isNative ? 'shell.nativeDetail' : 'shell.readyDetail', { distros: shellState.distros.join(', ') || 'Default' })
+    : desktopText(nativeMissing ? 'shell.nativeMissingDetail' : 'shell.missingDetail')
 
   const buttons = isInstalled || isNative
-    ? [desktopText('wsl.ok')]
-    : [desktopText('wsl.copyInstallCmd'), desktopText('wsl.ok')]
+    ? [desktopText('shell.ok')]
+    : [desktopText('shell.copyInstallCmd'), desktopText('shell.ok')]
 
   const result = await dialog.showMessageBox(visibleDialogParent(), {
     type: isInstalled ? 'info' : 'warning',
@@ -555,9 +572,9 @@ async function showWslGuideDialog(sender) {
     cancelId: isInstalled || isNative ? 0 : 1,
   })
 
-  if (!isInstalled && result.response === 0) {
+  if (!isInstalled && !nativeMissing && result.response === 0) {
     clipboard.writeText('wsl --install')
-    sendDiagnosticsResult(sender, { kind: 'success', message: desktopText('wsl.cmdCopied') })
+    sendDiagnosticsResult(sender, { kind: 'success', message: desktopText('shell.cmdCopied') })
   }
 }
 
@@ -574,7 +591,7 @@ function diagnosticsText() {
     `Chrome: ${process.versions.chrome || 'unknown'}`,
     `Node: ${process.versions.node || 'unknown'}`,
     `Platform: ${process.platform} ${process.arch}`,
-    `${wslState.native ? 'POSIX shell' : 'WSL available'}: ${wslState.available ? `yes (${wslState.distros.join(', ') || 'default'})` : 'no'}`,
+    `Shell: ${shellState.native ? 'POSIX shell' : 'WSL available'}: ${shellState.available ? `yes (${shellState.distros.join(', ') || 'default'})` : 'no'}`,
     `Workspace: ${workspace()}`,
     `Harness URL: ${harnessUrl || 'unavailable'}`,
     '',
@@ -750,24 +767,18 @@ function recentWorkspaceMenuItems() {
 }
 
 function iconPath() {
-  const assets = join(__dirname, '..', 'assets')
-  if (process.platform === 'darwin') {
-    const macIcon = join(assets, 'deepseek.icns')
-    if (existsSync(macIcon)) return macIcon
-  }
-  return join(assets, 'deepseek.ico')
+  return platformIconPath(join(__dirname, '..', 'assets'))
 }
 
 function showWindow() {
   if (window === undefined || window.isDestroyed()) return
+  if (!DISPLAY_DESKTOP_WINDOWS) {
+    window.hide()
+    return
+  }
   if (window.isMinimized()) window.restore()
   window.show()
   window.focus()
-}
-
-function appendOutput(current, chunk) {
-  const output = current + chunk.toString()
-  return output.length > 32_768 ? output.slice(-32_768) : output
 }
 
 function writeAtomicTextFile(filePath, content) {
@@ -786,28 +797,17 @@ function writeAtomicTextFile(filePath, content) {
   }
 }
 
-function stopHarness() {
-  return new Promise((resolve, reject) => {
-    stopHarnessHealthMonitor()
-    harnessUrl = undefined
-    if (harness === undefined) {
-      resolve()
-      return
-    }
-    const child = harness
-    terminateProcessTree(child.pid, { timeoutMs: STOP_TIMEOUT_MS, logger: console }).then(stopped => {
-      // Only forget the child once its tree is actually gone; clearing the
-      // reference earlier would let a crash in this window orphan the engine.
-      if (harness === child) harness = undefined
-      if (!stopped) {
-        const error = new Error(`Harness process tree did not exit within ${STOP_TIMEOUT_MS}ms (pid ${child.pid}).`)
-        console.error(error.message)
-        reject(error)
-        return
-      }
-      resolve()
-    }, reject)
-  })
+async function stopHarness() {
+  stopHarnessHealthMonitor()
+  harnessUrl = undefined
+  const pid = runtimeSupervisor.pid
+  if (pid === undefined) return
+  const stopped = await runtimeSupervisor.stop({ timeoutMs: STOP_TIMEOUT_MS })
+  if (!stopped) {
+    const error = new Error(`Harness process tree did not exit within ${STOP_TIMEOUT_MS}ms (pid ${pid}).`)
+    console.error(error.message)
+    throw error
+  }
 }
 
 function resolveUnifiedDshHome() {
@@ -830,22 +830,17 @@ function initializeDesktopLocale() {
 
 function startHarness(cwd, signal) {
   lastStartupLog = ''
-  const packagedBin = join(__dirname, '..', 'lib', 'packaged-bin.js')
-  if (!existsSync(packagedBin)) {
-    throw new Error(`The packaged Harness entry is missing: ${packagedBin}. Run the desktop build first.`)
-  }
-
+  const packagedBin = app.isPackaged
+    ? join(__dirname, '..', 'lib', 'packaged-bin.js')
+    : join(__dirname, '..', '..', 'runtime', 'lib', 'packaged-bin.js')
   const portableRoot = dirname(dirname(process.execPath))
   const inheritedPath = process.env.PATH || process.env.Path || ''
   const commandPath = existsSync(join(portableRoot, 'dsh.cmd'))
     ? [portableRoot, inheritedPath].filter(Boolean).join(delimiter)
     : inheritedPath
-  const child = spawn(process.execPath, [
-    packagedBin,
-    '--host',
-    '127.0.0.1',
-    '--no-open',
-  ], {
+  return runtimeSupervisor.start({
+    executable: process.execPath,
+    entry: packagedBin,
     cwd,
     env: {
       ...process.env,
@@ -855,93 +850,40 @@ function startHarness(cwd, signal) {
       PATH: commandPath,
       Path: commandPath,
     },
-    stdio: ['ignore', 'pipe', 'pipe'],
-    windowsHide: true,
-  })
-  harness = child
-
-  return new Promise((resolve, reject) => {
-    let output = ''
-    let ready = false
-    let readyUrlSeen = false
-    let portIssueShown = false
-    let settled = false
-    let timeout
-    let slowTimer
-    const finish = (callback) => {
-      if (settled) return
-      settled = true
-      clearTimeout(timeout)
-      clearTimeout(slowTimer)
-      signal?.removeEventListener('abort', onAbort)
-      callback()
-    }
-    const fail = (message, code) => finish(() => {
-      lastStartupLog = output
-      reject(makeStartupError(message, output, code))
-    })
-    const failAfterTermination = (message, code) => {
-      void terminateProcessTree(child.pid, { timeoutMs: STOP_TIMEOUT_MS, logger: console })
-        .finally(() => fail(message, code))
-    }
-    const onAbort = () => {
-      failAfterTermination(desktopText('startup.cancelled'), 'ABORTED')
-    }
-    timeout = setTimeout(() => {
-      failAfterTermination(desktopText('startup.timedOut'), 'TIMEOUT')
-    }, STARTUP_TIMEOUT_MS)
-    timeout.unref()
-    slowTimer = setTimeout(() => {
-      if (portIssueShown) return
+    signal,
+    startupTimeoutMs: STARTUP_TIMEOUT_MS,
+    slowStartupMs: SLOW_STARTUP_MS,
+    stopTimeoutMs: STOP_TIMEOUT_MS,
+    cancelledMessage: desktopText('startup.cancelled'),
+    onListening: () => sendSplashStatus('workspace'),
+    onDiagnostic: diagnostic => {
+      console.warn(`${APP_NAME} runtime diagnostic: ${JSON.stringify(diagnostic)}`)
+    },
+    onPortIssue: output => {
+      sendSplashState(startupStateForError(runtimeStartupError('Port is already in use.', output, 'EADDRINUSE')))
+    },
+    onSlow: output => {
       sendSplashState({
         kind: 'slow',
         title: desktopText('startup.slowTitle'),
         message: desktopText('startup.slowMessage'),
         log: output,
       })
-    }, SLOW_STARTUP_MS)
-    slowTimer.unref()
-    signal?.addEventListener('abort', onAbort, { once: true })
-    if (signal?.aborted) onAbort()
-    const onOutput = chunk => {
-      output = appendOutput(output, chunk)
-      if (!portIssueShown && isPortInUseError(makeStartupError('', output, 'EADDRINUSE'))) {
-        portIssueShown = true
-        sendSplashState(startupStateForError(makeStartupError('Port is already in use.', output, 'EADDRINUSE')))
+    },
+    onUnexpectedExit: ({ code, output }) => {
+      stopHarnessHealthMonitor('disconnected', desktopText('health.exited', { code: code ?? 'unknown' }))
+      harnessUrl = undefined
+      if (!quitting && !restarting) {
+        void dialog.showMessageBox({
+          type: 'error',
+          title: desktopText('startup.exitedTitle'),
+          message: desktopText('startup.exitedMessage', { code, output }),
+        })
       }
-      const url = readyUrl(output)
-      if (url !== undefined && !readyUrlSeen) {
-        readyUrlSeen = true
-        sendSplashStatus('workspace')
-        void waitForOnboardingReady(url).then(
-          () => {
-            ready = true
-            finish(() => resolve(url))
-          },
-          error => {
-            failAfterTermination(`Harness host was not ready: ${error instanceof Error ? error.message : String(error)}`, 'NOT_READY')
-          },
-        )
-      }
-    }
-    child.stdout.on('data', onOutput)
-    child.stderr.on('data', onOutput)
-    child.once('error', error => fail(`Harness failed to start: ${error.message}`, error.code || 'SPAWN_ERROR'))
-    child.once('exit', code => {
-      if (harness === child) {
-        stopHarnessHealthMonitor('disconnected', desktopText('health.exited', { code: code ?? 'unknown' }))
-        harness = undefined
-        harnessUrl = undefined
-        if (!quitting && !restarting && ready) {
-          void dialog.showMessageBox({
-            type: 'error',
-            title: desktopText('startup.exitedTitle'),
-            message: desktopText('startup.exitedMessage', { code, output }),
-          })
-        }
-      }
-      if (!ready) fail(`Harness exited before it was ready (code ${code}).`, `EXIT_${code ?? 'UNKNOWN'}`)
-    })
+    },
+  }).catch(error => {
+    lastStartupLog = runtimeSupervisor.startupLog
+    throw error
   })
 }
 
@@ -968,7 +910,7 @@ async function restartHarness() {
       if (window !== undefined && !window.isDestroyed()) {
         await window.loadURL(url)
         if (controller.signal.aborted) throw makeStartupError('Harness startup was cancelled.', lastStartupLog, 'ABORTED')
-        if (!window.isVisible()) window.show()
+        if (DISPLAY_DESKTOP_WINDOWS && !window.isVisible()) window.show()
         await waitForRendererFirstPaint()
         if (controller.signal.aborted) throw makeStartupError('Harness startup was cancelled.', lastStartupLog, 'ABORTED')
         sendSplashState({ kind: 'ready' })
@@ -981,7 +923,7 @@ async function restartHarness() {
       harnessUrl = undefined
       if (!controller.signal.aborted) {
         stopHarnessHealthMonitor('disconnected', errorMessage(error))
-        if (harness !== undefined) await stopHarness()
+        if (runtimeSupervisor.running) await stopHarness()
       }
       if (!controller.signal.aborted && !quitting) sendSplashState(startupStateForError(error))
       return false
@@ -1051,7 +993,7 @@ function reloadRenderer() {
 }
 
 async function probeHarnessHealth(url) {
-  const response = await fetch(`${url}/api/settings.describe`, {
+  const response = await fetch(settingsDescribeUrl(url), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -1204,9 +1146,10 @@ function getLocalReleaseInfo() {
   const packageManifest = readJsonIfPresent(join(__dirname, '..', 'package.json')) || {}
   const bundledReleaseNotes = readJsonIfPresent(join(__dirname, RELEASE_NOTES_FILE_NAME)) || {}
   const portableRoot = findPortableRoot(__dirname)
-  const releaseManifest = portableRoot === undefined
+  const releaseManifest = (portableRoot === undefined
     ? undefined
-    : readJsonIfPresent(join(portableRoot, RELEASE_MANIFEST_NAME))
+    : readJsonIfPresent(join(portableRoot, RELEASE_MANIFEST_NAME)))
+    || readJsonIfPresent(join(__dirname, '..', RELEASE_MANIFEST_NAME))
   const releaseNotesSource = releaseManifest?.releaseNotes || bundledReleaseNotes
   let appVersion
   try {
@@ -1259,10 +1202,7 @@ function safeHttpsUrl(value) {
 }
 
 function releaseAssetName(version) {
-  if (!isValidSemver(version) || version === '0.0.0') return undefined
-  return process.platform === 'darwin'
-    ? `DeepSeek-Harness-${version}-darwin-arm64.dmg`
-    : `DeepSeek-Harness-${version}-win32-x64.zip`
+  return platformReleaseAssetName(version, process.platform, process.arch)
 }
 
 function normalizePortableRelease(value) {
@@ -1274,12 +1214,11 @@ function normalizePortableRelease(value) {
   const targetAssetName = releaseAssetName(normalized.version)
   return {
     ...normalized,
-    // release-notes.cjs keeps the historical Windows ZIP fallback for the
-    // shared UI/tests. The desktop update lane must override that fallback on
-    // macOS so a raw release note cannot point the updater at a Windows ZIP.
-    assetName: process.platform === 'darwin'
-      ? targetAssetName || explicitAssetName || normalized.assetName
-      : explicitAssetName || normalized.assetName || targetAssetName,
+    // The shared release-notes parser has a historical Windows ZIP fallback.
+    // Never let that fallback leak into a Linux or macOS update lookup.
+    assetName: targetAssetName
+      || explicitAssetName
+      || (process.platform === 'win32' ? normalized.assetName : undefined),
     assetUrl: safeHttpsUrl(source.assetUrl || source.browser_download_url),
     assetDigest: typeof source.assetDigest === 'string' ? source.assetDigest.trim() : '',
     assetSize: Number(source.assetSize) || 0,
@@ -1292,7 +1231,7 @@ function normalizePortableRelease(value) {
 function releaseDownloadUrls(release) {
   const normalized = normalizePortableRelease(release)
   const directUrl = normalized.assetUrl || safeHttpsUrl(
-    `https://github.com/${PORTABLE_RELEASE_REPO}/releases/download/${encodeURIComponent(normalized.tagName)}/${encodeURIComponent(normalized.assetName || releaseAssetName(normalized.version) || `DeepSeek-Harness-${normalized.version}-win32-x64.zip`)}`,
+    `https://github.com/${PORTABLE_RELEASE_REPO}/releases/download/${encodeURIComponent(normalized.tagName)}/${encodeURIComponent(normalized.assetName || releaseAssetName(normalized.version) || '')}`,
   )
   return mirrorUrls(directUrl, GITHUB_MIRROR_PREFIXES)
 }
@@ -1455,12 +1394,20 @@ async function queryLatestVersion(options = {}) {
   })
 }
 
+async function queryLatestKernelVersion(options = {}) {
+  return queryLatestOfficialKernelRelease({
+    fetchJson,
+    timeoutMs: options?.timeoutMs || 6000,
+    urls: options?.urls,
+  })
+}
+
 async function queryReleaseHistory() {
   const apiUrl = `https://api.github.com/repos/${PORTABLE_RELEASE_REPO}/releases?per_page=${RELEASE_HISTORY_LIMIT}`
   const rawReleaseNotesUrl = `https://raw.githubusercontent.com/${PORTABLE_RELEASE_REPO}/main/apps/desktop/src/release-notes.json`
   const channels = [
-    { name: 'Portable Windows GitHub', url: apiUrl },
-    { name: 'Portable Windows GitHub mirror', url: `https://gh-proxy.com/${apiUrl}` },
+    { name: `${process.platform} GitHub`, url: apiUrl },
+    { name: `${process.platform} GitHub mirror`, url: `https://gh-proxy.com/${apiUrl}` },
   ]
 
   const apiHistoryPromise = Promise.any(channels.map(async channel => {
@@ -1473,8 +1420,8 @@ async function queryReleaseHistory() {
         const platformAsset = Array.isArray(release.assets)
           ? release.assets.find(asset => asset?.name === releaseAssetName(version))
           : undefined
-        // Do not advertise a Windows-only GitHub release as a macOS update.
-        if (process.platform === 'darwin' && platformAsset === undefined) return undefined
+        // Do not advertise a release without this platform's asset.
+        if (process.platform !== 'win32' && platformAsset === undefined) return undefined
         return normalizeReleaseNotes({
           ...release,
           releaseUrl: release.html_url || `https://github.com/${PORTABLE_RELEASE_REPO}/releases`,
@@ -1599,14 +1546,26 @@ async function buildReleaseNotesData(context = {}, options = {}) {
   }, localInfo.distributionVersion)
   const cached = cachedReleaseHistory()
   let remote = []
+  let kernelUpdate = context.kernelUpdate
+  const sourceErrors = { ...(context.sourceErrors || {}) }
   let offline = options.fetchRemote !== true
   if (options.fetchRemote === true) {
-    try {
-      remote = await queryReleaseHistory()
+    const [historyResult, kernelResult] = await Promise.allSettled([
+      queryReleaseHistory(),
+      queryLatestKernelVersion(),
+    ])
+    if (historyResult.status === 'fulfilled') {
+      remote = historyResult.value
+      delete sourceErrors.portable
       if (remote.length > 0) saveReleaseHistory(remote)
-    } catch {
-      offline = true
+    } else {
+      sourceErrors.portable = errorMessage(historyResult.reason)
     }
+    if (kernelResult.status === 'fulfilled') {
+      kernelUpdate = kernelResult.value
+      delete sourceErrors.kernel
+    } else sourceErrors.kernel = errorMessage(kernelResult.reason)
+    offline = historyResult.status === 'rejected' && kernelResult.status === 'rejected'
   }
 
   const update = context.update === undefined ? undefined : normalizePortableRelease(context.update)
@@ -1628,6 +1587,17 @@ async function buildReleaseNotesData(context = {}, options = {}) {
     latestRelease
       && compareVersions(latestRelease.version, localInfo.distributionVersion) > 0,
   )
+  const kernelUpdateAvailable = Boolean(
+    kernelUpdate
+      && isValidSemver(localInfo.kernelVersion)
+      && isValidSemver(kernelUpdate.version)
+      && evaluateUpdateChannels({
+        localDistributionVersion: localInfo.distributionVersion,
+        localKernelVersion: localInfo.kernelVersion,
+        portableRelease: latestRelease,
+        kernelRelease: kernelUpdate,
+      }).kernel.updateAvailable,
+  )
 
   return {
     mode: context.mode || 'history',
@@ -1638,7 +1608,10 @@ async function buildReleaseNotesData(context = {}, options = {}) {
     currentRelease,
     latestRelease: updateAvailable || context.mode === 'update' ? latestRelease : undefined,
     updateAvailable,
-    error: checkError,
+    kernelUpdate: kernelUpdateAvailable || context.mode === 'update' ? kernelUpdate : undefined,
+    kernelUpdateAvailable,
+    sourceErrors,
+    error: checkError || (offline ? [sourceErrors.portable, sourceErrors.kernel].filter(Boolean).join(' | ') : undefined),
     updateStatus: await getCurrentUpdateStatus(),
     selectedVersion: context.selectedVersion
       || (context.mode === 'update' ? latestRelease.version : currentRelease.version),
@@ -1986,7 +1959,7 @@ function registerReleaseNotesIpc() {
     event.sender.send('desktop:theme-changed', themePayload())
     event.sender.send('desktop:locale-changed', { locale: desktopLocale })
     event.sender.send('desktop:workspace:recents', recentWorkspacePayload())
-    event.sender.send('desktop:wsl-state', wslState)
+    event.sender.send('desktop:shell-state', shellState)
     restoreRendererZoom()
     event.sender.send('desktop:harness-status', harnessHealth)
     if (inAppNotice !== undefined) event.sender.send('desktop:notice', inAppNotice)
@@ -2067,8 +2040,8 @@ function registerReleaseNotesIpc() {
       exportDiagnostics(event.sender)
       return
     }
-    if (action.type === 'wsl-guide') {
-      void showWslGuideDialog(event.sender)
+    if (action.type === 'shell-guide') {
+      void showShellGuideDialog(event.sender)
       return
     }
     if (action.type === 'clear-storage') {
@@ -2084,9 +2057,9 @@ function registerReleaseNotesIpc() {
     }
   })
 
-  ipcMain.on('desktop:wsl:probe', event => {
+  ipcMain.on('desktop:shell:probe', event => {
     if (!isMainRenderer(event.sender)) return
-    void probeWslAvailability().then(() => sendWslState(event.sender)).catch(() => {})
+    void probeShellAvailability().then(() => sendShellState(event.sender)).catch(() => {})
   })
 
   ipcMain.on('desktop:zoom', (event, action = {}) => {
@@ -2130,6 +2103,12 @@ function registerReleaseNotesIpc() {
         ? action.targetVersion.trim()
         : (releaseNotesContext.update?.version || inAppNotice?.release?.version || '')
       void confirmAndStartPortableUpdate(event.sender, targetVersion)
+      return
+    }
+
+    if (action.type === 'kernel-update') {
+      const releaseUrl = action.releaseUrl || releaseNotesContext.kernelUpdate?.releaseUrl
+      openExternalSafe(releaseUrl || `https://github.com/${OFFICIAL_KERNEL_REPO}/releases`)
       return
     }
 
@@ -2235,7 +2214,7 @@ function triggerPortableUpdate(targetVersion, packagePath, expectedSha256, stagi
         packagePath,
         expectedSha256,
         stagingPath,
-        enginePid: harness?.pid,
+        enginePid: runtimeSupervisor.pid,
         shellPid: process.pid,
       })
       const launchResult = launchDetachedPowerShell({
@@ -2295,25 +2274,58 @@ function showAvailableUpdateNotice(latestInfo, currentVersion, force = false) {
   })
 }
 
-async function checkForUpdates(manual = true) {
-  const current = getLocalVersion()
-  try {
-    const latestInfo = await queryLatestVersion()
-    const hasUpdate = compareVersions(latestInfo.version, current) > 0
+function showAvailableKernelNotice(latestInfo, currentVersion, force = false) {
+  const config = readConfig()
+  if (!force && config.lastNotifiedKernelVersion === latestInfo.version) return
+  updateConfig({ lastNotifiedKernelVersion: latestInfo.version })
+  showInAppNotice({
+    kind: 'kernel-available',
+    currentVersion,
+    release: latestInfo,
+  })
+}
 
-    if (hasUpdate) {
-      if (manual) clearUpdateStatusForRetry()
-      showAvailableUpdateNotice(latestInfo, current, manual)
-      if (manual) openInAppReleaseNotes({ mode: 'update', currentVersion: current, update: latestInfo })
-      return
-    } else if (manual) {
-      openInAppReleaseNotes({ mode: 'history', selectedVersion: current })
-    }
-  } catch (error) {
-    if (manual) {
-      const detail = error instanceof Error ? error.message : String(error)
-      openInAppReleaseNotes({ mode: 'update', currentVersion: current, selectedVersion: current, checkError: detail, error: detail })
-    }
+async function checkForUpdates(manual = true) {
+  const localInfo = getLocalReleaseInfo()
+  const [portableResult, kernelResult] = await Promise.allSettled([
+    queryLatestVersion(),
+    queryLatestKernelVersion(),
+  ])
+  const portableRelease = portableResult.status === 'fulfilled' ? portableResult.value : undefined
+  const kernelRelease = kernelResult.status === 'fulfilled' ? kernelResult.value : undefined
+  const sourceErrors = {
+    ...(portableResult.status === 'rejected' ? { portable: errorMessage(portableResult.reason) } : {}),
+    ...(kernelResult.status === 'rejected' ? { kernel: errorMessage(kernelResult.reason) } : {}),
+  }
+  let channels = {
+    portable: { updateAvailable: false },
+    kernel: { updateAvailable: false },
+  }
+  if (isValidSemver(localInfo.distributionVersion) && isValidSemver(localInfo.kernelVersion)) {
+    channels = evaluateUpdateChannels({
+      localDistributionVersion: localInfo.distributionVersion,
+      localKernelVersion: localInfo.kernelVersion,
+      portableRelease,
+      kernelRelease,
+    })
+  }
+
+  if (channels.portable.updateAvailable) {
+    if (manual) clearUpdateStatusForRetry()
+    showAvailableUpdateNotice(portableRelease, localInfo.distributionVersion, manual)
+  } else if (channels.kernel.updateAvailable) {
+    showAvailableKernelNotice(kernelRelease, localInfo.kernelVersion, manual)
+  }
+
+  if (manual) {
+    openInAppReleaseNotes({
+      mode: channels.portable.updateAvailable || channels.kernel.updateAvailable || Object.keys(sourceErrors).length > 0 ? 'update' : 'history',
+      currentVersion: localInfo.distributionVersion,
+      selectedVersion: localInfo.distributionVersion,
+      update: channels.portable.updateAvailable ? portableRelease : undefined,
+      kernelUpdate: channels.kernel.updateAvailable ? kernelRelease : undefined,
+      sourceErrors,
+    })
   }
 }
 
@@ -2375,7 +2387,7 @@ async function triggerRollback() {
         rollback: true,
         statusFile: statusPath(userDataPath),
         relaunchAfterRollback: true,
-        enginePid: harness?.pid,
+        enginePid: runtimeSupervisor.pid,
         shellPid: process.pid,
       }),
       onLaunch: () => writeUpdateStatus(userDataPath, {
@@ -2585,10 +2597,17 @@ async function createApp() {
     return { action: 'deny' }
   })
 
-  tray = new Tray(nativeImage.createFromPath(iconPath()))
-  tray.setToolTip(APP_NAME)
-  tray.on('click', () => window !== undefined && window.isVisible() ? window.hide() : showWindow())
-  tray.on('double-click', () => showWindow())
+  try {
+    tray = new Tray(nativeImage.createFromPath(iconPath()))
+    tray.setToolTip(APP_NAME)
+    tray.on('click', () => window !== undefined && window.isVisible() ? window.hide() : showWindow())
+    tray.on('double-click', () => showWindow())
+  } catch (error) {
+    // Some Linux sessions expose no usable system tray (for example a bare
+    // Wayland compositor). The app menu and in-page menu remain available.
+    tray = undefined
+    console.warn(`System tray unavailable: ${errorMessage(error)}`)
+  }
   saveWorkspace(workspace())
   rebuildMenus()
 
@@ -2622,13 +2641,15 @@ async function createApp() {
   }, 4000).unref()
 }
 
-const portableLaunchGate = evaluateUpdateLaunch(findPortableRoot(__dirname), process.argv)
+const portableLaunchGate = process.platform === 'win32'
+  ? evaluateUpdateLaunch(findPortableRoot(__dirname), process.argv)
+  : { allowed: true }
 if (!portableLaunchGate.allowed) {
   dialog.showErrorBox(
     `${APP_NAME} update recovery required`,
     [
       'DeepSeek Harness cannot start while a portable update transaction is incomplete.',
-      '请从安装目录运行 start-desktop.cmd，让启动器等待更新完成或执行安全回滚。',
+      '请从安装目录运行 Windows 启动器，让启动器等待更新完成或执行安全回滚。',
       '',
       portableLaunchGate.reason,
     ].join('\n'),
@@ -2649,7 +2670,7 @@ if (!portableLaunchGate.allowed) {
       tray.destroy()
     }
     destroySplashWindow()
-    if (harness !== undefined) {
+    if (runtimeSupervisor.running) {
       event.preventDefault()
       void stopHarness().then(() => app.quit()).catch(error => {
         console.error('Failed to stop the Harness process tree during quit:', error)
@@ -2662,7 +2683,7 @@ if (!portableLaunchGate.allowed) {
   })
   app.whenReady()
     .then(() => {
-      void probeWslAvailability().catch(() => {})
+      void probeShellAvailability().catch(() => {})
       initializeDesktopLocale()
       return createApp()
     })

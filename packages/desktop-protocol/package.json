@@ -1,0 +1,21 @@
+{
+  "name": "@dsh-portable/desktop-protocol",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/index.cjs",
+  "types": "src/index.d.cts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.cts",
+      "default": "./src/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "node --test src/index.test.cjs"
+  }
+}
