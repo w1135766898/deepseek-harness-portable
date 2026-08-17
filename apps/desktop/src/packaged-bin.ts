@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Packaged boot entry for the portable Windows desktop web build. It boots
+ * Packaged boot entry for the desktop web build. It boots
  * the same `web` profile a source `dsh --profile web` invocation composes
  * (dsh-base + dsh-web-app bundle layers, the profile's own patch layer, the
  * `$DSH_HOME/cordis.patch.yml` layer, the agent-presets shipped root, and the

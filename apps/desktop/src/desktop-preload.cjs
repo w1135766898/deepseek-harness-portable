@@ -105,6 +105,15 @@ if (!isSplashDocument) {
     return getLocaleMessages(state.locale)
   }
 
+  function shellEnvironmentLabel() {
+    if (state.wslState?.native === true) {
+      return desktopText('wsl.menuStatusNative', { distros: state.wslState?.distros?.[0] || 'POSIX Bash' })
+    }
+    return state.wslState?.available
+      ? desktopText('wsl.menuStatusReady', { distros: state.wslState?.distros?.[0] || 'Linux' })
+      : desktopText('wsl.menuStatusMissing')
+  }
+
   let chromeRefs
   let menuMarkup
   let noticeMarkup
@@ -314,6 +323,7 @@ if (!isSplashDocument) {
     const rawState = live.state || persisted.state || (data.updateAvailable ? 'available' : 'idle')
     const targetVersion = live.targetVersion || persisted.targetVersion || data.latestRelease?.version || ''
     const update = data.latestRelease || data.currentRelease || {}
+    const manualDownload = data.portableUpdateSupported === false
     const message = live.label || live.message || persisted.message || state.updateState
     const busy = ['starting', 'checking', 'downloading', 'verifying', 'extracting', 'replacing'].includes(rawState)
     const ready = rawState === 'ready'
@@ -327,7 +337,7 @@ if (!isSplashDocument) {
     if (data.error) return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(desktopText('release.unavailableKicker')) + '</span><strong>' + escapeHtml(desktopText('release.unavailableTitle')) + '</strong><small>' + escapeHtml(data.error) + '</small></div><div class="dsh-hero-actions">' + button('retry-update', desktopText('release.retry'), 'secondary') + '</div></section>'
     if (failed) {
       const retryButtons = (data.updateAvailable
-        ? button('update', desktopText('release.downloadNow'), 'primary') + button('retry-update', desktopText('release.retry'), 'secondary')
+        ? button('update', desktopText(manualDownload ? 'release.openDownloadPage' : 'release.downloadNow'), 'primary') + button('retry-update', desktopText('release.retry'), 'secondary')
         : button('retry-update', desktopText('release.retry'), 'secondary')
       ) + button('desktop-rollback', desktopText('release.rollback'), 'ghost')
       return '<section class="dsh-hero-card dsh-hero-card-error" role="alert"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(rawState === 'interrupted' ? desktopText('release.failedInterrupted') : desktopText('release.transactionError')) + '</span><strong>' + escapeHtml(message || desktopText('release.failedFallback')) + '</strong><small>' + escapeHtml(desktopText('release.targetVersion', { version: versionLabel })) + '</small></div><div class="dsh-hero-actions">' + retryButtons + '</div></section>'
@@ -343,8 +353,8 @@ if (!isSplashDocument) {
       ? desktopText('release.readyDetail')
       : (busy ? (message || desktopText('release.busyDetail')) : desktopText('release.availableDetail') + (size ? ' · ' + size : ''))
     const action = ready
-      ? button('update', desktopText('release.restartUpdate'))
-      : (busy ? button('update', desktopText('release.updating'), 'secondary', ' disabled') : button('update', desktopText('release.downloadNow')))
+      ? button('update', desktopText(manualDownload ? 'release.openDownloadPage' : 'release.restartUpdate'))
+      : (busy ? button('update', desktopText('release.updating'), 'secondary', ' disabled') : button('update', desktopText(manualDownload ? 'release.openDownloadPage' : 'release.downloadNow')))
     return '<section class="dsh-hero-card ' + (ready ? 'dsh-hero-card-ready' : (busy ? 'dsh-hero-card-progress' : 'dsh-hero-card-available')) + '" role="status" aria-live="polite"><div class="dsh-hero-copy"><span class="dsh-status-kicker">' + escapeHtml(ready ? desktopText('release.verifiedKicker') : (busy ? desktopText('release.transactionEngine') : desktopText('release.foundNew'))) + '</span><strong>' + escapeHtml(title) + '</strong><small>' + escapeHtml(detail) + '</small>' + (busy ? renderProgress({ ...persisted, ...live }) : '') + '</div><div class="dsh-hero-actions">' + action + '</div></section>'
   }
 
@@ -587,9 +597,7 @@ if (!isSplashDocument) {
     if (!state.menuOpen) return ''
     const position = state.menuPosition || defaultMenuPosition()
     const positionMarkup = ' style="--dsh-menu-left:' + escapeHtml(position.left) + 'px;--dsh-menu-top:' + escapeHtml(position.top) + 'px"'
-    const wslLabel = state.wslState?.available
-      ? desktopText('wsl.menuStatusReady', { distros: state.wslState?.distros?.[0] || 'Linux' })
-      : desktopText('wsl.menuStatusMissing')
+    const wslLabel = shellEnvironmentLabel()
     const hasUpdate = Boolean(state.data?.updateAvailable || (state.notice && state.notice.kind === 'available') || state.updateProgress)
     const updateDot = hasUpdate ? '<span class="dsh-menu-dot" title="' + escapeHtml(desktopText('release.foundNew')) + '">●</span>' : ''
 
@@ -617,7 +625,7 @@ if (!isSplashDocument) {
       '<button class="dsh-menu-item" data-action="desktop-restart" role="menuitem"><span>' + MENU_ICONS.restart + '</span><strong>' + escapeHtml(desktopText('menu.restartHarness')) + '</strong><kbd>Ctrl+Shift+R</kbd></button>' +
       '<button class="dsh-menu-item" data-action="desktop-open-browser" role="menuitem"><span>' + MENU_ICONS.browser + '</span><strong>' + escapeHtml(desktopText('menu.openBrowser')) + '</strong></button>' +
       '<div class="dsh-menu-separator"></div>' +
-      '<button class="dsh-menu-item dsh-menu-item-expandable' + (isMaintenanceOpen ? ' is-expanded' : '') + '" data-action="desktop-toggle-maintenance" role="menuitem" aria-expanded="' + (isMaintenanceOpen ? 'true' : 'false') + '"><span>' + MENU_ICONS.advanced + '</span><strong>' + escapeHtml(desktopText('menu.maintenance')) + '</strong>' + (!state.wslState?.available && state.wslState !== undefined ? '<span class="dsh-menu-warn">⚠️</span>' : '') + MENU_ICONS.expandChevron + '</button>' +
+      '<button class="dsh-menu-item dsh-menu-item-expandable' + (isMaintenanceOpen ? ' is-expanded' : '') + '" data-action="desktop-toggle-maintenance" role="menuitem" aria-expanded="' + (isMaintenanceOpen ? 'true' : 'false') + '"><span>' + MENU_ICONS.advanced + '</span><strong>' + escapeHtml(desktopText('menu.maintenance')) + '</strong>' + (!state.wslState?.available && state.wslState?.native !== true && state.wslState !== undefined ? '<span class="dsh-menu-warn">⚠️</span>' : '') + MENU_ICONS.expandChevron + '</button>' +
       maintenanceSubmenu +
       '<div class="dsh-menu-separator"></div>' +
       '<button class="dsh-menu-item" data-action="desktop-about-and-updates" role="menuitem"><span>' + MENU_ICONS.about + '</span><strong>' + escapeHtml(desktopText('menu.aboutAndUpdates')) + '</strong>' + updateDot + '</button>' +
@@ -709,9 +717,7 @@ if (!isSplashDocument) {
 
     const wslItem = popover.querySelector('[data-action="desktop-wsl-guide"] strong')
     if (wslItem) {
-      const wslLabel = state.wslState?.available
-        ? desktopText('wsl.menuStatusReady', { distros: state.wslState?.distros?.[0] || 'Linux' })
-        : desktopText('wsl.menuStatusMissing')
+      const wslLabel = shellEnvironmentLabel()
       if (wslItem.textContent !== wslLabel) {
         wslItem.textContent = wslLabel
       }

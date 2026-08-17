@@ -65,7 +65,10 @@ const DESKTOP_PRELOAD_NAME = 'desktop-preload.cjs'
 const SPLASH_PAGE_NAME = 'splash.html'
 const RELEASE_HISTORY_LIMIT = 20
 const RECENT_WORKSPACES_LIMIT = 5
-const DESKTOP_TITLEBAR_HEIGHT = 36
+// The Windows shell hides the native title bar and reserves its 36px overlay
+// in the renderer. macOS keeps the native title bar, so the web surface must
+// not add a second synthetic title-bar gap.
+const DESKTOP_TITLEBAR_HEIGHT = process.platform === 'win32' ? 36 : 0
 const LIGHT_WINDOW_SURFACE = '#f4f7fb'
 const DARK_WINDOW_SURFACE = '#0c1220'
 const SLOW_STARTUP_MS = 10_000
@@ -84,6 +87,7 @@ const HARNESS_HEALTH_FAILURE_THRESHOLD = 3
 // Automatic background update checks are throttled to once per day; manual
 // checks from the menu are never throttled.
 const AUTO_UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
+const SUPPORTS_IN_APP_PORTABLE_UPDATE = process.platform === 'win32'
 
 let window
 let splashWindow
@@ -487,7 +491,12 @@ function decodeWslDistroList(raw) {
 
 function probeWslAvailability() {
   if (process.platform !== 'win32') {
-    wslState = { probed: true, available: true, distros: [] }
+    wslState = {
+      probed: true,
+      available: true,
+      native: true,
+      distros: [process.platform === 'darwin' ? 'macOS Bash' : 'POSIX Bash'],
+    }
     return Promise.resolve(wslState)
   }
   return new Promise((resolve) => {
@@ -523,15 +532,16 @@ function sendWslState(sender) {
 async function showWslGuideDialog(sender) {
   await probeWslAvailability().catch(() => {})
   const isInstalled = wslState.available
-  const title = desktopText('wsl.dialogTitle')
+  const isNative = wslState.native === true
+  const title = desktopText(isNative ? 'wsl.nativeDialogTitle' : 'wsl.dialogTitle')
   const message = isInstalled
-    ? desktopText('wsl.readyMessage')
+    ? desktopText(isNative ? 'wsl.nativeMessage' : 'wsl.readyMessage')
     : desktopText('wsl.missingMessage')
   const detail = isInstalled
-    ? desktopText('wsl.readyDetail', { distros: wslState.distros.join(', ') || 'Default' })
+    ? desktopText(isNative ? 'wsl.nativeDetail' : 'wsl.readyDetail', { distros: wslState.distros.join(', ') || 'Default' })
     : desktopText('wsl.missingDetail')
 
-  const buttons = isInstalled
+  const buttons = isInstalled || isNative
     ? [desktopText('wsl.ok')]
     : [desktopText('wsl.copyInstallCmd'), desktopText('wsl.ok')]
 
@@ -542,7 +552,7 @@ async function showWslGuideDialog(sender) {
     detail,
     buttons,
     defaultId: 0,
-    cancelId: isInstalled ? 0 : 1,
+    cancelId: isInstalled || isNative ? 0 : 1,
   })
 
   if (!isInstalled && result.response === 0) {
@@ -564,7 +574,7 @@ function diagnosticsText() {
     `Chrome: ${process.versions.chrome || 'unknown'}`,
     `Node: ${process.versions.node || 'unknown'}`,
     `Platform: ${process.platform} ${process.arch}`,
-    `WSL available: ${wslState.available ? `yes (${wslState.distros.join(', ') || 'default'})` : 'no'}`,
+    `${wslState.native ? 'POSIX shell' : 'WSL available'}: ${wslState.available ? `yes (${wslState.distros.join(', ') || 'default'})` : 'no'}`,
     `Workspace: ${workspace()}`,
     `Harness URL: ${harnessUrl || 'unavailable'}`,
     '',
@@ -740,7 +750,12 @@ function recentWorkspaceMenuItems() {
 }
 
 function iconPath() {
-  return join(__dirname, '..', 'assets', 'deepseek.ico')
+  const assets = join(__dirname, '..', 'assets')
+  if (process.platform === 'darwin') {
+    const macIcon = join(assets, 'deepseek.icns')
+    if (existsSync(macIcon)) return macIcon
+  }
+  return join(assets, 'deepseek.ico')
 }
 
 function showWindow() {
@@ -1243,12 +1258,28 @@ function safeHttpsUrl(value) {
   }
 }
 
+function releaseAssetName(version) {
+  if (!isValidSemver(version) || version === '0.0.0') return undefined
+  return process.platform === 'darwin'
+    ? `DeepSeek-Harness-${version}-darwin-arm64.dmg`
+    : `DeepSeek-Harness-${version}-win32-x64.zip`
+}
+
 function normalizePortableRelease(value) {
   const source = value && typeof value === 'object' ? value : {}
   const normalized = normalizeReleaseNotes(source)
+  const explicitAssetName = typeof source.assetName === 'string' && source.assetName.trim() !== ''
+    ? source.assetName.trim()
+    : undefined
+  const targetAssetName = releaseAssetName(normalized.version)
   return {
     ...normalized,
-    assetName: normalized.assetName || (isValidSemver(normalized.version) && normalized.version !== '0.0.0' ? `DeepSeek-Harness-${normalized.version}-win32-x64.zip` : undefined),
+    // release-notes.cjs keeps the historical Windows ZIP fallback for the
+    // shared UI/tests. The desktop update lane must override that fallback on
+    // macOS so a raw release note cannot point the updater at a Windows ZIP.
+    assetName: process.platform === 'darwin'
+      ? targetAssetName || explicitAssetName || normalized.assetName
+      : explicitAssetName || normalized.assetName || targetAssetName,
     assetUrl: safeHttpsUrl(source.assetUrl || source.browser_download_url),
     assetDigest: typeof source.assetDigest === 'string' ? source.assetDigest.trim() : '',
     assetSize: Number(source.assetSize) || 0,
@@ -1261,7 +1292,7 @@ function normalizePortableRelease(value) {
 function releaseDownloadUrls(release) {
   const normalized = normalizePortableRelease(release)
   const directUrl = normalized.assetUrl || safeHttpsUrl(
-    `https://github.com/${PORTABLE_RELEASE_REPO}/releases/download/${encodeURIComponent(normalized.tagName)}/${encodeURIComponent(normalized.assetName || `DeepSeek-Harness-${normalized.version}-win32-x64.zip`)}`,
+    `https://github.com/${PORTABLE_RELEASE_REPO}/releases/download/${encodeURIComponent(normalized.tagName)}/${encodeURIComponent(normalized.assetName || releaseAssetName(normalized.version) || `DeepSeek-Harness-${normalized.version}-win32-x64.zip`)}`,
   )
   return mirrorUrls(directUrl, GITHUB_MIRROR_PREFIXES)
 }
@@ -1369,10 +1400,11 @@ async function queryLatestVersion(options = {}) {
           const data = await fetchJson(url, timeoutMs, { headers: { 'Cache-Control': 'no-cache' } })
           const version = (data.tag_name || '').replace(/^v/i, '')
           if (!isValidSemver(version)) return
-          const zipAsset = Array.isArray(data.assets)
-            ? data.assets.find(asset => asset?.name === `DeepSeek-Harness-${version}-win32-x64.zip`)
+          const platformAssetName = releaseAssetName(version)
+          const platformAsset = Array.isArray(data.assets)
+            ? data.assets.find(asset => asset?.name === platformAssetName)
             : undefined
-          if (zipAsset === undefined) return
+          if (platformAsset === undefined) return
           const relUrl = data.html_url || `https://github.com/${PORTABLE_RELEASE_REPO}/releases`
           onCandidate({
             ...normalizeReleaseNotes({
@@ -1380,13 +1412,13 @@ async function queryLatestVersion(options = {}) {
               version,
               releaseUrl: relUrl,
               channel: url,
-              assetName: zipAsset.name,
+              assetName: platformAsset.name,
             }, version),
             channel: url,
-            assetName: zipAsset.name,
-            assetUrl: zipAsset.browser_download_url || '',
-            assetDigest: zipAsset.digest || '',
-            assetSize: Number(zipAsset.size) || 0,
+            assetName: platformAsset.name,
+            assetUrl: platformAsset.browser_download_url || '',
+            assetDigest: platformAsset.digest || '',
+            assetSize: Number(platformAsset.size) || 0,
             tagName: data.tag_name || `v${version}`,
           })
         } catch {}
@@ -1398,7 +1430,7 @@ async function queryLatestVersion(options = {}) {
           const version = typeof data?.version === 'string' ? data.version.replace(/^v/i, '').trim() : ''
           if (!isValidSemver(version)) return
           const tagName = `v${version}`
-          const assetName = `DeepSeek-Harness-${version}-win32-x64.zip`
+          const assetName = releaseAssetName(version)
           const relUrl = `https://github.com/${PORTABLE_RELEASE_REPO}/releases/tag/${tagName}`
           onCandidate({
             ...normalizeReleaseNotes({
@@ -1436,15 +1468,21 @@ async function queryReleaseHistory() {
     if (!Array.isArray(data)) throw new Error('Release history response was not an array')
     const releases = data
       .filter(release => release && !release.draft)
-      .map(release => normalizeReleaseNotes({
-        ...release,
-        releaseUrl: release.html_url || `https://github.com/${PORTABLE_RELEASE_REPO}/releases`,
-        channel: channel.name,
-        assetName: Array.isArray(release.assets)
-          ? release.assets.find(asset => asset?.name === `DeepSeek-Harness-${String(release.tag_name || '').replace(/^v/, '')}-win32-x64.zip`)?.name
-          : undefined,
-      }))
-      .filter(release => release.version !== '0.0.0' && isValidSemver(release.version))
+      .map(release => {
+        const version = String(release.tag_name || '').replace(/^v/, '')
+        const platformAsset = Array.isArray(release.assets)
+          ? release.assets.find(asset => asset?.name === releaseAssetName(version))
+          : undefined
+        // Do not advertise a Windows-only GitHub release as a macOS update.
+        if (process.platform === 'darwin' && platformAsset === undefined) return undefined
+        return normalizeReleaseNotes({
+          ...release,
+          releaseUrl: release.html_url || `https://github.com/${PORTABLE_RELEASE_REPO}/releases`,
+          channel: channel.name,
+          assetName: platformAsset?.name,
+        })
+      })
+      .filter(release => release !== undefined && release.version !== '0.0.0' && isValidSemver(release.version))
     if (releases.length === 0) throw new Error('Release history response was empty')
     return releases
   }))
@@ -1593,6 +1631,7 @@ async function buildReleaseNotesData(context = {}, options = {}) {
 
   return {
     mode: context.mode || 'history',
+    portableUpdateSupported: SUPPORTS_IN_APP_PORTABLE_UPDATE,
     offline,
     currentVersion: localInfo.distributionVersion,
     localInfo,
@@ -1910,6 +1949,16 @@ async function confirmAndStartPortableUpdate(sender, targetVersion) {
   }
   release = normalizePortableRelease(release)
   const effectiveTarget = release.version || targetVersion || 'latest'
+  if (!SUPPORTS_IN_APP_PORTABLE_UPDATE) {
+    openExternalSafe(release.releaseUrl || `https://github.com/${PORTABLE_RELEASE_REPO}/releases`)
+    sendUpdateState({
+      state: 'manual',
+      stage: 'manual',
+      label: desktopText('update.manualDownload'),
+      targetVersion: effectiveTarget,
+    })
+    return
+  }
   const result = await dialog.showMessageBox(visibleDialogParent(), {
     type: 'question',
     buttons: [desktopText('update.confirmDownload'), desktopText('storage.cancel')],
@@ -2153,6 +2202,10 @@ async function showUpdateNoticeIfNeeded() {
 }
 
 function triggerPortableUpdate(targetVersion, packagePath, expectedSha256, stagingPath) {
+  if (!SUPPORTS_IN_APP_PORTABLE_UPDATE) {
+    openExternalSafe(`https://github.com/${PORTABLE_RELEASE_REPO}/releases`)
+    return false
+  }
   const root = findPortableRoot(__dirname)
   if (root !== undefined) {
     const userDataPath = app.getPath('userData')
@@ -2265,6 +2318,10 @@ async function checkForUpdates(manual = true) {
 }
 
 async function triggerRollback() {
+  if (!SUPPORTS_IN_APP_PORTABLE_UPDATE) {
+    openExternalSafe(`https://github.com/${PORTABLE_RELEASE_REPO}/releases`)
+    return
+  }
   const root = findPortableRoot(__dirname)
   if (root === undefined) {
     void dialog.showMessageBox(visibleDialogParent(), {
@@ -2480,7 +2537,9 @@ async function createApp() {
     title: APP_NAME,
     icon: iconPath(),
     backgroundColor: themePayload().surface,
-    autoHideMenuBar: true,
+    // macOS users expect the application menu in the system menu bar. The
+    // custom in-page menu remains available from the Web UI logo/tray.
+    autoHideMenuBar: process.platform !== 'darwin',
     ...nativeWindowOptions,
     webPreferences: {
       contextIsolation: true,

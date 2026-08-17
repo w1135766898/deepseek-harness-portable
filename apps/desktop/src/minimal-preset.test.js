@@ -2,7 +2,7 @@
  * Regression tests for the shipped `minimal` agent preset's per-platform
  * shell composition and the win32 terminal inspector stub.
  *
- * On POSIX hosts, `terminal-bash` spawns `/bin/bash`.
+ * On POSIX hosts (Linux and macOS), `terminal-bash` spawns `/bin/bash`.
  * On Windows hosts, `terminal-bash` spawns `C:/Windows/System32/wsl.exe` with `['--', 'bash', ...]`.
  *
  * The win32 inspector stub reports no process-tree members (the WSL VM is not
@@ -66,6 +66,11 @@ test('minimal preset configures terminal-bash for WSL on win32 and /bin/bash on 
   const posixArgs = evalValue(terminalBash.config.shellArgs, 'linux')
   assert.deepEqual(win32Args, ['--', 'bash', '--noprofile', '--norc', '-i'])
   assert.deepEqual(posixArgs, ['--noprofile', '--norc', '-i'])
+
+  const darwinShell = evalValue(terminalBash.config.shellPath, 'darwin')
+  const darwinArgs = evalValue(terminalBash.config.shellArgs, 'darwin')
+  assert.equal(darwinShell, '/bin/bash')
+  assert.deepEqual(darwinArgs, ['--noprofile', '--norc', '-i'])
 })
 
 test('minimal preset keeps persistent-shell, str_replace_editor and persona', () => {

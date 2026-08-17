@@ -1,20 +1,20 @@
 /**
- * Build Windows distributions for the desktop web surface.
+ * Build desktop distributions for the desktop web surface.
  *
  * The default route uses the fixed `@yao-pkg/pkg --sea` single-file
  * executable flow. The `--electron` route packages the same deployed
  * runtime behind the native Electron shell. Both routes use the
- * `dsh-desktop-web-pkg` closure, stage Windows-native addons, and apply the
- * checked-in application icon.
+ * `dsh-desktop-web-pkg` closure, stage target-native addons, and apply the
+ * platform application icon.
  *
  * Windows is a documented non-goal of the Python SDK distribution; this
- * script is the local/personal channel for portable Windows distributions of
+ * script is the local/personal channel for portable desktop distributions of
  * the dsh web surface and is not part of the repository gates.
  */
 
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { copyFile, cp, lstat, mkdir, readFile, readdir, realpath, rename, rm, writeFile } from 'node:fs/promises'
+import { copyFile, cp, lstat, mkdir, readFile, readdir, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { delimiter, dirname, join, resolve, sep } from 'node:path'
 import { parseArgs } from 'node:util'
@@ -41,8 +41,10 @@ const OUTPUT_BASENAME = 'dsh-desktop-web'
 const DEFAULT_NODE_RANGE = 'node24'
 /** Pinned for reproducible builds. */
 const PKG_SPEC = '@yao-pkg/pkg@6.21.0'
-/** The checked-in Windows icon applied to the single-file executable. */
+/** The checked-in Windows icon applied to the Windows executable. */
 const DESKTOP_ICON = resolve(root, 'apps/desktop/assets/deepseek.ico')
+/** An optional checked-in macOS icon; otherwise it is generated from the shell logo. */
+const MAC_DESKTOP_ICON = resolve(root, 'apps/desktop/assets/deepseek.icns')
 /** The native shell's product name and packaged executable path. */
 const ELECTRON_APP_NAME = 'DeepSeek Harness'
 /** pkg base-binary download cache lives in the user profile; no repo state. */
@@ -127,6 +129,17 @@ function desktopVersion(): string {
   return version
 }
 
+function distributionVersion(): string {
+  if (!existsSync(DESKTOP_PACKAGE_JSON)) {
+    throw new Error(`build-desktop-web-exe: desktop manifest is missing: ${DESKTOP_PACKAGE_JSON}`)
+  }
+  const version = (JSON.parse(readFileSync(DESKTOP_PACKAGE_JSON, 'utf8')) as { distributionVersion?: unknown }).distributionVersion
+  if (typeof version !== 'string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
+    throw new Error(`build-desktop-web-exe: invalid distributionVersion in ${DESKTOP_PACKAGE_JSON}`)
+  }
+  return version
+}
+
 /**
  * Whole-tree assets cover Cordis's runtime bare-package imports, which pkg's
  * static analysis cannot see, plus the web frontend dist (html/css/fonts)
@@ -169,6 +182,12 @@ class BuildCli {
     readonly dryRun: boolean,
     /** Build the native Electron shell instead of the browser-opening exe. */
     readonly electron: boolean,
+    /** Electron target operating system. Windows remains the default for compatibility. */
+    readonly platform: 'win32' | 'darwin',
+    /** Electron target architecture. The first macOS release is arm64 only. */
+    readonly arch: 'x64' | 'arm64',
+    /** Create a compressed macOS disk image after the .app is staged. */
+    readonly dmg: boolean,
     /** Remove ordinary TypeScript sources after the safe release pruning pass. */
     readonly pruneSources: boolean,
     /** Rebuild every disposable packaging layer and refresh its cache key. */
@@ -193,10 +212,32 @@ class BuildCli {
       console.log(BuildCli.usage())
       process.exit(0)
     }
+    const platform = values.platform === undefined ? 'win32' : values.platform
+    const arch = values.arch === undefined
+      ? platform === 'darwin' ? 'arm64' : 'x64'
+      : values.arch
+    if (platform !== 'win32' && platform !== 'darwin') {
+      throw new Error(`unsupported target platform ${JSON.stringify(platform)}; use win32 or darwin`)
+    }
+    if (arch !== 'x64' && arch !== 'arm64') {
+      throw new Error(`unsupported target architecture ${JSON.stringify(arch)}; use x64 or arm64`)
+    }
+    if (platform === 'darwin' && arch !== 'arm64') {
+      throw new Error('the macOS release target is currently arm64 only')
+    }
+    if (platform === 'darwin' && !values.electron) {
+      throw new Error('macOS packaging requires --electron')
+    }
+    if (values.dmg && (platform !== 'darwin' || !values.electron)) {
+      throw new Error('--dmg is only valid for the macOS Electron target')
+    }
     return new BuildCli(
       values['skip-build'],
       values['dry-run'],
       values.electron,
+      platform,
+      arch,
+      values.dmg,
       values['prune-sources'],
       values['no-cache'],
     )
@@ -209,6 +250,9 @@ class BuildCli {
         'skip-build': { type: 'boolean', default: false },
         'dry-run': { type: 'boolean', default: false },
         'electron': { type: 'boolean', default: false },
+        'platform': { type: 'string' },
+        'arch': { type: 'string' },
+        'dmg': { type: 'boolean', default: false },
         'prune-sources': { type: 'boolean', default: false },
         'no-cache': { type: 'boolean', default: false },
         'help': { type: 'boolean', default: false },
@@ -222,13 +266,16 @@ class BuildCli {
       '',
       '  --skip-build   skip `pnpm run build` (lib/ artifacts must already exist).',
       '  --dry-run      print every command and config patch without executing.',
-      '  --electron     build the native Windows Electron shell (portable folder).',
+      '  --electron     build the native Electron shell.',
+      '  --platform     Electron target platform: win32 (default) or darwin.',
+      '  --arch         Electron target architecture: x64 (default on Windows) or arm64.',
+      '  --dmg          create a macOS DMG after building the arm64 .app.',
       '  --prune-sources remove ordinary .ts/.tsx source files after safe pruning; smoke-test the release before publishing.',
       '  --no-cache     rebuild all disposable packaging layers and refresh their cache keys.',
       '  --help         print this help.',
       '',
       `Default route: ${PKG_SPEC} --sea, target ${DEFAULT_NODE_RANGE}-win-x64; writes to ${OUT_DIR}/.`,
-      `Electron route: ${ELECTRON_APP_NAME} win32-x64; writes to ${ELECTRON_OUT_DIR}/.`,
+      `Electron route: target is selected with --platform/--arch; writes to ${ELECTRON_OUT_DIR}/.`,
     ].join('\n')
   }
 }
@@ -272,7 +319,7 @@ class DesktopExeBuild {
       baseDir: root,
       paths: BUILD_INPUT_PATHS,
       excludedDirectoryNames: FINGERPRINT_EXCLUDED_DIRECTORIES,
-      salt: ['build-v1', process.platform, process.arch, process.version],
+      salt: ['build-v1', this.cli.platform, this.cli.arch, process.version],
     }))
     if (this.cli.noCache) console.log('build-desktop-web-exe: cache bypassed (--no-cache)')
   }
@@ -311,6 +358,7 @@ class DesktopExeBuild {
         'staging-v1',
         this.buildKey,
         this.cli.electron ? 'electron' : 'sea',
+        `${this.cli.platform}-${this.cli.arch}`,
         this.cli.pruneSources ? 'prune-sources' : 'keep-sources',
       ],
     })
@@ -324,8 +372,16 @@ class DesktopExeBuild {
       join(this.staging, 'node_modules', 'dsh-plugin-marketplace', 'lib', 'client.js'),
       join(this.staging, 'node_modules', 'dsh-plugin-marketplace', 'cordis.patch.yml'),
       join(this.staging, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs'),
-      join(this.staging, 'node_modules', 'node-pty', 'prebuilds', 'win32-x64', 'pty.node'),
-      join(this.staging, 'node_modules', '@koromix', 'koffi-win32-x64', 'win32_x64', 'koffi.node'),
+      join(this.staging, 'node_modules', 'node-pty', 'prebuilds', `${this.cli.platform}-${this.cli.arch}`, 'pty.node'),
+      join(this.staging, 'node_modules', '@img', `sharp-${this.cli.platform}-${this.cli.arch}`, 'lib'),
+      join(
+        this.staging,
+        'node_modules',
+        '@koromix',
+        `koffi-${this.cli.platform}-${this.cli.arch}`,
+        `${this.cli.platform}_${this.cli.arch}`,
+        'koffi.node',
+      ),
     ]
     if (!this.cli.noCache && cacheLayerMatches(this.cacheState.staging, this.stagingKey, required)) {
       console.log(`build-desktop-web-exe: staging cache hit (${this.stagingKey.slice(0, 12)})`)
@@ -564,18 +620,23 @@ class DesktopExeBuild {
     }
   }
 
-  /** Stage the native addons the web closure loads on Windows. */
+  /** Stage the native addons the web closure loads for the selected target. */
   async stageNativeAddons(): Promise<void> {
     if (this.cli.dryRun) {
       console.log('build-desktop-web-exe: [dry-run] stage native addons')
       return
     }
+    const target = `${this.cli.platform}-${this.cli.arch}`
     await Promise.all([
-      // node-pty ships pty.node and its ConPTY helpers in one platform directory.
-      this.ensureNativeDir('node-pty@', 'node-pty', 'prebuilds/win32-x64'),
-      // sharp carries the platform DLLs and versioned .node binary together.
-      this.ensureNativeDir('@img+sharp-win32-x64@', '@img/sharp-win32-x64', 'lib'),
-      this.ensureNativeFile('@koromix+koffi-win32-x64@', '@koromix/koffi-win32-x64', 'win32_x64/koffi.node'),
+      // node-pty ships pty.node and its platform helper in one directory.
+      this.ensureNativeDir('node-pty@', 'node-pty', `prebuilds/${target}`),
+      // sharp carries the platform libraries and versioned .node binary together.
+      this.ensureNativeDir(`@img+sharp-${target}@`, `@img/sharp-${target}`, 'lib'),
+      this.ensureNativeFile(
+        `@koromix+koffi-${target}@`,
+        `@koromix/koffi-${target}`,
+        `${this.cli.platform}_${this.cli.arch}/koffi.node`,
+      ),
     ])
   }
 
@@ -588,43 +649,51 @@ class DesktopExeBuild {
    * both fixes.
    */
   async applyRuntimePatches(): Promise<void> {
-    const packageLib = join(
-      this.staging,
-      'node_modules',
-      '@deepseek-ai',
-      'dsh-host-directory-picker-native',
-      'lib',
-    )
-    const indexSource = resolve(root, 'patches/dsh-host-directory-picker-native-index.js')
-    const indexTarget = join(packageLib, 'index.js')
-    const workerTarget = join(packageLib, 'worker.cjs')
     if (this.cli.dryRun) {
-      console.log(`build-desktop-web-exe: [dry-run] cp ${indexSource} ${indexTarget}`)
-      console.log(`build-desktop-web-exe: [dry-run] patch ${workerTarget} IPC lifecycle`)
+      if (this.cli.platform === 'win32') {
+        console.log('build-desktop-web-exe: [dry-run] apply Windows directory-picker runtime patches')
+      } else {
+        console.log('build-desktop-web-exe: [dry-run] skip Windows directory-picker runtime patches on macOS')
+      }
+      console.log('build-desktop-web-exe: [dry-run] apply welcome-notice retry runtime patch')
       return
     }
-    if (!existsSync(indexSource) || !existsSync(workerTarget)) {
-      throw new Error('build-desktop-web-exe: Windows directory-picker patch inputs are missing.')
-    }
-    await copyFile(indexSource, indexTarget)
-    const worker = await readFile(workerTarget, 'utf8')
-    const oldReadUtf16Comment = `* Read a NUL-terminated UTF-16 string at a native address. koffi's\n* \`_Out_ void **\` out-params surface a raw address, and\n* \`koffi.decode(addr, 'str16')\` would dereference it as a pointer — crash\n* on real Windows — so view the memory directly instead.`
-    const newReadUtf16Comment = `* Read a NUL-terminated UTF-16 string at a native address. The specialized\n* helper decodes from the raw string base without creating a fixed-size view\n* that can cross the COM allocation boundary and crash the worker.`
-    const oldReadUtf16 = `function readUtf16(koffi, address) {\n\tconst bytes = Buffer.from(koffi.view(address, 32768));\n\tlet end = 0;\n\twhile (end + 1 < bytes.length && bytes[end] !== 0) end += 2;\n\treturn bytes.toString("utf16le", 0, end);\n}`
-    const newReadUtf16 = `function readUtf16(koffi, address) {\n\treturn koffi.decode.string16(address);\n}`
-    const oldPost = `const post = (message) => {\n\t/* v8 ignore next 3 -- disconnect needs a live IPC channel the unit lane must not sever (built-worker.e2e.ts owns the real close path). */\n\tsend(message, () => {\n\t\tif (process.connected) process.disconnect();\n\t});\n};`
-    const newPost = `const post = (message) => {\n\tsend(message);\n};`
-    if (worker.includes(oldReadUtf16Comment) || worker.includes(oldReadUtf16) || worker.includes(oldPost)) {
-      const patchedWorker = worker
-        .replace(oldReadUtf16Comment, newReadUtf16Comment)
-        .replace(oldReadUtf16, newReadUtf16)
-        .replace(oldPost, newPost)
-      await writeFile(workerTarget, patchedWorker)
-      console.log('build-desktop-web-exe: applied Windows directory-picker runtime patches')
-    } else if (worker.includes(newReadUtf16) && worker.includes(newPost)) {
-      console.log('build-desktop-web-exe: Windows directory-picker runtime already up to date')
+    if (this.cli.platform === 'win32') {
+      const packageLib = join(
+        this.staging,
+        'node_modules',
+        '@deepseek-ai',
+        'dsh-host-directory-picker-native',
+        'lib',
+      )
+      const indexSource = resolve(root, 'patches/dsh-host-directory-picker-native-index.js')
+      const indexTarget = join(packageLib, 'index.js')
+      const workerTarget = join(packageLib, 'worker.cjs')
+      if (!existsSync(indexSource) || !existsSync(workerTarget)) {
+        throw new Error('build-desktop-web-exe: Windows directory-picker patch inputs are missing.')
+      }
+      await copyFile(indexSource, indexTarget)
+      const worker = await readFile(workerTarget, 'utf8')
+      const oldReadUtf16Comment = `* Read a NUL-terminated UTF-16 string at a native address. koffi's\n* \`_Out_ void **\` out-params surface a raw address, and\n* \`koffi.decode(addr, 'str16')\` would dereference it as a pointer — crash\n* on real Windows — so view the memory directly instead.`
+      const newReadUtf16Comment = `* Read a NUL-terminated UTF-16 string at a native address. The specialized\n* helper decodes from the raw string base without creating a fixed-size view\n* that can cross the COM allocation boundary and crash the worker.`
+      const oldReadUtf16 = `function readUtf16(koffi, address) {\n\tconst bytes = Buffer.from(koffi.view(address, 32768));\n\tlet end = 0;\n\twhile (end + 1 < bytes.length && bytes[end] !== 0) end += 2;\n\treturn bytes.toString("utf16le", 0, end);\n}`
+      const newReadUtf16 = `function readUtf16(koffi, address) {\n\treturn koffi.decode.string16(address);\n}`
+      const oldPost = `const post = (message) => {\n\t/* v8 ignore next 3 -- disconnect needs a live IPC channel the unit lane must not sever (built-worker.e2e.ts owns the real close path). */\n\tsend(message, () => {\n\t\tif (process.connected) process.disconnect();\n\t});\n};`
+      const newPost = `const post = (message) => {\n\tsend(message);\n};`
+      if (worker.includes(oldReadUtf16Comment) || worker.includes(oldReadUtf16) || worker.includes(oldPost)) {
+        const patchedWorker = worker
+          .replace(oldReadUtf16Comment, newReadUtf16Comment)
+          .replace(oldReadUtf16, newReadUtf16)
+          .replace(oldPost, newPost)
+        await writeFile(workerTarget, patchedWorker)
+        console.log('build-desktop-web-exe: applied Windows directory-picker runtime patches')
+      } else if (worker.includes(newReadUtf16) && worker.includes(newPost)) {
+        console.log('build-desktop-web-exe: Windows directory-picker runtime already up to date')
+      } else {
+        throw new Error('build-desktop-web-exe: directory-picker worker no longer matches the expected upstream IPC code.')
+      }
     } else {
-      throw new Error('build-desktop-web-exe: directory-picker worker no longer matches the expected upstream IPC code.')
+      console.log('build-desktop-web-exe: skipped Windows directory-picker runtime patches for macOS')
     }
 
     const welcomeTarget = join(
@@ -651,18 +720,21 @@ class DesktopExeBuild {
     }
   }
 
-  /** Remove files that are never loaded by the Windows runtime. */
+  /** Remove native variants and source metadata that are never loaded by the target runtime. */
   async pruneReleasePayload(): Promise<void> {
     if (this.cli.dryRun) {
-      console.log('build-desktop-web-exe: [dry-run] prune native extras, maps, and declarations')
+      console.log(`build-desktop-web-exe: [dry-run] prune native extras for ${this.cli.platform}-${this.cli.arch}, maps, and declarations`)
       if (this.cli.pruneSources) console.log('build-desktop-web-exe: [dry-run] prune ordinary TypeScript sources')
       return
     }
 
     const nodePty = join(this.staging, 'node_modules', 'node-pty')
-    await Promise.all(['darwin-arm64', 'darwin-x64', 'win32-arm64'].map(platform => (
-      rm(join(nodePty, 'prebuilds', platform), { recursive: true, force: true })
-    )))
+    const target = `${this.cli.platform}-${this.cli.arch}`
+    const nodePtyPlatforms = ['darwin-arm64', 'darwin-x64', 'win32-arm64', 'win32-x64']
+    await Promise.all(nodePtyPlatforms
+      .filter(platform => platform !== target)
+      .map(platform => rm(join(nodePty, 'prebuilds', platform), { recursive: true, force: true })))
+    await this.pruneUnusedNativePackages(target)
     const removed = await this.removeUnusedStagedFiles(nodePty)
     const rceditPath = join(this.staging, 'node_modules', 'rcedit')
     if (existsSync(rceditPath)) await rm(rceditPath, { recursive: true, force: true })
@@ -670,6 +742,25 @@ class DesktopExeBuild {
       `build-desktop-web-exe: pruned ${removed.pdb} PDB, ${removed.map} map, ${removed.declaration} declaration` +
       `${this.cli.pruneSources ? `, and ${removed.source} source` : ''} files in one pass`,
     )
+  }
+
+  private async pruneUnusedNativePackages(target: string): Promise<void> {
+    const nodeModules = join(this.staging, 'node_modules')
+    const groups = [
+      { scope: '@img', pattern: /^(?:sharp|sharp-libvips)-(?:darwin|win32)-/ },
+      { scope: '@koromix', pattern: /^koffi-(?:darwin|win32)-/ },
+    ]
+    let removed = 0
+    for (const { scope, pattern } of groups) {
+      const directory = join(nodeModules, scope)
+      if (!existsSync(directory)) continue
+      for (const entry of readdirSync(directory)) {
+        if (!pattern.test(entry) || entry.includes(`-${target}`)) continue
+        await rm(join(directory, entry), { recursive: true, force: true })
+        removed += 1
+      }
+    }
+    if (removed > 0) console.log(`build-desktop-web-exe: pruned ${removed} unused native platform packages`)
   }
 
   private async removeUnusedStagedFiles(nodePty: string): Promise<Record<'pdb' | 'map' | 'declaration' | 'source', number>> {
@@ -709,7 +800,9 @@ class DesktopExeBuild {
   /** Keep only the locales shipped by the product's supported UI languages. */
   async pruneElectronLocales(product: string): Promise<void> {
     if (!this.cli.electron || this.cli.dryRun) return
-    const localesDir = join(dirname(product), 'locales')
+    const localesDir = this.cli.platform === 'darwin'
+      ? join(product, 'Contents', 'Resources', 'locales')
+      : join(dirname(product), 'locales')
     if (!existsSync(localesDir)) return
     const keep = new Set(['en-US.pak', 'zh-CN.pak', 'zh-TW.pak'])
     let removed = 0
@@ -746,13 +839,15 @@ class DesktopExeBuild {
   }
 
   /**
-   * Package the win-x64 target; SEA mode accepts one target per invocation.
-   * @returns the executable path.
+   * Package the selected target; SEA mode remains Windows-only.
+   * @returns the executable or application bundle path.
    */
   async pack(): Promise<string> {
     const version = desktopVersion()
     const product = this.cli.electron
-      ? join(this.electronOutDir, `${ELECTRON_APP_NAME}-win32-x64`, 'runtime', `${ELECTRON_APP_NAME}.exe`)
+      ? this.cli.platform === 'darwin'
+        ? join(this.electronOutDir, `${ELECTRON_APP_NAME}-darwin-${this.cli.arch}`, `${ELECTRON_APP_NAME}.app`)
+        : join(this.electronOutDir, `${ELECTRON_APP_NAME}-win32-${this.cli.arch}`, 'runtime', `${ELECTRON_APP_NAME}.exe`)
       : join(this.outDir, `${OUTPUT_BASENAME}-${version}-win-x64.exe`)
     const artifactKey = await fingerprintPaths({
       baseDir: root,
@@ -761,14 +856,17 @@ class DesktopExeBuild {
         'artifact-v1',
         this.stagingKey,
         process.version,
-        this.cli.electron ? 'electron-win32-x64' : `${PKG_SPEC}-${DEFAULT_NODE_RANGE}-win-x64`,
+        this.cli.electron
+          ? `electron-${this.cli.platform}-${this.cli.arch}`
+          : `${PKG_SPEC}-${DEFAULT_NODE_RANGE}-win-x64`,
       ],
     })
     const required = this.cli.electron
       ? [
           product,
-          join(dirname(product), 'resources', 'app', ENTRY_BIN),
-          join(dirname(product), 'resources', 'app', 'node_modules', '@deepseek-ai', 'dsh-web-app', 'package.json'),
+          this.appResourcesDir(product),
+          join(this.appResourcesDir(product), ENTRY_BIN),
+          join(this.appResourcesDir(product), 'node_modules', '@deepseek-ai', 'dsh-web-app', 'package.json'),
         ]
       : [product]
     if (!this.cli.noCache && cacheLayerMatches(this.cacheState.electron, artifactKey, required)) {
@@ -786,6 +884,12 @@ class DesktopExeBuild {
       await writePackagingCache(this.cachePath, this.cacheState)
     }
     return product
+  }
+
+  private appResourcesDir(product: string): string {
+    return this.cli.platform === 'darwin'
+      ? join(product, 'Contents', 'Resources', 'app')
+      : join(dirname(product), 'resources', 'app')
   }
 
   /** Package the single-file SEA executable. */
@@ -818,13 +922,15 @@ class DesktopExeBuild {
     ])
   }
 
-  /** Package the staged runtime into a portable root with a `runtime` child. */
+  /** Package the staged runtime into the selected Electron application layout. */
   private async packElectron(): Promise<string> {
-    const portableRoot = join(this.electronOutDir, `${ELECTRON_APP_NAME}-win32-x64`)
+    if (this.cli.platform === 'darwin') return this.packElectronMac()
+    const target = `win32-${this.cli.arch}`
+    const portableRoot = join(this.electronOutDir, `${ELECTRON_APP_NAME}-${target}`)
     const packagerOutDir = join(this.electronOutDir, '.packager')
     const nextPortableRoot = join(this.electronOutDir, `.portable-next-${process.pid}`)
     const previousPortableRoot = join(this.electronOutDir, `.portable-previous-${process.pid}`)
-    const packagedRoot = join(packagerOutDir, `${ELECTRON_APP_NAME}-win32-x64`)
+    const packagedRoot = join(packagerOutDir, `${ELECTRON_APP_NAME}-${target}`)
     const packagedProduct = join(packagedRoot, `${ELECTRON_APP_NAME}.exe`)
     const runtimeRoot = join(portableRoot, 'runtime')
     const product = join(runtimeRoot, `${ELECTRON_APP_NAME}.exe`)
@@ -862,7 +968,7 @@ class DesktopExeBuild {
       '--platform',
       'win32',
       '--arch',
-      'x64',
+      this.cli.arch,
       '--icon',
       DESKTOP_ICON,
       '--out',
@@ -872,9 +978,9 @@ class DesktopExeBuild {
       '--no-prune',
     ]
     if (existsSync(electronPackagerBin)) {
-      await this.run(`Electron ${ELECTRON_APP_NAME} win32-x64`, electronPackagerBin, packagerArgs)
+      await this.run(`Electron ${ELECTRON_APP_NAME} ${target}`, electronPackagerBin, packagerArgs)
     } else {
-      await this.run(`Electron ${ELECTRON_APP_NAME} win32-x64`, pnpmBin(), [
+      await this.run(`Electron ${ELECTRON_APP_NAME} ${target}`, pnpmBin(), [
         '--filter',
         DEPLOY_ROOT_PACKAGE,
         'exec',
@@ -903,6 +1009,180 @@ class DesktopExeBuild {
       console.log('build-desktop-web-exe: moved Electron runtime into place without a second tree copy')
     }
     return product
+  }
+
+  /** Package the native macOS arm64 application bundle. */
+  private async packElectronMac(): Promise<string> {
+    const target = `darwin-${this.cli.arch}`
+    const bundleRoot = join(this.electronOutDir, `${ELECTRON_APP_NAME}-${target}`)
+    const packagerOutDir = join(this.electronOutDir, '.packager')
+    const nextBundleRoot = join(this.electronOutDir, `.app-next-${process.pid}`)
+    const previousBundleRoot = join(this.electronOutDir, `.app-previous-${process.pid}`)
+    const packagedRoot = join(packagerOutDir, `${ELECTRON_APP_NAME}-${target}`)
+    const packagedProduct = join(packagedRoot, `${ELECTRON_APP_NAME}.app`)
+    const product = join(bundleRoot, `${ELECTRON_APP_NAME}.app`)
+
+    if (!this.cli.dryRun) {
+      await Promise.all([
+        rm(packagerOutDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 }),
+        rm(nextBundleRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 }),
+        rm(previousBundleRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 }),
+      ])
+      await mkdir(packagerOutDir, { recursive: true })
+    }
+
+    const electronBin = join(root, 'node_modules', '.pnpm', 'node_modules', '.bin', process.platform === 'win32' ? 'electron.CMD' : 'electron')
+    if (existsSync(electronBin)) {
+      await this.run('prepare Electron runtime', electronBin, ['--version'])
+    } else {
+      await this.run('prepare Electron runtime', pnpmBin(), [
+        '--filter',
+        DEPLOY_ROOT_PACKAGE,
+        'exec',
+        'electron',
+        '--version',
+      ])
+    }
+
+    const electronPackagerBin = join(root, 'node_modules', '.pnpm', 'node_modules', '.bin', process.platform === 'win32' ? 'electron-packager.CMD' : 'electron-packager')
+    const macIcon = await this.prepareMacIcon()
+    const packagerArgs = [
+      this.staging,
+      ELECTRON_APP_NAME,
+      '--platform',
+      'darwin',
+      '--arch',
+      this.cli.arch,
+      '--app-bundle-id',
+      'com.deepseek.harness',
+      '--out',
+      packagerOutDir,
+      '--overwrite',
+      '--no-asar',
+      '--no-prune',
+    ]
+    if (macIcon) packagerArgs.push('--icon', macIcon)
+    else console.warn('build-desktop-web-exe: macOS icon is not present; using Electron default app icon')
+
+    if (existsSync(electronPackagerBin)) {
+      await this.run(`Electron ${ELECTRON_APP_NAME} ${target}`, electronPackagerBin, packagerArgs)
+    } else {
+      await this.run(`Electron ${ELECTRON_APP_NAME} ${target}`, pnpmBin(), [
+        '--filter',
+        DEPLOY_ROOT_PACKAGE,
+        'exec',
+        'electron-packager',
+        ...packagerArgs,
+      ])
+    }
+
+    if (!this.cli.dryRun) {
+      if (!existsSync(packagedProduct)) {
+        throw new Error(`build-desktop-web-exe: macOS Electron product ${packagedProduct} is missing after packaging.`)
+      }
+      await mkdir(nextBundleRoot, { recursive: true })
+      await rename(packagedRoot, join(nextBundleRoot, `${ELECTRON_APP_NAME}.app`))
+      if (existsSync(bundleRoot)) await rename(bundleRoot, previousBundleRoot)
+      try {
+        await rename(nextBundleRoot, bundleRoot)
+      } catch (error) {
+        if (existsSync(previousBundleRoot) && !existsSync(bundleRoot)) {
+          await rename(previousBundleRoot, bundleRoot)
+        }
+        throw error
+      }
+      await rm(previousBundleRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
+      await rm(packagerOutDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
+      console.log('build-desktop-web-exe: moved macOS Electron app bundle into place')
+    }
+    return product
+  }
+
+  /**
+   * Produce an .icns file on macOS from the 64px logo already embedded in the
+   * desktop shell. Keeping this build-time avoids committing a generated
+   * binary asset while still giving the native app a product icon.
+   */
+  private async prepareMacIcon(): Promise<string | undefined> {
+    if (existsSync(MAC_DESKTOP_ICON)) return MAC_DESKTOP_ICON
+    if (this.cli.dryRun || process.platform !== 'darwin') return undefined
+
+    const source = await readFile(join(root, 'apps', 'desktop', 'src', 'desktop-preload.cjs'), 'utf8')
+    const match = /const DEEPSEEK_LOGO_DATA_URI = 'data:image\/png;base64,([^']+)'/.exec(source)
+    if (!match?.[1]) return undefined
+
+    const workDir = join(this.electronOutDir, `.mac-icon-${process.pid}`)
+    const iconset = join(workDir, 'deepseek.iconset')
+    const sourcePng = join(workDir, 'source.png')
+    const output = join(this.staging, 'assets', 'deepseek.icns')
+    await rm(workDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
+    await mkdir(iconset, { recursive: true })
+    await mkdir(dirname(output), { recursive: true })
+    await writeFile(sourcePng, Buffer.from(match[1], 'base64'))
+
+    try {
+      for (const size of [16, 32, 128, 256, 512]) {
+        await this.run(`prepare macOS icon ${size}x${size}`, 'sips', [
+          '-z',
+          String(size),
+          String(size),
+          sourcePng,
+          '--out',
+          join(iconset, `icon_${size}x${size}.png`),
+        ])
+        await this.run(`prepare macOS icon ${size * 2}x${size * 2}`, 'sips', [
+          '-z',
+          String(size * 2),
+          String(size * 2),
+          sourcePng,
+          '--out',
+          join(iconset, `icon_${size}x${size}@2x.png`),
+        ])
+      }
+      await this.run('create macOS icns', 'iconutil', ['-c', 'icns', iconset, '-o', output])
+    } finally {
+      await rm(workDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
+    }
+    return existsSync(output) ? output : undefined
+  }
+
+  /** Create a compressed DMG containing the app and an Applications alias. */
+  async createDmg(product: string): Promise<string | undefined> {
+    if (!this.cli.dmg) return undefined
+    if (process.platform !== 'darwin' && !this.cli.dryRun) {
+      throw new Error('build-desktop-web-exe: DMG creation must run on macOS because hdiutil is a system tool.')
+    }
+    const dmgPath = join(
+      this.electronOutDir,
+      `DeepSeek-Harness-${distributionVersion()}-${this.cli.platform}-${this.cli.arch}.dmg`,
+    )
+    const dmgStaging = join(this.electronOutDir, `.dmg-staging-${process.pid}`)
+    if (this.cli.dryRun) {
+      console.log(`build-desktop-web-exe: [dry-run] create DMG ${dmgPath}`)
+      return dmgPath
+    }
+    await rm(dmgStaging, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
+    await mkdir(dmgStaging, { recursive: true })
+    await cp(product, join(dmgStaging, `${ELECTRON_APP_NAME}.app`), { recursive: true, dereference: true })
+    await symlink('/Applications', join(dmgStaging, 'Applications'))
+    await rm(dmgPath, { force: true })
+    try {
+      await this.run('create macOS DMG', 'hdiutil', [
+        'create',
+        '-volname',
+        ELECTRON_APP_NAME,
+        '-srcfolder',
+        dmgStaging,
+        '-ov',
+        '-format',
+        'UDZO',
+        dmgPath,
+      ])
+    } finally {
+      await rm(dmgStaging, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
+    }
+    if (!existsSync(dmgPath)) throw new Error(`build-desktop-web-exe: DMG ${dmgPath} is missing after hdiutil.`)
+    return dmgPath
   }
 
   /** Embed the same icon used by the Electron shell into the portable exe. */
@@ -958,14 +1238,25 @@ class DesktopExeBuild {
    * Print the product path and, outside dry-run mode, its size.
    * @param product - the product path returned by {@link pack}.
    */
-  printProduct(product: string): void {
+  printProduct(product: string, additional?: string): void {
     console.log(this.cli.dryRun ? 'build-desktop-web-exe: [dry-run] would produce:' : 'build-desktop-web-exe: product:')
     if (this.cli.dryRun) {
       console.log(`  ${product}`)
+      if (additional) console.log(`  ${additional}`)
       return
     }
-    const megabytes = statSync(product).size / (1024 * 1024)
-    console.log(`  ${product}  (${megabytes.toFixed(1)} MB)`)
+    const productStat = statSync(product)
+    if (productStat.isFile()) {
+      const megabytes = productStat.size / (1024 * 1024)
+      console.log(`  ${product}  (${megabytes.toFixed(1)} MB)`)
+    } else {
+      console.log(`  ${product}`)
+    }
+    if (additional) {
+      const additionalStat = statSync(additional)
+      const megabytes = additionalStat.isFile() ? additionalStat.size / (1024 * 1024) : 0
+      console.log(`  ${additional}${additionalStat.isFile() ? `  (${megabytes.toFixed(1)} MB)` : ''}`)
+    }
   }
 
   /**
@@ -977,7 +1268,7 @@ class DesktopExeBuild {
    */
   async stageDistributionDocs(product: string): Promise<void> {
     const destDir = this.cli.electron
-      ? join(dirname(product), 'resources', 'app')
+      ? this.appResourcesDir(product)
       : this.outDir
     for (const name of ['LICENSE', 'THIRD_PARTY_NOTICES.md']) {
       const destination = join(destDir, name)
@@ -993,7 +1284,7 @@ class DesktopExeBuild {
       console.log(`build-desktop-web-exe: staged ${name} into ${destination}`)
     }
 
-    if (this.cli.electron) {
+    if (this.cli.electron && this.cli.platform === 'win32') {
       const rootDir = dirname(dirname(product))
       const rootFiles = [
         'LICENSE',
@@ -1118,7 +1409,8 @@ async function main(): Promise<void> {
   await pipeline.prepareStaging()
   const product = await pipeline.pack()
   await pipeline.stageDistributionDocs(product)
-  pipeline.printProduct(product)
+  const dmg = await pipeline.createDmg(product)
+  pipeline.printProduct(product, dmg)
   console.log(`build-desktop-web-exe: total ${((performance.now() - startedAt) / 1000).toFixed(2)}s`)
 }
 

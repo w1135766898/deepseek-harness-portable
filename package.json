@@ -16,6 +16,9 @@
     "desktop:package:win": "pnpm exec tsx scripts/build-desktop-web-exe.ts --electron",
     "desktop:make:win": "pnpm exec tsx scripts/build-desktop-web-exe.ts --electron",
     "desktop:release:win": "pnpm exec tsx scripts/release-windows.ts",
+    "desktop:package:mac": "pnpm exec tsx scripts/build-desktop-web-exe.ts --electron --platform darwin --arch arm64 --dmg",
+    "desktop:make:mac": "pnpm run desktop:package:mac",
+    "desktop:release:mac": "pnpm exec tsx scripts/release-macos.ts",
     "desktop:package:exe": "pnpm exec tsx scripts/build-desktop-web-exe.ts"
   },
   "devDependencies": {
