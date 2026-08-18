@@ -11,6 +11,7 @@ DeepSeek Harness Desktop is a community Windows x64, macOS Apple Silicon, and Li
 ## Table of contents
 
 - [Why DeepSeek Harness Desktop?](#why-deepseek-harness-desktop)
+- [Platform support](#platform-support)
 - [Quick start](#quick-start)
 - [Features](#features)
 - [Latest release](#latest-release)
@@ -19,44 +20,34 @@ DeepSeek Harness Desktop is a community Windows x64, macOS Apple Silicon, and Li
 - [User data and API key](#user-data-and-api-key)
 - [Launch and update](#launch-and-update)
 - [FAQ](#faq)
+- [Documentation](#documentation)
 - [Build and release](#build-and-release)
 - [Security and limitations](#security-and-limitations)
 - [License](#license)
 
 ## Why DeepSeek Harness Desktop?
 
-Upstream [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) is engineered primarily for POSIX shells and containerized environments. **DeepSeek Harness Desktop** keeps the upstream runtime intact while providing platform-native desktop packaging:
+Upstream [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) is primarily designed for POSIX shells and containerized environments. This distribution adds a native Electron shell, platform-specific runtime adapters, verified release packaging, and a portable update path. Upstream adaptations remain isolated behind reviewed patches and Cordis extension points.
 
-1. **Platform-native Minimal shell & consistent "We need / Let's" behavior**:
-   - **The RL Distribution Challenge**: DeepSeek's official models (DeepSeek-R1, DeepSeek-V3 Agent loops) were trained with Reinforcement Learning (RL) inside standard Linux Bash environments. The models learned structured planning behaviors and distinct step-by-step reasoning habits (the classic *"We need to...", "Let's check...", "Let's run..."* Chain-of-Thought).
-   - **Windows PowerShell Friction**: On Windows, PowerShell syntax quirks, path backslashes (`\`), parameter formatting, and shell alias behaviors alter the token distribution, frequently triggering command hallucinations, syntax errors, or broken reasoning chains.
-   - **Windows**: The Minimal Preset runs in genuine Linux Bash through WSL, with the Windows process bridge and sandbox adapter.
-   - **Linux**: The Minimal Preset runs directly through the native POSIX PTY and `/bin/bash`; standard/agent modes use the upstream Linux sandbox chain (`bwrap`, then fail-closed Landlock).
-   - **macOS**: The Minimal Preset runs directly through the native POSIX PTY and `/bin/bash`; it does not use WSL or a container compatibility layer.
-2. **Zero-Configuration Portable Desktop Environment**:
-   - Bundles standalone Node.js and Electron desktop shell—no manual Node/pnpm installation or build toolchains required.
-   - User data is isolated outside the app under `%USERPROFILE%\.dsh` on Windows or `$HOME/.dsh` on Linux/macOS (`$DSH_HOME` overrides either path).
-   - Uses Windows 11 Mica styling where available and native macOS window/menu behavior on Apple Silicon.
-3. **Multimodal Vision Bridge (`@dsh-portable/vision-bridge`)**:
-   - Uses the rc.7 native persisted image-attachment path when the selected model supports images, while retaining an explicit external `view_image` path for text-only models.
-   - Global `view_image` tool registered directly into the official `Settings → Plugins` slot with live provider presets, connection validation, and write-only API key security protection.
-4. **Preinstalled Plugin Marketplace (`dsh-plugin-marketplace`)**:
-   - Adds searchable **Plugin Marketplace** and **Installed** tabs under `Settings → Plugins`, backed by the live GitHub `dsh-plugin` topic.
-   - Shows source, runtime, network, image-egress, activation, degradation, and verification information before installation. Unknown plugins are explicitly marked unverified.
-5. **Interactive Learning preset**:
-   - Uses the client's native choice control for learning direction, depth, and pace instead of a custom form.
-   - Renders pedagogical parameter, process, and structure graphics inline in the assistant message, preserves them in session replay, and always provides a text equivalent.
-6. **Safe platform-aware updates**:
-   - Windows keeps background staging, SHA-256 verification, atomic restart, and transactional rollback.
-   - Linux and macOS first-release updates open the GitHub release page so users can manually download and replace the AppImage/deb or DMG; the app does not self-replace its installed application.
-7. **Zero-Modification Architecture**:
-   - Cleanly wired through Cordis microkernel plugin slots and profile overlays without modifying upstream `vendor/deepseek-harness` code.
+The packaged application includes its own Electron/Node.js runtime, stores user data outside the application directory, and provides desktop integrations such as workspace selection, update diagnostics, the plugin marketplace, vision tools, and the Interactive Learning preset.
+
+## Platform support
+
+| Platform | Package | Minimal shell | Update behavior | Important requirement |
+| --- | --- | --- | --- | --- |
+| Windows x64 | Setup or portable ZIP | Bash through WSL | In-app verified download, restart, and rollback | A working default WSL distribution with Bash |
+| macOS Apple Silicon | DMG | Native `/bin/bash` through a POSIX PTY | Opens the release page for manual replacement | Current DMG is unsigned and not notarized |
+| Linux x64 | AppImage or deb | Native `/bin/bash` through a POSIX PTY | Opens the release page for manual replacement | Sandboxed modes require a usable bwrap/Landlock backend |
+
+Packages include the application runtime; users do not need to install Node.js or pnpm. Build prerequisites are listed separately under [Build and release](#build-and-release).
 
 ## Quick start
 
 1. Download the Windows Setup/ZIP, `DeepSeek-Harness-<version>-darwin-arm64.dmg`, or `DeepSeek-Harness-<version>-linux-x64.AppImage` from the [latest release](https://github.com/wsnxxxs/deepseek-harness-portable/releases/latest).
 2. On Windows, run the installer. On Linux/macOS, download and inspect the release's `install.sh`, then run `sh install.sh`; manual AppImage/deb and DMG installation remains available.
 3. Launch **DeepSeek Harness** and open **Settings** in the Web UI to add your DeepSeek API key (or provide it in the environment before launching).
+
+Before first launch, verify the checksum published alongside the artifact. Windows users who need Minimal mode should also verify that `wsl -- bash -lc true` succeeds.
 
 ## Features
 
@@ -71,8 +62,8 @@ Upstream [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) is 
 
 | Item | Version |
 | --- | --- |
-| Release | DeepSeek Harness Desktop **v1.3.1** ([download](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.3.1)) |
-| Distribution | 1.3.1 |
+| Release | DeepSeek Harness Desktop **v1.3.2** ([download](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.3.2)) |
+| Distribution | 1.3.2 |
 | Desktop shell | 0.1.0-shell.2 |
 | Kernel | 0.1.0-rc.7 |
 
@@ -157,6 +148,15 @@ No. Linux uses its native POSIX PTY and `/bin/bash`. Sandboxed modes use the ups
 
 **Why did a long command time out in Minimal mode?**
 Minimal mode runs the requested shell command unchanged. Recursive `grep` over the vendored workspace also traverses nested dependency trees and can legitimately exceed the tool timeout; prefer `rg` (which respects ignore files) or exclude `node_modules`. On Windows, the desktop bridge force-stops only that terminal's `wsl.exe` process tree; Linux/macOS terminate the native POSIX PTY.
+
+## Documentation
+
+| Document | Audience | Contents |
+| --- | --- | --- |
+| [Desktop shell guide](apps/desktop/README.md) | Desktop contributors | Electron behavior, native output layout, tests, and release identity |
+| [Runtime architecture and release gates](docs/runtime-architecture.md) | Runtime and release maintainers | Capability probes, mode contracts, manifests, CI, and signing gates |
+| [Interactive Learning pack](apps/interactive-learning/README.md) | Feature contributors | Protocol boundaries, development workflow, activation, and compatibility |
+| [Release notes](RELEASE_NOTES.md) | Users and maintainers | User-visible changes and upgrade information |
 
 ## Build and release
 

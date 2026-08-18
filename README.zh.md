@@ -11,6 +11,7 @@ DeepSeek Harness Desktop 是 [DeepSeek Harness](https://github.com/deepseek-ai/d
 ## 目录
 
 - [为什么选择 DeepSeek Harness Desktop？](#为什么选择-deepseek-harness-desktop)
+- [平台支持](#平台支持)
 - [快速开始](#快速开始)
 - [功能特性](#功能特性)
 - [最新发布](#最新发布)
@@ -19,44 +20,34 @@ DeepSeek Harness Desktop 是 [DeepSeek Harness](https://github.com/deepseek-ai/d
 - [用户数据与API密钥](#用户数据与api密钥)
 - [启动与更新](#启动与更新)
 - [常见问题](#常见问题)
+- [项目文档](#项目文档)
 - [构建与发布](#构建与发布)
 - [安全与限制](#安全与限制)
 - [许可证](#许可证)
 
 ## 为什么选择 DeepSeek Harness Desktop？
 
-DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 主要面向 POSIX Shell 与容器环境。**DeepSeek Harness Desktop** 保持 upstream runtime 不变，同时为不同平台提供原生桌面打包：
+上游 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 主要面向 POSIX Shell 与容器环境。本分发版增加原生 Electron 外壳、平台运行时适配、可验证的发布打包和便携更新链路；对上游的适配集中在受审查补丁和 Cordis 扩展点中，避免散落修改。
 
-1. **平台原生极简 Shell 与一致的 "We need / Let's" 行为**：
-   - **强化学习环境对齐**：DeepSeek 官方模型（如 DeepSeek-R1、DeepSeek-V3 Agent 循环）的强化学习（RL）训练基于标准 Linux Bash 环境，模型形成了鲜明的链式规划与分步推理模式（标志性的 *"We need to...", "Let's check...", "Let's run..."* 思考链）。
-   - **规避 Windows PowerShell 差异**：在 Windows 原生环境下，PowerShell 的语法规则、路径反斜杠（`\`）、参数格式及别名机制容易打破模型的 Token 概率分布，导致指令幻觉、语法报错或思维链中断。
-   - **Windows**：极简预设通过 WSL 运行真正的 Linux Bash，并使用 Windows 进程桥接与沙箱适配器。
-   - **Linux**：极简预设直接通过原生 POSIX PTY 和 `/bin/bash` 运行；标准/Agent 模式使用上游 Linux 沙箱链（`bwrap`，再回退到失败即关闭的 Landlock）。
-   - **macOS**：极简预设直接通过原生 POSIX PTY 和 `/bin/bash` 运行，不使用 WSL 或容器兼容层。
-2. **开箱即用便携桌面版**：
-   - 内置独立 Node.js 与 Electron 桌面外壳，免装 Node/pnpm 等开发环境，双击即开即用。
-   - 用户数据位于应用目录之外：Windows 使用 `%USERPROFILE%\.dsh`，Linux/macOS 使用 `$HOME/.dsh`，也可通过 `$DSH_HOME` 覆盖。
-   - Windows 使用 Windows 11 Mica 风格；Apple Silicon macOS 使用原生窗口与应用菜单行为。
-3. **视觉辅助多模态外挂（`@dsh-portable/vision-bridge`）**：
-   - 所选模型支持图像时使用 rc.7 原生持久化附件链路；纯文本模型仍可显式调用外部 `view_image` 识图链路。
-   - 全局 `view_image` 工具无缝集成至官方【设置 → 插件】槽位，支持服务商预设一键切换、即时测试与 API Key 纯写脱敏保护。
-4. **预装插件市场（`dsh-plugin-marketplace`）**：
-   - 在【设置 → 插件】中增加可搜索的“插件市场”和“已安装”页签，实时读取 GitHub `dsh-plugin` 话题。
-   - 安装前展示来源、运行环境、网络/图像外发、激活、降级、已知问题和验证版本；未知插件明确标记为未验证。
-5. **交互式学习预设**：
-   - 学习方向、深度和节奏使用客户端原生选择控件，不再显示自定义的大型表单。
-   - 参数、过程和结构类教学图示直接出现在助手消息中，可随会话持久回放，并始终提供文字等价说明。
-6. **安全的平台适配更新**：
-   - Windows 保留后台 Staging、SHA-256 校验、原子重启替换和事务回滚。
-   - Linux/macOS 首个发行通道打开 GitHub 发布页，由用户手动下载并替换 AppImage/deb 或 DMG；应用不会自行替换已安装程序。
-7. **零侵入微内核架构**：
-   - 所有 Windows 适配与功能插件均通过 Cordis 微内核插件机制与运行时 Overlay 动态挂载，保持 upstream `vendor/deepseek-harness` 100% 原生纯净，无缝跟随官方上游迭代。
+应用自带 Electron/Node.js runtime，用户数据保存在应用目录之外，并提供工作区选择、更新诊断、插件市场、视觉工具和交互式学习预设等桌面集成功能。
+
+## 平台支持
+
+| 平台 | 安装包 | 极简模式 Shell | 更新方式 | 重要要求 |
+| --- | --- | --- | --- | --- |
+| Windows x64 | Setup 或便携 ZIP | 通过 WSL 使用 Bash | 应用内校验下载、重启和回滚 | 默认 WSL 发行版可用且包含 Bash |
+| macOS Apple Silicon | DMG | 通过 POSIX PTY 使用原生 `/bin/bash` | 打开发布页，手动替换 | 当前 DMG 未签名且未公证 |
+| Linux x64 | AppImage 或 deb | 通过 POSIX PTY 使用原生 `/bin/bash` | 打开发布页，手动替换 | 沙箱模式需要可用的 bwrap/Landlock 后端 |
+
+安装包已包含应用 runtime，普通用户无需安装 Node.js 或 pnpm。开发构建要求见[构建与发布](#构建与发布)。
 
 ## 快速开始
 
 1. 从[最新发布](https://github.com/wsnxxxs/deepseek-harness-portable/releases/latest)下载 Windows Setup/ZIP、macOS 的 `DeepSeek-Harness-<version>-darwin-arm64.dmg`，或 Linux 的 `DeepSeek-Harness-<version>-linux-x64.AppImage`。
 2. Windows 运行安装程序；Linux/macOS 下载并检查 Release 中的 `install.sh` 后运行 `sh install.sh`，也可继续手动安装 AppImage/deb 或 DMG。
 3. 启动 **DeepSeek Harness**，在 Web UI 的“设置”中配置 DeepSeek API key（或在启动进程的环境中提供）。
+
+首次启动前，请核对与安装包一同发布的校验值。需要使用极简模式的 Windows 用户还应确认 `wsl -- bash -lc true` 能正常执行。
 
 ## 功能特性
 
@@ -71,8 +62,8 @@ DeepSeek 官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harne
 
 | 项目 | 版本 |
 | --- | --- |
-| 发布 | DeepSeek Harness Desktop **v1.3.1**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.3.1)) |
-| 分发版本 | 1.3.1 |
+| 发布 | DeepSeek Harness Desktop **v1.3.2**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.3.2)) |
+| 分发版本 | 1.3.2 |
 | 桌面外壳 | 0.1.0-shell.2 |
 | 内核 | 0.1.0-rc.7 |
 
@@ -157,6 +148,15 @@ Smart App Control 可能直接阻止未签名的应用。如果设备已启用�
 
 **为什么极简模式中的长命令会超时？**
 极简模式会原样执行模型给出的 Shell 命令。对 vendor 工作区使用递归 `grep` 还会扫描嵌套依赖目录，确实可能超过工具超时；建议改用会遵守忽略规则的 `rg`，或显式排除 `node_modules`。Windows 超时时，桌面桥接只会强制终止该终端对应的 `wsl.exe` 进程树；Linux/macOS 终止原生 POSIX PTY。
+
+## 项目文档
+
+| 文档 | 适用读者 | 内容 |
+| --- | --- | --- |
+| [桌面外壳说明](apps/desktop/README.zh.md) | 桌面端贡献者 | Electron 行为、原生产物目录、测试和发布身份 |
+| [运行时架构与发布门禁](docs/runtime-architecture.md) | Runtime 与发布维护者 | 能力探测、模式契约、Manifest、CI 和签名门禁 |
+| [交互式学习包](apps/interactive-learning/README.zh.md) | 功能贡献者 | 协议边界、开发流程、启用方式和兼容性 |
+| [发布说明](RELEASE_NOTES.zh.md) | 用户与维护者 | 用户可见变更和升级信息 |
 
 ## 构建与发布
 

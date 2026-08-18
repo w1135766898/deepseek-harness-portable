@@ -15,9 +15,9 @@
 - 在标题栏下方居中显示紧凑更新横幅，7 秒或关闭后销毁，支持按版本忽略，并在当前窗口打开居中卡片式更新中心。
 - 原生侧边栏 Logo 融合桌面菜单：展开态左键打开菜单，收起态左键展开侧边栏、右键打开菜单。
 - Windows 11 下使用 Mica/标题栏覆盖与系统主题同步，并记忆窗口位置、尺寸和最大化状态。
+- Windows 极简模式通过 WSL Bash 运行；Linux/macOS 极简模式通过 POSIX PTY 使用原生 `/bin/bash`。Linux 沙箱模式保留上游 bwrap/Landlock 失败关闭链路。
 - 每个 Web profile 首次使用时预装固定版本的 `dsh-plugin-marketplace`；用户关闭或卸载后，分发版不会在重启时恢复它。
 - 通过 Electron 的 Node 模式内置 DSH 插件 CLI 与 pnpm，市场操作无需系统 Node.js 工具链。
-- Linux 极简模式使用原生 `/bin/bash` POSIX PTY；标准/Agent 模式保留上游 bwrap/Landlock 失败关闭沙箱链。
 
 ## 构建与测试
 
@@ -32,23 +32,38 @@
     pnpm run desktop:test
     pnpm run desktop:dev
     pnpm run desktop:package:win
+    pnpm run desktop:package:mac
     pnpm run desktop:package:linux
-    pnpm run desktop:release:linux
 
-原生构建会下载 Electron，目标平台为 Windows x64。打包输出是便携目录：
+每条打包命令都必须在对应的原生主机执行：带可用 WSL 发行版的 Windows x64、Apple Silicon macOS 或 Linux x64。命令会下载 Electron、执行能力探测与打包后冒烟测试，并把不可变的已验证 bundle 写入 `dist-desktop/verified/<target>/`。
+
+Windows 未压缩应用位于：
 
     dist-desktop/electron/DeepSeek Harness-win32-x64/
     └─ runtime/DeepSeek Harness.exe
+
+macOS Apple Silicon 构建目标为 `darwin-arm64`，输出：
+
+    dist-desktop/electron/DeepSeek Harness-darwin-arm64/DeepSeek Harness.app
+    dist-desktop/electron/DeepSeek-Harness-<distributionVersion>-darwin-arm64.dmg
+
+DMG 创建和构建时 `.icns` 转换依赖 macOS 系统工具 `hdiutil`、`sips` 与 `iconutil`。当前发行通道未签名且未公证。
 
 Linux x64 构建必须在原生 Linux x64 主机执行，输出 AppImage、deb 和未压缩
 Electron runtime。构建期间会使用 `musl-gcc` 编译官方上游 Landlock launcher，
 再由 `electron-builder` 生成 AppImage/deb；Linux 不使用应用内自替换更新，而是
 通过发布页手动下载新版本。
 
+发布是独立的只复制步骤。它会重新校验 `artifact-verification.json` 指定的精确文件，不会构建、测试、打补丁、签名或重建归档：
+
+    pnpm run desktop:release:win -- --input dist-desktop/verified/win32-x64
+    pnpm run desktop:release:mac -- --input dist-desktop/verified/darwin-arm64
+    pnpm run desktop:release:linux -- --input dist-desktop/verified/linux-x64
+
 ## 发布身份
 
-- 发布：DeepSeek Harness Desktop v1.3.1
-- 分发：1.3.1
+- 发布：DeepSeek Harness Desktop v1.3.2
+- 分发：1.3.2
 - 外壳：0.1.0-shell.2
 - 内核：读取打包后的 @deepseek-ai/dsh-web-app manifest
 

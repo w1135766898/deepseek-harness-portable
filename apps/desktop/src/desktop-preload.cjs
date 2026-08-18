@@ -913,7 +913,8 @@ if (!isSplashDocument) {
       return
     }
     if (action === 'desktop-about-and-updates') {
-      sendMenuAction('release-notes')
+      closeMenu()
+      void openModal({ mode: 'history' })
       return
     }
     if (action === 'desktop-check-updates') {
@@ -921,11 +922,13 @@ if (!isSplashDocument) {
       return
     }
     if (action === 'desktop-release-notes') {
-      sendMenuAction('release-notes')
+      closeMenu()
+      void openModal({ mode: 'history' })
       return
     }
     if (action === 'desktop-about') {
-      sendMenuAction('about')
+      closeMenu()
+      void openModal({ mode: 'about' })
       return
     }
     if (action === 'desktop-choose-workspace') {

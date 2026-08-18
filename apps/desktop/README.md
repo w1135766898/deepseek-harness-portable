@@ -36,7 +36,9 @@ they do not depend on an existing portable ZIP.
     pnpm run desktop:package:mac
     pnpm run desktop:package:linux
 
-The Windows native build downloads Electron and targets Windows x64. The packaged output is a portable directory:
+Run each packaging command on its matching native host: Windows x64 with a working WSL distribution, Apple Silicon macOS, or Linux x64. The commands download Electron, run capability probes and packaged smoke tests, and write immutable verified bundles under `dist-desktop/verified/<target>/`.
+
+The unpacked Windows application is written to:
 
     dist-desktop/electron/DeepSeek Harness-win32-x64/
     └─ runtime/DeepSeek Harness.exe
@@ -46,10 +48,7 @@ The macOS Apple Silicon build targets `darwin-arm64` and produces:
     dist-desktop/electron/DeepSeek Harness-darwin-arm64/DeepSeek Harness.app
     dist-desktop/electron/DeepSeek-Harness-<distributionVersion>-darwin-arm64.dmg
 
-DMG creation and the build-time `.icns` conversion require macOS system tools
-(`hdiutil`, `sips`, and `iconutil`). The first release lane is intentionally
-unsigned and not notarized. Use `pnpm run desktop:release:mac` to run tests,
-build the DMG, copy it into `release/`, and write its SHA-256 checksum.
+DMG creation and the build-time `.icns` conversion require macOS system tools (`hdiutil`, `sips`, and `iconutil`). The first release lane is intentionally unsigned and not notarized.
 
 The Linux x64 build targets `linux-x64` and produces an unpacked Electron
 runtime plus `DeepSeek-Harness-<distributionVersion>-linux-x64.AppImage` and
@@ -59,10 +58,16 @@ closure. `electron-builder` creates the AppImage and deb from the unpacked
 runtime. Linux and macOS update checks open the release page for manual
 replacement instead of self-updating the installed application.
 
+Publishing is a separate copy-only step. It re-hashes the exact files named by `artifact-verification.json`; it does not build, test, patch, sign, or recreate an archive:
+
+    pnpm run desktop:release:win -- --input dist-desktop/verified/win32-x64
+    pnpm run desktop:release:mac -- --input dist-desktop/verified/darwin-arm64
+    pnpm run desktop:release:linux -- --input dist-desktop/verified/linux-x64
+
 ## Release identity
 
-- Release: DeepSeek Harness Desktop v1.3.1
-- Distribution: 1.3.1
+- Release: DeepSeek Harness Desktop v1.3.2
+- Distribution: 1.3.2
 - Desktop shell: 0.1.0-shell.2
 - Kernel: read from the packaged @deepseek-ai/dsh-web-app manifest
 
