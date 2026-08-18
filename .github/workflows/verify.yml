@@ -28,8 +28,10 @@ jobs:
       - run: pnpm --filter @deepseek-ai/dsh-root run build
       - run: pnpm --filter @dsh-portable/platform-contract run build
       - run: pnpm --filter @dsh-portable/release-manifest run build
+      - run: pnpm --filter @dsh-portable/interactive-learning run build
       - run: pnpm --filter @dsh-portable/runtime run build
       - run: pnpm run packaging:test
+      - run: pnpm run learning:test
       - run: pnpm run runtime:test
       - run: sh scripts/install-unix.test.sh
       - run: pnpm run readme:check

@@ -138,23 +138,72 @@ const TEACHING_EVAL_CASES = [
 	{
 		id: "parameter-relationship",
 		learnerPrompt: "Help me see how changing the sign of slope changes a line.",
-		expectedActivityKind: "parameter_explorer",
+		expectedActivityKind: "plot",
 		requiredContinuationTerms: ["slope"],
 		rationale: "A bounded quantitative relationship should be manipulated locally."
 	},
 	{
 		id: "process-state",
 		learnerPrompt: "Walk me through what happens to a queue when we dequeue twice.",
-		expectedActivityKind: "process_stepper",
+		expectedActivityKind: "node_link",
 		requiredContinuationTerms: ["queue"],
-		rationale: "A state-changing sequence should use predict-then-reveal steps."
+		rationale: "A non-blocking node-link sequence can expose state transitions without creating an answer gate."
 	},
 	{
 		id: "structure-difference",
 		learnerPrompt: "Help me compare array and linked-list lookup structure.",
-		expectedActivityKind: "structure_compare",
+		expectedActivityKind: "relation",
 		requiredContinuationTerms: ["array", "linked"],
-		rationale: "Aligned structural differences should be compared side by side."
+		rationale: "A native comparison relation makes the structural contrast directly inspectable."
+	},
+	{
+		id: "fully-connected-network",
+		learnerPrompt: "Draw a fully connected neuron layer so I can see every connection.",
+		expectedActivityKind: "node_link",
+		requiredContinuationTerms: ["connection", "layer"],
+		rationale: "Topology must be rendered as layered nodes and explicit edges, never replaced by an activation curve."
+	},
+	{
+		id: "derivative-formula-recall",
+		learnerPrompt: "I understand tangent slope; remind me of the derivative formula.",
+		expectedActivityKind: null,
+		requiredContinuationTerms: ["limit"],
+		rationale: "Formula recall needs the formula directly; a parameter plot would add irrelevant interaction."
+	},
+	{
+		id: "vector-geometry",
+		learnerPrompt: "Show me geometrically how two vectors add head to tail.",
+		expectedActivityKind: "scene_2d",
+		requiredContinuationTerms: ["vector"],
+		rationale: "A spatial construction belongs in a coordinate scene."
+	},
+	{
+		id: "historical-chronology",
+		learnerPrompt: "Make an interactive timeline of the discoveries that led from classical genetics to DNA sequencing.",
+		expectedActivityKind: "timeline",
+		requiredContinuationTerms: ["chronology"],
+		rationale: "Events and eras whose order is the explanatory structure require a dedicated timeline."
+	},
+	{
+		id: "formula-derivation",
+		learnerPrompt: "Walk me through each algebraic transformation in the quadratic formula derivation.",
+		expectedActivityKind: "formula_steps",
+		requiredContinuationTerms: ["derivation"],
+		rationale: "A symbolic derivation needs explicit expressions and named transition rules, not a generic plot."
+	},
+	{
+		id: "reference-material-map",
+		learnerPrompt: "I attached a six-chapter study guide. Map its sections, key concepts, and prerequisites before we go deep.",
+		expectedActivityKind: "study_map",
+		requiredContinuationTerms: ["section"],
+		rationale: "A multi-section source needs an anchored navigable overview before concept-level teaching."
+	},
+	{
+		id: "requested-flashcards",
+		learnerPrompt: "Turn the material we just covered into active-recall flashcards with hints.",
+		expectedActivityKind: "recall_deck",
+		requiredContinuationTerms: ["recall"],
+		rationale: "An explicit active-recall request should produce a native revealable deck."
 	},
 	{
 		id: "adaptive-response",
@@ -231,20 +280,62 @@ const OFFLINE_REFERENCE_CANDIDATES = [
 	},
 	{
 		caseId: "parameter-relationship",
-		activityKind: "parameter_explorer",
+		activityKind: "plot",
 		continuation: "Explore how slope changes direction.",
 		endedSegment: false
 	},
 	{
 		caseId: "process-state",
-		activityKind: "process_stepper",
-		continuation: "Predict each queue state before revealing it.",
+		activityKind: "node_link",
+		continuation: "Follow each queue transition while keeping the ordinary conversation available.",
 		endedSegment: false
 	},
 	{
 		caseId: "structure-difference",
-		activityKind: "structure_compare",
-		continuation: "Align the array and linked-list nodes.",
+		activityKind: "relation",
+		continuation: "Compare how array and linked-list nodes connect.",
+		endedSegment: false
+	},
+	{
+		caseId: "fully-connected-network",
+		activityKind: "node_link",
+		continuation: "Every connection between one layer and the next is visible.",
+		endedSegment: false
+	},
+	{
+		caseId: "derivative-formula-recall",
+		activityKind: null,
+		continuation: "Use the limit definition directly: f'(x) = lim h→0 [f(x+h)−f(x)]/h.",
+		endedSegment: false
+	},
+	{
+		caseId: "vector-geometry",
+		activityKind: "scene_2d",
+		continuation: "The second vector starts at the head of the first.",
+		endedSegment: false
+	},
+	{
+		caseId: "historical-chronology",
+		activityKind: "timeline",
+		continuation: "Read the chronology from each discovery to the next.",
+		endedSegment: false
+	},
+	{
+		caseId: "formula-derivation",
+		activityKind: "formula_steps",
+		continuation: "Each derivation step names the algebraic rule that justifies the next expression.",
+		endedSegment: false
+	},
+	{
+		caseId: "reference-material-map",
+		activityKind: "study_map",
+		continuation: "Start from the source section map, then follow the prerequisite path into one concept.",
+		endedSegment: false
+	},
+	{
+		caseId: "requested-flashcards",
+		activityKind: "recall_deck",
+		continuation: "Try active recall before revealing each answer.",
 		endedSegment: false
 	},
 	{

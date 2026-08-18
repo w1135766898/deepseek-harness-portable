@@ -32,6 +32,14 @@ export function evaluateMathExpression(expression, bindings) {
             return Math.exp(evaluateMathExpression(expression.value, bindings));
         case 'log':
             return Math.log(evaluateMathExpression(expression.value, bindings));
+        case 'sigmoid': {
+            const value = evaluateMathExpression(expression.value, bindings);
+            // The split form avoids overflow while preserving accuracy in both tails.
+            if (value >= 0)
+                return 1 / (1 + Math.exp(-value));
+            const exponential = Math.exp(value);
+            return exponential / (1 + exponential);
+        }
     }
 }
 //# sourceMappingURL=math-expression.js.map

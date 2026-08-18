@@ -4,7 +4,13 @@ import { en, zh } from "./locales.js";
 export { ActivityRendererRegistry, activityRendererRegistry } from "./ActivityRenderer.js";
 export { subscribeLearningUiLifecycle } from "./lifecycle.js";
 const NS = 'interactive-learning';
-export const LEARNING_TOOL_VIEW_KEYS = ['learning_activity', 'learning_question', 'learning_reveal'];
+export const LEARNING_TOOL_VIEW_KEYS = [
+    'learning_visual',
+    // Replay support for conversations created by the retired blocking protocol.
+    'learning_activity',
+    'learning_question',
+    'learning_reveal',
+];
 export const name = 'interactive-learning-client';
 export const inject = ['slots', 'locale'];
 export function apply(ctx) {

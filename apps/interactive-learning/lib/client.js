@@ -15,6 +15,20 @@ window.__ModuleLoader__.load({
 		const ACTIVITY_PROTOCOL_V2 = "dsh-learning/activity@2";
 		const RESPONSE_PROTOCOL_V2 = "dsh-learning/response@2";
 		const TRANSPORT_PROTOCOL_V2 = "dsh-learning/wait@2";
+		const VISUAL_PROTOCOL_V3 = "dsh-learning/visual@3";
+		const VISUAL_RESULT_PROTOCOL_V3 = "dsh-learning/visual-result@3";
+		const VISUAL_PROTOCOL_V4 = "dsh-learning/visual@4";
+		const VISUAL_RESULT_PROTOCOL_V4 = "dsh-learning/visual-result@4";
+		const LEARNING_VISUAL_KINDS_V4 = [
+			"plot",
+			"node_link",
+			"scene_2d",
+			"relation",
+			"timeline",
+			"formula_steps",
+			"study_map",
+			"recall_deck"
+		];
 		const LEARNING_ACTIVITY_KINDS = [
 			"parameter_explorer",
 			"process_stepper",
@@ -22,6 +36,23 @@ window.__ModuleLoader__.load({
 		];
 		const MAX_ACTIVITY_BYTES = 65536;
 		const MAX_RESPONSE_BYTES = 32768;
+		const MATH_BINARY_OPERATORS = [
+			"add",
+			"sub",
+			"mul",
+			"div",
+			"pow"
+		];
+		const MATH_UNARY_OPERATORS = [
+			"neg",
+			"abs",
+			"sqrt",
+			"sin",
+			"cos",
+			"exp",
+			"log",
+			"sigmoid"
+		];
 		/** A stable, actionable protocol rejection surfaced to the tool call. */
 		var LearningProtocolError = class extends Error {
 			issues;
@@ -119,23 +150,9 @@ window.__ModuleLoader__.load({
 			}
 			return issues.length === 0;
 		}
-		function validateMath(value, parameterIds, path, issues) {
-			const binary = /* @__PURE__ */ new Set([
-				"add",
-				"sub",
-				"mul",
-				"div",
-				"pow"
-			]);
-			const unary = /* @__PURE__ */ new Set([
-				"neg",
-				"abs",
-				"sqrt",
-				"sin",
-				"cos",
-				"exp",
-				"log"
-			]);
+		function validateMath(value, parameterIds, path, issues, allowX = true, maxDepth = 8) {
+			const binary = new Set(MATH_BINARY_OPERATORS);
+			const unary = new Set(MATH_UNARY_OPERATORS);
 			const stack = [{
 				value,
 				path,
@@ -149,8 +166,8 @@ window.__ModuleLoader__.load({
 					issues.push(`${path} exceeds ${String(64)} AST nodes`);
 					return;
 				}
-				if (node.depth > 8) {
-					issues.push(`${node.path} exceeds AST depth ${String(8)}`);
+				if (node.depth > maxDepth) {
+					issues.push(`${node.path} exceeds AST depth ${String(maxDepth)}`);
 					return;
 				}
 				if (!record(node.value) || typeof node.value.op !== "string") {
@@ -164,7 +181,7 @@ window.__ModuleLoader__.load({
 					if (finite(expression.value, `${node.path}.value`, issues) && Math.abs(expression.value) > 0xe8d4a51000) issues.push(`${node.path}.value exceeds the numeric limit`);
 				} else if (op === "variable") {
 					onlyKeys(expression, ["op", "name"], node.path, issues);
-					if (typeof expression.name !== "string" || expression.name !== "x" && !parameterIds.has(expression.name)) issues.push(`${node.path}.name must be x or a declared parameter id`);
+					if (typeof expression.name !== "string" || !parameterIds.has(expression.name) && !(allowX && expression.name === "x")) issues.push(`${node.path}.name must be ${allowX ? "x or " : ""}a declared parameter id`);
 				} else if (binary.has(op)) {
 					onlyKeys(expression, [
 						"op",
@@ -740,6 +757,1030 @@ window.__ModuleLoader__.load({
 			if (issues.length > 0) throw new LearningProtocolError(issues);
 			return value;
 		}
+		const VISUAL_TONES_V3 = /* @__PURE__ */ new Set([
+			"blue",
+			"green",
+			"red",
+			"orange",
+			"purple",
+			"gray"
+		]);
+		const VISUAL_STROKES_V3 = /* @__PURE__ */ new Set([
+			"solid",
+			"dashed",
+			"dotted"
+		]);
+		function validateVisualAxisV3(value, path, issues, samplesAllowed) {
+			if (!record(value)) {
+				issues.push(`${path} must be an object`);
+				return;
+			}
+			onlyKeys(value, samplesAllowed ? [
+				"label",
+				"min",
+				"max",
+				"samples"
+			] : [
+				"label",
+				"min",
+				"max"
+			], path, issues);
+			if (value.label !== void 0) text(value.label, `${path}.label`, issues, 120);
+			const minOk = finite(value.min, `${path}.min`, issues);
+			const maxOk = finite(value.max, `${path}.max`, issues);
+			if (minOk && maxOk && value.min >= value.max) issues.push(`${path}.min must be less than max`);
+			if (samplesAllowed && value.samples !== void 0 && (!integer(value.samples, `${path}.samples`, issues, 24) || value.samples > 256)) issues.push(`${path}.samples must be an integer from 24 to 256`);
+		}
+		function validateVisualParametersV3(value, issues) {
+			const path = "visual.parameters";
+			if (!Array.isArray(value) || value.length < 1 || value.length > 3) {
+				issues.push(`${path} must contain 1 to 3 parameters`);
+				return [];
+			}
+			const parameters = value.filter(record);
+			if (parameters.length !== value.length) issues.push(`${path} entries must be objects`);
+			uniqueIds(parameters, path, issues);
+			for (const [index, parameter] of parameters.entries()) {
+				const itemPath = `${path}[${String(index)}]`;
+				onlyKeys(parameter, [
+					"id",
+					"label",
+					"min",
+					"max",
+					"step",
+					"initial"
+				], itemPath, issues);
+				id(parameter.id, `${itemPath}.id`, issues);
+				if (parameter.id === "x") issues.push(`${itemPath}.id must not use the reserved x-axis variable`);
+				text(parameter.label, `${itemPath}.label`, issues, 120);
+				const minOk = finite(parameter.min, `${itemPath}.min`, issues);
+				const maxOk = finite(parameter.max, `${itemPath}.max`, issues);
+				const stepOk = finite(parameter.step, `${itemPath}.step`, issues);
+				const initialOk = finite(parameter.initial, `${itemPath}.initial`, issues);
+				if (minOk && maxOk && parameter.min >= parameter.max) issues.push(`${itemPath}.min must be less than max`);
+				if (stepOk && parameter.step <= 0) issues.push(`${itemPath}.step must be positive`);
+				if (minOk && maxOk && stepOk && parameter.step > parameter.max - parameter.min) issues.push(`${itemPath}.step must not exceed the parameter range`);
+				if (minOk && maxOk && initialOk && (parameter.initial < parameter.min || parameter.initial > parameter.max)) issues.push(`${itemPath}.initial must be inside the parameter range`);
+			}
+			return parameters;
+		}
+		/** Validate the preferred, non-blocking visual protocol. */
+		function parseLearningVisualV3(value) {
+			const issues = [];
+			const bytes = jsonBytes(value);
+			if (bytes === void 0) issues.push("visual must be serializable JSON");
+			else if (bytes > 65536) issues.push(`visual exceeds ${String(MAX_ACTIVITY_BYTES)} bytes`);
+			if (!record(value)) throw new LearningProtocolError([...issues, "visual must be an object"]);
+			onlyKeys(value, [
+				"protocol",
+				"kind",
+				"title",
+				"description",
+				"parameters",
+				"xAxis",
+				"yAxis",
+				"series",
+				"metrics"
+			], "visual", issues);
+			if (value.protocol !== "dsh-learning/visual@3") issues.push(`visual.protocol must be ${VISUAL_PROTOCOL_V3}`);
+			if (value.kind !== "parameter_chart") issues.push("visual.kind must be parameter_chart");
+			text(value.title, "visual.title", issues, 200);
+			if (value.description !== void 0) text(value.description, "visual.description", issues, 1e3);
+			const parameters = validateVisualParametersV3(value.parameters, issues);
+			const parameterIds = new Set(parameters.flatMap((parameter) => typeof parameter.id === "string" ? [parameter.id] : []));
+			validateVisualAxisV3(value.xAxis, "visual.xAxis", issues, true);
+			validateVisualAxisV3(value.yAxis, "visual.yAxis", issues, false);
+			if (!Array.isArray(value.series) || value.series.length < 1 || value.series.length > 8) issues.push("visual.series must contain 1 to 8 series");
+			else {
+				const series = value.series.filter(record);
+				if (series.length !== value.series.length) issues.push("visual.series entries must be objects");
+				uniqueIds(series, "visual.series", issues);
+				let curveCount = 0;
+				for (const [index, item] of series.entries()) {
+					const path = `visual.series[${String(index)}]`;
+					id(item.id, `${path}.id`, issues);
+					text(item.label, `${path}.label`, issues, 160);
+					if (item.tone !== void 0 && !VISUAL_TONES_V3.has(item.tone)) issues.push(`${path}.tone is unknown`);
+					if (item.type === "curve") {
+						curveCount += 1;
+						onlyKeys(item, [
+							"type",
+							"id",
+							"label",
+							"expression",
+							"tone",
+							"stroke"
+						], path, issues);
+						if (item.stroke !== void 0 && !VISUAL_STROKES_V3.has(item.stroke)) issues.push(`${path}.stroke is unknown`);
+						validateMath(item.expression, parameterIds, `${path}.expression`, issues, true, 4);
+					} else if (item.type === "points") {
+						onlyKeys(item, [
+							"type",
+							"id",
+							"label",
+							"points",
+							"tone"
+						], path, issues);
+						if (!Array.isArray(item.points) || item.points.length < 1 || item.points.length > 128) {
+							issues.push(`${path}.points must contain 1 to 128 points`);
+							continue;
+						}
+						for (const [pointIndex, point] of item.points.entries()) {
+							const pointPath = `${path}.points[${String(pointIndex)}]`;
+							if (!record(point)) {
+								issues.push(`${pointPath} must be an object`);
+								continue;
+							}
+							onlyKeys(point, [
+								"x",
+								"y",
+								"label"
+							], pointPath, issues);
+							finite(point.x, `${pointPath}.x`, issues);
+							finite(point.y, `${pointPath}.y`, issues);
+							if (point.label !== void 0) text(point.label, `${pointPath}.label`, issues, 160);
+						}
+					} else issues.push(`${path}.type must be curve or points`);
+				}
+				if (curveCount === 0) issues.push("visual.series must contain at least one curve");
+			}
+			if (value.metrics !== void 0) {
+				if (!Array.isArray(value.metrics) || value.metrics.length > 4) issues.push("visual.metrics must contain at most 4 metrics");
+				else {
+					const metrics = value.metrics.filter(record);
+					if (metrics.length !== value.metrics.length) issues.push("visual.metrics entries must be objects");
+					uniqueIds(metrics, "visual.metrics", issues);
+					for (const [index, metric] of metrics.entries()) {
+						const path = `visual.metrics[${String(index)}]`;
+						onlyKeys(metric, [
+							"id",
+							"label",
+							"expression",
+							"digits",
+							"suffix"
+						], path, issues);
+						id(metric.id, `${path}.id`, issues);
+						text(metric.label, `${path}.label`, issues, 160);
+						validateMath(metric.expression, parameterIds, `${path}.expression`, issues, false, 4);
+						if (metric.digits !== void 0 && (!integer(metric.digits, `${path}.digits`, issues) || metric.digits > 6)) issues.push(`${path}.digits must be an integer from 0 to 6`);
+						if (metric.suffix !== void 0) text(metric.suffix, `${path}.suffix`, issues, 80);
+					}
+				}
+			}
+			if (issues.length > 0) throw new LearningProtocolError(issues);
+			return value;
+		}
+		function validateVisualToneV4(value, path, issues) {
+			if (value !== void 0 && !VISUAL_TONES_V3.has(value)) issues.push(`${path} is unknown`);
+		}
+		function validateVisualStrokeV4(value, path, issues) {
+			if (value !== void 0 && !VISUAL_STROKES_V3.has(value)) issues.push(`${path} is unknown`);
+		}
+		function registerVisualIdV4(ids, value, path, issues) {
+			if (typeof value !== "string") return;
+			if (ids.has(value)) issues.push(`${path} duplicates visual id ${value}`);
+			else ids.add(value);
+		}
+		function validateVisualParametersV4(value, issues) {
+			const path = "visual.content.parameters";
+			if (value === void 0) return [];
+			if (!Array.isArray(value) || value.length > 3) {
+				issues.push(`${path} must contain at most 3 parameters`);
+				return [];
+			}
+			const parameters = value.filter(record);
+			if (parameters.length !== value.length) issues.push(`${path} entries must be objects`);
+			uniqueIds(parameters, path, issues);
+			for (const [index, parameter] of parameters.entries()) {
+				const itemPath = `${path}[${String(index)}]`;
+				onlyKeys(parameter, [
+					"id",
+					"label",
+					"min",
+					"max",
+					"step",
+					"initial"
+				], itemPath, issues);
+				id(parameter.id, `${itemPath}.id`, issues);
+				if (parameter.id === "x") issues.push(`${itemPath}.id must not use the reserved x-axis variable`);
+				text(parameter.label, `${itemPath}.label`, issues, 120);
+				const minOk = finite(parameter.min, `${itemPath}.min`, issues);
+				const maxOk = finite(parameter.max, `${itemPath}.max`, issues);
+				const stepOk = finite(parameter.step, `${itemPath}.step`, issues);
+				const initialOk = finite(parameter.initial, `${itemPath}.initial`, issues);
+				if (minOk && maxOk && parameter.min >= parameter.max) issues.push(`${itemPath}.min must be less than max`);
+				if (stepOk && parameter.step <= 0) issues.push(`${itemPath}.step must be positive`);
+				if (minOk && maxOk && stepOk && parameter.step > parameter.max - parameter.min) issues.push(`${itemPath}.step must not exceed the parameter range`);
+				if (minOk && maxOk && initialOk && (parameter.initial < parameter.min || parameter.initial > parameter.max)) issues.push(`${itemPath}.initial must be inside the parameter range`);
+			}
+			return parameters;
+		}
+		function validateVisualPointsV4(value, path, issues, maximum = 256) {
+			if (!Array.isArray(value) || value.length < 1 || value.length > maximum) {
+				issues.push(`${path} must contain 1 to ${String(maximum)} points`);
+				return;
+			}
+			for (const [index, point] of value.entries()) {
+				const pointPath = `${path}[${String(index)}]`;
+				if (!record(point)) {
+					issues.push(`${pointPath} must be an object`);
+					continue;
+				}
+				onlyKeys(point, [
+					"x",
+					"y",
+					"label"
+				], pointPath, issues);
+				finite(point.x, `${pointPath}.x`, issues);
+				finite(point.y, `${pointPath}.y`, issues);
+				if (point.label !== void 0) text(point.label, `${pointPath}.label`, issues, 160);
+			}
+		}
+		function validateVisualMetricsV4(value, parameterIds, issues) {
+			if (value === void 0) return [];
+			if (!Array.isArray(value) || value.length > 4) {
+				issues.push("visual.content.metrics must contain at most 4 metrics");
+				return [];
+			}
+			const metrics = value.filter(record);
+			if (metrics.length !== value.length) issues.push("visual.content.metrics entries must be objects");
+			uniqueIds(metrics, "visual.content.metrics", issues);
+			for (const [index, metric] of metrics.entries()) {
+				const path = `visual.content.metrics[${String(index)}]`;
+				onlyKeys(metric, [
+					"id",
+					"label",
+					"expression",
+					"digits",
+					"suffix"
+				], path, issues);
+				id(metric.id, `${path}.id`, issues);
+				text(metric.label, `${path}.label`, issues, 160);
+				validateMath(metric.expression, parameterIds, `${path}.expression`, issues, false, 4);
+				if (metric.digits !== void 0 && (!integer(metric.digits, `${path}.digits`, issues) || metric.digits > 6)) issues.push(`${path}.digits must be an integer from 0 to 6`);
+				if (metric.suffix !== void 0) text(metric.suffix, `${path}.suffix`, issues, 80);
+			}
+			return metrics;
+		}
+		function validatePlotV4(value, issues) {
+			const ids = /* @__PURE__ */ new Set();
+			onlyKeys(value, [
+				"kind",
+				"parameters",
+				"xAxis",
+				"yAxis",
+				"series",
+				"metrics"
+			], "visual.content", issues);
+			const parameters = validateVisualParametersV4(value.parameters, issues);
+			const parameterIds = new Set(parameters.flatMap((parameter) => typeof parameter.id === "string" ? [parameter.id] : []));
+			for (const parameterId of parameterIds) registerVisualIdV4(ids, parameterId, "visual.content.parameters", issues);
+			validateVisualAxisV3(value.xAxis, "visual.content.xAxis", issues, true);
+			validateVisualAxisV3(value.yAxis, "visual.content.yAxis", issues, false);
+			if (!Array.isArray(value.series) || value.series.length < 1 || value.series.length > 8) issues.push("visual.content.series must contain 1 to 8 series");
+			else {
+				const series = value.series.filter(record);
+				if (series.length !== value.series.length) issues.push("visual.content.series entries must be objects");
+				uniqueIds(series, "visual.content.series", issues);
+				for (const [index, item] of series.entries()) {
+					const path = `visual.content.series[${String(index)}]`;
+					if (id(item.id, `${path}.id`, issues)) registerVisualIdV4(ids, item.id, `${path}.id`, issues);
+					text(item.label, `${path}.label`, issues, 160);
+					validateVisualToneV4(item.tone, `${path}.tone`, issues);
+					if (item.type === "curve") {
+						onlyKeys(item, [
+							"type",
+							"id",
+							"label",
+							"expression",
+							"tone",
+							"stroke"
+						], path, issues);
+						validateVisualStrokeV4(item.stroke, `${path}.stroke`, issues);
+						validateMath(item.expression, parameterIds, `${path}.expression`, issues, true, 4);
+					} else if (item.type === "points" || item.type === "bars") {
+						onlyKeys(item, [
+							"type",
+							"id",
+							"label",
+							"points",
+							"tone"
+						], path, issues);
+						validateVisualPointsV4(item.points, `${path}.points`, issues, item.type === "bars" ? 64 : 256);
+					} else if (item.type === "line") {
+						onlyKeys(item, [
+							"type",
+							"id",
+							"label",
+							"points",
+							"tone",
+							"stroke"
+						], path, issues);
+						validateVisualStrokeV4(item.stroke, `${path}.stroke`, issues);
+						validateVisualPointsV4(item.points, `${path}.points`, issues);
+					} else issues.push(`${path}.type must be curve, points, line, or bars`);
+				}
+			}
+			const metrics = validateVisualMetricsV4(value.metrics, parameterIds, issues);
+			for (const [index, metric] of metrics.entries()) if (typeof metric.id === "string") registerVisualIdV4(ids, metric.id, `visual.content.metrics[${String(index)}].id`, issues);
+			return ids;
+		}
+		function validateNodeLinkV4(value, issues) {
+			const focusIds = /* @__PURE__ */ new Set();
+			onlyKeys(value, [
+				"kind",
+				"layout",
+				"groups",
+				"nodes",
+				"edges"
+			], "visual.content", issues);
+			if (![
+				"layered",
+				"hierarchy",
+				"radial"
+			].includes(value.layout)) issues.push("visual.content.layout must be layered, hierarchy, or radial");
+			let groups = [];
+			if (value.groups !== void 0) {
+				if (!Array.isArray(value.groups) || value.groups.length < 1 || value.groups.length > 12) issues.push("visual.content.groups must contain 1 to 12 groups");
+				else {
+					groups = value.groups.filter(record);
+					if (groups.length !== value.groups.length) issues.push("visual.content.groups entries must be objects");
+					uniqueIds(groups, "visual.content.groups", issues);
+					for (const [index, group] of groups.entries()) {
+						const path = `visual.content.groups[${String(index)}]`;
+						onlyKeys(group, ["id", "label"], path, issues);
+						if (id(group.id, `${path}.id`, issues)) registerVisualIdV4(focusIds, group.id, `${path}.id`, issues);
+						text(group.label, `${path}.label`, issues, 120);
+					}
+				}
+			}
+			const groupIds = new Set(groups.flatMap((group) => typeof group.id === "string" ? [group.id] : []));
+			let nodes = [];
+			if (!Array.isArray(value.nodes) || value.nodes.length < 2 || value.nodes.length > 48) issues.push("visual.content.nodes must contain 2 to 48 nodes");
+			else {
+				nodes = value.nodes.filter(record);
+				if (nodes.length !== value.nodes.length) issues.push("visual.content.nodes entries must be objects");
+				uniqueIds(nodes, "visual.content.nodes", issues);
+				for (const [index, node] of nodes.entries()) {
+					const path = `visual.content.nodes[${String(index)}]`;
+					onlyKeys(node, [
+						"id",
+						"label",
+						"detail",
+						"group",
+						"tone"
+					], path, issues);
+					if (id(node.id, `${path}.id`, issues)) registerVisualIdV4(focusIds, node.id, `${path}.id`, issues);
+					text(node.label, `${path}.label`, issues, 120);
+					if (node.detail !== void 0) text(node.detail, `${path}.detail`, issues, 1e3);
+					if (node.group !== void 0 && (typeof node.group !== "string" || !groupIds.has(node.group))) issues.push(`${path}.group must reference a declared group`);
+					validateVisualToneV4(node.tone, `${path}.tone`, issues);
+				}
+			}
+			if (value.layout === "layered" && (groups.length === 0 || nodes.some((node) => typeof node.group !== "string"))) issues.push("visual.content layered layouts require groups and a group on every node");
+			const nodeIds = new Set(nodes.flatMap((node) => typeof node.id === "string" ? [node.id] : []));
+			if (!Array.isArray(value.edges) || value.edges.length < 1 || value.edges.length > 160) issues.push("visual.content.edges must contain 1 to 160 edges");
+			else {
+				const edges = value.edges.filter(record);
+				if (edges.length !== value.edges.length) issues.push("visual.content.edges entries must be objects");
+				uniqueIds(edges, "visual.content.edges", issues);
+				for (const [index, edge] of edges.entries()) {
+					const path = `visual.content.edges[${String(index)}]`;
+					onlyKeys(edge, [
+						"id",
+						"from",
+						"to",
+						"label",
+						"detail",
+						"tone",
+						"stroke",
+						"directed"
+					], path, issues);
+					if (id(edge.id, `${path}.id`, issues)) registerVisualIdV4(focusIds, edge.id, `${path}.id`, issues);
+					if (typeof edge.from !== "string" || !nodeIds.has(edge.from)) issues.push(`${path}.from must reference a declared node`);
+					if (typeof edge.to !== "string" || !nodeIds.has(edge.to)) issues.push(`${path}.to must reference a declared node`);
+					if (edge.label !== void 0) text(edge.label, `${path}.label`, issues, 120);
+					if (edge.detail !== void 0) text(edge.detail, `${path}.detail`, issues, 1e3);
+					validateVisualToneV4(edge.tone, `${path}.tone`, issues);
+					validateVisualStrokeV4(edge.stroke, `${path}.stroke`, issues);
+					if (edge.directed !== void 0 && typeof edge.directed !== "boolean") issues.push(`${path}.directed must be a boolean`);
+				}
+			}
+			return focusIds;
+		}
+		function validateSceneElementBaseV4(element, path, allowed, issues) {
+			onlyKeys(element, [
+				"type",
+				"id",
+				"label",
+				"detail",
+				"tone",
+				...allowed
+			], path, issues);
+			id(element.id, `${path}.id`, issues);
+			if (element.label !== void 0) text(element.label, `${path}.label`, issues, 120);
+			if (element.detail !== void 0) text(element.detail, `${path}.detail`, issues, 1e3);
+			validateVisualToneV4(element.tone, `${path}.tone`, issues);
+		}
+		function validateScene2DV4(value, issues) {
+			const focusIds = /* @__PURE__ */ new Set();
+			onlyKeys(value, [
+				"kind",
+				"xAxis",
+				"yAxis",
+				"grid",
+				"elements"
+			], "visual.content", issues);
+			validateVisualAxisV3(value.xAxis, "visual.content.xAxis", issues, false);
+			validateVisualAxisV3(value.yAxis, "visual.content.yAxis", issues, false);
+			if (value.grid !== void 0 && typeof value.grid !== "boolean") issues.push("visual.content.grid must be a boolean");
+			if (!Array.isArray(value.elements) || value.elements.length < 1 || value.elements.length > 64) {
+				issues.push("visual.content.elements must contain 1 to 64 elements");
+				return focusIds;
+			}
+			const elements = value.elements.filter(record);
+			if (elements.length !== value.elements.length) issues.push("visual.content.elements entries must be objects");
+			uniqueIds(elements, "visual.content.elements", issues);
+			for (const [index, element] of elements.entries()) {
+				const path = `visual.content.elements[${String(index)}]`;
+				registerVisualIdV4(focusIds, element.id, `${path}.id`, issues);
+				if (element.type === "point") {
+					validateSceneElementBaseV4(element, path, [
+						"x",
+						"y",
+						"size"
+					], issues);
+					finite(element.x, `${path}.x`, issues);
+					finite(element.y, `${path}.y`, issues);
+					if (element.size !== void 0 && finite(element.size, `${path}.size`, issues) && (element.size <= 0 || element.size > 64)) issues.push(`${path}.size must be greater than 0 and at most 64`);
+				} else if (element.type === "segment" || element.type === "arrow") {
+					validateSceneElementBaseV4(element, path, [
+						"x1",
+						"y1",
+						"x2",
+						"y2",
+						"stroke"
+					], issues);
+					finite(element.x1, `${path}.x1`, issues);
+					finite(element.y1, `${path}.y1`, issues);
+					finite(element.x2, `${path}.x2`, issues);
+					finite(element.y2, `${path}.y2`, issues);
+					validateVisualStrokeV4(element.stroke, `${path}.stroke`, issues);
+				} else if (element.type === "circle") {
+					validateSceneElementBaseV4(element, path, [
+						"cx",
+						"cy",
+						"r"
+					], issues);
+					finite(element.cx, `${path}.cx`, issues);
+					finite(element.cy, `${path}.cy`, issues);
+					if (finite(element.r, `${path}.r`, issues) && element.r <= 0) issues.push(`${path}.r must be positive`);
+				} else if (element.type === "rect") {
+					validateSceneElementBaseV4(element, path, [
+						"x",
+						"y",
+						"width",
+						"height"
+					], issues);
+					finite(element.x, `${path}.x`, issues);
+					finite(element.y, `${path}.y`, issues);
+					if (finite(element.width, `${path}.width`, issues) && element.width <= 0) issues.push(`${path}.width must be positive`);
+					if (finite(element.height, `${path}.height`, issues) && element.height <= 0) issues.push(`${path}.height must be positive`);
+				} else if (element.type === "polygon") {
+					validateSceneElementBaseV4(element, path, ["points"], issues);
+					if (!Array.isArray(element.points) || element.points.length < 3 || element.points.length > 24) issues.push(`${path}.points must contain 3 to 24 points`);
+					else for (const [pointIndex, point] of element.points.entries()) {
+						const pointPath = `${path}.points[${String(pointIndex)}]`;
+						if (!record(point)) {
+							issues.push(`${pointPath} must be an object`);
+							continue;
+						}
+						onlyKeys(point, ["x", "y"], pointPath, issues);
+						finite(point.x, `${pointPath}.x`, issues);
+						finite(point.y, `${pointPath}.y`, issues);
+					}
+				} else if (element.type === "label") {
+					validateSceneElementBaseV4(element, path, [
+						"x",
+						"y",
+						"text"
+					], issues);
+					finite(element.x, `${path}.x`, issues);
+					finite(element.y, `${path}.y`, issues);
+					text(element.text, `${path}.text`, issues, 240);
+				} else issues.push(`${path}.type must be point, segment, arrow, circle, rect, polygon, or label`);
+			}
+			return focusIds;
+		}
+		function validateRelationSubjectsV4(value, path, issues) {
+			if (!Array.isArray(value) || value.length < 2 || value.length > 4) {
+				issues.push(`${path} must contain 2 to 4 subjects`);
+				return [];
+			}
+			const subjects = value.filter(record);
+			if (subjects.length !== value.length) issues.push(`${path} entries must be objects`);
+			uniqueIds(subjects, path, issues);
+			for (const [index, subject] of subjects.entries()) {
+				const itemPath = `${path}[${String(index)}]`;
+				onlyKeys(subject, [
+					"id",
+					"label",
+					"detail",
+					"tone"
+				], itemPath, issues);
+				id(subject.id, `${itemPath}.id`, issues);
+				text(subject.label, `${itemPath}.label`, issues, 120);
+				if (subject.detail !== void 0) text(subject.detail, `${itemPath}.detail`, issues, 1e3);
+				validateVisualToneV4(subject.tone, `${itemPath}.tone`, issues);
+			}
+			return subjects;
+		}
+		function validateRelationAxisV4(value, path, issues) {
+			if (!Array.isArray(value) || value.length < 1 || value.length > 10) {
+				issues.push(`${path} must contain 1 to 10 items`);
+				return [];
+			}
+			const items = value.filter(record);
+			if (items.length !== value.length) issues.push(`${path} entries must be objects`);
+			uniqueIds(items, path, issues);
+			for (const [index, item] of items.entries()) {
+				const itemPath = `${path}[${String(index)}]`;
+				onlyKeys(item, ["id", "label"], itemPath, issues);
+				id(item.id, `${itemPath}.id`, issues);
+				text(item.label, `${itemPath}.label`, issues, 120);
+			}
+			return items;
+		}
+		function validateRelationV4(value, issues) {
+			const focusIds = /* @__PURE__ */ new Set();
+			if (value.variant === "comparison") {
+				onlyKeys(value, [
+					"kind",
+					"variant",
+					"subjects",
+					"rows"
+				], "visual.content", issues);
+				const subjects = validateRelationSubjectsV4(value.subjects, "visual.content.subjects", issues);
+				const subjectIds = new Set(subjects.flatMap((subject) => typeof subject.id === "string" ? [subject.id] : []));
+				for (const subjectId of subjectIds) registerVisualIdV4(focusIds, subjectId, "visual.content.subjects", issues);
+				if (!Array.isArray(value.rows) || value.rows.length < 1 || value.rows.length > 16) {
+					issues.push("visual.content.rows must contain 1 to 16 comparison rows");
+					return focusIds;
+				}
+				const rows = value.rows.filter(record);
+				if (rows.length !== value.rows.length) issues.push("visual.content.rows entries must be objects");
+				uniqueIds(rows, "visual.content.rows", issues);
+				for (const [index, row] of rows.entries()) {
+					const path = `visual.content.rows[${String(index)}]`;
+					onlyKeys(row, [
+						"id",
+						"label",
+						"cells",
+						"detail"
+					], path, issues);
+					if (id(row.id, `${path}.id`, issues)) registerVisualIdV4(focusIds, row.id, `${path}.id`, issues);
+					text(row.label, `${path}.label`, issues, 120);
+					if (row.detail !== void 0) text(row.detail, `${path}.detail`, issues, 1e3);
+					if (!Array.isArray(row.cells) || row.cells.length < 1 || row.cells.length > 4) {
+						issues.push(`${path}.cells must contain 1 to 4 cells`);
+						continue;
+					}
+					const seenSubjects = /* @__PURE__ */ new Set();
+					for (const [cellIndex, cell] of row.cells.entries()) {
+						const cellPath = `${path}.cells[${String(cellIndex)}]`;
+						if (!record(cell)) {
+							issues.push(`${cellPath} must be an object`);
+							continue;
+						}
+						onlyKeys(cell, [
+							"subjectId",
+							"value",
+							"tone"
+						], cellPath, issues);
+						if (typeof cell.subjectId !== "string" || !subjectIds.has(cell.subjectId)) issues.push(`${cellPath}.subjectId must reference a declared subject`);
+						else if (seenSubjects.has(cell.subjectId)) issues.push(`${cellPath}.subjectId duplicates ${cell.subjectId}`);
+						else seenSubjects.add(cell.subjectId);
+						text(cell.value, `${cellPath}.value`, issues, 500);
+						validateVisualToneV4(cell.tone, `${cellPath}.tone`, issues);
+					}
+				}
+			} else if (value.variant === "matrix") {
+				onlyKeys(value, [
+					"kind",
+					"variant",
+					"rows",
+					"columns",
+					"cells"
+				], "visual.content", issues);
+				const rows = validateRelationAxisV4(value.rows, "visual.content.rows", issues);
+				const columns = validateRelationAxisV4(value.columns, "visual.content.columns", issues);
+				const rowIds = new Set(rows.flatMap((row) => typeof row.id === "string" ? [row.id] : []));
+				const columnIds = new Set(columns.flatMap((column) => typeof column.id === "string" ? [column.id] : []));
+				for (const rowId of rowIds) registerVisualIdV4(focusIds, rowId, "visual.content.rows", issues);
+				for (const columnId of columnIds) registerVisualIdV4(focusIds, columnId, "visual.content.columns", issues);
+				if (!Array.isArray(value.cells) || value.cells.length < 1 || value.cells.length > 64) {
+					issues.push("visual.content.cells must contain 1 to 64 matrix cells");
+					return focusIds;
+				}
+				const cells = value.cells.filter(record);
+				if (cells.length !== value.cells.length) issues.push("visual.content.cells entries must be objects");
+				uniqueIds(cells, "visual.content.cells", issues);
+				const coordinates = /* @__PURE__ */ new Set();
+				for (const [index, cell] of cells.entries()) {
+					const path = `visual.content.cells[${String(index)}]`;
+					onlyKeys(cell, [
+						"id",
+						"rowId",
+						"columnId",
+						"label",
+						"detail",
+						"tone"
+					], path, issues);
+					if (id(cell.id, `${path}.id`, issues)) registerVisualIdV4(focusIds, cell.id, `${path}.id`, issues);
+					if (typeof cell.rowId !== "string" || !rowIds.has(cell.rowId)) issues.push(`${path}.rowId must reference a declared row`);
+					if (typeof cell.columnId !== "string" || !columnIds.has(cell.columnId)) issues.push(`${path}.columnId must reference a declared column`);
+					if (typeof cell.rowId === "string" && typeof cell.columnId === "string") {
+						const coordinate = `${cell.rowId}\u0000${cell.columnId}`;
+						if (coordinates.has(coordinate)) issues.push(`${path} duplicates a matrix coordinate`);
+						coordinates.add(coordinate);
+					}
+					text(cell.label, `${path}.label`, issues, 240);
+					if (cell.detail !== void 0) text(cell.detail, `${path}.detail`, issues, 1e3);
+					validateVisualToneV4(cell.tone, `${path}.tone`, issues);
+				}
+			} else if (value.variant === "sets") {
+				onlyKeys(value, [
+					"kind",
+					"variant",
+					"sets",
+					"items"
+				], "visual.content", issues);
+				const sets = validateRelationSubjectsV4(value.sets, "visual.content.sets", issues);
+				if (sets.length > 3) issues.push("visual.content.sets must contain at most 3 sets");
+				const setIds = new Set(sets.flatMap((item) => typeof item.id === "string" ? [item.id] : []));
+				for (const setId of setIds) registerVisualIdV4(focusIds, setId, "visual.content.sets", issues);
+				if (!Array.isArray(value.items) || value.items.length < 1 || value.items.length > 24) {
+					issues.push("visual.content.items must contain 1 to 24 set items");
+					return focusIds;
+				}
+				const items = value.items.filter(record);
+				if (items.length !== value.items.length) issues.push("visual.content.items entries must be objects");
+				uniqueIds(items, "visual.content.items", issues);
+				for (const [index, item] of items.entries()) {
+					const path = `visual.content.items[${String(index)}]`;
+					onlyKeys(item, [
+						"id",
+						"label",
+						"setIds",
+						"detail"
+					], path, issues);
+					if (id(item.id, `${path}.id`, issues)) registerVisualIdV4(focusIds, item.id, `${path}.id`, issues);
+					text(item.label, `${path}.label`, issues, 120);
+					if (item.detail !== void 0) text(item.detail, `${path}.detail`, issues, 1e3);
+					if (!Array.isArray(item.setIds) || item.setIds.length < 1 || item.setIds.length > 3) issues.push(`${path}.setIds must contain 1 to 3 set ids`);
+					else {
+						const memberships = /* @__PURE__ */ new Set();
+						for (const setId of item.setIds) if (typeof setId !== "string" || !setIds.has(setId)) issues.push(`${path}.setIds must reference declared sets`);
+						else if (memberships.has(setId)) issues.push(`${path}.setIds duplicates ${setId}`);
+						else memberships.add(setId);
+					}
+				}
+			} else issues.push("visual.content.variant must be comparison, matrix, or sets");
+			return focusIds;
+		}
+		function validateTimelineV4(value, issues) {
+			const focusIds = /* @__PURE__ */ new Set();
+			onlyKeys(value, [
+				"kind",
+				"orientation",
+				"events",
+				"eras"
+			], "visual.content", issues);
+			if (value.orientation !== void 0 && value.orientation !== "horizontal" && value.orientation !== "vertical") issues.push("visual.content.orientation must be horizontal or vertical");
+			let events = [];
+			if (!Array.isArray(value.events) || value.events.length < 2 || value.events.length > 32) issues.push("visual.content.events must contain 2 to 32 events");
+			else {
+				events = value.events.filter(record);
+				if (events.length !== value.events.length) issues.push("visual.content.events entries must be objects");
+				uniqueIds(events, "visual.content.events", issues);
+				const hasPositions = events.filter((event) => event.position !== void 0).length;
+				if (hasPositions !== 0 && hasPositions !== events.length) issues.push("visual.content.events.position must be provided for every event or omitted for every event");
+				let previousPosition = -1;
+				for (const [index, event] of events.entries()) {
+					const path = `visual.content.events[${String(index)}]`;
+					onlyKeys(event, [
+						"id",
+						"time",
+						"label",
+						"detail",
+						"position",
+						"tone"
+					], path, issues);
+					if (id(event.id, `${path}.id`, issues)) registerVisualIdV4(focusIds, event.id, `${path}.id`, issues);
+					text(event.time, `${path}.time`, issues, 80);
+					text(event.label, `${path}.label`, issues, 160);
+					if (event.detail !== void 0) text(event.detail, `${path}.detail`, issues, 1500);
+					if (event.position !== void 0 && finite(event.position, `${path}.position`, issues)) {
+						const position = event.position;
+						if (position < 0 || position > 1) issues.push(`${path}.position must be from 0 to 1`);
+						if (position <= previousPosition) issues.push(`${path}.position must be greater than the preceding event position`);
+						previousPosition = position;
+					}
+					validateVisualToneV4(event.tone, `${path}.tone`, issues);
+				}
+			}
+			const eventIds = new Set(events.flatMap((event) => typeof event.id === "string" ? [event.id] : []));
+			const eventIndexes = new Map(events.flatMap((event, index) => typeof event.id === "string" ? [[event.id, index]] : []));
+			if (value.eras !== void 0) {
+				if (!Array.isArray(value.eras) || value.eras.length < 1 || value.eras.length > 8) issues.push("visual.content.eras must contain 1 to 8 eras");
+				else {
+					const eras = value.eras.filter(record);
+					if (eras.length !== value.eras.length) issues.push("visual.content.eras entries must be objects");
+					uniqueIds(eras, "visual.content.eras", issues);
+					for (const [index, era] of eras.entries()) {
+						const path = `visual.content.eras[${String(index)}]`;
+						onlyKeys(era, [
+							"id",
+							"label",
+							"startEventId",
+							"endEventId",
+							"detail",
+							"tone"
+						], path, issues);
+						if (id(era.id, `${path}.id`, issues)) registerVisualIdV4(focusIds, era.id, `${path}.id`, issues);
+						text(era.label, `${path}.label`, issues, 120);
+						if (typeof era.startEventId !== "string" || !eventIds.has(era.startEventId)) issues.push(`${path}.startEventId must reference a declared event`);
+						if (typeof era.endEventId !== "string" || !eventIds.has(era.endEventId)) issues.push(`${path}.endEventId must reference a declared event`);
+						if (typeof era.startEventId === "string" && typeof era.endEventId === "string") {
+							const startIndex = eventIndexes.get(era.startEventId);
+							const endIndex = eventIndexes.get(era.endEventId);
+							if (startIndex !== void 0 && endIndex !== void 0 && startIndex > endIndex) issues.push(`${path}.startEventId must not occur after endEventId`);
+						}
+						if (era.detail !== void 0) text(era.detail, `${path}.detail`, issues, 1e3);
+						validateVisualToneV4(era.tone, `${path}.tone`, issues);
+					}
+				}
+			}
+			return focusIds;
+		}
+		function validateFormulaStepsV4(value, issues) {
+			const focusIds = /* @__PURE__ */ new Set();
+			onlyKeys(value, [
+				"kind",
+				"notation",
+				"steps",
+				"conclusion"
+			], "visual.content", issues);
+			if (value.notation !== void 0) text(value.notation, "visual.content.notation", issues, 300);
+			if (value.conclusion !== void 0) text(value.conclusion, "visual.content.conclusion", issues, 1e3);
+			if (!Array.isArray(value.steps) || value.steps.length < 2 || value.steps.length > 16) {
+				issues.push("visual.content.steps must contain 2 to 16 formula steps");
+				return focusIds;
+			}
+			const steps = value.steps.filter(record);
+			if (steps.length !== value.steps.length) issues.push("visual.content.steps entries must be objects");
+			uniqueIds(steps, "visual.content.steps", issues);
+			for (const [index, step] of steps.entries()) {
+				const path = `visual.content.steps[${String(index)}]`;
+				onlyKeys(step, [
+					"id",
+					"expression",
+					"label",
+					"rule",
+					"detail",
+					"tone"
+				], path, issues);
+				if (id(step.id, `${path}.id`, issues)) registerVisualIdV4(focusIds, step.id, `${path}.id`, issues);
+				text(step.expression, `${path}.expression`, issues, 500);
+				if (step.label !== void 0) text(step.label, `${path}.label`, issues, 120);
+				if (step.rule !== void 0) text(step.rule, `${path}.rule`, issues, 240);
+				if (step.detail !== void 0) text(step.detail, `${path}.detail`, issues, 1500);
+				validateVisualToneV4(step.tone, `${path}.tone`, issues);
+			}
+			return focusIds;
+		}
+		function validateStudyMapV4(value, issues) {
+			const focusIds = /* @__PURE__ */ new Set();
+			onlyKeys(value, [
+				"kind",
+				"sourceLabel",
+				"goal",
+				"sections",
+				"concepts"
+			], "visual.content", issues);
+			text(value.sourceLabel, "visual.content.sourceLabel", issues, 240);
+			if (value.goal !== void 0) text(value.goal, "visual.content.goal", issues, 600);
+			let sections = [];
+			if (!Array.isArray(value.sections) || value.sections.length < 1 || value.sections.length > 16) issues.push("visual.content.sections must contain 1 to 16 sections");
+			else {
+				sections = value.sections.filter(record);
+				if (sections.length !== value.sections.length) issues.push("visual.content.sections entries must be objects");
+				uniqueIds(sections, "visual.content.sections", issues);
+				for (const [index, section] of sections.entries()) {
+					const path = `visual.content.sections[${String(index)}]`;
+					onlyKeys(section, [
+						"id",
+						"label",
+						"anchor",
+						"summary"
+					], path, issues);
+					if (id(section.id, `${path}.id`, issues)) registerVisualIdV4(focusIds, section.id, `${path}.id`, issues);
+					text(section.label, `${path}.label`, issues, 160);
+					if (section.anchor !== void 0) text(section.anchor, `${path}.anchor`, issues, 160);
+					if (section.summary !== void 0) text(section.summary, `${path}.summary`, issues, 1e3);
+				}
+			}
+			const sectionIds = new Set(sections.flatMap((section) => typeof section.id === "string" ? [section.id] : []));
+			let concepts = [];
+			if (!Array.isArray(value.concepts) || value.concepts.length < 1 || value.concepts.length > 48) issues.push("visual.content.concepts must contain 1 to 48 concepts");
+			else {
+				concepts = value.concepts.filter(record);
+				if (concepts.length !== value.concepts.length) issues.push("visual.content.concepts entries must be objects");
+				uniqueIds(concepts, "visual.content.concepts", issues);
+				for (const [index, concept] of concepts.entries()) {
+					const path = `visual.content.concepts[${String(index)}]`;
+					onlyKeys(concept, [
+						"id",
+						"label",
+						"sectionId",
+						"detail",
+						"prerequisiteIds",
+						"role",
+						"tone"
+					], path, issues);
+					if (id(concept.id, `${path}.id`, issues)) registerVisualIdV4(focusIds, concept.id, `${path}.id`, issues);
+					text(concept.label, `${path}.label`, issues, 160);
+					if (typeof concept.sectionId !== "string" || !sectionIds.has(concept.sectionId)) issues.push(`${path}.sectionId must reference a declared section`);
+					if (concept.detail !== void 0) text(concept.detail, `${path}.detail`, issues, 1500);
+					if (concept.role !== void 0 && ![
+						"foundation",
+						"core",
+						"extension",
+						"practice"
+					].includes(concept.role)) issues.push(`${path}.role must be foundation, core, extension, or practice`);
+					validateVisualToneV4(concept.tone, `${path}.tone`, issues);
+				}
+			}
+			const conceptIds = new Set(concepts.flatMap((concept) => typeof concept.id === "string" ? [concept.id] : []));
+			const prerequisiteGraph = /* @__PURE__ */ new Map();
+			for (const [index, concept] of concepts.entries()) {
+				if (concept.prerequisiteIds === void 0) continue;
+				const path = `visual.content.concepts[${String(index)}].prerequisiteIds`;
+				if (!Array.isArray(concept.prerequisiteIds) || concept.prerequisiteIds.length > 8) {
+					issues.push(`${path} must contain at most 8 concept ids`);
+					continue;
+				}
+				const seen = /* @__PURE__ */ new Set();
+				for (const prerequisiteId of concept.prerequisiteIds) if (typeof prerequisiteId !== "string" || !conceptIds.has(prerequisiteId)) issues.push(`${path} must reference declared concepts`);
+				else if (prerequisiteId === concept.id) issues.push(`${path} must not reference its own concept`);
+				else if (seen.has(prerequisiteId)) issues.push(`${path} duplicates ${prerequisiteId}`);
+				else seen.add(prerequisiteId);
+				if (typeof concept.id === "string") prerequisiteGraph.set(concept.id, [...seen]);
+			}
+			const visited = /* @__PURE__ */ new Set();
+			const visiting = /* @__PURE__ */ new Set();
+			const visit = (conceptId) => {
+				if (visiting.has(conceptId)) return true;
+				if (visited.has(conceptId)) return false;
+				visiting.add(conceptId);
+				const cyclic = (prerequisiteGraph.get(conceptId) ?? []).some(visit);
+				visiting.delete(conceptId);
+				visited.add(conceptId);
+				return cyclic;
+			};
+			if ([...conceptIds].some(visit)) issues.push("visual.content.concepts prerequisiteIds must not contain a cycle");
+			return focusIds;
+		}
+		function validateRecallDeckV4(value, issues) {
+			const focusIds = /* @__PURE__ */ new Set();
+			onlyKeys(value, [
+				"kind",
+				"instructions",
+				"cards"
+			], "visual.content", issues);
+			if (value.instructions !== void 0) text(value.instructions, "visual.content.instructions", issues, 600);
+			if (!Array.isArray(value.cards) || value.cards.length < 2 || value.cards.length > 32) {
+				issues.push("visual.content.cards must contain 2 to 32 cards");
+				return focusIds;
+			}
+			const cards = value.cards.filter(record);
+			if (cards.length !== value.cards.length) issues.push("visual.content.cards entries must be objects");
+			uniqueIds(cards, "visual.content.cards", issues);
+			for (const [index, card] of cards.entries()) {
+				const path = `visual.content.cards[${String(index)}]`;
+				onlyKeys(card, [
+					"id",
+					"prompt",
+					"answer",
+					"hint",
+					"tags"
+				], path, issues);
+				if (id(card.id, `${path}.id`, issues)) registerVisualIdV4(focusIds, card.id, `${path}.id`, issues);
+				text(card.prompt, `${path}.prompt`, issues, 1e3);
+				text(card.answer, `${path}.answer`, issues, 2e3);
+				if (card.hint !== void 0) text(card.hint, `${path}.hint`, issues, 800);
+				if (card.tags !== void 0) {
+					if (!Array.isArray(card.tags) || card.tags.length > 6) issues.push(`${path}.tags must contain at most 6 labels`);
+					else {
+						const seen = /* @__PURE__ */ new Set();
+						for (const [tagIndex, tag] of card.tags.entries()) if (text(tag, `${path}.tags[${String(tagIndex)}]`, issues, 80) && typeof tag === "string") {
+							if (seen.has(tag)) issues.push(`${path}.tags duplicates ${tag}`);
+							else seen.add(tag);
+						}
+					}
+				}
+			}
+			return focusIds;
+		}
+		function validateVisualSequenceV4(value, focusIds, issues) {
+			if (value === void 0) return;
+			if (!record(value)) {
+				issues.push("visual.sequence must be an object");
+				return;
+			}
+			onlyKeys(value, ["initialFrameId", "frames"], "visual.sequence", issues);
+			if (!Array.isArray(value.frames) || value.frames.length < 2 || value.frames.length > 12) {
+				issues.push("visual.sequence.frames must contain 2 to 12 frames");
+				return;
+			}
+			const frames = value.frames.filter(record);
+			if (frames.length !== value.frames.length) issues.push("visual.sequence.frames entries must be objects");
+			uniqueIds(frames, "visual.sequence.frames", issues);
+			const frameIds = /* @__PURE__ */ new Set();
+			for (const [index, frame] of frames.entries()) {
+				const path = `visual.sequence.frames[${String(index)}]`;
+				onlyKeys(frame, [
+					"id",
+					"label",
+					"description",
+					"focusIds"
+				], path, issues);
+				if (id(frame.id, `${path}.id`, issues)) frameIds.add(frame.id);
+				text(frame.label, `${path}.label`, issues, 120);
+				if (frame.description !== void 0) text(frame.description, `${path}.description`, issues, 1e3);
+				if (!Array.isArray(frame.focusIds) || frame.focusIds.length > 64) {
+					issues.push(`${path}.focusIds must contain at most 64 ids`);
+					continue;
+				}
+				const seen = /* @__PURE__ */ new Set();
+				for (const [focusIndex, focusId] of frame.focusIds.entries()) if (typeof focusId !== "string" || !focusIds.has(focusId)) issues.push(`${path}.focusIds[${String(focusIndex)}] must reference visual content`);
+				else if (seen.has(focusId)) issues.push(`${path}.focusIds duplicates ${focusId}`);
+				else seen.add(focusId);
+			}
+			if (value.initialFrameId !== void 0 && (typeof value.initialFrameId !== "string" || !frameIds.has(value.initialFrameId))) issues.push("visual.sequence.initialFrameId must reference a declared frame");
+		}
+		/** Validate the semantic, model-facing visual protocol while retaining V3 replay separately. */
+		function parseLearningVisualV4(value) {
+			const issues = [];
+			const bytes = jsonBytes(value);
+			if (bytes === void 0) issues.push("visual must be serializable JSON");
+			else if (bytes > 65536) issues.push(`visual exceeds ${String(MAX_ACTIVITY_BYTES)} bytes`);
+			if (!record(value)) throw new LearningProtocolError([...issues, "visual must be an object"]);
+			onlyKeys(value, [
+				"protocol",
+				"title",
+				"description",
+				"content",
+				"sequence",
+				"fallbackMarkdown"
+			], "visual", issues);
+			if (value.protocol !== "dsh-learning/visual@4") issues.push(`visual.protocol must be ${VISUAL_PROTOCOL_V4}`);
+			text(value.title, "visual.title", issues, 200);
+			if (value.description !== void 0) text(value.description, "visual.description", issues, 1e3);
+			if (value.fallbackMarkdown !== void 0) text(value.fallbackMarkdown, "visual.fallbackMarkdown", issues, 8e3);
+			let focusIds = /* @__PURE__ */ new Set();
+			if (!record(value.content)) issues.push("visual.content must be an object");
+			else if (value.content.kind === "plot") focusIds = validatePlotV4(value.content, issues);
+			else if (value.content.kind === "node_link") focusIds = validateNodeLinkV4(value.content, issues);
+			else if (value.content.kind === "scene_2d") focusIds = validateScene2DV4(value.content, issues);
+			else if (value.content.kind === "relation") focusIds = validateRelationV4(value.content, issues);
+			else if (value.content.kind === "timeline") focusIds = validateTimelineV4(value.content, issues);
+			else if (value.content.kind === "formula_steps") focusIds = validateFormulaStepsV4(value.content, issues);
+			else if (value.content.kind === "study_map") focusIds = validateStudyMapV4(value.content, issues);
+			else if (value.content.kind === "recall_deck") focusIds = validateRecallDeckV4(value.content, issues);
+			else issues.push(`visual.content.kind must be one of ${LEARNING_VISUAL_KINDS_V4.join(", ")}`);
+			validateVisualSequenceV4(value.sequence, focusIds, issues);
+			if (issues.length > 0) throw new LearningProtocolError(issues);
+			return value;
+		}
+		function parseLearningVisualResultV4(value) {
+			const issues = [];
+			if (!record(value)) throw new LearningProtocolError(["visual result must be an object"]);
+			onlyKeys(value, ["protocol", "status"], "visualResult", issues);
+			if (value.protocol !== "dsh-learning/visual-result@4") issues.push(`visualResult.protocol must be ${VISUAL_RESULT_PROTOCOL_V4}`);
+			if (value.status !== "ready") issues.push("visualResult.status must be ready");
+			if (issues.length > 0) throw new LearningProtocolError(issues);
+			return value;
+		}
+		function parseLearningVisualResultV3(value) {
+			const issues = [];
+			if (!record(value)) throw new LearningProtocolError(["visual result must be an object"]);
+			onlyKeys(value, ["protocol", "status"], "visualResult", issues);
+			if (value.protocol !== "dsh-learning/visual-result@3") issues.push(`visualResult.protocol must be ${VISUAL_RESULT_PROTOCOL_V3}`);
+			if (value.status !== "ready") issues.push("visualResult.status must be ready");
+			if (issues.length > 0) throw new LearningProtocolError(issues);
+			return value;
+		}
 		//#endregion
 		//#region src/transport.ts
 		const MARKER_PREFIX = "<!--dsh-learning/transport@1:";
@@ -835,92 +1876,112 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:C:\Users\Ryan\Desktop\deepseek-harness-portable\apps\interactive-learning\src\client\LearningActivity.module.css.mjs
-		const css = "._7ar4Xq_inlineActivity{min-width:0;color:var(--dsw-alias-label-primary);flex-direction:column;gap:16px;font-size:16px;line-height:28px;display:flex}._7ar4Xq_scaffold{color:var(--dsw-alias-label-secondary);align-self:flex-start;font-size:13px;line-height:22px}._7ar4Xq_scaffold summary{cursor:pointer}._7ar4Xq_activityActions{align-items:center;gap:12px;margin-top:-6px;font-size:12px;line-height:20px;display:flex}._7ar4Xq_error{color:var(--dsw-alias-label-error);margin:0;font-size:13px;line-height:22px}._7ar4Xq_activityContent,._7ar4Xq_controls,._7ar4Xq_answerField,._7ar4Xq_stepFocus,._7ar4Xq_prediction{flex-direction:column;display:flex}._7ar4Xq_activityContent{gap:16px}._7ar4Xq_prompt{color:var(--dsw-alias-label-primary);margin:0;font-size:16px;font-weight:400;line-height:28px}._7ar4Xq_explorer{flex-direction:column;gap:16px;min-width:0;display:flex}._7ar4Xq_controls{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:14px 24px;display:grid}._7ar4Xq_rangeField{min-width:0;color:var(--dsw-alias-label-secondary);font-size:13px}._7ar4Xq_rangeHeader{justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px;display:flex}._7ar4Xq_rangeHeader label{color:var(--dsw-alias-label-primary);font-weight:500}._7ar4Xq_rangeHeader output{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;font-size:14px;font-weight:650}._7ar4Xq_rangeControl{grid-template-rows:30px 16px;grid-template-columns:28px minmax(0,1fr) 28px;align-items:center;column-gap:9px;display:grid}._7ar4Xq_stepButton{appearance:none;border:1px solid var(--dsw-alias-border-l3);width:28px;height:28px;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer;background:0 0;border-radius:7px;padding:0;font-size:17px;line-height:26px}._7ar4Xq_stepButton:hover:not(:disabled){border-color:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-state-business-primary)}._7ar4Xq_stepButton:disabled{cursor:default;opacity:.35}._7ar4Xq_rangeInput{appearance:none;background:linear-gradient(to right, var(--dsw-alias-border-l4) 0 var(--range-low), var(--dsw-alias-state-business-primary) var(--range-low) var(--range-high), var(--dsw-alias-border-l4) var(--range-high) 100%);cursor:pointer;border-radius:999px;width:100%;height:4px}._7ar4Xq_rangeInput:disabled{cursor:default;opacity:.55}._7ar4Xq_rangeInput::-webkit-slider-runnable-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_rangeInput::-webkit-slider-thumb{appearance:none;border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:16px;height:16px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%;margin-top:-6px}._7ar4Xq_rangeInput::-moz-range-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_rangeInput::-moz-range-thumb{border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:10px;height:10px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%}._7ar4Xq_rangeInput:focus-visible,._7ar4Xq_compareRow input:focus-visible,._7ar4Xq_option input:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:4px}._7ar4Xq_rangeEnds{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;grid-column:2;justify-content:space-between;font-size:11px;line-height:16px;display:flex;position:relative}._7ar4Xq_rangeZero{position:absolute;transform:translate(-50%)}._7ar4Xq_chartRegion{min-width:0}._7ar4Xq_chart{width:100%;height:auto;display:block;overflow:visible}._7ar4Xq_plotFrame{fill:var(--dsw-alias-bg-layer-1);stroke:var(--dsw-alias-border-l3);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_gridLine{stroke:var(--dsw-alias-border-l1);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_zeroAxis{stroke:var(--dsw-alias-border-l4);stroke-width:1.25px}._7ar4Xq_tickLabel{fill:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;font-size:11px}._7ar4Xq_axisLabel{fill:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500}._7ar4Xq_curve{fill:none;stroke:var(--dsw-alias-state-business-primary);stroke-width:3px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}._7ar4Xq_curve[data-curve=\"1\"]{stroke:var(--dsw-alias-state-success-primary);stroke-dasharray:9 5}._7ar4Xq_curve[data-curve=\"2\"]{stroke:var(--dsw-alias-state-warn-primary);stroke-dasharray:2 6}._7ar4Xq_legend{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;gap:8px 14px;margin:0 0 5px 64px;padding:0;font-size:12px;list-style:none;display:flex}._7ar4Xq_legend li:before{content:\"\";border-top:3px solid var(--dsw-alias-state-business-primary);vertical-align:middle;width:18px;height:0;margin-right:5px;display:inline-block}._7ar4Xq_legend li[data-curve=\"1\"]:before{border-top-color:var(--dsw-alias-state-success-primary);border-top-style:dashed}._7ar4Xq_legend li[data-curve=\"2\"]:before{border-top-color:var(--dsw-alias-state-warn-primary);border-top-style:dotted}._7ar4Xq_answerField{color:var(--dsw-alias-label-secondary);gap:6px;font-size:13px}._7ar4Xq_answerField textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--dsw-alias-border-l2);min-height:52px;color:var(--dsw-alias-label-primary);font:inherit;background:0 0;border-radius:0;padding:5px 0;line-height:1.5}._7ar4Xq_answerField textarea:focus-visible,._7ar4Xq_prediction textarea:focus-visible,._7ar4Xq_inlineActivity button:focus-visible,._7ar4Xq_inlineStatus:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}._7ar4Xq_primaryRow,._7ar4Xq_navigation{gap:8px;display:flex}._7ar4Xq_primaryRow{justify-content:flex-start}._7ar4Xq_navigation{justify-content:space-between}._7ar4Xq_primaryButton,._7ar4Xq_ghostButton,._7ar4Xq_revealButton,._7ar4Xq_textButton{appearance:none;font:inherit;cursor:pointer;border-radius:8px;padding:4px 10px;font-size:13px;line-height:20px}._7ar4Xq_primaryButton,._7ar4Xq_revealButton{border:1px solid var(--dsw-alias-brand-primary);background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-on-primary,white)}._7ar4Xq_ghostButton{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}._7ar4Xq_textButton{color:var(--dsw-alias-brand-primary);background:0 0;border:0;border-radius:0;padding:2px 0}._7ar4Xq_primaryButton:disabled,._7ar4Xq_ghostButton:disabled,._7ar4Xq_revealButton:disabled,._7ar4Xq_textButton:disabled{cursor:default;opacity:.45}._7ar4Xq_stepMeta{color:var(--dsw-alias-label-tertiary);justify-content:space-between;align-items:center;font-size:12px;display:flex}._7ar4Xq_processMap{grid-template-columns:repeat(var(--process-step-count), minmax(0, 1fr));margin:0;padding:0;list-style:none;display:grid}._7ar4Xq_processStep{min-width:0;position:relative}._7ar4Xq_processStep:not(:last-child):after{z-index:0;background:var(--dsw-alias-border-l2);content:\"\";height:2px;position:absolute;top:13px;left:calc(50% + 16px);right:calc(16px - 50%)}._7ar4Xq_processStep[data-connector-complete]:after{background:var(--dsw-alias-state-business-primary)}._7ar4Xq_processStepButton{z-index:1;width:100%;min-width:0;color:var(--dsw-alias-label-tertiary);text-align:center;font:inherit;cursor:pointer;background:0 0;border:0;flex-direction:column;align-items:center;gap:6px;padding:0 4px;font-size:12px;line-height:18px;display:flex;position:relative}._7ar4Xq_processStepButton:disabled{cursor:default}._7ar4Xq_processNode{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l4);background:var(--dsw-alias-bg-layer-1);width:28px;height:28px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;border-radius:50%;place-items:center;font-size:12px;line-height:1;display:grid}._7ar4Xq_processTitle{-webkit-line-clamp:2;-webkit-box-orient:vertical;min-width:0;display:-webkit-box;overflow:hidden}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processNode{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-tertiary);color:var(--dsw-alias-state-business-primary)}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processTitle{color:var(--dsw-alias-label-primary);font-weight:500}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processNode{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-primary-inverted)}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processTitle{color:var(--dsw-alias-label-secondary)}._7ar4Xq_processMapVertical{grid-template-columns:1fr}._7ar4Xq_processMapVertical ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMapVertical ._7ar4Xq_processStepButton{text-align:left;flex-direction:row;align-items:flex-start;gap:10px;padding:4px 0 10px}._7ar4Xq_processMapVertical ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMapVertical ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_stepFocus{border-left:2px solid var(--dsw-alias-state-business-primary);gap:12px;padding-left:16px}._7ar4Xq_stepFocus h3,._7ar4Xq_prediction p{margin:0}._7ar4Xq_stepFocus h3{color:var(--dsw-alias-label-primary);font-size:16px;font-weight:500;line-height:24px}._7ar4Xq_stepFocus>._7ar4Xq_revealButton{align-self:flex-start}._7ar4Xq_prediction{border:0;gap:9px;margin:0;padding:0}._7ar4Xq_prediction legend{color:var(--dsw-alias-state-business-primary);margin-bottom:8px;font-size:12px;font-weight:500}._7ar4Xq_prediction textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--dsw-alias-border-l2);min-height:52px;color:var(--dsw-alias-label-primary);font:inherit;background:0 0;padding:5px 0}._7ar4Xq_predictionOptions{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:0 18px;display:grid}._7ar4Xq_option{border-bottom:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);cursor:pointer;align-items:flex-start;gap:8px;padding:7px 0;display:flex}._7ar4Xq_option[data-selected]{color:var(--dsw-alias-label-primary)}._7ar4Xq_option input{accent-color:var(--dsw-alias-state-business-primary);margin-top:3px}._7ar4Xq_revealed{color:var(--dsw-alias-label-secondary);line-height:1.6}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) minmax(16px,36px) 24px minmax(16px,36px) minmax(0,1fr);align-items:center;display:grid}._7ar4Xq_compareHeader{color:var(--dsw-alias-label-secondary);padding-bottom:4px;font-size:13px}._7ar4Xq_compareHeader strong{min-width:0;font-weight:500}._7ar4Xq_compareHeader strong[data-side=left]{text-align:right;grid-column:1}._7ar4Xq_compareHeader strong[data-side=right]{text-align:left;grid-column:5}._7ar4Xq_compareHeaderLink{color:var(--dsw-alias-label-tertiary);text-align:center;grid-column:3}._7ar4Xq_compareRows{min-width:0}._7ar4Xq_compareRow{cursor:pointer;background:0 0;min-width:0;padding:12px 0;position:relative}._7ar4Xq_compareRow+._7ar4Xq_compareRow{border-top:1px solid var(--dsw-alias-border-l2)}._7ar4Xq_compareLine{background:var(--dsw-alias-border-l3);height:1px}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareLine{background:var(--dsw-alias-state-business-primary);height:2px}._7ar4Xq_compareSelector{place-items:center;display:grid}._7ar4Xq_compareSelector input{width:16px;height:16px;accent-color:var(--dsw-alias-state-business-primary);margin:0}._7ar4Xq_compareItem{min-width:0;color:var(--dsw-alias-label-primary);padding:0 5px;font-size:13px;line-height:1.5}._7ar4Xq_compareItem[data-side=left]{text-align:right}._7ar4Xq_compareItem[data-side=right]{text-align:left}._7ar4Xq_compareItem strong{font-weight:500}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareItem strong{color:var(--dsw-alias-state-business-primary)}._7ar4Xq_compareItem p{color:var(--dsw-alias-label-tertiary);margin:4px 0 0}._7ar4Xq_emptyCell{color:var(--dsw-alias-label-tertiary);padding:0 5px}._7ar4Xq_emptyCell[data-side=left]{text-align:right}._7ar4Xq_emptyCell[data-side=right]{text-align:left}._7ar4Xq_rowPrompt{max-width:80%;color:var(--dsw-alias-label-tertiary);text-align:center;grid-column:1/6;justify-self:center;margin-top:6px;font-size:11px;line-height:17px}._7ar4Xq_inlineStatus{width:max-content;max-width:100%;color:var(--dsw-alias-label-tertiary);text-align:left;font:inherit;background:0 0;border:0;align-items:center;gap:8px;margin:0;padding:0;font-size:13px;line-height:22px;display:flex}._7ar4Xq_runningDot{background:var(--dsw-alias-brand-primary);border-radius:50%;flex:none;width:6px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_pulse}._7ar4Xq_skeletonLine{background:var(--dsw-alias-border-l2);border-radius:999px;width:64px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_skeletonPulse}._7ar4Xq_inlineResult{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;align-items:baseline;gap:7px;margin:0;font-size:13px;line-height:22px;display:flex}._7ar4Xq_inlineFallback{flex-direction:column;gap:4px;display:flex}._7ar4Xq_fallbackText{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:22px}._7ar4Xq_resultMark{color:var(--dsw-alias-label-success,var(--dsw-alias-brand-primary))}._7ar4Xq_resultEvidence{color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}._7ar4Xq_resultAnswer{color:var(--dsw-alias-label-tertiary)}._7ar4Xq_round{min-width:0;color:var(--dsw-alias-label-primary);flex-direction:column;gap:14px;display:flex}._7ar4Xq_roundHeader{flex-direction:column;gap:3px;display:flex}._7ar4Xq_roundHeader span{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px}._7ar4Xq_roundHeader h2,._7ar4Xq_roundProcess h3,._7ar4Xq_roundStructure h3,._7ar4Xq_roundFeedback p{margin:0}._7ar4Xq_roundHeader h2{font-size:17px;font-weight:500;line-height:26px}._7ar4Xq_roundProcess{border-left:2px solid var(--dsw-alias-state-business-primary);grid-template-columns:30px minmax(0,1fr);gap:10px;padding:10px 0 10px 12px;display:grid}._7ar4Xq_roundNode{border:1px solid var(--dsw-alias-state-business-primary);width:28px;height:28px;color:var(--dsw-alias-state-business-primary);border-radius:50%;place-items:center;font-size:12px;display:grid}._7ar4Xq_roundProcess[data-final] ._7ar4Xq_roundNode{background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-primary-inverted)}._7ar4Xq_roundParameter,._7ar4Xq_roundParameterValues,._7ar4Xq_roundCurveList{flex-wrap:wrap;gap:8px;display:flex}._7ar4Xq_roundParameter{flex-direction:column}._7ar4Xq_roundParameterValues span,._7ar4Xq_roundCurveList span{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:4px 9px;font-size:12px;line-height:20px}._7ar4Xq_roundStructure{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;display:grid}._7ar4Xq_roundStructure h3{font-size:13px;font-weight:500}._7ar4Xq_roundAlignment{border-top:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);cursor:pointer;grid-column:1/3;grid-template-columns:20px 1fr 1fr;gap:8px;padding:8px 0;font-size:13px;display:grid}._7ar4Xq_roundAlignment input{accent-color:var(--dsw-alias-state-business-primary);margin-top:3px}._7ar4Xq_roundAlignment small{color:var(--dsw-alias-label-tertiary);grid-column:2/4}._7ar4Xq_roundAlignment[data-selected]{color:var(--dsw-alias-state-business-primary)}._7ar4Xq_roundFeedback{color:var(--dsw-alias-label-secondary);gap:8px;display:grid}._7ar4Xq_completedRound{min-width:0}._7ar4Xq_revealTransition{animation:.7s both _7ar4Xq_revealCurrentFrame}._7ar4Xq_round[data-round-state=completed] ._7ar4Xq_revealTransition,._7ar4Xq_round[data-round-state=ready_to_continue] ._7ar4Xq_revealTransition,._7ar4Xq_round[data-round-state=ack_submitting] ._7ar4Xq_revealTransition{animation:none}@keyframes _7ar4Xq_revealCurrentFrame{0%{opacity:.45;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes _7ar4Xq_pulse{0%,to{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}@keyframes _7ar4Xq_skeletonPulse{0%,to{opacity:.35}50%{opacity:.75}}@media (width<=560px){._7ar4Xq_processMap{grid-template-columns:1fr}._7ar4Xq_processMap ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMap ._7ar4Xq_processStepButton{text-align:left;flex-direction:row;align-items:flex-start;gap:10px;padding:4px 0 10px}._7ar4Xq_processMap ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMap ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) 12px 22px 12px minmax(0,1fr)}._7ar4Xq_rowPrompt{max-width:100%}}@media (width<=420px){._7ar4Xq_legend{margin-left:56px}._7ar4Xq_stepFocus{padding-left:12px}}@media (prefers-reduced-motion:reduce){._7ar4Xq_runningDot,._7ar4Xq_skeletonLine,._7ar4Xq_revealTransition{animation:none}}";
-		const tagId = "@dsh-portable/interactive-learning/LearningActivity.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
+		const css$1 = "._7ar4Xq_inlineActivity{min-width:0;color:var(--dsw-alias-label-primary);flex-direction:column;gap:16px;font-size:16px;line-height:28px;display:flex}._7ar4Xq_scaffold{color:var(--dsw-alias-label-secondary);align-self:flex-start;font-size:13px;line-height:22px}._7ar4Xq_scaffold summary{cursor:pointer}._7ar4Xq_activityActions{align-items:center;gap:12px;margin-top:-6px;font-size:12px;line-height:20px;display:flex}._7ar4Xq_error{color:var(--dsw-alias-label-error);margin:0;font-size:13px;line-height:22px}._7ar4Xq_activityContent,._7ar4Xq_controls,._7ar4Xq_answerField,._7ar4Xq_stepFocus,._7ar4Xq_prediction{flex-direction:column;display:flex}._7ar4Xq_activityContent{gap:16px}._7ar4Xq_prompt{color:var(--dsw-alias-label-primary);margin:0;font-size:16px;font-weight:400;line-height:28px}._7ar4Xq_explorer{flex-direction:column;gap:16px;min-width:0;display:flex}._7ar4Xq_controls{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:14px 24px;display:grid}._7ar4Xq_rangeField{min-width:0;color:var(--dsw-alias-label-secondary);font-size:13px}._7ar4Xq_rangeHeader{justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px;display:flex}._7ar4Xq_rangeHeader label{color:var(--dsw-alias-label-primary);font-weight:500}._7ar4Xq_rangeHeader output{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;font-size:14px;font-weight:650}._7ar4Xq_rangeControl{grid-template-rows:30px 16px;grid-template-columns:28px minmax(0,1fr) 28px;align-items:center;column-gap:9px;display:grid}._7ar4Xq_stepButton{appearance:none;border:1px solid var(--dsw-alias-border-l3);width:28px;height:28px;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer;background:0 0;border-radius:7px;padding:0;font-size:17px;line-height:26px}._7ar4Xq_stepButton:hover:not(:disabled){border-color:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-state-business-primary)}._7ar4Xq_stepButton:disabled{cursor:default;opacity:.35}._7ar4Xq_rangeInput{appearance:none;background:linear-gradient(to right, var(--dsw-alias-border-l4) 0 var(--range-low), var(--dsw-alias-state-business-primary) var(--range-low) var(--range-high), var(--dsw-alias-border-l4) var(--range-high) 100%);cursor:pointer;border-radius:999px;width:100%;height:4px}._7ar4Xq_rangeInput:disabled{cursor:default;opacity:.55}._7ar4Xq_rangeInput::-webkit-slider-runnable-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_rangeInput::-webkit-slider-thumb{appearance:none;border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:16px;height:16px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%;margin-top:-6px}._7ar4Xq_rangeInput::-moz-range-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_rangeInput::-moz-range-thumb{border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:10px;height:10px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%}._7ar4Xq_rangeInput:focus-visible,._7ar4Xq_compareRow input:focus-visible,._7ar4Xq_option input:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:4px}._7ar4Xq_rangeEnds{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;grid-column:2;justify-content:space-between;font-size:11px;line-height:16px;display:flex;position:relative}._7ar4Xq_rangeZero{position:absolute;transform:translate(-50%)}._7ar4Xq_chartRegion{min-width:0}._7ar4Xq_chart{width:100%;height:auto;display:block;overflow:visible}._7ar4Xq_plotFrame{fill:var(--dsw-alias-bg-layer-1);stroke:var(--dsw-alias-border-l3);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_gridLine{stroke:var(--dsw-alias-border-l1);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_zeroAxis{stroke:var(--dsw-alias-border-l4);stroke-width:1.25px}._7ar4Xq_tickLabel{fill:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;font-size:11px}._7ar4Xq_axisLabel{fill:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500}._7ar4Xq_curve{fill:none;stroke:var(--dsw-alias-state-business-primary);stroke-width:3px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}._7ar4Xq_curve[data-curve=\"1\"]{stroke:var(--dsw-alias-state-success-primary);stroke-dasharray:9 5}._7ar4Xq_curve[data-curve=\"2\"]{stroke:var(--dsw-alias-state-warn-primary);stroke-dasharray:2 6}._7ar4Xq_legend{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;gap:8px 14px;margin:0 0 5px 64px;padding:0;font-size:12px;list-style:none;display:flex}._7ar4Xq_legend li:before{content:\"\";border-top:3px solid var(--dsw-alias-state-business-primary);vertical-align:middle;width:18px;height:0;margin-right:5px;display:inline-block}._7ar4Xq_legend li[data-curve=\"1\"]:before{border-top-color:var(--dsw-alias-state-success-primary);border-top-style:dashed}._7ar4Xq_legend li[data-curve=\"2\"]:before{border-top-color:var(--dsw-alias-state-warn-primary);border-top-style:dotted}._7ar4Xq_answerField{color:var(--dsw-alias-label-secondary);gap:6px;font-size:13px}._7ar4Xq_answerField textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--dsw-alias-border-l2);min-height:52px;color:var(--dsw-alias-label-primary);font:inherit;background:0 0;border-radius:0;padding:5px 0;line-height:1.5}._7ar4Xq_answerField textarea:focus-visible,._7ar4Xq_prediction textarea:focus-visible,._7ar4Xq_inlineActivity button:focus-visible,._7ar4Xq_inlineStatus:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}._7ar4Xq_primaryRow,._7ar4Xq_navigation{gap:8px;display:flex}._7ar4Xq_primaryRow{justify-content:flex-start}._7ar4Xq_navigation{justify-content:space-between}._7ar4Xq_primaryButton,._7ar4Xq_ghostButton,._7ar4Xq_revealButton,._7ar4Xq_textButton{appearance:none;font:inherit;cursor:pointer;border-radius:8px;padding:4px 10px;font-size:13px;line-height:20px}._7ar4Xq_primaryButton,._7ar4Xq_revealButton{border:1px solid var(--dsw-alias-brand-primary);background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-on-primary,white)}._7ar4Xq_ghostButton{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}._7ar4Xq_textButton{color:var(--dsw-alias-brand-primary);background:0 0;border:0;border-radius:0;padding:2px 0}._7ar4Xq_primaryButton:disabled,._7ar4Xq_ghostButton:disabled,._7ar4Xq_revealButton:disabled,._7ar4Xq_textButton:disabled{cursor:default;opacity:.45}._7ar4Xq_stepMeta{color:var(--dsw-alias-label-tertiary);justify-content:space-between;align-items:center;font-size:12px;display:flex}._7ar4Xq_processMap{grid-template-columns:repeat(var(--process-step-count), minmax(0, 1fr));margin:0;padding:0;list-style:none;display:grid}._7ar4Xq_processStep{min-width:0;position:relative}._7ar4Xq_processStep:not(:last-child):after{z-index:0;background:var(--dsw-alias-border-l2);content:\"\";height:2px;position:absolute;top:13px;left:calc(50% + 16px);right:calc(16px - 50%)}._7ar4Xq_processStep[data-connector-complete]:after{background:var(--dsw-alias-state-business-primary)}._7ar4Xq_processStepButton{z-index:1;width:100%;min-width:0;color:var(--dsw-alias-label-tertiary);text-align:center;font:inherit;cursor:pointer;background:0 0;border:0;flex-direction:column;align-items:center;gap:6px;padding:0 4px;font-size:12px;line-height:18px;display:flex;position:relative}._7ar4Xq_processStepButton:disabled{cursor:default}._7ar4Xq_processNode{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l4);background:var(--dsw-alias-bg-layer-1);width:28px;height:28px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;border-radius:50%;place-items:center;font-size:12px;line-height:1;display:grid}._7ar4Xq_processTitle{-webkit-line-clamp:2;-webkit-box-orient:vertical;min-width:0;display:-webkit-box;overflow:hidden}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processNode{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-tertiary);color:var(--dsw-alias-state-business-primary)}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processTitle{color:var(--dsw-alias-label-primary);font-weight:500}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processNode{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-primary-inverted)}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processTitle{color:var(--dsw-alias-label-secondary)}._7ar4Xq_processMapVertical{grid-template-columns:1fr}._7ar4Xq_processMapVertical ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMapVertical ._7ar4Xq_processStepButton{text-align:left;flex-direction:row;align-items:flex-start;gap:10px;padding:4px 0 10px}._7ar4Xq_processMapVertical ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMapVertical ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_stepFocus{border-left:2px solid var(--dsw-alias-state-business-primary);gap:12px;padding-left:16px}._7ar4Xq_stepFocus h3,._7ar4Xq_prediction p{margin:0}._7ar4Xq_stepFocus h3{color:var(--dsw-alias-label-primary);font-size:16px;font-weight:500;line-height:24px}._7ar4Xq_stepFocus>._7ar4Xq_revealButton{align-self:flex-start}._7ar4Xq_prediction{border:0;gap:9px;margin:0;padding:0}._7ar4Xq_prediction legend{color:var(--dsw-alias-state-business-primary);margin-bottom:8px;font-size:12px;font-weight:500}._7ar4Xq_prediction textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--dsw-alias-border-l2);min-height:52px;color:var(--dsw-alias-label-primary);font:inherit;background:0 0;padding:5px 0}._7ar4Xq_predictionOptions{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:0 18px;display:grid}._7ar4Xq_option{border-bottom:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);cursor:pointer;align-items:flex-start;gap:8px;padding:7px 0;display:flex}._7ar4Xq_option[data-selected]{color:var(--dsw-alias-label-primary)}._7ar4Xq_option input{accent-color:var(--dsw-alias-state-business-primary);margin-top:3px}._7ar4Xq_revealed{color:var(--dsw-alias-label-secondary);line-height:1.6}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) minmax(16px,36px) 24px minmax(16px,36px) minmax(0,1fr);align-items:center;display:grid}._7ar4Xq_compareHeader{color:var(--dsw-alias-label-secondary);padding-bottom:4px;font-size:13px}._7ar4Xq_compareHeader strong{min-width:0;font-weight:500}._7ar4Xq_compareHeader strong[data-side=left]{text-align:right;grid-column:1}._7ar4Xq_compareHeader strong[data-side=right]{text-align:left;grid-column:5}._7ar4Xq_compareHeaderLink{color:var(--dsw-alias-label-tertiary);text-align:center;grid-column:3}._7ar4Xq_compareRows{min-width:0}._7ar4Xq_compareRow{cursor:pointer;background:0 0;min-width:0;padding:12px 0;position:relative}._7ar4Xq_compareRow+._7ar4Xq_compareRow{border-top:1px solid var(--dsw-alias-border-l2)}._7ar4Xq_compareLine{background:var(--dsw-alias-border-l3);height:1px}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareLine{background:var(--dsw-alias-state-business-primary);height:2px}._7ar4Xq_compareSelector{place-items:center;display:grid}._7ar4Xq_compareSelector input{width:16px;height:16px;accent-color:var(--dsw-alias-state-business-primary);margin:0}._7ar4Xq_compareItem{min-width:0;color:var(--dsw-alias-label-primary);padding:0 5px;font-size:13px;line-height:1.5}._7ar4Xq_compareItem[data-side=left]{text-align:right}._7ar4Xq_compareItem[data-side=right]{text-align:left}._7ar4Xq_compareItem strong{font-weight:500}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareItem strong{color:var(--dsw-alias-state-business-primary)}._7ar4Xq_compareItem p{color:var(--dsw-alias-label-tertiary);margin:4px 0 0}._7ar4Xq_emptyCell{color:var(--dsw-alias-label-tertiary);padding:0 5px}._7ar4Xq_emptyCell[data-side=left]{text-align:right}._7ar4Xq_emptyCell[data-side=right]{text-align:left}._7ar4Xq_rowPrompt{max-width:80%;color:var(--dsw-alias-label-tertiary);text-align:center;grid-column:1/6;justify-self:center;margin-top:6px;font-size:11px;line-height:17px}._7ar4Xq_inlineStatus{width:max-content;max-width:100%;color:var(--dsw-alias-label-tertiary);text-align:left;font:inherit;background:0 0;border:0;align-items:center;gap:8px;margin:0;padding:0;font-size:13px;line-height:22px;display:flex}._7ar4Xq_runningDot{background:var(--dsw-alias-brand-primary);border-radius:50%;flex:none;width:6px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_pulse}._7ar4Xq_skeletonLine{background:var(--dsw-alias-border-l2);border-radius:999px;width:64px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_skeletonPulse}._7ar4Xq_inlineResult{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;align-items:baseline;gap:7px;margin:0;font-size:13px;line-height:22px;display:flex}._7ar4Xq_inlineFallback{flex-direction:column;gap:4px;display:flex}._7ar4Xq_fallbackText{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:22px}._7ar4Xq_resultMark{color:var(--dsw-alias-label-success,var(--dsw-alias-brand-primary))}._7ar4Xq_errorMark{color:var(--dsw-alias-label-error)}._7ar4Xq_resultEvidence{color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}._7ar4Xq_resultAnswer{color:var(--dsw-alias-label-tertiary)}._7ar4Xq_legacyReveal{color:var(--dsw-alias-label-secondary);gap:4px;font-size:14px;line-height:24px;display:grid}._7ar4Xq_legacyReveal strong{color:var(--dsw-alias-label-primary);font-weight:550}._7ar4Xq_srOnly{clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}._7ar4Xq_learningVisual{min-width:0;color:var(--dsw-alias-label-primary);flex-direction:column;gap:14px;margin:4px 0 10px;display:flex}._7ar4Xq_visualDescription,._7ar4Xq_visualTextFallback{color:var(--dsw-alias-label-secondary);margin:0;font-size:13px;line-height:22px}._7ar4Xq_visualControls{grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:12px 28px;display:grid}._7ar4Xq_visualRange{cursor:pointer;grid-template-rows:auto 18px 14px;gap:2px;min-width:0;display:grid}._7ar4Xq_visualRangeHeader{min-width:0;color:var(--dsw-alias-label-secondary);justify-content:space-between;align-items:baseline;gap:12px;font-size:12px;line-height:20px;display:flex}._7ar4Xq_visualRangeHeader output{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600}._7ar4Xq_visualRange input{appearance:none;background:linear-gradient(to right, var(--dsw-alias-state-business-primary) 0 var(--visual-range-progress), var(--dsw-alias-border-l2) var(--visual-range-progress) 100%);cursor:pointer;border-radius:999px;align-self:center;width:100%;height:4px}._7ar4Xq_visualRange input::-webkit-slider-runnable-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_visualRange input::-webkit-slider-thumb{appearance:none;border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:16px;height:16px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%;margin-top:-6px}._7ar4Xq_visualRange input::-moz-range-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_visualRange input::-moz-range-thumb{border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:10px;height:10px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%}._7ar4Xq_visualRange input:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:5px}._7ar4Xq_visualRangeEnds{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;justify-content:space-between;font-size:10px;line-height:14px;display:flex}._7ar4Xq_visualMetrics{color:var(--dsw-alias-label-tertiary);flex-wrap:wrap;gap:8px 20px;font-size:12px;line-height:20px;display:flex}._7ar4Xq_visualMetrics>span{align-items:baseline;gap:7px;display:inline-flex}._7ar4Xq_visualMetrics output{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;font-weight:550}._7ar4Xq_visualChartRegion{min-width:0}._7ar4Xq_visualLegend{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;gap:7px 16px;margin:3px 0 0 64px;padding:0;font-size:11px;line-height:18px;list-style:none;display:flex}._7ar4Xq_visualLegend li{--visual-tone:var(--dsw-alias-state-business-primary);align-items:center;gap:6px;display:inline-flex}._7ar4Xq_visualLegend li>span{border-top:2.5px solid var(--visual-tone);width:18px;height:0;display:inline-block}._7ar4Xq_visualLegend li[data-series-type=points]>span{background:var(--visual-tone);border:0;border-radius:50%;width:8px;height:8px}._7ar4Xq_visualLegend li[data-stroke=dashed]>span{border-top-style:dashed}._7ar4Xq_visualLegend li[data-stroke=dotted]>span{border-top-style:dotted}._7ar4Xq_visualChart{width:100%;height:auto;display:block;overflow:visible}._7ar4Xq_visualPlot{fill:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 92%, transparent);stroke:var(--dsw-alias-border-l2);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_visualGrid{stroke:var(--dsw-alias-border-l1);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_visualTick{fill:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;font-size:10px}._7ar4Xq_visualAxisLabel{fill:var(--dsw-alias-label-secondary);font-size:11px}._7ar4Xq_visualCurve{--visual-tone:var(--dsw-alias-state-business-primary);fill:none;stroke:var(--visual-tone);stroke-width:2.5px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}._7ar4Xq_visualCurve[data-stroke=dashed]{stroke-dasharray:8 5}._7ar4Xq_visualCurve[data-stroke=dotted]{stroke-dasharray:2 5}._7ar4Xq_visualPoint{--visual-tone:var(--dsw-alias-state-business-primary);fill:var(--visual-tone);stroke:var(--dsw-alias-bg-layer-1);stroke-width:1.5px;vector-effect:non-scaling-stroke}._7ar4Xq_visualLegend [data-tone=blue],._7ar4Xq_visualCurve[data-tone=blue],._7ar4Xq_visualPoint[data-tone=blue]{--visual-tone:var(--dsw-alias-state-business-primary)}._7ar4Xq_visualLegend [data-tone=green],._7ar4Xq_visualCurve[data-tone=green],._7ar4Xq_visualPoint[data-tone=green]{--visual-tone:var(--dsw-alias-state-success-primary)}._7ar4Xq_visualLegend [data-tone=red],._7ar4Xq_visualCurve[data-tone=red],._7ar4Xq_visualPoint[data-tone=red]{--visual-tone:var(--dsw-alias-state-error-primary,#df4f4f)}._7ar4Xq_visualLegend [data-tone=orange],._7ar4Xq_visualCurve[data-tone=orange],._7ar4Xq_visualPoint[data-tone=orange]{--visual-tone:var(--dsw-alias-state-warn-primary)}._7ar4Xq_visualLegend [data-tone=purple],._7ar4Xq_visualCurve[data-tone=purple],._7ar4Xq_visualPoint[data-tone=purple]{--visual-tone:#8b6fd6}._7ar4Xq_visualLegend [data-tone=gray],._7ar4Xq_visualCurve[data-tone=gray],._7ar4Xq_visualPoint[data-tone=gray]{--visual-tone:var(--dsw-alias-label-tertiary)}._7ar4Xq_round{min-width:0;color:var(--dsw-alias-label-primary);flex-direction:column;gap:14px;display:flex}._7ar4Xq_roundHeader{flex-direction:column;gap:3px;display:flex}._7ar4Xq_roundHeader span{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px}._7ar4Xq_roundHeader h2,._7ar4Xq_roundProcess h3,._7ar4Xq_roundStructure h3,._7ar4Xq_roundFeedback p{margin:0}._7ar4Xq_roundHeader h2{font-size:17px;font-weight:500;line-height:26px}._7ar4Xq_roundProcess{border-left:2px solid var(--dsw-alias-state-business-primary);grid-template-columns:30px minmax(0,1fr);gap:10px;padding:10px 0 10px 12px;display:grid}._7ar4Xq_roundNode{border:1px solid var(--dsw-alias-state-business-primary);width:28px;height:28px;color:var(--dsw-alias-state-business-primary);border-radius:50%;place-items:center;font-size:12px;display:grid}._7ar4Xq_roundProcess[data-final] ._7ar4Xq_roundNode{background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-primary-inverted)}._7ar4Xq_roundParameter,._7ar4Xq_roundParameterValues,._7ar4Xq_roundCurveList{flex-wrap:wrap;gap:8px;display:flex}._7ar4Xq_roundParameter{flex-direction:column}._7ar4Xq_roundParameterValues span,._7ar4Xq_roundCurveList span{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:4px 9px;font-size:12px;line-height:20px}._7ar4Xq_roundStructure{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;display:grid}._7ar4Xq_roundStructure h3{font-size:13px;font-weight:500}._7ar4Xq_roundAlignment{border-top:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);cursor:pointer;grid-column:1/3;grid-template-columns:20px 1fr 1fr;gap:8px;padding:8px 0;font-size:13px;display:grid}._7ar4Xq_roundAlignment input{accent-color:var(--dsw-alias-state-business-primary);margin-top:3px}._7ar4Xq_roundAlignment small{color:var(--dsw-alias-label-tertiary);grid-column:2/4}._7ar4Xq_roundAlignment[data-selected]{color:var(--dsw-alias-state-business-primary)}._7ar4Xq_roundFeedback{color:var(--dsw-alias-label-secondary);gap:8px;display:grid}._7ar4Xq_completedRound{min-width:0}._7ar4Xq_revealTransition{animation:.7s both _7ar4Xq_revealCurrentFrame}._7ar4Xq_round[data-round-state=completed] ._7ar4Xq_revealTransition,._7ar4Xq_round[data-round-state=ready_to_continue] ._7ar4Xq_revealTransition,._7ar4Xq_round[data-round-state=ack_submitting] ._7ar4Xq_revealTransition{animation:none}@keyframes _7ar4Xq_revealCurrentFrame{0%{opacity:.45;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes _7ar4Xq_pulse{0%,to{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}@keyframes _7ar4Xq_skeletonPulse{0%,to{opacity:.35}50%{opacity:.75}}@media (width<=560px){._7ar4Xq_processMap{grid-template-columns:1fr}._7ar4Xq_processMap ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMap ._7ar4Xq_processStepButton{text-align:left;flex-direction:row;align-items:flex-start;gap:10px;padding:4px 0 10px}._7ar4Xq_processMap ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMap ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) 12px 22px 12px minmax(0,1fr)}._7ar4Xq_rowPrompt{max-width:100%}}@media (width<=420px){._7ar4Xq_legend{margin-left:56px}._7ar4Xq_visualLegend{margin-left:54px}._7ar4Xq_stepFocus{padding-left:12px}}@media (prefers-reduced-motion:reduce){._7ar4Xq_runningDot,._7ar4Xq_skeletonLine,._7ar4Xq_revealTransition{animation:none}}";
+		const tagId$1 = "@dsh-portable/interactive-learning/LearningActivity.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$1) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@dsh-portable/interactive-learning";
-			tag.dataset.pluginCss = tagId;
-			tag.textContent = css;
+			tag.dataset.pluginCss = tagId$1;
+			tag.textContent = css$1;
 			document.head.appendChild(tag);
 		}
 		var LearningActivity_module_css_default = {
-			"answerField": "_7ar4Xq_answerField",
 			"revealCurrentFrame": "_7ar4Xq_revealCurrentFrame",
-			"resultAnswer": "_7ar4Xq_resultAnswer",
-			"runningDot": "_7ar4Xq_runningDot",
-			"textButton": "_7ar4Xq_textButton",
-			"compareRows": "_7ar4Xq_compareRows",
+			"visualChartRegion": "_7ar4Xq_visualChartRegion",
+			"completedRound": "_7ar4Xq_completedRound",
+			"primaryRow": "_7ar4Xq_primaryRow",
+			"visualDescription": "_7ar4Xq_visualDescription",
+			"processTitle": "_7ar4Xq_processTitle",
 			"compareSelector": "_7ar4Xq_compareSelector",
+			"resultAnswer": "_7ar4Xq_resultAnswer",
+			"inlineFallback": "_7ar4Xq_inlineFallback",
+			"visualTextFallback": "_7ar4Xq_visualTextFallback",
+			"activityContent": "_7ar4Xq_activityContent",
+			"runningDot": "_7ar4Xq_runningDot",
+			"visualControls": "_7ar4Xq_visualControls",
+			"visualTick": "_7ar4Xq_visualTick",
 			"roundStructure": "_7ar4Xq_roundStructure",
-			"activityActions": "_7ar4Xq_activityActions",
-			"primaryButton": "_7ar4Xq_primaryButton",
-			"processMapVertical": "_7ar4Xq_processMapVertical",
-			"fallbackText": "_7ar4Xq_fallbackText",
-			"compareItem": "_7ar4Xq_compareItem",
-			"navigation": "_7ar4Xq_navigation",
-			"rangeHeader": "_7ar4Xq_rangeHeader",
-			"zeroAxis": "_7ar4Xq_zeroAxis",
-			"compareHeader": "_7ar4Xq_compareHeader",
-			"roundCurveList": "_7ar4Xq_roundCurveList",
-			"rangeInput": "_7ar4Xq_rangeInput",
-			"compareLine": "_7ar4Xq_compareLine",
-			"curve": "_7ar4Xq_curve",
-			"inlineStatus": "_7ar4Xq_inlineStatus",
-			"rangeControl": "_7ar4Xq_rangeControl",
-			"roundFeedback": "_7ar4Xq_roundFeedback",
-			"skeletonPulse": "_7ar4Xq_skeletonPulse",
+			"rangeEnds": "_7ar4Xq_rangeEnds",
+			"roundParameterValues": "_7ar4Xq_roundParameterValues",
+			"controls": "_7ar4Xq_controls",
+			"textButton": "_7ar4Xq_textButton",
+			"round": "_7ar4Xq_round",
+			"legend": "_7ar4Xq_legend",
 			"roundNode": "_7ar4Xq_roundNode",
-			"chart": "_7ar4Xq_chart",
-			"processNode": "_7ar4Xq_processNode",
-			"compareHeaderLink": "_7ar4Xq_compareHeaderLink",
-			"compareRow": "_7ar4Xq_compareRow",
+			"visualChart": "_7ar4Xq_visualChart",
+			"answerField": "_7ar4Xq_answerField",
+			"inlineStatus": "_7ar4Xq_inlineStatus",
+			"rangeField": "_7ar4Xq_rangeField",
 			"resultMark": "_7ar4Xq_resultMark",
-			"stepMeta": "_7ar4Xq_stepMeta",
-			"inlineResult": "_7ar4Xq_inlineResult",
-			"resultEvidence": "_7ar4Xq_resultEvidence",
-			"pulse": "_7ar4Xq_pulse",
+			"error": "_7ar4Xq_error",
+			"primaryButton": "_7ar4Xq_primaryButton",
+			"ghostButton": "_7ar4Xq_ghostButton",
+			"learningVisual": "_7ar4Xq_learningVisual",
 			"option": "_7ar4Xq_option",
 			"tickLabel": "_7ar4Xq_tickLabel",
-			"error": "_7ar4Xq_error",
-			"round": "_7ar4Xq_round",
-			"completedRound": "_7ar4Xq_completedRound",
-			"inlineActivity": "_7ar4Xq_inlineActivity",
-			"rowPrompt": "_7ar4Xq_rowPrompt",
-			"processStepButton": "_7ar4Xq_processStepButton",
-			"revealed": "_7ar4Xq_revealed",
-			"roundHeader": "_7ar4Xq_roundHeader",
-			"gridLine": "_7ar4Xq_gridLine",
-			"revealTransition": "_7ar4Xq_revealTransition",
-			"roundParameterValues": "_7ar4Xq_roundParameterValues",
-			"roundParameter": "_7ar4Xq_roundParameter",
-			"primaryRow": "_7ar4Xq_primaryRow",
-			"roundAlignment": "_7ar4Xq_roundAlignment",
-			"processStep": "_7ar4Xq_processStep",
+			"zeroAxis": "_7ar4Xq_zeroAxis",
+			"visualGrid": "_7ar4Xq_visualGrid",
 			"axisLabel": "_7ar4Xq_axisLabel",
-			"rangeField": "_7ar4Xq_rangeField",
-			"plotFrame": "_7ar4Xq_plotFrame",
-			"stepFocus": "_7ar4Xq_stepFocus",
-			"prediction": "_7ar4Xq_prediction",
+			"activityActions": "_7ar4Xq_activityActions",
+			"processMapVertical": "_7ar4Xq_processMapVertical",
+			"compareRow": "_7ar4Xq_compareRow",
+			"compareHeader": "_7ar4Xq_compareHeader",
+			"resultEvidence": "_7ar4Xq_resultEvidence",
 			"explorer": "_7ar4Xq_explorer",
-			"processTitle": "_7ar4Xq_processTitle",
-			"skeletonLine": "_7ar4Xq_skeletonLine",
-			"inlineFallback": "_7ar4Xq_inlineFallback",
-			"legend": "_7ar4Xq_legend",
 			"roundProcess": "_7ar4Xq_roundProcess",
-			"processMap": "_7ar4Xq_processMap",
-			"rangeEnds": "_7ar4Xq_rangeEnds",
+			"gridLine": "_7ar4Xq_gridLine",
+			"compareHeaderLink": "_7ar4Xq_compareHeaderLink",
+			"chart": "_7ar4Xq_chart",
+			"visualLegend": "_7ar4Xq_visualLegend",
+			"stepFocus": "_7ar4Xq_stepFocus",
 			"prompt": "_7ar4Xq_prompt",
-			"controls": "_7ar4Xq_controls",
-			"scaffold": "_7ar4Xq_scaffold",
-			"revealButton": "_7ar4Xq_revealButton",
-			"predictionOptions": "_7ar4Xq_predictionOptions",
-			"stepButton": "_7ar4Xq_stepButton",
-			"activityContent": "_7ar4Xq_activityContent",
+			"rangeInput": "_7ar4Xq_rangeInput",
+			"legacyReveal": "_7ar4Xq_legacyReveal",
+			"visualRange": "_7ar4Xq_visualRange",
+			"roundParameter": "_7ar4Xq_roundParameter",
+			"roundAlignment": "_7ar4Xq_roundAlignment",
+			"rowPrompt": "_7ar4Xq_rowPrompt",
+			"prediction": "_7ar4Xq_prediction",
+			"plotFrame": "_7ar4Xq_plotFrame",
+			"skeletonLine": "_7ar4Xq_skeletonLine",
+			"srOnly": "_7ar4Xq_srOnly",
+			"visualAxisLabel": "_7ar4Xq_visualAxisLabel",
+			"visualCurve": "_7ar4Xq_visualCurve",
+			"inlineActivity": "_7ar4Xq_inlineActivity",
 			"emptyCell": "_7ar4Xq_emptyCell",
-			"rangeZero": "_7ar4Xq_rangeZero",
+			"pulse": "_7ar4Xq_pulse",
+			"processMap": "_7ar4Xq_processMap",
+			"errorMark": "_7ar4Xq_errorMark",
+			"scaffold": "_7ar4Xq_scaffold",
+			"processNode": "_7ar4Xq_processNode",
+			"compareRows": "_7ar4Xq_compareRows",
+			"visualPoint": "_7ar4Xq_visualPoint",
+			"roundHeader": "_7ar4Xq_roundHeader",
+			"predictionOptions": "_7ar4Xq_predictionOptions",
 			"chartRegion": "_7ar4Xq_chartRegion",
-			"ghostButton": "_7ar4Xq_ghostButton"
+			"stepMeta": "_7ar4Xq_stepMeta",
+			"roundFeedback": "_7ar4Xq_roundFeedback",
+			"compareItem": "_7ar4Xq_compareItem",
+			"revealed": "_7ar4Xq_revealed",
+			"inlineResult": "_7ar4Xq_inlineResult",
+			"rangeControl": "_7ar4Xq_rangeControl",
+			"compareLine": "_7ar4Xq_compareLine",
+			"visualMetrics": "_7ar4Xq_visualMetrics",
+			"revealTransition": "_7ar4Xq_revealTransition",
+			"rangeZero": "_7ar4Xq_rangeZero",
+			"stepButton": "_7ar4Xq_stepButton",
+			"rangeHeader": "_7ar4Xq_rangeHeader",
+			"processStepButton": "_7ar4Xq_processStepButton",
+			"visualRangeEnds": "_7ar4Xq_visualRangeEnds",
+			"curve": "_7ar4Xq_curve",
+			"navigation": "_7ar4Xq_navigation",
+			"visualRangeHeader": "_7ar4Xq_visualRangeHeader",
+			"revealButton": "_7ar4Xq_revealButton",
+			"processStep": "_7ar4Xq_processStep",
+			"skeletonPulse": "_7ar4Xq_skeletonPulse",
+			"visualPlot": "_7ar4Xq_visualPlot",
+			"roundCurveList": "_7ar4Xq_roundCurveList",
+			"fallbackText": "_7ar4Xq_fallbackText"
 		};
 		//#endregion
 		//#region src/client/ActivityFrame.tsx
@@ -983,13 +2044,19 @@ window.__ModuleLoader__.load({
 				case "cos": return Math.cos(evaluateMathExpression(expression.value, bindings));
 				case "exp": return Math.exp(evaluateMathExpression(expression.value, bindings));
 				case "log": return Math.log(evaluateMathExpression(expression.value, bindings));
+				case "sigmoid": {
+					const value = evaluateMathExpression(expression.value, bindings);
+					if (value >= 0) return 1 / (1 + Math.exp(-value));
+					const exponential = Math.exp(value);
+					return exponential / (1 + exponential);
+				}
 			}
 		}
 		//#endregion
 		//#region src/client/ParameterExplorer.tsx
 		const MAX_RENDERABLE_VALUE = 0xe8d4a51000;
 		const MAX_PARAMETER_DOMAIN_SAMPLES = 33;
-		function formatNumber(value) {
+		function formatNumber$2(value) {
 			return Number.isInteger(value) ? String(value) : String(Number(value.toPrecision(6)));
 		}
 		function uniqueNumbers(values) {
@@ -1018,7 +2085,7 @@ window.__ModuleLoader__.load({
 				})));
 			}, [{}]);
 		}
-		function niceStep(rawStep) {
+		function niceStep$2(rawStep) {
 			if (!Number.isFinite(rawStep) || rawStep <= 0) return 1;
 			const power = 10 ** Math.floor(Math.log10(rawStep));
 			const normalized = rawStep / power;
@@ -1034,7 +2101,7 @@ window.__ModuleLoader__.load({
 			}
 			const span = max - min;
 			const padding = span * .08;
-			const step = niceStep((span + padding * 2) / 5);
+			const step = niceStep$2((span + padding * 2) / 5);
 			let domainMin = Math.floor((min - padding) / step) * step;
 			let domainMax = Math.ceil((max + padding) / step) * step;
 			if (domainMin === domainMax) {
@@ -1096,13 +2163,13 @@ window.__ModuleLoader__.load({
 			return expanded ? paddedYDomain(min, max) : stable;
 		}
 		function ticksFor(domain, targetCount = 5) {
-			const step = niceStep((domain.max - domain.min) / targetCount);
+			const step = niceStep$2((domain.max - domain.min) / targetCount);
 			const first = Math.ceil(domain.min / step) * step;
 			const ticks = [];
 			for (let value = first; value <= domain.max + step * 1e-8; value += step) ticks.push(Number(value.toPrecision(12)));
 			return ticks;
 		}
-		function chartGeometry(width) {
+		function chartGeometry$1(width) {
 			const safeWidth = Math.max(280, Math.round(width));
 			const height = safeWidth < 480 ? 260 : 300;
 			const left = safeWidth < 360 ? 56 : 64;
@@ -1120,10 +2187,10 @@ window.__ModuleLoader__.load({
 				plotHeight: height - top - bottom
 			};
 		}
-		function scaleX(value, domain, geometry) {
+		function scaleX$2(value, domain, geometry) {
 			return geometry.left + (value - domain.min) / (domain.max - domain.min) * geometry.plotWidth;
 		}
-		function scaleY(value, domain, geometry) {
+		function scaleY$2(value, domain, geometry) {
 			return geometry.top + (domain.max - value) / (domain.max - domain.min) * geometry.plotHeight;
 		}
 		function pathsFor(payload, values, yDomain, geometry) {
@@ -1152,8 +2219,8 @@ window.__ModuleLoader__.load({
 						previousY = null;
 						return "";
 					}
-					const px = scaleX(point.x, xDomain, geometry);
-					const py = scaleY(point.y, yDomain, geometry);
+					const px = scaleX$2(point.x, xDomain, geometry);
+					const py = scaleY$2(point.y, yDomain, geometry);
 					if (previousY !== null && Math.abs(py - previousY) > geometry.plotHeight * 1.5) open = false;
 					const command = open ? "L" : "M";
 					open = true;
@@ -1162,7 +2229,7 @@ window.__ModuleLoader__.load({
 				}).filter(Boolean).join(" ");
 			});
 		}
-		function rangeStyle(parameter, value) {
+		function rangeStyle$1(parameter, value) {
 			const span = parameter.max - parameter.min;
 			const valuePercent = (value - parameter.min) / span * 100;
 			const anchorPercent = ((parameter.min <= 0 && parameter.max >= 0 ? 0 : parameter.min) - parameter.min) / span * 100;
@@ -1187,7 +2254,7 @@ window.__ModuleLoader__.load({
 				stableDomain,
 				values
 			]);
-			const geometry = (0, react.useMemo)(() => chartGeometry(640), []);
+			const geometry = (0, react.useMemo)(() => chartGeometry$1(640), []);
 			const paths = (0, react.useMemo)(() => pathsFor(fullPayload, values, yDomain, geometry), [
 				fullPayload,
 				geometry,
@@ -1195,9 +2262,9 @@ window.__ModuleLoader__.load({
 				yDomain
 			]);
 			const description = t("chartDescription", {
-				parameters: payload.parameters.map((parameter) => `${parameter.label} ${formatNumber(values[parameter.id] ?? parameter.initial)}`).join("; "),
-				xAxis: `${payload.xAxis.label ?? "x"} ${formatNumber(payload.xAxis.min)}–${formatNumber(payload.xAxis.max)}`,
-				yAxis: `y ${formatNumber(yDomain.min)}–${formatNumber(yDomain.max)}`,
+				parameters: payload.parameters.map((parameter) => `${parameter.label} ${formatNumber$2(values[parameter.id] ?? parameter.initial)}`).join("; "),
+				xAxis: `${payload.xAxis.label ?? "x"} ${formatNumber$2(payload.xAxis.min)}–${formatNumber$2(payload.xAxis.max)}`,
+				yAxis: `y ${formatNumber$2(yDomain.min)}–${formatNumber$2(yDomain.max)}`,
 				curves: payload.curves.map((curve) => curve.label).join("; ")
 			});
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -1217,12 +2284,12 @@ window.__ModuleLoader__.load({
 								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("output", {
 									htmlFor: inputId,
 									"aria-live": "polite",
-									children: formatNumber(value)
+									children: formatNumber$2(value)
 								})]
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
 								id: inputId,
 								className: LearningActivity_module_css_default.rangeInput,
-								style: rangeStyle(parameter, value),
+								style: rangeStyle$1(parameter, value),
 								type: "range",
 								min: parameter.min,
 								max: parameter.max,
@@ -1289,7 +2356,7 @@ window.__ModuleLoader__.load({
 				stableDomain,
 				values
 			]);
-			const geometry = (0, react.useMemo)(() => chartGeometry(chartWidth), [chartWidth]);
+			const geometry = (0, react.useMemo)(() => chartGeometry$1(chartWidth), [chartWidth]);
 			const xDomain = (0, react.useMemo)(() => ({
 				min: payload.xAxis.min,
 				max: payload.xAxis.max
@@ -1303,9 +2370,9 @@ window.__ModuleLoader__.load({
 				yDomain
 			]);
 			const chartDescription = t("chartDescription", {
-				parameters: payload.parameters.map((parameter) => `${parameter.label} ${formatNumber(values[parameter.id] ?? parameter.initial)} (${formatNumber(parameter.min)}–${formatNumber(parameter.max)})`).join("; "),
-				xAxis: `${payload.xAxis.label ?? "x"} ${formatNumber(xDomain.min)}–${formatNumber(xDomain.max)}`,
-				yAxis: `y ${formatNumber(yDomain.min)}–${formatNumber(yDomain.max)}`,
+				parameters: payload.parameters.map((parameter) => `${parameter.label} ${formatNumber$2(values[parameter.id] ?? parameter.initial)} (${formatNumber$2(parameter.min)}–${formatNumber$2(parameter.max)})`).join("; "),
+				xAxis: `${payload.xAxis.label ?? "x"} ${formatNumber$2(xDomain.min)}–${formatNumber$2(xDomain.max)}`,
+				yAxis: `y ${formatNumber$2(yDomain.min)}–${formatNumber$2(yDomain.max)}`,
 				curves: payload.curves.map((curve) => curve.label).join("; ")
 			});
 			(0, react.useEffect)(() => {
@@ -1364,7 +2431,7 @@ window.__ModuleLoader__.load({
 										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("output", {
 											htmlFor: inputId,
 											"aria-live": "polite",
-											children: formatNumber(value)
+											children: formatNumber$2(value)
 										})]
 									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 										className: LearningActivity_module_css_default.rangeControl,
@@ -1380,14 +2447,14 @@ window.__ModuleLoader__.load({
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
 												id: inputId,
 												className: LearningActivity_module_css_default.rangeInput,
-												style: rangeStyle(parameter, value),
+												style: rangeStyle$1(parameter, value),
 												type: "range",
 												min: parameter.min,
 												max: parameter.max,
 												step: parameter.step,
 												value,
 												disabled: busy,
-												"aria-valuetext": formatNumber(value),
+												"aria-valuetext": formatNumber$2(value),
 												onChange: (event) => setParameter(parameter, Number(event.target.value))
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
@@ -1402,13 +2469,13 @@ window.__ModuleLoader__.load({
 												className: LearningActivity_module_css_default.rangeEnds,
 												"aria-hidden": "true",
 												children: [
-													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatNumber(parameter.min) }),
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatNumber$2(parameter.min) }),
 													parameter.min < 0 && parameter.max > 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 														className: LearningActivity_module_css_default.rangeZero,
 														style: { left: `${zeroPercent}%` },
 														children: "0"
 													}) : null,
-													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatNumber(parameter.max) })
+													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatNumber$2(parameter.max) })
 												]
 											})
 										]
@@ -1456,7 +2523,7 @@ window.__ModuleLoader__.load({
 										rx: "6"
 									}),
 									yTicks.map((tick) => {
-										const y = scaleY(tick, yDomain, geometry);
+										const y = scaleY$2(tick, yDomain, geometry);
 										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
 											className: tick === 0 ? `${LearningActivity_module_css_default.gridLine} ${LearningActivity_module_css_default.zeroAxis}` : LearningActivity_module_css_default.gridLine,
 											x1: geometry.left,
@@ -1469,11 +2536,11 @@ window.__ModuleLoader__.load({
 											y,
 											textAnchor: "end",
 											dominantBaseline: "middle",
-											children: formatNumber(tick)
+											children: formatNumber$2(tick)
 										})] }, `y-${tick}`);
 									}),
 									xTicks.map((tick) => {
-										const x = scaleX(tick, xDomain, geometry);
+										const x = scaleX$2(tick, xDomain, geometry);
 										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
 											className: tick === 0 ? `${LearningActivity_module_css_default.gridLine} ${LearningActivity_module_css_default.zeroAxis}` : LearningActivity_module_css_default.gridLine,
 											x1: x,
@@ -1485,7 +2552,7 @@ window.__ModuleLoader__.load({
 											x,
 											y: geometry.top + geometry.plotHeight + 20,
 											textAnchor: "middle",
-											children: formatNumber(tick)
+											children: formatNumber$2(tick)
 										})] }, `x-${tick}`);
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
@@ -2440,9 +3507,2582 @@ window.__ModuleLoader__.load({
 			}, matched.key);
 		}
 		//#endregion
+		//#region src/client/LearningVisual.tsx
+		const DEFAULT_TONES$1 = [
+			"blue",
+			"red",
+			"green",
+			"orange",
+			"purple",
+			"gray"
+		];
+		function formatNumber$1(value, digits) {
+			if (!Number.isFinite(value)) return "—";
+			if (digits !== void 0) return value.toFixed(digits);
+			if (Number.isInteger(value)) return String(value);
+			return String(Number(value.toPrecision(6)));
+		}
+		function niceStep$1(rawStep) {
+			if (!Number.isFinite(rawStep) || rawStep <= 0) return 1;
+			const power = 10 ** Math.floor(Math.log10(rawStep));
+			const normalized = rawStep / power;
+			return (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10) * power;
+		}
+		function normalizedPosition$1(value, min, max) {
+			const span = max - min;
+			if (Number.isFinite(span) && span > 0) return (value - min) / span;
+			const scale = Math.max(Math.abs(value), Math.abs(min), Math.abs(max));
+			if (!Number.isFinite(scale) || scale === 0) return 0;
+			return (value / scale - min / scale) / (max / scale - min / scale);
+		}
+		function interpolate$1(min, max, ratio) {
+			if (ratio <= 0) return min;
+			if (ratio >= 1) return max;
+			return min * (1 - ratio) + max * ratio;
+		}
+		function ticks$1(min, max, target = 6) {
+			const step = niceStep$1(max / target - min / target);
+			const first = Math.ceil(min / step) * step;
+			if (!Number.isFinite(step) || step <= 0 || !Number.isFinite(first)) return [min, max];
+			const result = [];
+			const limit = Math.max(4, target * 4);
+			let previous;
+			for (let index = 0; index < limit; index += 1) {
+				const value = first + step * index;
+				if (!Number.isFinite(value) || value > max) break;
+				if (value === previous) break;
+				result.push(Number(value.toPrecision(12)));
+				previous = value;
+			}
+			return result.length > 0 ? result : [min, max];
+		}
+		function geometryFor(width) {
+			const safeWidth = Math.max(300, Math.round(width));
+			const compact = safeWidth < 520;
+			const height = compact ? 270 : 330;
+			const left = compact ? 54 : 64;
+			const right = 18;
+			const top = 18;
+			const bottom = compact ? 48 : 54;
+			return {
+				width: safeWidth,
+				height,
+				left,
+				right,
+				top,
+				bottom,
+				plotWidth: safeWidth - left - right,
+				plotHeight: height - top - bottom
+			};
+		}
+		function scaleX$1(value, visual, geometry) {
+			return geometry.left + normalizedPosition$1(value, visual.xAxis.min, visual.xAxis.max) * geometry.plotWidth;
+		}
+		function scaleY$1(value, visual, geometry) {
+			return geometry.top + (1 - normalizedPosition$1(value, visual.yAxis.min, visual.yAxis.max)) * geometry.plotHeight;
+		}
+		function curvePath(curve, visual, values, geometry) {
+			const samples = visual.xAxis.samples ?? 128;
+			const commands = [];
+			let drawing = false;
+			let previousY;
+			for (let index = 0; index < samples; index += 1) {
+				const x = interpolate$1(visual.xAxis.min, visual.xAxis.max, index / Math.max(1, samples - 1));
+				const y = evaluateMathExpression(curve.expression, {
+					...values,
+					x
+				});
+				if (!Number.isFinite(y) || Math.abs(y) > 0xe8d4a51000) {
+					drawing = false;
+					previousY = void 0;
+					continue;
+				}
+				const px = scaleX$1(x, visual, geometry);
+				const py = scaleY$1(y, visual, geometry);
+				if (previousY !== void 0 && Math.abs(previousY - py) > geometry.plotHeight * 2) drawing = false;
+				commands.push(`${drawing ? "L" : "M"}${px.toFixed(2)},${py.toFixed(2)}`);
+				drawing = true;
+				previousY = py;
+			}
+			return commands.join(" ");
+		}
+		function toneOf(series, index) {
+			return series.tone ?? DEFAULT_TONES$1[index % DEFAULT_TONES$1.length] ?? "blue";
+		}
+		function rangeStyle(parameter, value) {
+			return { "--visual-range-progress": `${normalizedPosition$1(value, parameter.min, parameter.max) * 100}%` };
+		}
+		function initialValues(visual, storageKey) {
+			const defaults = Object.fromEntries(visual.parameters.map((parameter) => [parameter.id, parameter.initial]));
+			if (storageKey === void 0 || typeof sessionStorage === "undefined") return defaults;
+			try {
+				const stored = JSON.parse(sessionStorage.getItem(`dsh-learning/visual@3:${storageKey}`) ?? "{}");
+				for (const parameter of visual.parameters) {
+					const candidate = stored[parameter.id];
+					if (typeof candidate === "number" && Number.isFinite(candidate) && candidate >= parameter.min && candidate <= parameter.max) defaults[parameter.id] = candidate;
+				}
+			} catch {}
+			return defaults;
+		}
+		function LearningVisual({ visual, storageKey }) {
+			const chartId = (0, react.useId)();
+			const chartContainer = (0, react.useRef)(null);
+			const [chartWidth, setChartWidth] = (0, react.useState)(760);
+			const [values, setValues] = (0, react.useState)(() => initialValues(visual, storageKey));
+			const geometry = (0, react.useMemo)(() => geometryFor(chartWidth), [chartWidth]);
+			const xTicks = (0, react.useMemo)(() => ticks$1(visual.xAxis.min, visual.xAxis.max), [visual.xAxis.max, visual.xAxis.min]);
+			const yTicks = (0, react.useMemo)(() => ticks$1(visual.yAxis.min, visual.yAxis.max), [visual.yAxis.max, visual.yAxis.min]);
+			const curves = (0, react.useMemo)(() => visual.series.flatMap((series, index) => series.type === "curve" ? [{
+				series,
+				index,
+				path: curvePath(series, visual, values, geometry)
+			}] : []), [
+				geometry,
+				values,
+				visual
+			]);
+			(0, react.useEffect)(() => {
+				const container = chartContainer.current;
+				if (container === null) return;
+				const update = (width) => {
+					if (width >= 280) setChartWidth((current) => Math.abs(current - width) < 1 ? current : width);
+				};
+				update(container.getBoundingClientRect().width);
+				if (typeof ResizeObserver === "undefined") return;
+				const observer = new ResizeObserver((entries) => {
+					const entry = entries[0];
+					if (entry !== void 0) update(entry.contentRect.width);
+				});
+				observer.observe(container);
+				return () => observer.disconnect();
+			}, []);
+			(0, react.useEffect)(() => {
+				if (storageKey === void 0 || typeof sessionStorage === "undefined") return;
+				try {
+					sessionStorage.setItem(`dsh-learning/visual@3:${storageKey}`, JSON.stringify(values));
+				} catch {}
+			}, [storageKey, values]);
+			const description = [
+				visual.description,
+				visual.parameters.map((parameter) => `${parameter.label} ${formatNumber$1(values[parameter.id] ?? parameter.initial)}`).join(", "),
+				`${visual.xAxis.label ?? "x"} ${formatNumber$1(visual.xAxis.min)} to ${formatNumber$1(visual.xAxis.max)}`,
+				`${visual.yAxis.label ?? "y"} ${formatNumber$1(visual.yAxis.min)} to ${formatNumber$1(visual.yAxis.max)}`,
+				visual.series.map((series) => series.label).join(", ")
+			].filter(Boolean).join(". ");
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+				className: LearningActivity_module_css_default.learningVisual,
+				"data-learning-visual": "parameter_chart",
+				"aria-labelledby": `${chartId}-title`,
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+						className: LearningActivity_module_css_default.srOnly,
+						id: `${chartId}-title`,
+						children: visual.title
+					}),
+					visual.description === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningActivity_module_css_default.visualDescription,
+						children: visual.description
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: LearningActivity_module_css_default.visualControls,
+						children: visual.parameters.map((parameter) => {
+							const value = values[parameter.id] ?? parameter.initial;
+							const inputId = `${chartId}-${parameter.id}`;
+							return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+								className: LearningActivity_module_css_default.visualRange,
+								htmlFor: inputId,
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: LearningActivity_module_css_default.visualRangeHeader,
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: parameter.label }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("output", {
+											htmlFor: inputId,
+											"aria-live": "polite",
+											children: formatNumber$1(value)
+										})]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+										id: inputId,
+										type: "range",
+										min: parameter.min,
+										max: parameter.max,
+										step: parameter.step,
+										value,
+										"aria-label": parameter.label,
+										style: rangeStyle(parameter, value),
+										onChange: (event) => setValues((current) => ({
+											...current,
+											[parameter.id]: Number(event.target.value)
+										}))
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: LearningActivity_module_css_default.visualRangeEnds,
+										"aria-hidden": "true",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatNumber$1(parameter.min) }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatNumber$1(parameter.max) })]
+									})
+								]
+							}, parameter.id);
+						})
+					}),
+					visual.metrics === void 0 || visual.metrics.length === 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: LearningActivity_module_css_default.visualMetrics,
+						children: visual.metrics.map((metric) => {
+							const value = evaluateMathExpression(metric.expression, values);
+							return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: metric.label }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("output", { children: [formatNumber$1(value, metric.digits), metric.suffix ?? ""] })] }, metric.id);
+						})
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: LearningActivity_module_css_default.visualChartRegion,
+						ref: chartContainer,
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+							className: LearningActivity_module_css_default.visualChart,
+							viewBox: `0 0 ${geometry.width} ${geometry.height}`,
+							role: "img",
+							"aria-labelledby": `${chartId}-title`,
+							"aria-describedby": `${chartId}-description`,
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("desc", {
+									id: `${chartId}-description`,
+									children: description
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("defs", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("clipPath", {
+									id: `${chartId}-clip`,
+									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+										x: geometry.left,
+										y: geometry.top,
+										width: geometry.plotWidth,
+										height: geometry.plotHeight
+									})
+								}) }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+									className: LearningActivity_module_css_default.visualPlot,
+									x: geometry.left,
+									y: geometry.top,
+									width: geometry.plotWidth,
+									height: geometry.plotHeight
+								}),
+								yTicks.map((value) => {
+									const y = scaleY$1(value, visual, geometry);
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+										className: LearningActivity_module_css_default.visualGrid,
+										x1: geometry.left,
+										x2: geometry.left + geometry.plotWidth,
+										y1: y,
+										y2: y
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+										className: LearningActivity_module_css_default.visualTick,
+										x: geometry.left - 9,
+										y,
+										textAnchor: "end",
+										dominantBaseline: "middle",
+										children: formatNumber$1(value)
+									})] }, `y-${String(value)}`);
+								}),
+								xTicks.map((value) => {
+									const x = scaleX$1(value, visual, geometry);
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+										className: LearningActivity_module_css_default.visualGrid,
+										x1: x,
+										x2: x,
+										y1: geometry.top,
+										y2: geometry.top + geometry.plotHeight
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+										className: LearningActivity_module_css_default.visualTick,
+										x,
+										y: geometry.top + geometry.plotHeight + 21,
+										textAnchor: "middle",
+										children: formatNumber$1(value)
+									})] }, `x-${String(value)}`);
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+									clipPath: `url(#${chartId}-clip)`,
+									children: [curves.map(({ series, index, path }) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+										className: LearningActivity_module_css_default.visualCurve,
+										"data-tone": toneOf(series, index),
+										"data-stroke": series.stroke ?? "solid",
+										d: path
+									}, series.id)), visual.series.map((series, index) => series.type !== "points" ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", {
+										"data-series": series.id,
+										children: series.points.map((point, pointIndex) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+											className: LearningActivity_module_css_default.visualPoint,
+											"data-tone": toneOf(series, index),
+											cx: scaleX$1(point.x, visual, geometry),
+											cy: scaleY$1(point.y, visual, geometry),
+											r: "5.5",
+											children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("title", { children: point.label ?? `${series.label}: (${formatNumber$1(point.x)}, ${formatNumber$1(point.y)})` })
+										}, `${series.id}-${String(pointIndex)}`))
+									}, series.id))]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+									className: LearningActivity_module_css_default.visualAxisLabel,
+									x: geometry.left + geometry.plotWidth / 2,
+									y: geometry.height - 5,
+									textAnchor: "middle",
+									children: visual.xAxis.label ?? "x"
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+									className: LearningActivity_module_css_default.visualAxisLabel,
+									x: 15,
+									y: geometry.top + geometry.plotHeight / 2,
+									textAnchor: "middle",
+									transform: `rotate(-90 15 ${geometry.top + geometry.plotHeight / 2})`,
+									children: visual.yAxis.label ?? "y"
+								})
+							]
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
+							className: LearningActivity_module_css_default.visualLegend,
+							"aria-label": visual.title,
+							children: visual.series.map((series, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
+								"data-series-type": series.type,
+								"data-tone": toneOf(series, index),
+								"data-stroke": series.type === "curve" ? series.stroke ?? "solid" : void 0,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { "aria-hidden": "true" }), series.label]
+							}, series.id))
+						})]
+					})
+				]
+			});
+		}
+		//#endregion
+		//#region \0dsh-css:C:\Users\Ryan\Desktop\deepseek-harness-portable\apps\interactive-learning\src\client\LearningVisualV4.module.css.mjs
+		const css = ".WHgWIW_visualShell{--visual-tone:var(--dsw-alias-state-business-primary);border:1px solid var(--dsw-alias-border-l2);background:linear-gradient(135deg, color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 34%, transparent), transparent 42%), color-mix(in srgb, var(--dsw-alias-bg-layer-1) 96%, transparent);min-width:0;color:var(--dsw-alias-label-primary);box-shadow:0 12px 32px color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent);border-radius:16px;flex-direction:column;gap:16px;margin:8px 0 16px;padding:clamp(16px,3cqi,24px);display:flex;container:WHgWIW_learning-visual-v4/inline-size}.WHgWIW_visualHeader{grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:3px 10px;min-width:0;display:grid}.WHgWIW_visualEyebrow{background:var(--dsw-alias-state-business-tertiary);color:var(--dsw-alias-state-business-primary);letter-spacing:.08em;border-radius:999px;grid-column:1;padding:2px 8px;font-size:10px;font-weight:650;line-height:18px}.WHgWIW_visualHeader h3{grid-column:2;margin:0;font-size:17px;font-weight:650;line-height:26px}.WHgWIW_visualHeader p{color:var(--dsw-alias-label-secondary);grid-column:1/-1;margin:4px 0 0;font-size:13px;line-height:22px}.WHgWIW_srOnly{clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}.WHgWIW_errorFallback{border-left:3px solid var(--dsw-alias-state-error-primary);background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 7%, transparent);color:var(--dsw-alias-label-secondary);gap:4px;padding:10px 12px;font-size:13px;line-height:22px;display:grid}.WHgWIW_errorFallback strong{color:var(--dsw-alias-label-error)}.WHgWIW_errorFallback pre{white-space:pre-wrap;max-height:240px;font:inherit;margin:6px 0 0;overflow:auto}.WHgWIW_sequence{border:1px solid color-mix(in srgb, var(--dsw-alias-state-business-primary) 22%, var(--dsw-alias-border-l2));background:color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 45%, transparent);border-radius:12px;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-width:0;padding:10px 12px;display:grid}.WHgWIW_sequenceText{grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:1px 9px;min-width:0;display:grid}.WHgWIW_sequenceText>span{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;font-size:11px;font-weight:650}.WHgWIW_sequenceText strong{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:20px;overflow:hidden}.WHgWIW_sequenceText p{color:var(--dsw-alias-label-secondary);grid-column:1/-1;margin:2px 0 0;font-size:12px;line-height:19px}.WHgWIW_sequenceActions{gap:6px;display:flex}.WHgWIW_sequenceActions button,.WHgWIW_seriesToggles button,.WHgWIW_detailPanel button,.WHgWIW_relationTable button,.WHgWIW_setZone button,.WHgWIW_intersections button{appearance:none;border:1px solid var(--dsw-alias-border-l2);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 84%, transparent);color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer}.WHgWIW_sequenceActions button{border-radius:8px;align-items:center;gap:5px;min-height:30px;padding:3px 9px;font-size:11px;line-height:18px;display:inline-flex}.WHgWIW_sequenceActions button:hover:not(:disabled),.WHgWIW_seriesToggles button:hover,.WHgWIW_relationTable button:hover,.WHgWIW_setZone button:hover,.WHgWIW_intersections button:hover{border-color:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-state-business-primary)}.WHgWIW_sequenceActions button:disabled{cursor:default;opacity:.38}.WHgWIW_sequenceActions button:focus-visible,.WHgWIW_seriesToggles button:focus-visible,.WHgWIW_parameter input:focus-visible,.WHgWIW_plotSvg:focus-visible,.WHgWIW_nodeGroup:focus-visible,.WHgWIW_edgeGroup:focus-visible,.WHgWIW_sceneElement:focus-visible,.WHgWIW_relationTable button:focus-visible,.WHgWIW_setZone button:focus-visible,.WHgWIW_intersections button:focus-visible,.WHgWIW_detailPanel button:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:3px}.WHgWIW_plotRenderer,.WHgWIW_nodeLinkRenderer,.WHgWIW_sceneRenderer,.WHgWIW_relationRenderer{flex-direction:column;gap:12px;min-width:0;display:flex}.WHgWIW_parameterGrid{grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:12px 24px;display:grid}.WHgWIW_parameter{cursor:pointer;grid-template-rows:auto 20px 14px;gap:2px;min-width:0;display:grid}.WHgWIW_parameterHeader{min-width:0;color:var(--dsw-alias-label-secondary);justify-content:space-between;align-items:baseline;gap:12px;font-size:12px;line-height:20px;display:flex}.WHgWIW_parameterHeader output{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;font-size:13px;font-weight:650}.WHgWIW_parameter input{appearance:none;background:linear-gradient(to right, var(--dsw-alias-state-business-primary) 0 var(--range-progress), var(--dsw-alias-border-l2) var(--range-progress) 100%);cursor:pointer;border-radius:999px;align-self:center;width:100%;height:4px}.WHgWIW_parameter input::-webkit-slider-runnable-track{background:0 0;height:4px}.WHgWIW_parameter input::-moz-range-track{background:0 0;height:4px}.WHgWIW_parameter input::-webkit-slider-thumb{appearance:none;border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:17px;height:17px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%;margin-top:-6.5px}.WHgWIW_parameter input::-moz-range-thumb{border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:11px;height:11px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%}.WHgWIW_parameterEnds{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;justify-content:space-between;font-size:10px;line-height:14px;display:flex}.WHgWIW_metrics{grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:0;display:grid}.WHgWIW_metrics>div{border:1px solid var(--dsw-alias-border-l1);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 72%, transparent);border-radius:9px;gap:1px;min-width:0;padding:7px 10px;display:grid}.WHgWIW_metrics dt{color:var(--dsw-alias-label-tertiary);text-overflow:ellipsis;white-space:nowrap;font-size:10px;line-height:16px;overflow:hidden}.WHgWIW_metrics dd{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;margin:0;font-size:15px;font-weight:650;line-height:22px}.WHgWIW_chartViewport,.WHgWIW_graphViewport,.WHgWIW_sceneViewport,.WHgWIW_tableViewport{overscroll-behavior-inline:contain;border:1px solid var(--dsw-alias-border-l1);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 70%, transparent);scrollbar-width:thin;border-radius:12px;min-width:0;position:relative;overflow-x:auto}.WHgWIW_plotSvg,.WHgWIW_graphSvg,.WHgWIW_sceneSvg{touch-action:pan-y;max-width:none;display:block;overflow:visible}.WHgWIW_plotFrame{fill:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 90%, transparent);stroke:var(--dsw-alias-border-l2);stroke-width:1px;vector-effect:non-scaling-stroke}.WHgWIW_gridLine{stroke:var(--dsw-alias-border-l1);stroke-width:1px;vector-effect:non-scaling-stroke}.WHgWIW_zeroAxis{stroke:var(--dsw-alias-border-l4);stroke-width:1.4px;vector-effect:non-scaling-stroke}.WHgWIW_tickLabel{fill:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;font-size:10px}.WHgWIW_axisLabel{fill:var(--dsw-alias-label-secondary);font-size:11px;font-weight:550}.WHgWIW_seriesLine{fill:none;stroke:var(--visual-tone);stroke-width:2.7px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}[data-stroke=dashed] .WHgWIW_edgeVisible,[data-stroke=dashed] .WHgWIW_sceneLine,.WHgWIW_seriesLine[data-stroke=dashed]{stroke-dasharray:9 6}[data-stroke=dotted] .WHgWIW_edgeVisible,[data-stroke=dotted] .WHgWIW_sceneLine,.WHgWIW_seriesLine[data-stroke=dotted]{stroke-dasharray:2 6}.WHgWIW_seriesPoint,.WHgWIW_probePoint{fill:var(--visual-tone);stroke:var(--dsw-alias-bg-layer-1);stroke-width:1.5px;vector-effect:non-scaling-stroke}.WHgWIW_seriesBar{fill:color-mix(in srgb, var(--visual-tone) 70%, transparent);stroke:var(--visual-tone);stroke-width:1px;vector-effect:non-scaling-stroke}.WHgWIW_probeLine{stroke:var(--dsw-alias-label-secondary);stroke-width:1px;stroke-dasharray:3 4;pointer-events:none;vector-effect:non-scaling-stroke}.WHgWIW_probeCard{bottom:9px;left:clamp(86px, var(--probe-x), calc(100% - 148px));z-index:2;border:1px solid var(--dsw-alias-border-l3);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 94%, transparent);width:max-content;max-width:210px;box-shadow:0 6px 18px color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);color:var(--dsw-alias-label-secondary);pointer-events:none;border-radius:8px;gap:1px;margin-top:-66px;margin-bottom:9px;padding:5px 8px;font-size:10px;line-height:15px;display:grid;position:sticky}.WHgWIW_probeCard strong{color:var(--dsw-alias-label-primary)}.WHgWIW_probeCard span:before{background:var(--visual-tone);content:\"\";border-radius:50%;width:6px;height:6px;margin-right:5px;display:inline-block}.WHgWIW_seriesToggles{flex-wrap:wrap;gap:7px;display:flex}.WHgWIW_seriesToggles button{border-radius:999px;align-items:center;gap:6px;padding:3px 9px;font-size:11px;line-height:18px;display:inline-flex}.WHgWIW_seriesToggles button[aria-pressed=false]{opacity:.46;text-decoration:line-through}.WHgWIW_seriesToggles button>span{border-top:2.5px solid var(--visual-tone);width:18px;height:0;display:inline-block}.WHgWIW_seriesToggles button[data-series-type=points]>span{background:var(--visual-tone);border:0;border-radius:50%;width:8px;height:8px}.WHgWIW_seriesToggles button[data-series-type=bars]>span{background:color-mix(in srgb, var(--visual-tone) 72%, transparent);border:0;border-radius:1px;width:9px;height:10px}.WHgWIW_seriesToggles button[data-stroke=dashed]>span{border-top-style:dashed}.WHgWIW_seriesToggles button[data-stroke=dotted]>span{border-top-style:dotted}.WHgWIW_interactionHint{color:var(--dsw-alias-label-tertiary);margin:-2px 0 0;font-size:10px;line-height:17px}.WHgWIW_layerLabel{fill:var(--dsw-alias-label-tertiary);letter-spacing:.04em;font-size:10px;font-weight:550}.WHgWIW_edgeGroup,.WHgWIW_nodeGroup,.WHgWIW_sceneElement{cursor:pointer}.WHgWIW_edgeVisible{fill:none;stroke:var(--visual-tone);stroke-opacity:.48;stroke-width:1.5px;vector-effect:non-scaling-stroke}.WHgWIW_edgeHit,.WHgWIW_sceneHit{fill:none;stroke:#0000;stroke-width:13px;pointer-events:stroke;vector-effect:non-scaling-stroke}.WHgWIW_edgeGroup:hover .WHgWIW_edgeVisible,.WHgWIW_edgeGroup:focus-visible .WHgWIW_edgeVisible,.WHgWIW_edgeGroup[data-selected] .WHgWIW_edgeVisible{stroke-opacity:1;stroke-width:3px}.WHgWIW_edgeLabel{fill:var(--dsw-alias-label-secondary);stroke:var(--dsw-alias-bg-layer-1);stroke-width:3px;paint-order:stroke;pointer-events:none;font-size:9px;transition:opacity .14s}.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeLabel{opacity:0}.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup:hover .WHgWIW_edgeLabel,.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup:focus-visible .WHgWIW_edgeLabel,.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup[data-selected] .WHgWIW_edgeLabel,.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup[data-edge-focused] .WHgWIW_edgeLabel{opacity:1}.WHgWIW_nodeGroup circle{fill:color-mix(in srgb, var(--visual-tone) 14%, var(--dsw-alias-bg-layer-1));stroke:var(--visual-tone);stroke-width:2px;vector-effect:non-scaling-stroke}.WHgWIW_nodeGroup text{fill:var(--dsw-alias-label-primary);pointer-events:none;font-size:10px;font-weight:650}.WHgWIW_nodeGroup:hover circle,.WHgWIW_nodeGroup:focus-visible circle,.WHgWIW_nodeGroup[data-selected] circle{fill:color-mix(in srgb, var(--visual-tone) 25%, var(--dsw-alias-bg-layer-1));stroke-width:3px}.WHgWIW_arrowMarker path{fill:var(--visual-tone)}.WHgWIW_detailPanel{border-left:3px solid var(--visual-tone);background:color-mix(in srgb, var(--visual-tone) 7%, transparent);border-radius:0 9px 9px 0;grid-template-columns:auto minmax(0,1fr) 28px;align-items:baseline;gap:1px 8px;padding:8px 9px 8px 11px;display:grid;position:relative}.WHgWIW_detailPanel>span{color:var(--visual-tone);font-size:10px;font-weight:650;line-height:18px}.WHgWIW_detailPanel>strong{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:20px;overflow:hidden}.WHgWIW_detailPanel>p{color:var(--dsw-alias-label-secondary);grid-column:1/3;margin:2px 0 0;font-size:12px;line-height:19px}.WHgWIW_detailPanel>button{border-radius:7px;grid-area:1/3/3;width:26px;height:26px;padding:0;font-size:17px;line-height:24px}.WHgWIW_sceneLine{stroke:var(--visual-tone);stroke-width:2.5px;vector-effect:non-scaling-stroke}.WHgWIW_scenePoint{fill:var(--visual-tone);stroke:var(--dsw-alias-bg-layer-1);stroke-width:2px;vector-effect:non-scaling-stroke}.WHgWIW_sceneShape{fill:color-mix(in srgb, var(--visual-tone) 13%, transparent);stroke:var(--visual-tone);stroke-width:2px;vector-effect:non-scaling-stroke}.WHgWIW_sceneElement:hover .WHgWIW_sceneShape,.WHgWIW_sceneElement:focus-visible .WHgWIW_sceneShape,.WHgWIW_sceneElement[data-selected] .WHgWIW_sceneShape{fill:color-mix(in srgb, var(--visual-tone) 24%, transparent);stroke-width:3px}.WHgWIW_sceneText,.WHgWIW_shapeLabel{fill:var(--dsw-alias-label-primary);stroke:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 88%, transparent);stroke-width:3px;paint-order:stroke;pointer-events:none;font-size:11px;font-weight:550}.WHgWIW_shapeLabel{fill:var(--visual-tone);font-size:10px}.WHgWIW_tableViewport{padding:4px}.WHgWIW_relationTable{border-spacing:0;border-collapse:separate;table-layout:fixed;width:100%;min-width:520px;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:19px}.WHgWIW_relationTable th,.WHgWIW_relationTable td{border-right:1px solid var(--dsw-alias-border-l1);border-bottom:1px solid var(--dsw-alias-border-l1);text-align:center;overflow-wrap:anywhere;padding:9px 10px}.WHgWIW_relationTable tr>:last-child{border-right:0}.WHgWIW_relationTable tbody tr:last-child>*{border-bottom:0}.WHgWIW_relationTable thead th{background:color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 25%, transparent);color:var(--dsw-alias-label-primary);font-weight:650}.WHgWIW_relationTable thead th:first-child,.WHgWIW_relationTable tbody th{width:22%}.WHgWIW_relationTable tbody th{background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 78%, transparent);color:var(--dsw-alias-label-primary);text-align:left;font-weight:550}.WHgWIW_relationTable button{max-width:100%;color:inherit;line-height:inherit;overflow-wrap:anywhere;background:0 0;border-color:#0000;border-radius:6px;padding:2px 5px}.WHgWIW_relationTable td[data-tone]{color:var(--visual-tone);font-weight:550}.WHgWIW_matrixTable td{padding:6px}.WHgWIW_matrixCell{width:100%;min-height:38px;border-color:color-mix(in srgb, var(--visual-tone) 25%, var(--dsw-alias-border-l1))!important;background:color-mix(in srgb, var(--visual-tone) 9%, transparent)!important;color:var(--visual-tone)!important}.WHgWIW_emptyCell{color:var(--dsw-alias-label-tertiary);font-size:16px}.WHgWIW_setMap{gap:12px;display:grid}.WHgWIW_setZones{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:10px;display:grid}.WHgWIW_setZone{border:2px solid color-mix(in srgb, var(--visual-tone) 58%, transparent);background:color-mix(in srgb, var(--visual-tone) 7%, transparent);border-radius:36px 36px 14px 14px;min-width:0;padding:12px;position:relative;overflow:hidden}.WHgWIW_setZone h4,.WHgWIW_intersections h4{color:var(--dsw-alias-label-primary);align-items:center;gap:7px;margin:0 0 9px;font-size:12px;font-weight:650;line-height:19px;display:flex}.WHgWIW_setZone h4>span{background:var(--visual-tone);border-radius:50%;width:8px;height:8px}.WHgWIW_setZone>div{flex-wrap:wrap;align-content:flex-start;gap:6px;min-height:34px;display:flex}.WHgWIW_setZone button{border-color:color-mix(in srgb, var(--visual-tone) 24%, var(--dsw-alias-border-l1));background:color-mix(in srgb, var(--visual-tone) 10%, var(--dsw-alias-bg-layer-1));color:var(--dsw-alias-label-primary);border-radius:999px;padding:3px 8px;font-size:11px;line-height:18px}.WHgWIW_emptySet{color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:20px}.WHgWIW_intersections{border:1px dashed var(--dsw-alias-border-l4);background:repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--dsw-alias-border-l1) 30%, transparent) 8px 9px);border-radius:12px;padding:10px}.WHgWIW_intersections>div{grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));gap:7px;display:grid}.WHgWIW_intersections button{text-align:left;border-radius:8px;gap:1px;padding:6px 8px;display:grid}.WHgWIW_intersections strong{color:var(--dsw-alias-label-primary);font-size:11px;line-height:18px}.WHgWIW_intersections span{color:var(--dsw-alias-label-tertiary);font-size:9px;line-height:15px}.WHgWIW_timelineRenderer,.WHgWIW_formulaRenderer,.WHgWIW_studyRenderer,.WHgWIW_recallRenderer{flex-direction:column;gap:12px;min-width:0;display:flex}.WHgWIW_timelineViewport{overscroll-behavior-inline:contain;border:1px solid var(--dsw-alias-border-l1);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 70%, transparent);scrollbar-width:thin;border-radius:12px;min-width:0;overflow-x:auto}.WHgWIW_timelineCanvas{min-width:0;position:relative}.WHgWIW_timelineAxis{background:linear-gradient(to right, var(--dsw-alias-border-l3), var(--dsw-alias-state-business-primary), var(--dsw-alias-border-l3));border-radius:999px;height:3px;position:absolute;left:72px;right:72px}.WHgWIW_timelineAxis:after{border-top:5px solid #0000;border-bottom:5px solid #0000;border-left:8px solid var(--dsw-alias-border-l3);content:\"\";position:absolute;top:-4px;right:-2px}.WHgWIW_timelineEra,.WHgWIW_timelineEraChips button,.WHgWIW_timelineEvent,.WHgWIW_timelineVertical button{appearance:none;border:1px solid color-mix(in srgb, var(--visual-tone) 42%, var(--dsw-alias-border-l1));background:color-mix(in srgb, var(--visual-tone) 10%, var(--dsw-alias-bg-layer-1));color:var(--dsw-alias-label-primary);font:inherit;cursor:pointer}.WHgWIW_timelineEra{z-index:1;height:23px;color:var(--visual-tone);text-overflow:ellipsis;white-space:nowrap;border-radius:999px;padding:1px 9px;font-size:9px;font-weight:650;line-height:19px;position:absolute;overflow:hidden}.WHgWIW_timelineEvent{z-index:2;text-align:left;width:126px;min-height:50px;box-shadow:0 4px 14px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);border-radius:9px;gap:1px;padding:6px 8px;display:grid;position:absolute;transform:translate(-50%)}.WHgWIW_timelineEvent:before{border:2px solid var(--dsw-alias-bg-layer-1);background:var(--visual-tone);width:10px;height:10px;box-shadow:0 0 0 1px var(--visual-tone);content:\"\";border-radius:50%;position:absolute;left:calc(50% - 6px)}.WHgWIW_timelineEvent:after{background:var(--visual-tone);content:\"\";width:1px;height:20px;position:absolute;left:50%}.WHgWIW_timelineEvent[data-side=top]:before{bottom:-32px}.WHgWIW_timelineEvent[data-side=top]:after{bottom:-22px}.WHgWIW_timelineEvent[data-side=bottom]:before{top:-32px}.WHgWIW_timelineEvent[data-side=bottom]:after{top:-22px}.WHgWIW_timelineEvent>span{color:var(--visual-tone);font-variant-numeric:tabular-nums;font-size:9px;font-weight:650;line-height:15px}.WHgWIW_timelineEvent>strong{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:550;line-height:16px;overflow:hidden}.WHgWIW_timelineEra:hover,.WHgWIW_timelineEra:focus-visible,.WHgWIW_timelineEvent:hover,.WHgWIW_timelineEvent:focus-visible,.WHgWIW_timelineVertical button:hover,.WHgWIW_timelineVertical button:focus-visible,.WHgWIW_timelineEraChips button:hover,.WHgWIW_timelineEraChips button:focus-visible{border-color:var(--visual-tone);outline:2px solid color-mix(in srgb, var(--visual-tone) 30%, transparent);outline-offset:2px}.WHgWIW_timelineEraChips{flex-wrap:wrap;gap:7px;display:flex}.WHgWIW_timelineEraChips button{color:var(--visual-tone);text-align:left;border-radius:999px;gap:0;padding:3px 11px;display:inline-grid}.WHgWIW_timelineEraChips button strong{font-size:10px;font-weight:650;line-height:16px}.WHgWIW_timelineEraChips button span{color:var(--dsw-alias-label-tertiary);font-size:8px;line-height:13px}.WHgWIW_timelineVertical{gap:0;margin:0;padding:4px 0 4px 22px;list-style:none;display:grid}.WHgWIW_timelineVertical li{border-left:2px solid color-mix(in srgb, var(--visual-tone) 48%, var(--dsw-alias-border-l2));padding:0 0 12px 20px;position:relative}.WHgWIW_timelineVertical li:last-child{padding-bottom:0}.WHgWIW_timelineVertical li:before{border:2px solid var(--dsw-alias-bg-layer-1);background:var(--visual-tone);width:9px;height:9px;box-shadow:0 0 0 1px var(--visual-tone);content:\"\";border-radius:50%;position:absolute;top:16px;left:-7px}.WHgWIW_timelineVertical button{text-align:left;border-radius:10px;grid-template-columns:minmax(80px,auto) minmax(0,1fr);gap:2px 12px;width:min(100%,620px);padding:8px 10px;display:grid}.WHgWIW_timelineVertical button>span{color:var(--visual-tone);font-size:10px;font-weight:650}.WHgWIW_timelineVertical button>strong{color:var(--dsw-alias-label-primary);font-size:12px}.WHgWIW_timelineVertical button>small{color:var(--dsw-alias-label-secondary);grid-column:1/-1;font-size:10px;line-height:17px}.WHgWIW_formulaRenderer:focus-visible,.WHgWIW_recallRenderer:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:5px}.WHgWIW_formulaMeta{min-width:0;color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;justify-content:space-between;align-items:center;gap:12px;font-size:11px;font-weight:650;line-height:18px;display:flex}.WHgWIW_formulaMeta code{border:1px solid var(--dsw-alias-border-l1);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 75%, transparent);color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:400;overflow:hidden}.WHgWIW_formulaSteps{gap:0;margin:0;padding:0;list-style:none;display:grid}.WHgWIW_formulaSteps>li{min-width:0}.WHgWIW_formulaStepCard{border:1px solid color-mix(in srgb, var(--visual-tone) 30%, var(--dsw-alias-border-l1));background:color-mix(in srgb, var(--visual-tone) 6%, transparent);border-radius:11px;grid-template-columns:30px minmax(0,1fr);align-items:start;gap:10px;min-width:0;padding:10px;display:grid}.WHgWIW_formulaStepCard>span{background:color-mix(in srgb, var(--visual-tone) 16%, transparent);width:28px;height:28px;color:var(--visual-tone);border-radius:50%;place-items:center;font-size:11px;font-weight:700;display:grid}.WHgWIW_formulaStepCard>div{gap:4px;min-width:0;display:grid}.WHgWIW_formulaExpression{color:var(--dsw-alias-label-primary);scrollbar-width:thin;padding:7px 0 8px;font-size:clamp(14px,3cqi,18px);font-weight:550;line-height:26px;overflow:auto hidden}.WHgWIW_formulaExpression>div{min-width:max-content}.WHgWIW_formulaExpression .katex-display{text-align:left;margin:2px 0}.WHgWIW_formulaStepCard strong{color:var(--visual-tone);font-size:10px;line-height:16px}.WHgWIW_formulaStepCard p{color:var(--dsw-alias-label-secondary);margin:0;font-size:11px;line-height:18px}.WHgWIW_formulaRule{min-height:42px;color:var(--dsw-alias-label-secondary);grid-template-columns:30px auto minmax(0,1fr);align-items:center;gap:6px 10px;padding:2px 10px;font-size:10px;line-height:17px;display:grid}.WHgWIW_formulaRule>span:first-child{color:var(--visual-tone);text-align:center;font-size:17px}.WHgWIW_formulaRule strong{color:var(--visual-tone);letter-spacing:.04em;text-transform:uppercase;font-size:9px}.WHgWIW_formulaUnknown{color:var(--dsw-alias-label-tertiary);grid-template-columns:30px minmax(0,1fr);align-items:center;gap:10px;padding:1px 10px;display:grid}.WHgWIW_formulaUnknown>span{text-align:center}.WHgWIW_formulaUnknown code{border:1px dashed var(--dsw-alias-border-l2);border-radius:10px;place-items:center;min-height:38px;font-size:18px;display:grid}.WHgWIW_formulaConclusion{border-left:3px solid var(--dsw-alias-state-success-primary);background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 8%, transparent);border-radius:0 9px 9px 0;gap:2px;padding:8px 11px;display:grid}.WHgWIW_formulaConclusion span{color:var(--dsw-alias-state-success-primary);font-size:9px;font-weight:650}.WHgWIW_formulaConclusion strong{color:var(--dsw-alias-label-primary);font-size:13px;line-height:21px}.WHgWIW_formulaActions,.WHgWIW_recallNavigation,.WHgWIW_recallRating{flex-wrap:wrap;gap:7px;display:flex}.WHgWIW_formulaActions button,.WHgWIW_recallNavigation button,.WHgWIW_recallRating button,.WHgWIW_recallRevealButton,.WHgWIW_studySections button,.WHgWIW_studyConcepts button,.WHgWIW_studyDetail button{appearance:none;border:1px solid var(--dsw-alias-border-l2);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 80%, transparent);color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer;border-radius:8px;padding:5px 10px;font-size:11px;line-height:18px}.WHgWIW_formulaActions button:hover:not(:disabled),.WHgWIW_recallNavigation button:hover:not(:disabled),.WHgWIW_recallRating button:hover,.WHgWIW_recallRevealButton:hover,.WHgWIW_studySections button:hover,.WHgWIW_studyConcepts button:hover,.WHgWIW_studyDetail button:hover{border-color:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-state-business-primary)}.WHgWIW_formulaActions button:focus-visible,.WHgWIW_recallNavigation button:focus-visible,.WHgWIW_recallRating button:focus-visible,.WHgWIW_recallRevealButton:focus-visible,.WHgWIW_studySections button:focus-visible,.WHgWIW_studyConcepts button:focus-visible,.WHgWIW_studyDetail button:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:3px}.WHgWIW_formulaActions button:disabled,.WHgWIW_recallNavigation button:disabled{cursor:default;opacity:.38}.WHgWIW_formulaActions .WHgWIW_primaryAction,.WHgWIW_recallRevealButton{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-on-primary)}.WHgWIW_studySource{border-left:3px solid var(--dsw-alias-state-business-primary);background:color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 24%, transparent);grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:2px 9px;padding:7px 10px;display:grid}.WHgWIW_studySource>span{color:var(--dsw-alias-state-business-primary);font-size:9px;font-weight:650}.WHgWIW_studySource>strong{color:var(--dsw-alias-label-primary);font-size:13px;line-height:20px}.WHgWIW_studySource>p{color:var(--dsw-alias-label-secondary);grid-column:1/-1;margin:2px 0 0;font-size:11px;line-height:18px}.WHgWIW_studySource>p b{color:var(--dsw-alias-label-primary);margin-right:7px;font-weight:550}.WHgWIW_studyLayout{grid-template-columns:minmax(150px,.34fr) minmax(0,1fr);gap:12px;min-width:0;display:grid}.WHgWIW_studySections{flex-direction:column;gap:6px;min-width:0;display:flex}.WHgWIW_studySections button{text-align:left;grid-template-columns:24px minmax(0,1fr);gap:0 7px;min-width:0;padding:7px;display:grid}.WHgWIW_studySections button>span{background:var(--dsw-alias-border-l1);width:22px;height:22px;color:var(--dsw-alias-label-tertiary);border-radius:50%;grid-row:1/3;place-items:center;font-size:9px;display:grid}.WHgWIW_studySections button>strong{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:11px;overflow:hidden}.WHgWIW_studySections button>small{color:var(--dsw-alias-label-tertiary);text-overflow:ellipsis;white-space:nowrap;font-size:9px;overflow:hidden}.WHgWIW_studySections button[aria-selected=true]{border-color:var(--dsw-alias-state-business-primary);background:color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 38%, transparent)}.WHgWIW_studySections button[aria-selected=true]>span{background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-on-primary)}.WHgWIW_studySectionPanel{border:1px solid var(--dsw-alias-border-l1);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 67%, transparent);border-radius:11px;flex-direction:column;gap:10px;min-width:0;padding:11px;display:flex}.WHgWIW_studySectionPanel>header{gap:5px;display:grid}.WHgWIW_studySectionPanel>header span{color:var(--dsw-alias-state-business-primary);font-size:9px;line-height:15px}.WHgWIW_studySectionPanel>header h4{color:var(--dsw-alias-label-primary);margin:0;font-size:14px;line-height:22px}.WHgWIW_studySectionPanel>header p{color:var(--dsw-alias-label-secondary);margin:0;font-size:11px;line-height:18px}.WHgWIW_studyConcepts{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:8px;display:grid}.WHgWIW_studyConcepts button{border-color:color-mix(in srgb, var(--visual-tone) 25%, var(--dsw-alias-border-l1));background:color-mix(in srgb, var(--visual-tone) 6%, transparent);text-align:left;gap:2px;min-width:0;display:grid}.WHgWIW_studyConcepts button>span{color:var(--visual-tone);font-size:9px;font-weight:650}.WHgWIW_studyConcepts button>strong{color:var(--dsw-alias-label-primary);font-size:12px;line-height:19px}.WHgWIW_studyConcepts button>small{color:var(--dsw-alias-label-tertiary);gap:1px;font-size:9px;line-height:15px;display:grid}.WHgWIW_studyConcepts button>small b{color:var(--dsw-alias-label-secondary);font-weight:550}.WHgWIW_studyConcepts button[data-selected]{border-color:var(--visual-tone);box-shadow:0 0 0 2px color-mix(in srgb, var(--visual-tone) 12%, transparent)}.WHgWIW_studyDetail{border-left:3px solid var(--dsw-alias-state-business-primary);background:color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 25%, transparent);border-radius:0 9px 9px 0;grid-template-columns:minmax(0,1fr) 28px;gap:5px 10px;padding:9px 9px 9px 11px;display:grid;position:relative}.WHgWIW_studyDetail>div{align-items:baseline;gap:8px;min-width:0;display:flex}.WHgWIW_studyDetail>div span{color:var(--dsw-alias-state-business-primary);flex:none;font-size:9px;font-weight:650}.WHgWIW_studyDetail>div strong{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:13px;overflow:hidden}.WHgWIW_studyDetail>p{color:var(--dsw-alias-label-secondary);grid-column:1;margin:0;font-size:11px;line-height:18px}.WHgWIW_studyDetail>dl{grid-column:1;gap:7px;margin:0;font-size:10px;line-height:17px;display:flex}.WHgWIW_studyDetail dt{color:var(--dsw-alias-label-tertiary)}.WHgWIW_studyDetail dd{color:var(--dsw-alias-label-secondary);margin:0}.WHgWIW_studyDetail>button{grid-area:1/2/4;width:27px;height:27px;padding:0;font-size:16px}.WHgWIW_recallToolbar{min-width:0;color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;justify-content:space-between;align-items:baseline;gap:12px;font-size:11px;font-weight:650;display:flex}.WHgWIW_recallToolbar output{color:var(--dsw-alias-label-tertiary);font-size:10px;font-weight:400}.WHgWIW_recallInstructions{color:var(--dsw-alias-label-secondary);margin:0;font-size:11px;line-height:18px}.WHgWIW_recallCard{border:1px solid var(--dsw-alias-border-l2);background:radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 48%, transparent), transparent 38%), color-mix(in srgb, var(--dsw-alias-bg-layer-1) 82%, transparent);min-height:230px;box-shadow:0 10px 26px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);border-radius:14px;align-content:start;gap:12px;padding:clamp(16px,4cqi,26px);display:grid}.WHgWIW_recallCardHeader{justify-content:space-between;align-items:center;gap:12px;display:flex}.WHgWIW_recallCardHeader>span{color:var(--dsw-alias-state-business-primary);letter-spacing:.08em;text-transform:uppercase;font-size:9px;font-weight:700}.WHgWIW_recallCardHeader>small{background:var(--dsw-alias-border-l1);color:var(--dsw-alias-label-tertiary);border-radius:999px;padding:2px 7px;font-size:9px}.WHgWIW_recallCardHeader>small[data-status=mastered]{background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 13%, transparent);color:var(--dsw-alias-state-success-primary)}.WHgWIW_recallCardHeader>small[data-status=review]{background:color-mix(in srgb, var(--dsw-alias-state-warn-primary) 13%, transparent);color:var(--dsw-alias-state-warn-primary)}.WHgWIW_recallCard>h4{color:var(--dsw-alias-label-primary);margin:0;font-size:clamp(16px,4cqi,21px);font-weight:600;line-height:1.55}.WHgWIW_recallTags{flex-wrap:wrap;gap:5px;margin:-3px 0 0;padding:0;list-style:none;display:flex}.WHgWIW_recallTags li{border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-tertiary);border-radius:999px;padding:1px 7px;font-size:9px;line-height:16px}.WHgWIW_recallReveal{border-left:3px solid var(--dsw-alias-state-warn-primary);background:color-mix(in srgb, var(--dsw-alias-state-warn-primary) 7%, transparent);gap:3px;padding:7px 10px;display:grid}.WHgWIW_recallReveal[data-kind=answer]{border-left-color:var(--dsw-alias-state-success-primary);background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 7%, transparent)}.WHgWIW_recallReveal>span{color:var(--dsw-alias-state-warn-primary);font-size:9px;font-weight:700}.WHgWIW_recallReveal[data-kind=answer]>span{color:var(--dsw-alias-state-success-primary)}.WHgWIW_recallReveal>p{color:var(--dsw-alias-label-primary);margin:0;font-size:12px;line-height:20px}.WHgWIW_recallRevealButton{justify-self:start;width:max-content;min-width:120px}.WHgWIW_recallRating{align-self:end}.WHgWIW_recallRating button[aria-pressed=true]{border-color:var(--dsw-alias-state-business-primary);background:color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 46%, transparent);color:var(--dsw-alias-state-business-primary)}.WHgWIW_recallNavigation button:last-child{margin-left:auto}.WHgWIW_visualShell [data-tone=blue]{--visual-tone:var(--dsw-alias-state-business-primary)}.WHgWIW_visualShell [data-tone=green]{--visual-tone:var(--dsw-alias-state-success-primary)}.WHgWIW_visualShell [data-tone=red]{--visual-tone:var(--dsw-alias-state-error-primary)}.WHgWIW_visualShell [data-tone=orange]{--visual-tone:var(--dsw-alias-state-warn-primary)}.WHgWIW_visualShell [data-tone=purple]{--visual-tone:color-mix(in srgb, var(--dsw-alias-state-business-primary) 58%, var(--dsw-alias-state-error-primary))}.WHgWIW_visualShell [data-tone=gray]{--visual-tone:var(--dsw-alias-label-tertiary)}.WHgWIW_visualShell [data-focus-state=dim]{opacity:.2;filter:saturate(.35);transition:opacity .18s,filter .18s}.WHgWIW_visualShell [data-focus-state=focus]{filter:drop-shadow(0 0 5px color-mix(in srgb, var(--visual-tone) 48%, transparent));transition:opacity .18s,filter .18s}@container WHgWIW_learning-visual-v4 (width<=560px){.WHgWIW_visualShell{border-radius:12px;gap:13px;padding:14px 12px}.WHgWIW_visualHeader{grid-template-columns:1fr}.WHgWIW_visualEyebrow{grid-column:1;width:max-content}.WHgWIW_visualHeader h3{grid-column:1;font-size:16px}.WHgWIW_sequence{grid-template-columns:1fr}.WHgWIW_sequenceActions{justify-content:stretch}.WHgWIW_sequenceActions button{flex:1;justify-content:center}.WHgWIW_sequenceActions button:last-child{flex:none}.WHgWIW_metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.WHgWIW_relationTable{min-width:500px}.WHgWIW_studyLayout{grid-template-columns:1fr}.WHgWIW_studySections{scrollbar-width:thin;flex-direction:row;padding-bottom:3px;overflow-x:auto}.WHgWIW_studySections button{min-width:156px}.WHgWIW_formulaActions button{flex:1}.WHgWIW_formulaActions button:nth-child(2){flex:2}.WHgWIW_recallNavigation button{flex:1}.WHgWIW_recallNavigation button:last-child{flex-basis:100%;margin-left:0}.WHgWIW_recallCard{min-height:210px}}@container WHgWIW_learning-visual-v4 (width<=360px){.WHgWIW_sequenceActions button span:not([aria-hidden]){display:none}.WHgWIW_metrics{grid-template-columns:1fr}.WHgWIW_detailPanel{grid-template-columns:1fr 28px}.WHgWIW_detailPanel>span,.WHgWIW_detailPanel>strong,.WHgWIW_detailPanel>p{grid-column:1}.WHgWIW_detailPanel>button{grid-column:2}.WHgWIW_formulaStepCard{grid-template-columns:24px minmax(0,1fr);padding:8px}.WHgWIW_formulaStepCard>span{width:23px;height:23px}.WHgWIW_formulaRule{grid-template-columns:24px minmax(0,1fr)}.WHgWIW_formulaRule strong,.WHgWIW_formulaRule>span:last-child{grid-column:2}.WHgWIW_recallToolbar{flex-direction:column;align-items:flex-start;gap:2px}}@media (prefers-reduced-motion:reduce){.WHgWIW_visualShell [data-focus-state=dim],.WHgWIW_visualShell [data-focus-state=focus],.WHgWIW_edgeLabel{transition:none}}";
+		const tagId = "@dsh-portable/interactive-learning/LearningVisualV4.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@dsh-portable/interactive-learning";
+			tag.dataset.pluginCss = tagId;
+			tag.textContent = css;
+			document.head.appendChild(tag);
+		}
+		var LearningVisualV4_module_css_default = {
+			"detailPanel": "WHgWIW_detailPanel",
+			"interactionHint": "WHgWIW_interactionHint",
+			"timelineCanvas": "WHgWIW_timelineCanvas",
+			"chartViewport": "WHgWIW_chartViewport",
+			"sequenceActions": "WHgWIW_sequenceActions",
+			"tableViewport": "WHgWIW_tableViewport",
+			"sceneLine": "WHgWIW_sceneLine",
+			"probeCard": "WHgWIW_probeCard",
+			"matrixCell": "WHgWIW_matrixCell",
+			"formulaMeta": "WHgWIW_formulaMeta",
+			"studyConcepts": "WHgWIW_studyConcepts",
+			"timelineEvent": "WHgWIW_timelineEvent",
+			"formulaStepCard": "WHgWIW_formulaStepCard",
+			"edgeHit": "WHgWIW_edgeHit",
+			"intersections": "WHgWIW_intersections",
+			"studyLayout": "WHgWIW_studyLayout",
+			"setMap": "WHgWIW_setMap",
+			"recallReveal": "WHgWIW_recallReveal",
+			"arrowMarker": "WHgWIW_arrowMarker",
+			"timelineVertical": "WHgWIW_timelineVertical",
+			"relationRenderer": "WHgWIW_relationRenderer",
+			"learning-visual-v4": "WHgWIW_learning-visual-v4",
+			"studySections": "WHgWIW_studySections",
+			"formulaRenderer": "WHgWIW_formulaRenderer",
+			"timelineEraChips": "WHgWIW_timelineEraChips",
+			"recallNavigation": "WHgWIW_recallNavigation",
+			"nodeGroup": "WHgWIW_nodeGroup",
+			"sceneRenderer": "WHgWIW_sceneRenderer",
+			"zeroAxis": "WHgWIW_zeroAxis",
+			"plotSvg": "WHgWIW_plotSvg",
+			"probePoint": "WHgWIW_probePoint",
+			"timelineEra": "WHgWIW_timelineEra",
+			"srOnly": "WHgWIW_srOnly",
+			"formulaActions": "WHgWIW_formulaActions",
+			"sequenceText": "WHgWIW_sequenceText",
+			"plotFrame": "WHgWIW_plotFrame",
+			"parameterGrid": "WHgWIW_parameterGrid",
+			"axisLabel": "WHgWIW_axisLabel",
+			"edgeLabel": "WHgWIW_edgeLabel",
+			"sequence": "WHgWIW_sequence",
+			"metrics": "WHgWIW_metrics",
+			"recallInstructions": "WHgWIW_recallInstructions",
+			"recallCardHeader": "WHgWIW_recallCardHeader",
+			"plotRenderer": "WHgWIW_plotRenderer",
+			"matrixTable": "WHgWIW_matrixTable",
+			"recallTags": "WHgWIW_recallTags",
+			"recallToolbar": "WHgWIW_recallToolbar",
+			"studySource": "WHgWIW_studySource",
+			"studySectionPanel": "WHgWIW_studySectionPanel",
+			"recallRevealButton": "WHgWIW_recallRevealButton",
+			"edgeGroup": "WHgWIW_edgeGroup",
+			"nodeLinkRenderer": "WHgWIW_nodeLinkRenderer",
+			"primaryAction": "WHgWIW_primaryAction",
+			"seriesLine": "WHgWIW_seriesLine",
+			"studyRenderer": "WHgWIW_studyRenderer",
+			"visualHeader": "WHgWIW_visualHeader",
+			"seriesBar": "WHgWIW_seriesBar",
+			"shapeLabel": "WHgWIW_shapeLabel",
+			"tickLabel": "WHgWIW_tickLabel",
+			"parameter": "WHgWIW_parameter",
+			"emptySet": "WHgWIW_emptySet",
+			"timelineAxis": "WHgWIW_timelineAxis",
+			"studyDetail": "WHgWIW_studyDetail",
+			"recallRenderer": "WHgWIW_recallRenderer",
+			"parameterHeader": "WHgWIW_parameterHeader",
+			"formulaExpression": "WHgWIW_formulaExpression",
+			"parameterEnds": "WHgWIW_parameterEnds",
+			"visualShell": "WHgWIW_visualShell",
+			"sceneViewport": "WHgWIW_sceneViewport",
+			"graphSvg": "WHgWIW_graphSvg",
+			"formulaSteps": "WHgWIW_formulaSteps",
+			"errorFallback": "WHgWIW_errorFallback",
+			"recallCard": "WHgWIW_recallCard",
+			"emptyCell": "WHgWIW_emptyCell",
+			"sceneSvg": "WHgWIW_sceneSvg",
+			"sceneShape": "WHgWIW_sceneShape",
+			"sceneText": "WHgWIW_sceneText",
+			"sceneHit": "WHgWIW_sceneHit",
+			"seriesToggles": "WHgWIW_seriesToggles",
+			"edgeVisible": "WHgWIW_edgeVisible",
+			"timelineViewport": "WHgWIW_timelineViewport",
+			"graphViewport": "WHgWIW_graphViewport",
+			"setZone": "WHgWIW_setZone",
+			"visualEyebrow": "WHgWIW_visualEyebrow",
+			"scenePoint": "WHgWIW_scenePoint",
+			"seriesPoint": "WHgWIW_seriesPoint",
+			"gridLine": "WHgWIW_gridLine",
+			"relationTable": "WHgWIW_relationTable",
+			"sceneElement": "WHgWIW_sceneElement",
+			"setZones": "WHgWIW_setZones",
+			"timelineRenderer": "WHgWIW_timelineRenderer",
+			"formulaRule": "WHgWIW_formulaRule",
+			"formulaUnknown": "WHgWIW_formulaUnknown",
+			"recallRating": "WHgWIW_recallRating",
+			"probeLine": "WHgWIW_probeLine",
+			"formulaConclusion": "WHgWIW_formulaConclusion",
+			"layerLabel": "WHgWIW_layerLabel"
+		};
+		//#endregion
+		//#region src/client/LearningVisualV4.tsx
+		const DEFAULT_LABELS = {
+			eyebrow: "交互可视化",
+			errorTitle: "视觉组件暂时无法显示",
+			errorContinue: "你仍可继续阅读上下文。",
+			sequenceLabel: "视觉讲解步骤",
+			previousStep: "上一步",
+			nextStep: "下一步",
+			reset: "重置",
+			chartProbeHint: "图表，按左右方向键开始探查数值",
+			metricsLabel: "当前指标",
+			legendLabel: "图例与系列显示",
+			plotInteractionHint: "鼠标移入图表可探查数值；键盘聚焦图表后可用 ← → 移动。",
+			nodeLinkSummary: "{nodes} 个节点，{edges} 条连线。",
+			connection: "{from} 到 {to}",
+			layerLabel: "第 {index} 层",
+			edgeLabel: "连线",
+			nodeLinkInteractionHint: "选择节点或连线查看解释；键盘可用 Tab 与 Enter 操作。",
+			nodeKind: "节点",
+			edgeKind: "连线",
+			noDetail: "暂无补充说明。",
+			closeDetail: "关闭详细说明",
+			elementFallback: "图元 {id}",
+			sceneSummary: "二维场景，{elements} 个图元。{labels}",
+			sceneInteractionHint: "选择图中的点、线或形状查看说明。",
+			elementKind: "图元",
+			comparisonCaption: "特征对比表",
+			comparisonDimension: "对比维度",
+			comparisonSubject: "对比对象",
+			comparisonInteractionHint: "按行阅读可对比同一维度；选择表头可查看补充说明。",
+			matrixCaption: "关系矩阵",
+			matrixAxes: "行 ↓ / 列 →",
+			noRelation: "无关系",
+			matrixInteractionHint: "从行与列的交点读取关系；选择单元格可查看细节。",
+			setsLabel: "集合关系图",
+			noExclusiveItems: "无独有项",
+			intersections: "交集 / 共有",
+			uncategorized: "未归类",
+			setsInteractionHint: "单一归属项在各集合内，多重归属项在交集区。",
+			timelineLabel: "时间线",
+			timelineEventKind: "事件",
+			timelineEraKind: "时期",
+			timelineInteractionHint: "选择事件或时期可查看补充说明。",
+			formulaLabel: "公式推导",
+			formulaProgress: "第 {current} / {total} 步",
+			formulaRule: "规则",
+			formulaConclusion: "结论",
+			revealNextFormulaStep: "显示下一步",
+			formulaComplete: "推导已完成",
+			formulaInteractionHint: "先预测下一步，再逐步揭示变形规则。",
+			studySource: "学习来源",
+			studyGoal: "学习目标",
+			studySections: "来源章节",
+			studyConcepts: "本节概念",
+			studyAnchor: "位置",
+			studySummary: "摘要",
+			prerequisite: "前置概念",
+			noPrerequisite: "无",
+			roleFoundation: "基础",
+			roleCore: "核心",
+			roleExtension: "拓展",
+			rolePractice: "练习",
+			studyInteractionHint: "按来源章节导览，选择概念查看作用、前置关系与详细说明。",
+			recallDeckLabel: "回忆卡组",
+			recallProgress: "第 {current} / {total} 张",
+			recallPrompt: "问题",
+			recallHint: "提示",
+			recallAnswer: "答案",
+			showHint: "查看提示",
+			showAnswer: "显示答案",
+			previousCard: "上一张",
+			nextCard: "下一张",
+			resetDeck: "重置卡组",
+			mastered: "已掌握",
+			reviewAgain: "待复习",
+			unrated: "未标记",
+			recallStatus: "掌握 {mastered} · 待复习 {review}",
+			recallInteractionHint: "先在心中回答，再查看提示和答案，最后标记掌握状态。"
+		};
+		const VisualLabelsContext = (0, react.createContext)(DEFAULT_LABELS);
+		function useVisualLabels() {
+			return (0, react.useContext)(VisualLabelsContext);
+		}
+		function labelTemplate(template, values) {
+			return template.replace(/\{([a-z]+)\}/gi, (match, key) => values[key] === void 0 ? match : String(values[key]));
+		}
+		function displayMath(expression) {
+			const value = expression.trim().replaceAll("′", "'").replaceAll("−", "-").replaceAll("²", "^{2}").replaceAll("³", "^{3}").replaceAll("→", "\\to ").replaceAll("≤", "\\le ").replaceAll("≥", "\\ge ").replaceAll("≠", "\\ne ").replaceAll("×", "\\times ").replaceAll("÷", "\\div ").replaceAll("∞", "\\infty ").replace(/\blim\s*\[([^\]]+)\]/g, "\\lim_{$1}");
+			if (value.startsWith("$$") && value.endsWith("$$") || value.startsWith("\\[") && value.endsWith("\\]")) return value;
+			return `$$\n${value}\n$$`;
+		}
+		const DEFAULT_TONES = [
+			"blue",
+			"red",
+			"green",
+			"orange",
+			"purple",
+			"gray"
+		];
+		const SVG_MIN_WIDTH = 560;
+		function formatNumber(value, digits) {
+			if (!Number.isFinite(value)) return "—";
+			if (digits !== void 0) return value.toFixed(digits);
+			if (Number.isInteger(value)) return String(value);
+			return String(Number(value.toPrecision(6)));
+		}
+		function normalizedPosition(value, min, max) {
+			if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) return 0;
+			return Math.max(0, Math.min(1, (value - min) / (max - min)));
+		}
+		function interpolate(min, max, ratio) {
+			return min + (max - min) * Math.max(0, Math.min(1, ratio));
+		}
+		function niceStep(rawStep) {
+			if (!Number.isFinite(rawStep) || rawStep <= 0) return 1;
+			const power = 10 ** Math.floor(Math.log10(rawStep));
+			const normalized = rawStep / power;
+			return (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10) * power;
+		}
+		function ticks(min, max, target = 6) {
+			const step = niceStep((max - min) / target);
+			const first = Math.ceil(min / step) * step;
+			const values = [];
+			for (let value = first, index = 0; value <= max && index < target * 4; value += step, index += 1) values.push(Number(value.toPrecision(12)));
+			return values.length > 0 ? values : [min, max];
+		}
+		function toneAt(tone, index = 0) {
+			if (tone === "blue" || tone === "green" || tone === "red" || tone === "orange" || tone === "purple" || tone === "gray") return tone;
+			return DEFAULT_TONES[index % DEFAULT_TONES.length] ?? "blue";
+		}
+		function focusState(id, focusedIds) {
+			if (focusedIds.size === 0) return void 0;
+			return focusedIds.has(id) ? "focus" : "dim";
+		}
+		function relatedFocusState(id, relatedIds, focusedIds) {
+			if (focusedIds.size === 0) return void 0;
+			return focusedIds.has(id) || relatedIds.some((relatedId) => relatedId !== void 0 && focusedIds.has(relatedId)) ? "focus" : "dim";
+		}
+		function activateWithKeyboard(event, action) {
+			if (event.key !== "Enter" && event.key !== " ") return;
+			event.preventDefault();
+			action();
+		}
+		function useContainerWidth(minimum = 280) {
+			const ref = (0, react.useRef)(null);
+			const [width, setWidth] = (0, react.useState)(760);
+			(0, react.useEffect)(() => {
+				const element = ref.current;
+				if (element === null) return;
+				const update = (next) => {
+					if (next >= minimum) setWidth((current) => Math.abs(current - next) < 1 ? current : next);
+				};
+				update(element.getBoundingClientRect().width);
+				if (typeof ResizeObserver === "undefined") return;
+				const observer = new ResizeObserver((entries) => {
+					const entry = entries[0];
+					if (entry !== void 0) update(entry.contentRect.width);
+				});
+				observer.observe(element);
+				return () => observer.disconnect();
+			}, [minimum]);
+			return [ref, width];
+		}
+		function chartGeometry(containerWidth, minWidth = SVG_MIN_WIDTH) {
+			const width = Math.max(minWidth, Math.round(containerWidth));
+			const height = width < 700 ? 350 : 390;
+			const left = 62;
+			const right = 22;
+			const top = 24;
+			const bottom = 58;
+			return {
+				width,
+				height,
+				left,
+				right,
+				top,
+				bottom,
+				plotWidth: width - left - right,
+				plotHeight: height - top - bottom
+			};
+		}
+		function scaleX(value, axis, geometry) {
+			return geometry.left + normalizedPosition(value, axis.min, axis.max) * geometry.plotWidth;
+		}
+		function scaleY(value, axis, geometry) {
+			return geometry.top + (1 - normalizedPosition(value, axis.min, axis.max)) * geometry.plotHeight;
+		}
+		var VisualErrorBoundary = class extends react.Component {
+			state = {};
+			static getDerivedStateFromError(error) {
+				return { error };
+			}
+			componentDidCatch(error, info) {
+				console.error("Learning visual renderer failed", error, info);
+			}
+			render() {
+				if (this.state.error === void 0) return this.props.children;
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: LearningVisualV4_module_css_default.errorFallback,
+					role: "alert",
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: this.props.labels.errorTitle }), this.props.fallbackMarkdown === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: this.props.labels.errorContinue }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", { children: this.props.fallbackMarkdown })]
+				});
+			}
+		};
+		function SequenceController({ sequence, frameIndex, onFrameChange }) {
+			const labels = useVisualLabels();
+			const frame = sequence.frames[frameIndex];
+			const initialIndex = Math.max(0, sequence.frames.findIndex((item) => item.id === sequence.initialFrameId));
+			const move = (delta) => {
+				onFrameChange(Math.max(0, Math.min(sequence.frames.length - 1, frameIndex + delta)));
+			};
+			const onKeyDown = (event) => {
+				if (event.key === "ArrowLeft") {
+					event.preventDefault();
+					move(-1);
+				} else if (event.key === "ArrowRight") {
+					event.preventDefault();
+					move(1);
+				} else if (event.key === "Home") {
+					event.preventDefault();
+					onFrameChange(0);
+				} else if (event.key === "End") {
+					event.preventDefault();
+					onFrameChange(sequence.frames.length - 1);
+				}
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningVisualV4_module_css_default.sequence,
+				onKeyDown,
+				"aria-label": labels.sequenceLabel,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: LearningVisualV4_module_css_default.sequenceText,
+					"aria-live": "polite",
+					"aria-atomic": "true",
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
+							frameIndex + 1,
+							" / ",
+							sequence.frames.length
+						] }),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: frame?.label }),
+						frame?.description === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: frame.description })
+					]
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: LearningVisualV4_module_css_default.sequenceActions,
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+							type: "button",
+							onClick: () => move(-1),
+							disabled: frameIndex === 0,
+							"aria-label": labels.previousStep,
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								"aria-hidden": "true",
+								children: "←"
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.previousStep })]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+							type: "button",
+							onClick: () => move(1),
+							disabled: frameIndex >= sequence.frames.length - 1,
+							"aria-label": labels.nextStep,
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.nextStep }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								"aria-hidden": "true",
+								children: "→"
+							})]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							onClick: () => onFrameChange(initialIndex),
+							disabled: frameIndex === initialIndex,
+							children: labels.reset
+						})
+					]
+				})]
+			});
+		}
+		function initialParameterValues(content, storageKey) {
+			const parameters = content.parameters ?? [];
+			const values = Object.fromEntries(parameters.map((parameter) => [parameter.id, parameter.initial]));
+			if (storageKey === void 0 || typeof sessionStorage === "undefined") return values;
+			try {
+				const stored = JSON.parse(sessionStorage.getItem(`dsh-learning/visual@4:${storageKey}`) ?? "{}");
+				for (const parameter of parameters) {
+					const candidate = stored[parameter.id];
+					if (typeof candidate === "number" && Number.isFinite(candidate) && candidate >= parameter.min && candidate <= parameter.max) values[parameter.id] = candidate;
+				}
+			} catch {}
+			return values;
+		}
+		function plotCurvePath(series, content, values, geometry) {
+			const samples = content.xAxis.samples ?? 160;
+			const commands = [];
+			let drawing = false;
+			let previousY;
+			for (let index = 0; index < samples; index += 1) {
+				const x = interpolate(content.xAxis.min, content.xAxis.max, index / Math.max(1, samples - 1));
+				const y = evaluateMathExpression(series.expression, {
+					...values,
+					x
+				});
+				if (!Number.isFinite(y) || Math.abs(y) > 0xe8d4a51000) {
+					drawing = false;
+					previousY = void 0;
+					continue;
+				}
+				const px = scaleX(x, content.xAxis, geometry);
+				const py = scaleY(y, content.yAxis, geometry);
+				if (previousY !== void 0 && Math.abs(previousY - py) > geometry.plotHeight * 2) drawing = false;
+				commands.push(`${drawing ? "L" : "M"}${px.toFixed(2)},${py.toFixed(2)}`);
+				drawing = true;
+				previousY = py;
+			}
+			return commands.join(" ");
+		}
+		function pointsPath(points, content, geometry) {
+			return points.map((point, index) => `${index === 0 ? "M" : "L"}${scaleX(point.x, content.xAxis, geometry).toFixed(2)},${scaleY(point.y, content.yAxis, geometry).toFixed(2)}`).join(" ");
+		}
+		function nearestPointValue(points, x) {
+			let nearest;
+			for (const point of points) if (nearest === void 0 || Math.abs(point.x - x) < Math.abs(nearest.x - x)) nearest = point;
+			return nearest?.y;
+		}
+		function interpolatedLineValue(points, x) {
+			const ordered = [...points].sort((a, b) => a.x - b.x);
+			if (ordered.length === 0) return void 0;
+			if (x <= (ordered[0]?.x ?? x)) return ordered[0]?.y;
+			if (x >= (ordered.at(-1)?.x ?? x)) return ordered.at(-1)?.y;
+			for (let index = 1; index < ordered.length; index += 1) {
+				const right = ordered[index];
+				const left = ordered[index - 1];
+				if (left !== void 0 && right !== void 0 && x <= right.x) return interpolate(left.y, right.y, normalizedPosition(x, left.x, right.x));
+			}
+		}
+		function PlotRenderer({ content, focusedIds, storageKey }) {
+			const labels = useVisualLabels();
+			const id = (0, react.useId)();
+			const [regionRef, containerWidth] = useContainerWidth();
+			const geometry = (0, react.useMemo)(() => chartGeometry(containerWidth), [containerWidth]);
+			const [values, setValues] = (0, react.useState)(() => initialParameterValues(content, storageKey));
+			const [hiddenSeries, setHiddenSeries] = (0, react.useState)(() => /* @__PURE__ */ new Set());
+			const [probeX, setProbeX] = (0, react.useState)();
+			const xTicks = (0, react.useMemo)(() => ticks(content.xAxis.min, content.xAxis.max), [content.xAxis.max, content.xAxis.min]);
+			const yTicks = (0, react.useMemo)(() => ticks(content.yAxis.min, content.yAxis.max), [content.yAxis.max, content.yAxis.min]);
+			const parameters = content.parameters ?? [];
+			(0, react.useEffect)(() => {
+				if (storageKey === void 0 || typeof sessionStorage === "undefined") return;
+				try {
+					sessionStorage.setItem(`dsh-learning/visual@4:${storageKey}`, JSON.stringify(values));
+				} catch {}
+			}, [storageKey, values]);
+			const curvePaths = (0, react.useMemo)(() => content.series.flatMap((series) => series.type === "curve" ? [{
+				id: series.id,
+				path: plotCurvePath(series, content, values, geometry)
+			}] : []), [
+				content,
+				geometry,
+				values
+			]);
+			const visibleSeries = content.series.filter((series) => !hiddenSeries.has(series.id));
+			const probeValues = probeX === void 0 ? [] : visibleSeries.flatMap((series) => {
+				let y;
+				if (series.type === "curve") y = evaluateMathExpression(series.expression, {
+					...values,
+					x: probeX
+				});
+				else if (series.type === "line") y = interpolatedLineValue(series.points, probeX);
+				else y = nearestPointValue(series.points, probeX);
+				return y === void 0 || !Number.isFinite(y) ? [] : [{
+					id: series.id,
+					label: series.label,
+					y,
+					tone: series.tone
+				}];
+			});
+			const chartDescription = `${content.xAxis.label ?? "x"} ${formatNumber(content.xAxis.min)}–${formatNumber(content.xAxis.max)}; ${content.yAxis.label ?? "y"} ${formatNumber(content.yAxis.min)}–${formatNumber(content.yAxis.max)}; ${content.series.map((series) => series.label).join(", ")}`;
+			const probeDescription = probeX === void 0 ? `${labels.chartProbeHint}. ${chartDescription}` : `x ${formatNumber(probeX)}。${probeValues.map((item) => `${item.label} ${formatNumber(item.y)}`).join("，")}`;
+			const updateProbeFromPointer = (event) => {
+				const rect = event.currentTarget.getBoundingClientRect();
+				const ratio = ((event.clientX - rect.left) / rect.width * geometry.width - geometry.left) / geometry.plotWidth;
+				setProbeX(interpolate(content.xAxis.min, content.xAxis.max, ratio));
+			};
+			const moveProbe = (event) => {
+				const step = (content.xAxis.max - content.xAxis.min) / 50;
+				if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+					event.preventDefault();
+					const current = probeX ?? (content.xAxis.min + content.xAxis.max) / 2;
+					setProbeX(Math.max(content.xAxis.min, Math.min(content.xAxis.max, current + (event.key === "ArrowLeft" ? -step : step))));
+				} else if (event.key === "Home") {
+					event.preventDefault();
+					setProbeX(content.xAxis.min);
+				} else if (event.key === "End") {
+					event.preventDefault();
+					setProbeX(content.xAxis.max);
+				} else if (event.key === "Escape") setProbeX(void 0);
+			};
+			const toggleSeries = (seriesId) => {
+				setHiddenSeries((current) => {
+					const next = new Set(current);
+					if (next.has(seriesId)) next.delete(seriesId);
+					else next.add(seriesId);
+					return next;
+				});
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningVisualV4_module_css_default.plotRenderer,
+				children: [
+					parameters.length === 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: LearningVisualV4_module_css_default.parameterGrid,
+						children: parameters.map((parameter) => {
+							const value = values[parameter.id] ?? parameter.initial;
+							const inputId = `${id}-${parameter.id}`;
+							const progress = normalizedPosition(value, parameter.min, parameter.max) * 100;
+							return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+								className: LearningVisualV4_module_css_default.parameter,
+								htmlFor: inputId,
+								"data-visual-id": parameter.id,
+								"data-focus-state": focusState(parameter.id, focusedIds),
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: LearningVisualV4_module_css_default.parameterHeader,
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: parameter.label }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("output", {
+											htmlFor: inputId,
+											children: formatNumber(value)
+										})]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+										id: inputId,
+										type: "range",
+										min: parameter.min,
+										max: parameter.max,
+										step: parameter.step,
+										value,
+										style: { "--range-progress": `${progress}%` },
+										onChange: (event) => setValues((current) => ({
+											...current,
+											[parameter.id]: Number(event.target.value)
+										}))
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: LearningVisualV4_module_css_default.parameterEnds,
+										"aria-hidden": "true",
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatNumber(parameter.min) }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatNumber(parameter.max) })]
+									})
+								]
+							}, parameter.id);
+						})
+					}),
+					content.metrics === void 0 || content.metrics.length === 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dl", {
+						className: LearningVisualV4_module_css_default.metrics,
+						"aria-label": labels.metricsLabel,
+						children: content.metrics.map((metric) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							"data-visual-id": metric.id,
+							"data-focus-state": focusState(metric.id, focusedIds),
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: metric.label }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dd", { children: [formatNumber(evaluateMathExpression(metric.expression, values), metric.digits), metric.suffix ?? ""] })]
+						}, metric.id))
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: LearningVisualV4_module_css_default.chartViewport,
+						ref: regionRef,
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+							className: LearningVisualV4_module_css_default.plotSvg,
+							width: geometry.width,
+							height: geometry.height,
+							viewBox: `0 0 ${geometry.width} ${geometry.height}`,
+							role: "img",
+							tabIndex: 0,
+							"aria-label": probeDescription,
+							onPointerMove: updateProbeFromPointer,
+							onPointerLeave: () => setProbeX(void 0),
+							onKeyDown: moveProbe,
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("defs", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("clipPath", {
+									id: `${id}-plot-clip`,
+									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+										x: geometry.left,
+										y: geometry.top,
+										width: geometry.plotWidth,
+										height: geometry.plotHeight
+									})
+								}) }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+									className: LearningVisualV4_module_css_default.plotFrame,
+									x: geometry.left,
+									y: geometry.top,
+									width: geometry.plotWidth,
+									height: geometry.plotHeight
+								}),
+								yTicks.map((value) => {
+									const y = scaleY(value, content.yAxis, geometry);
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+										className: LearningVisualV4_module_css_default.gridLine,
+										x1: geometry.left,
+										x2: geometry.left + geometry.plotWidth,
+										y1: y,
+										y2: y
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+										className: LearningVisualV4_module_css_default.tickLabel,
+										x: geometry.left - 10,
+										y,
+										textAnchor: "end",
+										dominantBaseline: "middle",
+										children: formatNumber(value)
+									})] }, `y-${String(value)}`);
+								}),
+								xTicks.map((value) => {
+									const x = scaleX(value, content.xAxis, geometry);
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+										className: LearningVisualV4_module_css_default.gridLine,
+										x1: x,
+										x2: x,
+										y1: geometry.top,
+										y2: geometry.top + geometry.plotHeight
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+										className: LearningVisualV4_module_css_default.tickLabel,
+										x,
+										y: geometry.top + geometry.plotHeight + 22,
+										textAnchor: "middle",
+										children: formatNumber(value)
+									})] }, `x-${String(value)}`);
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+									clipPath: `url(#${id}-plot-clip)`,
+									children: [
+										content.series.map((series, seriesIndex) => {
+											if (hiddenSeries.has(series.id)) return null;
+											const tone = toneAt(series.tone, seriesIndex);
+											const state = focusState(series.id, focusedIds);
+											if (series.type === "curve") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+												className: LearningVisualV4_module_css_default.seriesLine,
+												"data-tone": tone,
+												"data-focus-state": state,
+												"data-visual-id": series.id,
+												"data-stroke": series.stroke ?? "solid",
+												d: curvePaths.find((item) => item.id === series.id)?.path
+											}, series.id);
+											if (series.type === "line") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+												className: LearningVisualV4_module_css_default.seriesLine,
+												"data-tone": tone,
+												"data-focus-state": state,
+												"data-visual-id": series.id,
+												"data-stroke": series.stroke ?? "solid",
+												d: pointsPath(series.points, content, geometry)
+											}, series.id);
+											if (series.type === "bars") {
+												const sortedXs = series.points.map((point) => scaleX(point.x, content.xAxis, geometry)).sort((a, b) => a - b);
+												const smallestGap = sortedXs.slice(1).reduce((gap, x, index) => Math.min(gap, x - (sortedXs[index] ?? x)), geometry.plotWidth / Math.max(1, sortedXs.length));
+												const barWidth = Math.max(6, Math.min(44, smallestGap * .68));
+												const zeroY = scaleY(Math.max(content.yAxis.min, Math.min(content.yAxis.max, 0)), content.yAxis, geometry);
+												return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", {
+													"data-visual-id": series.id,
+													"data-focus-state": state,
+													children: series.points.map((point, pointIndex) => {
+														const x = scaleX(point.x, content.xAxis, geometry);
+														const y = scaleY(point.y, content.yAxis, geometry);
+														return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+															className: LearningVisualV4_module_css_default.seriesBar,
+															"data-tone": tone,
+															x: x - barWidth / 2,
+															y: Math.min(y, zeroY),
+															width: barWidth,
+															height: Math.max(1, Math.abs(zeroY - y)),
+															children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("title", { children: point.label ?? `${series.label}: ${formatNumber(point.y)}` })
+														}, `${series.id}-${String(pointIndex)}`);
+													})
+												}, series.id);
+											}
+											return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", {
+												"data-visual-id": series.id,
+												"data-focus-state": state,
+												children: series.points.map((point, pointIndex) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+													className: LearningVisualV4_module_css_default.seriesPoint,
+													"data-tone": tone,
+													cx: scaleX(point.x, content.xAxis, geometry),
+													cy: scaleY(point.y, content.yAxis, geometry),
+													r: "5.5",
+													children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("title", { children: point.label ?? `${series.label}: (${formatNumber(point.x)}, ${formatNumber(point.y)})` })
+												}, `${series.id}-${String(pointIndex)}`))
+											}, series.id);
+										}),
+										probeX === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+											className: LearningVisualV4_module_css_default.probeLine,
+											x1: scaleX(probeX, content.xAxis, geometry),
+											x2: scaleX(probeX, content.xAxis, geometry),
+											y1: geometry.top,
+											y2: geometry.top + geometry.plotHeight
+										}),
+										probeX === void 0 ? null : probeValues.map((item, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+											className: LearningVisualV4_module_css_default.probePoint,
+											"data-tone": toneAt(item.tone, index),
+											cx: scaleX(probeX, content.xAxis, geometry),
+											cy: scaleY(item.y, content.yAxis, geometry),
+											r: "5"
+										}, item.id))
+									]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+									className: LearningVisualV4_module_css_default.axisLabel,
+									x: geometry.left + geometry.plotWidth / 2,
+									y: geometry.height - 7,
+									textAnchor: "middle",
+									children: content.xAxis.label ?? "x"
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+									className: LearningVisualV4_module_css_default.axisLabel,
+									x: "16",
+									y: geometry.top + geometry.plotHeight / 2,
+									textAnchor: "middle",
+									transform: `rotate(-90 16 ${geometry.top + geometry.plotHeight / 2})`,
+									children: content.yAxis.label ?? "y"
+								})
+							]
+						}), probeX === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: LearningVisualV4_module_css_default.probeCard,
+							style: { "--probe-x": `${normalizedPosition(probeX, content.xAxis.min, content.xAxis.max) * 100}%` },
+							"aria-hidden": "true",
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: ["x = ", formatNumber(probeX)] }), probeValues.map((item, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+								"data-tone": toneAt(item.tone, index),
+								children: [
+									item.label,
+									": ",
+									formatNumber(item.y)
+								]
+							}, item.id))]
+						})]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: LearningVisualV4_module_css_default.seriesToggles,
+						"aria-label": labels.legendLabel,
+						children: content.series.map((series, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+							type: "button",
+							"aria-pressed": !hiddenSeries.has(series.id),
+							"data-tone": toneAt(series.tone, index),
+							"data-series-type": series.type,
+							"data-stroke": "stroke" in series ? series.stroke ?? "solid" : void 0,
+							onClick: () => toggleSeries(series.id),
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { "aria-hidden": "true" }), series.label]
+						}, series.id))
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningVisualV4_module_css_default.interactionHint,
+						children: labels.plotInteractionHint
+					})
+				]
+			});
+		}
+		function graphLayers(content) {
+			if (content.groups !== void 0 && content.groups.length > 0) {
+				const grouped = content.groups.map((group) => ({
+					id: group.id,
+					label: group.label,
+					nodes: content.nodes.filter((node) => node.group === group.id)
+				})).filter((layer) => layer.nodes.length > 0);
+				const knownGroups = new Set(content.groups.map((group) => group.id));
+				const ungrouped = content.nodes.filter((node) => node.group === void 0 || !knownGroups.has(node.group));
+				if (ungrouped.length > 0) grouped.push({
+					id: "ungrouped",
+					nodes: ungrouped
+				});
+				return grouped;
+			}
+			const incoming = new Map(content.nodes.map((node) => [node.id, 0]));
+			const outgoing = new Map(content.nodes.map((node) => [node.id, []]));
+			for (const edge of content.edges) {
+				incoming.set(edge.to, (incoming.get(edge.to) ?? 0) + 1);
+				outgoing.get(edge.from)?.push(edge.to);
+			}
+			const levels = new Map(content.nodes.map((node) => [node.id, 0]));
+			const queue = content.nodes.filter((node) => (incoming.get(node.id) ?? 0) === 0).map((node) => node.id);
+			const visited = /* @__PURE__ */ new Set();
+			while (queue.length > 0) {
+				const current = queue.shift();
+				if (current === void 0) break;
+				visited.add(current);
+				for (const target of outgoing.get(current) ?? []) {
+					levels.set(target, Math.max(levels.get(target) ?? 0, (levels.get(current) ?? 0) + 1));
+					incoming.set(target, (incoming.get(target) ?? 1) - 1);
+					if (incoming.get(target) === 0) queue.push(target);
+				}
+			}
+			const fallbackLevel = Math.max(0, ...levels.values());
+			for (const node of content.nodes) if (!visited.has(node.id)) levels.set(node.id, fallbackLevel);
+			const levelCount = Math.max(0, ...levels.values()) + 1;
+			return Array.from({ length: levelCount }, (_, index) => ({
+				id: `layer-${String(index)}`,
+				nodes: content.nodes.filter((node) => levels.get(node.id) === index)
+			})).filter((layer) => layer.nodes.length > 0);
+		}
+		function graphLayout(content, containerWidth) {
+			const layers = graphLayers(content);
+			const positions = /* @__PURE__ */ new Map();
+			if (content.layout === "radial") {
+				const width = Math.max(SVG_MIN_WIDTH, Math.round(containerWidth));
+				const height = Math.max(430, Math.min(600, width * .68));
+				const centerX = width / 2;
+				const centerY = height / 2;
+				const radius = Math.max(120, Math.min(width, height) / 2 - 68);
+				content.nodes.forEach((node, index) => {
+					const angle = -Math.PI / 2 + index / Math.max(1, content.nodes.length) * Math.PI * 2;
+					positions.set(node.id, {
+						id: node.id,
+						x: centerX + Math.cos(angle) * radius,
+						y: centerY + Math.sin(angle) * radius
+					});
+				});
+				return {
+					width,
+					height,
+					positions,
+					layers
+				};
+			}
+			if (content.layout === "hierarchy") {
+				const widestLayer = Math.max(1, ...layers.map((layer) => layer.nodes.length));
+				const width = Math.max(SVG_MIN_WIDTH, Math.round(containerWidth), widestLayer * 142 + 72);
+				const height = Math.max(390, layers.length * 128 + 74);
+				layers.forEach((layer, layerIndex) => layer.nodes.forEach((node, nodeIndex) => {
+					positions.set(node.id, {
+						id: node.id,
+						x: width * (nodeIndex + 1) / (layer.nodes.length + 1),
+						y: 56 + layerIndex * ((height - 104) / Math.max(1, layers.length - 1))
+					});
+				}));
+				return {
+					width,
+					height,
+					positions,
+					layers
+				};
+			}
+			const tallestLayer = Math.max(1, ...layers.map((layer) => layer.nodes.length));
+			const width = Math.max(SVG_MIN_WIDTH, Math.round(containerWidth), layers.length * 182 + 78);
+			const height = Math.max(390, tallestLayer * 82 + 92);
+			layers.forEach((layer, layerIndex) => layer.nodes.forEach((node, nodeIndex) => {
+				positions.set(node.id, {
+					id: node.id,
+					x: 58 + layerIndex * ((width - 116) / Math.max(1, layers.length - 1)),
+					y: 62 + (nodeIndex + 1) * ((height - 92) / (layer.nodes.length + 1))
+				});
+			}));
+			return {
+				width,
+				height,
+				positions,
+				layers
+			};
+		}
+		function shortenedEdge(from, to, radius = 30) {
+			const dx = to.x - from.x;
+			const dy = to.y - from.y;
+			const length = Math.hypot(dx, dy) || 1;
+			const ux = dx / length;
+			const uy = dy / length;
+			return {
+				start: {
+					x: from.x + ux * radius,
+					y: from.y + uy * radius
+				},
+				end: {
+					x: to.x - ux * (radius + 3),
+					y: to.y - uy * (radius + 3)
+				}
+			};
+		}
+		function edgePath(from, to, layout) {
+			const { start, end } = shortenedEdge(from, to);
+			if (layout === "layered") {
+				const middle = (start.x + end.x) / 2;
+				return `M${start.x},${start.y} C${middle},${start.y} ${middle},${end.y} ${end.x},${end.y}`;
+			}
+			if (layout === "hierarchy") {
+				const middle = (start.y + end.y) / 2;
+				return `M${start.x},${start.y} C${start.x},${middle} ${end.x},${middle} ${end.x},${end.y}`;
+			}
+			return `M${start.x},${start.y} L${end.x},${end.y}`;
+		}
+		function NodeLinkRenderer({ content, focusedIds }) {
+			const labels = useVisualLabels();
+			const id = (0, react.useId)();
+			const [regionRef, containerWidth] = useContainerWidth();
+			const layout = (0, react.useMemo)(() => graphLayout(content, containerWidth), [containerWidth, content]);
+			const [selected, setSelected] = (0, react.useState)();
+			const nodeById = (0, react.useMemo)(() => new Map(content.nodes.map((node) => [node.id, node])), [content.nodes]);
+			const selectNode = (node) => setSelected({
+				id: node.id,
+				label: node.label,
+				detail: node.detail,
+				kind: "node"
+			});
+			const selectEdge = (edge) => setSelected({
+				id: edge.id,
+				label: edge.label ?? `${nodeById.get(edge.from)?.label ?? edge.from} → ${nodeById.get(edge.to)?.label ?? edge.to}`,
+				detail: edge.detail,
+				kind: "edge"
+			});
+			const accessibleDescription = [
+				labelTemplate(labels.nodeLinkSummary, {
+					nodes: content.nodes.length,
+					edges: content.edges.length
+				}),
+				...content.nodes.map((node) => `${node.label}${node.detail === void 0 ? "" : `: ${node.detail}`}`),
+				...content.edges.map((edge) => `${labelTemplate(labels.connection, {
+					from: nodeById.get(edge.from)?.label ?? edge.from,
+					to: nodeById.get(edge.to)?.label ?? edge.to
+				})}${edge.label === void 0 ? "" : `, ${edge.label}`}`)
+			].join(" ");
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningVisualV4_module_css_default.nodeLinkRenderer,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: LearningVisualV4_module_css_default.graphViewport,
+					ref: regionRef,
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+						className: LearningVisualV4_module_css_default.graphSvg,
+						width: layout.width,
+						height: layout.height,
+						viewBox: `0 0 ${layout.width} ${layout.height}`,
+						role: "group",
+						"aria-label": accessibleDescription,
+						"data-dense-edges": content.edges.length > 12 || void 0,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("defs", { children: DEFAULT_TONES.map((tone) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("marker", {
+								id: `${id}-arrow-${tone}`,
+								className: LearningVisualV4_module_css_default.arrowMarker,
+								"data-tone": tone,
+								markerWidth: "8",
+								markerHeight: "8",
+								refX: "7",
+								refY: "4",
+								orient: "auto",
+								markerUnits: "strokeWidth",
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "M0,0 L8,4 L0,8 z" })
+							}, tone)) }),
+							content.layout !== "radial" && layout.layers.map((layer, index) => {
+								const first = layer.nodes[0];
+								const position = first === void 0 ? void 0 : layout.positions.get(first.id);
+								if (position === void 0) return null;
+								return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+									className: LearningVisualV4_module_css_default.layerLabel,
+									x: position.x,
+									y: content.layout === "layered" ? 30 : Math.max(22, position.y - 42),
+									textAnchor: "middle",
+									"data-visual-id": layer.id,
+									"data-focus-state": focusState(layer.id, focusedIds),
+									children: layer.label ?? labelTemplate(labels.layerLabel, { index: index + 1 })
+								}, layer.id);
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", { children: content.edges.map((edge, edgeIndex) => {
+								const from = layout.positions.get(edge.from);
+								const to = layout.positions.get(edge.to);
+								if (from === void 0 || to === void 0) return null;
+								const tone = toneAt(edge.tone, edgeIndex);
+								const fromNode = nodeById.get(edge.from);
+								const toNode = nodeById.get(edge.to);
+								const state = relatedFocusState(edge.id, [
+									edge.from,
+									edge.to,
+									fromNode?.group,
+									toNode?.group
+								], focusedIds);
+								const path = edgePath(from, to, content.layout);
+								const labelX = (from.x + to.x) / 2;
+								const labelY = (from.y + to.y) / 2 - 7;
+								return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+									className: LearningVisualV4_module_css_default.edgeGroup,
+									"data-tone": tone,
+									"data-stroke": edge.stroke ?? "solid",
+									"data-focus-state": state,
+									"data-edge-focused": focusedIds.has(edge.id) || void 0,
+									"data-selected": selected?.id === edge.id || void 0,
+									"data-visual-id": edge.id,
+									role: "button",
+									tabIndex: 0,
+									"aria-label": `${edge.label ?? labels.edgeLabel}: ${labelTemplate(labels.connection, {
+										from: nodeById.get(edge.from)?.label ?? edge.from,
+										to: nodeById.get(edge.to)?.label ?? edge.to
+									})}${edge.detail === void 0 ? "" : `. ${edge.detail}`}`,
+									onClick: () => selectEdge(edge),
+									onKeyDown: (event) => activateWithKeyboard(event, () => selectEdge(edge)),
+									children: [
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+											className: LearningVisualV4_module_css_default.edgeVisible,
+											d: path,
+											markerEnd: edge.directed === true ? `url(#${id}-arrow-${tone})` : void 0
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+											className: LearningVisualV4_module_css_default.edgeHit,
+											d: path
+										}),
+										edge.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+											className: LearningVisualV4_module_css_default.edgeLabel,
+											x: labelX,
+											y: labelY,
+											textAnchor: "middle",
+											children: edge.label
+										})
+									]
+								}, edge.id);
+							}) }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", { children: content.nodes.map((node, nodeIndex) => {
+								const position = layout.positions.get(node.id);
+								if (position === void 0) return null;
+								return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+									className: LearningVisualV4_module_css_default.nodeGroup,
+									"data-tone": toneAt(node.tone, nodeIndex),
+									"data-focus-state": relatedFocusState(node.id, [node.group], focusedIds),
+									"data-selected": selected?.id === node.id || void 0,
+									"data-visual-id": node.id,
+									role: "button",
+									tabIndex: 0,
+									"aria-label": `${node.label}${node.detail === void 0 ? "" : `。${node.detail}`}`,
+									transform: `translate(${position.x} ${position.y})`,
+									onClick: () => selectNode(node),
+									onKeyDown: (event) => activateWithKeyboard(event, () => selectNode(node)),
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", { r: "29" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+										textAnchor: "middle",
+										dominantBaseline: "middle",
+										children: node.label
+									})]
+								}, node.id);
+							}) })
+						]
+					})
+				}), selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+					className: LearningVisualV4_module_css_default.interactionHint,
+					children: labels.nodeLinkInteractionHint
+				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
+					className: LearningVisualV4_module_css_default.detailPanel,
+					"aria-live": "polite",
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: selected.kind === "node" ? labels.nodeKind : labels.edgeKind }),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: selected.label }),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: selected.detail ?? labels.noDetail }),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							onClick: () => setSelected(void 0),
+							"aria-label": labels.closeDetail,
+							children: "×"
+						})
+					]
+				})]
+			});
+		}
+		function Scene2DRenderer({ content, focusedIds }) {
+			const labels = useVisualLabels();
+			const id = (0, react.useId)();
+			const [regionRef, containerWidth] = useContainerWidth();
+			const geometry = (0, react.useMemo)(() => chartGeometry(containerWidth, SVG_MIN_WIDTH), [containerWidth]);
+			const [selected, setSelected] = (0, react.useState)();
+			const xTicks = (0, react.useMemo)(() => ticks(content.xAxis.min, content.xAxis.max), [content.xAxis.max, content.xAxis.min]);
+			const yTicks = (0, react.useMemo)(() => ticks(content.yAxis.min, content.yAxis.max), [content.yAxis.max, content.yAxis.min]);
+			const zeroX = content.xAxis.min <= 0 && content.xAxis.max >= 0 ? scaleX(0, content.xAxis, geometry) : void 0;
+			const zeroY = content.yAxis.min <= 0 && content.yAxis.max >= 0 ? scaleY(0, content.yAxis, geometry) : void 0;
+			const selectElement = (element) => setSelected({
+				id: element.id,
+				label: element.type === "label" ? element.text : element.label ?? labelTemplate(labels.elementFallback, { id: element.id }),
+				detail: element.detail,
+				kind: "element"
+			});
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningVisualV4_module_css_default.sceneRenderer,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: LearningVisualV4_module_css_default.sceneViewport,
+					ref: regionRef,
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+						className: LearningVisualV4_module_css_default.sceneSvg,
+						width: geometry.width,
+						height: geometry.height,
+						viewBox: `0 0 ${geometry.width} ${geometry.height}`,
+						role: "group",
+						"aria-label": labelTemplate(labels.sceneSummary, {
+							elements: content.elements.length,
+							labels: content.elements.map((element) => element.type === "label" ? element.text : element.label).filter(Boolean).join(", ")
+						}),
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("defs", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("clipPath", {
+								id: `${id}-scene-clip`,
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+									x: geometry.left,
+									y: geometry.top,
+									width: geometry.plotWidth,
+									height: geometry.plotHeight
+								})
+							}), DEFAULT_TONES.map((tone) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("marker", {
+								id: `${id}-scene-arrow-${tone}`,
+								className: LearningVisualV4_module_css_default.arrowMarker,
+								"data-tone": tone,
+								markerWidth: "9",
+								markerHeight: "9",
+								refX: "8",
+								refY: "4.5",
+								orient: "auto",
+								markerUnits: "strokeWidth",
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "M0,0 L9,4.5 L0,9 z" })
+							}, tone))] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+								className: LearningVisualV4_module_css_default.plotFrame,
+								x: geometry.left,
+								y: geometry.top,
+								width: geometry.plotWidth,
+								height: geometry.plotHeight
+							}),
+							content.grid !== true ? null : yTicks.map((value) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+								className: LearningVisualV4_module_css_default.gridLine,
+								x1: geometry.left,
+								x2: geometry.left + geometry.plotWidth,
+								y1: scaleY(value, content.yAxis, geometry),
+								y2: scaleY(value, content.yAxis, geometry)
+							}, `gy-${String(value)}`)),
+							content.grid !== true ? null : xTicks.map((value) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+								className: LearningVisualV4_module_css_default.gridLine,
+								x1: scaleX(value, content.xAxis, geometry),
+								x2: scaleX(value, content.xAxis, geometry),
+								y1: geometry.top,
+								y2: geometry.top + geometry.plotHeight
+							}, `gx-${String(value)}`)),
+							zeroX === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+								className: LearningVisualV4_module_css_default.zeroAxis,
+								x1: zeroX,
+								x2: zeroX,
+								y1: geometry.top,
+								y2: geometry.top + geometry.plotHeight
+							}),
+							zeroY === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+								className: LearningVisualV4_module_css_default.zeroAxis,
+								x1: geometry.left,
+								x2: geometry.left + geometry.plotWidth,
+								y1: zeroY,
+								y2: zeroY
+							}),
+							yTicks.map((value) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+								className: LearningVisualV4_module_css_default.tickLabel,
+								x: geometry.left - 10,
+								y: scaleY(value, content.yAxis, geometry),
+								textAnchor: "end",
+								dominantBaseline: "middle",
+								children: formatNumber(value)
+							}, `yt-${String(value)}`)),
+							xTicks.map((value) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+								className: LearningVisualV4_module_css_default.tickLabel,
+								x: scaleX(value, content.xAxis, geometry),
+								y: geometry.top + geometry.plotHeight + 22,
+								textAnchor: "middle",
+								children: formatNumber(value)
+							}, `xt-${String(value)}`)),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", {
+								clipPath: `url(#${id}-scene-clip)`,
+								children: content.elements.map((element, index) => {
+									const tone = toneAt(element.tone, index);
+									const common = {
+										className: LearningVisualV4_module_css_default.sceneElement,
+										"data-tone": tone,
+										"data-focus-state": focusState(element.id, focusedIds),
+										"data-selected": selected?.id === element.id || void 0,
+										"data-visual-id": element.id,
+										role: "button",
+										tabIndex: 0,
+										"aria-label": `${element.type === "label" ? element.text : element.label ?? element.type}${element.detail === void 0 ? "" : `。${element.detail}`}`,
+										onClick: () => selectElement(element),
+										onKeyDown: (event) => activateWithKeyboard(event, () => selectElement(element))
+									};
+									if (element.type === "point") {
+										const x = scaleX(element.x, content.xAxis, geometry);
+										const y = scaleY(element.y, content.yAxis, geometry);
+										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+											...common,
+											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+												className: LearningVisualV4_module_css_default.scenePoint,
+												cx: x,
+												cy: y,
+												r: element.size ?? 6
+											}), element.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+												className: LearningVisualV4_module_css_default.shapeLabel,
+												x: x + 10,
+												y: y - 10,
+												children: element.label
+											})]
+										}, element.id);
+									}
+									if (element.type === "segment" || element.type === "arrow") {
+										const x1 = scaleX(element.x1, content.xAxis, geometry);
+										const y1 = scaleY(element.y1, content.yAxis, geometry);
+										const x2 = scaleX(element.x2, content.xAxis, geometry);
+										const y2 = scaleY(element.y2, content.yAxis, geometry);
+										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+											...common,
+											"data-stroke": element.stroke ?? "solid",
+											children: [
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+													className: LearningVisualV4_module_css_default.sceneLine,
+													x1,
+													y1,
+													x2,
+													y2,
+													markerEnd: element.type === "arrow" ? `url(#${id}-scene-arrow-${tone})` : void 0
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+													className: LearningVisualV4_module_css_default.sceneHit,
+													x1,
+													y1,
+													x2,
+													y2
+												}),
+												element.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+													className: LearningVisualV4_module_css_default.shapeLabel,
+													x: (x1 + x2) / 2,
+													y: (y1 + y2) / 2 - 8,
+													textAnchor: "middle",
+													children: element.label
+												})
+											]
+										}, element.id);
+									}
+									if (element.type === "circle") {
+										const cx = scaleX(element.cx, content.xAxis, geometry);
+										const cy = scaleY(element.cy, content.yAxis, geometry);
+										const rx = Math.abs(scaleX(element.cx + element.r, content.xAxis, geometry) - cx);
+										const ry = Math.abs(scaleY(element.cy + element.r, content.yAxis, geometry) - cy);
+										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+											...common,
+											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ellipse", {
+												className: LearningVisualV4_module_css_default.sceneShape,
+												cx,
+												cy,
+												rx,
+												ry
+											}), element.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+												className: LearningVisualV4_module_css_default.shapeLabel,
+												x: cx,
+												y: cy,
+												textAnchor: "middle",
+												dominantBaseline: "middle",
+												children: element.label
+											})]
+										}, element.id);
+									}
+									if (element.type === "rect") {
+										const x = scaleX(element.x, content.xAxis, geometry);
+										const y = scaleY(element.y + element.height, content.yAxis, geometry);
+										const width = Math.abs(scaleX(element.x + element.width, content.xAxis, geometry) - x);
+										const height = Math.abs(scaleY(element.y, content.yAxis, geometry) - y);
+										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+											...common,
+											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+												className: LearningVisualV4_module_css_default.sceneShape,
+												x,
+												y,
+												width,
+												height,
+												rx: "3"
+											}), element.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+												className: LearningVisualV4_module_css_default.shapeLabel,
+												x: x + width / 2,
+												y: y + height / 2,
+												textAnchor: "middle",
+												dominantBaseline: "middle",
+												children: element.label
+											})]
+										}, element.id);
+									}
+									if (element.type === "polygon") {
+										const points = element.points.map((point) => `${scaleX(point.x, content.xAxis, geometry)},${scaleY(point.y, content.yAxis, geometry)}`).join(" ");
+										const center = element.points.reduce((total, point) => ({
+											x: total.x + point.x / element.points.length,
+											y: total.y + point.y / element.points.length
+										}), {
+											x: 0,
+											y: 0
+										});
+										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+											...common,
+											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("polygon", {
+												className: LearningVisualV4_module_css_default.sceneShape,
+												points
+											}), element.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+												className: LearningVisualV4_module_css_default.shapeLabel,
+												x: scaleX(center.x, content.xAxis, geometry),
+												y: scaleY(center.y, content.yAxis, geometry),
+												textAnchor: "middle",
+												dominantBaseline: "middle",
+												children: element.label
+											})]
+										}, element.id);
+									}
+									if (element.type === "label") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", {
+										...common,
+										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+											className: LearningVisualV4_module_css_default.sceneText,
+											x: scaleX(element.x, content.xAxis, geometry),
+											y: scaleY(element.y, content.yAxis, geometry),
+											textAnchor: "middle",
+											dominantBaseline: "middle",
+											children: element.text
+										})
+									}, element.id);
+									return null;
+								})
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+								className: LearningVisualV4_module_css_default.axisLabel,
+								x: geometry.left + geometry.plotWidth / 2,
+								y: geometry.height - 7,
+								textAnchor: "middle",
+								children: content.xAxis.label ?? "x"
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+								className: LearningVisualV4_module_css_default.axisLabel,
+								x: "16",
+								y: geometry.top + geometry.plotHeight / 2,
+								textAnchor: "middle",
+								transform: `rotate(-90 16 ${geometry.top + geometry.plotHeight / 2})`,
+								children: content.yAxis.label ?? "y"
+							})
+						]
+					})
+				}), selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+					className: LearningVisualV4_module_css_default.interactionHint,
+					children: labels.sceneInteractionHint
+				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
+					className: LearningVisualV4_module_css_default.detailPanel,
+					"aria-live": "polite",
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.elementKind }),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: selected.label }),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: selected.detail ?? labels.noDetail }),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							onClick: () => setSelected(void 0),
+							"aria-label": labels.closeDetail,
+							children: "×"
+						})
+					]
+				})]
+			});
+		}
+		function RelationRenderer({ content, focusedIds }) {
+			const labels = useVisualLabels();
+			const [selected, setSelected] = (0, react.useState)();
+			if (content.variant === "comparison") return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningVisualV4_module_css_default.relationRenderer,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: LearningVisualV4_module_css_default.tableViewport,
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("table", {
+						className: LearningVisualV4_module_css_default.relationTable,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("caption", {
+								className: LearningVisualV4_module_css_default.srOnly,
+								children: labels.comparisonCaption
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("thead", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("tr", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("th", {
+								scope: "col",
+								children: labels.comparisonDimension
+							}), content.subjects.map((subject) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("th", {
+								scope: "col",
+								"data-tone": toneAt(subject.tone),
+								"data-focus-state": focusState(subject.id, focusedIds),
+								"data-visual-id": subject.id,
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									onClick: () => setSelected({
+										label: subject.label,
+										detail: subject.detail,
+										kind: labels.comparisonSubject
+									}),
+									children: subject.label
+								})
+							}, subject.id))] }) }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("tbody", { children: content.rows.map((row) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("tr", {
+								"data-focus-state": focusState(row.id, focusedIds),
+								"data-visual-id": row.id,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("th", {
+									scope: "row",
+									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										onClick: () => setSelected({
+											label: row.label,
+											detail: row.detail,
+											kind: labels.comparisonDimension
+										}),
+										children: row.label
+									})
+								}), content.subjects.map((subject) => {
+									const cell = row.cells.find((item) => item.subjectId === subject.id);
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("td", {
+										"data-tone": toneAt(cell?.tone),
+										children: cell?.value ?? "—"
+									}, subject.id);
+								})]
+							}, row.id)) })
+						]
+					})
+				}), selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+					className: LearningVisualV4_module_css_default.interactionHint,
+					children: labels.comparisonInteractionHint
+				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RelationDetail, {
+					selected,
+					onClose: () => setSelected(void 0)
+				})]
+			});
+			if (content.variant === "matrix") return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningVisualV4_module_css_default.relationRenderer,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: LearningVisualV4_module_css_default.tableViewport,
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("table", {
+						className: `${LearningVisualV4_module_css_default.relationTable} ${LearningVisualV4_module_css_default.matrixTable}`,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("caption", {
+								className: LearningVisualV4_module_css_default.srOnly,
+								children: labels.matrixCaption
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("thead", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("tr", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("th", {
+								scope: "col",
+								children: labels.matrixAxes
+							}), content.columns.map((column) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("th", {
+								scope: "col",
+								"data-focus-state": focusState(column.id, focusedIds),
+								"data-visual-id": column.id,
+								children: column.label
+							}, column.id))] }) }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("tbody", { children: content.rows.map((row) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("tr", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("th", {
+								scope: "row",
+								"data-focus-state": focusState(row.id, focusedIds),
+								"data-visual-id": row.id,
+								children: row.label
+							}), content.columns.map((column) => {
+								const cell = content.cells.find((item) => item.rowId === row.id && item.columnId === column.id);
+								return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("td", { children: cell === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: LearningVisualV4_module_css_default.emptyCell,
+									"aria-label": labels.noRelation,
+									children: "·"
+								}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									className: LearningVisualV4_module_css_default.matrixCell,
+									"data-tone": toneAt(cell.tone),
+									"data-focus-state": focusState(cell.id, focusedIds),
+									"data-visual-id": cell.id,
+									onClick: () => setSelected({
+										label: cell.label,
+										detail: cell.detail,
+										kind: `${row.label} × ${column.label}`
+									}),
+									children: cell.label
+								}) }, column.id);
+							})] }, row.id)) })
+						]
+					})
+				}), selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+					className: LearningVisualV4_module_css_default.interactionHint,
+					children: labels.matrixInteractionHint
+				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RelationDetail, {
+					selected,
+					onClose: () => setSelected(void 0)
+				})]
+			});
+			const setById = new Map(content.sets.map((set) => [set.id, set]));
+			const exclusiveItems = (setId) => content.items.filter((item) => item.setIds.length === 1 && item.setIds[0] === setId);
+			const sharedItems = content.items.filter((item) => item.setIds.length !== 1);
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningVisualV4_module_css_default.relationRenderer,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: LearningVisualV4_module_css_default.setMap,
+					"aria-label": labels.setsLabel,
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: LearningVisualV4_module_css_default.setZones,
+						children: content.sets.map((set, setIndex) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+							className: LearningVisualV4_module_css_default.setZone,
+							"data-tone": toneAt(set.tone, setIndex),
+							"data-focus-state": focusState(set.id, focusedIds),
+							"data-visual-id": set.id,
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h4", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { "aria-hidden": "true" }), set.label] }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [exclusiveItems(set.id).map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								"data-focus-state": focusState(item.id, focusedIds),
+								"data-visual-id": item.id,
+								onClick: () => setSelected({
+									label: item.label,
+									detail: item.detail,
+									kind: set.label
+								}),
+								children: item.label
+							}, item.id)), exclusiveItems(set.id).length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: LearningVisualV4_module_css_default.emptySet,
+								children: labels.noExclusiveItems
+							}) : null] })]
+						}, set.id))
+					}), sharedItems.length === 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+						className: LearningVisualV4_module_css_default.intersections,
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: labels.intersections }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", { children: sharedItems.map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+							type: "button",
+							"data-focus-state": focusState(item.id, focusedIds),
+							"data-visual-id": item.id,
+							onClick: () => setSelected({
+								label: item.label,
+								detail: item.detail,
+								kind: item.setIds.map((setId) => setById.get(setId)?.label ?? setId).join(" ∩ ") || labels.uncategorized
+							}),
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: item.label }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: item.setIds.map((setId) => setById.get(setId)?.label ?? setId).join(" ∩ ") || labels.uncategorized })]
+						}, item.id)) })]
+					})]
+				}), selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+					className: LearningVisualV4_module_css_default.interactionHint,
+					children: labels.setsInteractionHint
+				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RelationDetail, {
+					selected,
+					onClose: () => setSelected(void 0)
+				})]
+			});
+		}
+		function RelationDetail({ selected, onClose }) {
+			const labels = useVisualLabels();
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
+				className: LearningVisualV4_module_css_default.detailPanel,
+				"aria-live": "polite",
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: selected.kind }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: selected.label }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: selected.detail ?? labels.noDetail }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+						type: "button",
+						onClick: onClose,
+						"aria-label": labels.closeDetail,
+						children: "×"
+					})
+				]
+			});
+		}
+		function timelinePosition(event, index, count) {
+			if (event.position !== void 0) return Math.max(0, Math.min(1, event.position));
+			return count <= 1 ? .5 : index / (count - 1);
+		}
+		function TimelineRenderer({ content, focusedIds }) {
+			const labels = useVisualLabels();
+			const [regionRef, containerWidth] = useContainerWidth();
+			const [selected, setSelected] = (0, react.useState)();
+			const eras = content.eras ?? [];
+			const eventIndex = (0, react.useMemo)(() => new Map(content.events.map((event, index) => [event.id, index])), [content.events]);
+			const selectEvent = (event) => setSelected({
+				label: `${event.time} · ${event.label}`,
+				detail: event.detail,
+				kind: labels.timelineEventKind
+			});
+			const selectEra = (era) => setSelected({
+				label: era.label,
+				detail: era.detail,
+				kind: labels.timelineEraKind
+			});
+			if ((content.orientation ?? "horizontal") === "vertical") return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningVisualV4_module_css_default.timelineRenderer,
+				role: "group",
+				"aria-label": labels.timelineLabel,
+				children: [
+					eras.length === 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: LearningVisualV4_module_css_default.timelineEraChips,
+						"aria-label": labels.timelineEraKind,
+						children: eras.map((era, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+							type: "button",
+							"data-tone": toneAt(era.tone, index),
+							"data-focus-state": focusState(era.id, focusedIds),
+							"data-visual-id": era.id,
+							onClick: () => selectEra(era),
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: era.label }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
+								content.events[eventIndex.get(era.startEventId) ?? 0]?.time,
+								" – ",
+								content.events[eventIndex.get(era.endEventId) ?? 0]?.time
+							] })]
+						}, era.id))
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ol", {
+						className: LearningVisualV4_module_css_default.timelineVertical,
+						children: content.events.map((event, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", {
+							"data-tone": toneAt(event.tone, index),
+							"data-focus-state": focusState(event.id, focusedIds),
+							"data-visual-id": event.id,
+							children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+								type: "button",
+								onClick: () => selectEvent(event),
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: event.time }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: event.label }),
+									event.detail === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", { children: event.detail })
+								]
+							})
+						}, event.id))
+					}),
+					selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningVisualV4_module_css_default.interactionHint,
+						children: labels.timelineInteractionHint
+					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RelationDetail, {
+						selected,
+						onClose: () => setSelected(void 0)
+					})
+				]
+			});
+			const eventCount = content.events.length;
+			const minimumWidth = eventCount <= 4 ? Math.max(360, 144 + Math.max(0, eventCount - 1) * 104) : 144 + Math.max(0, eventCount - 1) * 142;
+			const width = Math.max(minimumWidth, Math.floor(containerWidth) - 2);
+			const axisY = 72 + Math.min(4, eras.length) * 30;
+			const height = axisY + 142;
+			const inset = 72;
+			const eventX = (event, index) => inset + timelinePosition(event, index, content.events.length) * (width - 144);
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningVisualV4_module_css_default.timelineRenderer,
+				role: "group",
+				"aria-label": labels.timelineLabel,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: LearningVisualV4_module_css_default.timelineViewport,
+					ref: regionRef,
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: LearningVisualV4_module_css_default.timelineCanvas,
+						style: {
+							width,
+							height
+						},
+						children: [
+							eras.map((era, index) => {
+								const startIndex = eventIndex.get(era.startEventId) ?? 0;
+								const endIndex = eventIndex.get(era.endEventId) ?? startIndex;
+								const start = eventX(content.events[startIndex], startIndex);
+								const end = eventX(content.events[endIndex], endIndex);
+								return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									className: LearningVisualV4_module_css_default.timelineEra,
+									"data-tone": toneAt(era.tone, index),
+									"data-focus-state": focusState(era.id, focusedIds),
+									"data-visual-id": era.id,
+									style: {
+										left: Math.min(start, end),
+										top: 16 + index % 4 * 30,
+										width: Math.max(42, Math.abs(end - start))
+									},
+									onClick: () => selectEra(era),
+									children: era.label
+								}, era.id);
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: LearningVisualV4_module_css_default.timelineAxis,
+								style: { top: axisY },
+								"aria-hidden": "true"
+							}),
+							content.events.map((event, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+								type: "button",
+								className: LearningVisualV4_module_css_default.timelineEvent,
+								"data-tone": toneAt(event.tone, index),
+								"data-side": index % 2 === 0 ? "top" : "bottom",
+								"data-focus-state": focusState(event.id, focusedIds),
+								"data-visual-id": event.id,
+								style: {
+									left: eventX(event, index),
+									top: index % 2 === 0 ? axisY - 74 : axisY + 24
+								},
+								onClick: () => selectEvent(event),
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: event.time }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: event.label })]
+							}, event.id))
+						]
+					})
+				}), selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+					className: LearningVisualV4_module_css_default.interactionHint,
+					children: labels.timelineInteractionHint
+				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RelationDetail, {
+					selected,
+					onClose: () => setSelected(void 0)
+				})]
+			});
+		}
+		function FormulaStepsRenderer({ content, focusedIds }) {
+			const labels = useVisualLabels();
+			const [revealedIndex, setRevealedIndex] = (0, react.useState)(0);
+			const lastIndex = content.steps.length - 1;
+			(0, react.useEffect)(() => {
+				const focusedIndex = content.steps.findIndex((step) => focusedIds.has(step.id));
+				if (focusedIndex >= 0) setRevealedIndex((current) => Math.max(current, focusedIndex));
+			}, [content.steps, focusedIds]);
+			const move = (delta) => setRevealedIndex((current) => Math.max(0, Math.min(lastIndex, current + delta)));
+			const onKeyDown = (event) => {
+				if (event.target !== event.currentTarget) return;
+				if (event.key === "ArrowLeft") {
+					event.preventDefault();
+					move(-1);
+				} else if (event.key === "ArrowRight") {
+					event.preventDefault();
+					move(1);
+				} else if (event.key === "Home") {
+					event.preventDefault();
+					setRevealedIndex(0);
+				} else if (event.key === "End") {
+					event.preventDefault();
+					setRevealedIndex(lastIndex);
+				}
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningVisualV4_module_css_default.formulaRenderer,
+				tabIndex: 0,
+				onKeyDown,
+				"aria-label": labels.formulaLabel,
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: LearningVisualV4_module_css_default.formulaMeta,
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labelTemplate(labels.formulaProgress, {
+							current: revealedIndex + 1,
+							total: content.steps.length
+						}) }), content.notation === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: content.notation })]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ol", {
+						className: LearningVisualV4_module_css_default.formulaSteps,
+						"aria-live": "polite",
+						children: content.steps.slice(0, revealedIndex + 1).map((step, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
+							"data-tone": toneAt(step.tone, index),
+							"data-focus-state": focusState(step.id, focusedIds),
+							"data-visual-id": step.id,
+							children: [index === 0 || step.rule === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: LearningVisualV4_module_css_default.formulaRule,
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										"aria-hidden": "true",
+										children: "↓"
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: labels.formulaRule }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: step.rule })
+								]
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: LearningVisualV4_module_css_default.formulaStepCard,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: index + 1 }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										className: LearningVisualV4_module_css_default.formulaExpression,
+										"aria-label": step.expression,
+										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: displayMath(step.expression) })
+									}),
+									step.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: step.label }),
+									step.detail === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: step.detail })
+								] })]
+							})]
+						}, step.id))
+					}),
+					revealedIndex >= lastIndex ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: LearningVisualV4_module_css_default.formulaConclusion,
+						"aria-live": "polite",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.formulaConclusion }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: content.conclusion ?? labels.formulaComplete })]
+					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: LearningVisualV4_module_css_default.formulaUnknown,
+						"aria-hidden": "true",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "↓" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: "?" })]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: LearningVisualV4_module_css_default.formulaActions,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								onClick: () => move(-1),
+								disabled: revealedIndex === 0,
+								children: labels.previousStep
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: LearningVisualV4_module_css_default.primaryAction,
+								onClick: () => move(1),
+								disabled: revealedIndex >= lastIndex,
+								children: labels.revealNextFormulaStep
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								onClick: () => setRevealedIndex(0),
+								disabled: revealedIndex === 0,
+								children: labels.reset
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningVisualV4_module_css_default.interactionHint,
+						children: labels.formulaInteractionHint
+					})
+				]
+			});
+		}
+		function studyRoleLabel(role, labels) {
+			if (role === "foundation") return labels.roleFoundation;
+			if (role === "core") return labels.roleCore;
+			if (role === "extension") return labels.roleExtension;
+			if (role === "practice") return labels.rolePractice;
+		}
+		function StudyMapRenderer({ content, focusedIds }) {
+			const labels = useVisualLabels();
+			const conceptById = (0, react.useMemo)(() => new Map(content.concepts.map((concept) => [concept.id, concept])), [content.concepts]);
+			const focusedConcept = content.concepts.find((concept) => focusedIds.has(concept.id));
+			const focusedSection = content.sections.find((section) => focusedIds.has(section.id));
+			const [sectionId, setSectionId] = (0, react.useState)(focusedConcept?.sectionId ?? focusedSection?.id ?? content.sections[0]?.id ?? "");
+			const [selectedConceptId, setSelectedConceptId] = (0, react.useState)(focusedConcept?.id);
+			(0, react.useEffect)(() => {
+				const concept = content.concepts.find((item) => focusedIds.has(item.id));
+				const section = content.sections.find((item) => focusedIds.has(item.id));
+				if (concept !== void 0) {
+					setSectionId(concept.sectionId);
+					setSelectedConceptId(concept.id);
+				} else if (section !== void 0) setSectionId(section.id);
+			}, [
+				content.concepts,
+				content.sections,
+				focusedIds
+			]);
+			const section = content.sections.find((item) => item.id === sectionId) ?? content.sections[0];
+			const concepts = content.concepts.filter((concept) => concept.sectionId === section?.id);
+			const selectedConcept = selectedConceptId === void 0 ? void 0 : conceptById.get(selectedConceptId);
+			const selectSection = (nextId) => {
+				setSectionId(nextId);
+				setSelectedConceptId(void 0);
+			};
+			const sectionKeyDown = (event, index) => {
+				if (event.key !== "ArrowUp" && event.key !== "ArrowDown" && event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+				event.preventDefault();
+				const nextIndex = (index + (event.key === "ArrowUp" || event.key === "ArrowLeft" ? -1 : 1) + content.sections.length) % content.sections.length;
+				const next = content.sections[nextIndex];
+				if (next !== void 0) {
+					selectSection(next.id);
+					(event.currentTarget.parentElement?.querySelectorAll("[role=\"tab\"]"))?.[nextIndex]?.focus();
+				}
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningVisualV4_module_css_default.studyRenderer,
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: LearningVisualV4_module_css_default.studySource,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.studySource }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: content.sourceLabel }),
+							content.goal === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("b", { children: labels.studyGoal }), content.goal] })
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: LearningVisualV4_module_css_default.studyLayout,
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("nav", {
+							className: LearningVisualV4_module_css_default.studySections,
+							role: "tablist",
+							"aria-label": labels.studySections,
+							children: content.sections.map((item, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+								type: "button",
+								role: "tab",
+								tabIndex: item.id === section?.id ? 0 : -1,
+								"aria-selected": item.id === section?.id,
+								"data-focus-state": relatedFocusState(item.id, content.concepts.filter((concept) => concept.sectionId === item.id).map((concept) => concept.id), focusedIds),
+								"data-visual-id": item.id,
+								onClick: () => selectSection(item.id),
+								onKeyDown: (event) => sectionKeyDown(event, index),
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: index + 1 }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: item.label }),
+									item.anchor === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", { children: item.anchor })
+								]
+							}, item.id))
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+							className: LearningVisualV4_module_css_default.studySectionPanel,
+							role: "tabpanel",
+							children: [section === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: section.anchor === void 0 ? labels.studySummary : `${labels.studyAnchor} · ${section.anchor}` }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: section.label })] }), section.summary === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: section.summary })] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								className: LearningVisualV4_module_css_default.studyConcepts,
+								"aria-label": labels.studyConcepts,
+								children: concepts.map((concept, index) => {
+									const role = studyRoleLabel(concept.role, labels);
+									const prerequisites = (concept.prerequisiteIds ?? []).map((id) => conceptById.get(id)?.label ?? id);
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+										type: "button",
+										"data-tone": toneAt(concept.tone, index),
+										"data-role": concept.role,
+										"data-focus-state": focusState(concept.id, focusedIds),
+										"data-selected": concept.id === selectedConceptId || void 0,
+										"data-visual-id": concept.id,
+										onClick: () => setSelectedConceptId(concept.id),
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: role ?? labels.studyConcepts }),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: concept.label }),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("small", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("b", { children: labels.prerequisite }), prerequisites.length === 0 ? labels.noPrerequisite : prerequisites.join(" → ")] })
+										]
+									}, concept.id);
+								})
+							})]
+						})]
+					}),
+					selectedConcept === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningVisualV4_module_css_default.interactionHint,
+						children: labels.studyInteractionHint
+					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
+						className: LearningVisualV4_module_css_default.studyDetail,
+						"aria-live": "polite",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: studyRoleLabel(selectedConcept.role, labels) ?? labels.studyConcepts }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: selectedConcept.label })] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: selectedConcept.detail ?? labels.noDetail }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dl", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: labels.prerequisite }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: (selectedConcept.prerequisiteIds ?? []).map((id) => conceptById.get(id)?.label ?? id).join(" → ") || labels.noPrerequisite })] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								onClick: () => setSelectedConceptId(void 0),
+								"aria-label": labels.closeDetail,
+								children: "×"
+							})
+						]
+					})
+				]
+			});
+		}
+		function initialRecallState(content, storageKey) {
+			const initial = {
+				index: 0,
+				stage: "prompt",
+				statuses: {}
+			};
+			if (storageKey === void 0 || typeof sessionStorage === "undefined") return initial;
+			try {
+				const stored = JSON.parse(sessionStorage.getItem(`dsh-learning/visual@4:recall:${storageKey}`) ?? "{}");
+				if (typeof stored.index === "number" && Number.isInteger(stored.index)) initial.index = Math.max(0, Math.min(content.cards.length - 1, stored.index));
+				if (stored.stage === "prompt" || stored.stage === "hint" || stored.stage === "answer") initial.stage = stored.stage;
+				if (typeof stored.statuses === "object" && stored.statuses !== null && !Array.isArray(stored.statuses)) for (const card of content.cards) {
+					const status = stored.statuses[card.id];
+					if (status === "mastered" || status === "review") initial.statuses[card.id] = status;
+				}
+				if (initial.stage === "hint" && content.cards[initial.index]?.hint === void 0) initial.stage = "answer";
+			} catch {}
+			return initial;
+		}
+		function RecallDeckRenderer({ content, focusedIds, storageKey }) {
+			const labels = useVisualLabels();
+			const initial = (0, react.useMemo)(() => initialRecallState(content, storageKey), [content, storageKey]);
+			const [cardIndex, setCardIndex] = (0, react.useState)(initial.index);
+			const [stage, setStage] = (0, react.useState)(initial.stage);
+			const [statuses, setStatuses] = (0, react.useState)(initial.statuses);
+			const current = content.cards[cardIndex];
+			(0, react.useEffect)(() => {
+				const focusedIndex = content.cards.findIndex((card) => focusedIds.has(card.id));
+				if (focusedIndex >= 0) {
+					setCardIndex(focusedIndex);
+					setStage("prompt");
+				}
+			}, [content.cards, focusedIds]);
+			(0, react.useEffect)(() => {
+				if (storageKey === void 0 || typeof sessionStorage === "undefined") return;
+				try {
+					sessionStorage.setItem(`dsh-learning/visual@4:recall:${storageKey}`, JSON.stringify({
+						index: cardIndex,
+						stage,
+						statuses
+					}));
+				} catch {}
+			}, [
+				cardIndex,
+				stage,
+				statuses,
+				storageKey
+			]);
+			if (current === void 0) return null;
+			const move = (delta) => {
+				setCardIndex((index) => Math.max(0, Math.min(content.cards.length - 1, index + delta)));
+				setStage("prompt");
+			};
+			const reset = () => {
+				setCardIndex(0);
+				setStage("prompt");
+				setStatuses({});
+			};
+			const mark = (status) => setStatuses((value) => ({
+				...value,
+				[current.id]: status
+			}));
+			const masteredCount = Object.values(statuses).filter((status) => status === "mastered").length;
+			const reviewCount = Object.values(statuses).filter((status) => status === "review").length;
+			const status = statuses[current.id];
+			const revealNext = () => setStage((value) => value === "prompt" && current.hint !== void 0 ? "hint" : "answer");
+			const onKeyDown = (event) => {
+				if (event.target !== event.currentTarget) return;
+				if (event.key === "ArrowLeft") {
+					event.preventDefault();
+					move(-1);
+				} else if (event.key === "ArrowRight") {
+					event.preventDefault();
+					move(1);
+				}
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningVisualV4_module_css_default.recallRenderer,
+				tabIndex: 0,
+				onKeyDown,
+				"aria-label": labels.recallDeckLabel,
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: LearningVisualV4_module_css_default.recallToolbar,
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labelTemplate(labels.recallProgress, {
+							current: cardIndex + 1,
+							total: content.cards.length
+						}) }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("output", { children: labelTemplate(labels.recallStatus, {
+							mastered: masteredCount,
+							review: reviewCount
+						}) })]
+					}),
+					content.instructions === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningVisualV4_module_css_default.recallInstructions,
+						children: content.instructions
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("article", {
+						className: LearningVisualV4_module_css_default.recallCard,
+						"data-visual-id": current.id,
+						"data-focus-state": focusState(current.id, focusedIds),
+						"data-stage": stage,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: LearningVisualV4_module_css_default.recallCardHeader,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.recallPrompt }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", {
+									"data-status": status ?? "unrated",
+									children: status === "mastered" ? labels.mastered : status === "review" ? labels.reviewAgain : labels.unrated
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: current.prompt }),
+							current.tags === void 0 || current.tags.length === 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
+								className: LearningVisualV4_module_css_default.recallTags,
+								children: current.tags.map((tag) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", { children: tag }, tag))
+							}),
+							stage === "prompt" || current.hint === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+								className: LearningVisualV4_module_css_default.recallReveal,
+								"data-kind": "hint",
+								"aria-live": "polite",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.recallHint }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: current.hint })]
+							}),
+							stage !== "answer" ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+								className: LearningVisualV4_module_css_default.recallReveal,
+								"data-kind": "answer",
+								"aria-live": "polite",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.recallAnswer }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: current.answer })]
+							}),
+							stage === "answer" ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: LearningVisualV4_module_css_default.recallRating,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									"aria-pressed": status === "review",
+									onClick: () => mark("review"),
+									children: labels.reviewAgain
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									"aria-pressed": status === "mastered",
+									onClick: () => mark("mastered"),
+									children: labels.mastered
+								})]
+							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: LearningVisualV4_module_css_default.recallRevealButton,
+								onClick: revealNext,
+								children: stage === "prompt" && current.hint !== void 0 ? labels.showHint : labels.showAnswer
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: LearningVisualV4_module_css_default.recallNavigation,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+								type: "button",
+								onClick: () => move(-1),
+								disabled: cardIndex === 0,
+								children: ["← ", labels.previousCard]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+								type: "button",
+								onClick: () => move(1),
+								disabled: cardIndex >= content.cards.length - 1,
+								children: [labels.nextCard, " →"]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								onClick: reset,
+								disabled: cardIndex === 0 && stage === "prompt" && Object.keys(statuses).length === 0,
+								children: labels.resetDeck
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningVisualV4_module_css_default.interactionHint,
+						children: labels.recallInteractionHint
+					})
+				]
+			});
+		}
+		const VISUAL_RENDERER_REGISTRY = {
+			plot: PlotRenderer,
+			node_link: NodeLinkRenderer,
+			scene_2d: Scene2DRenderer,
+			relation: RelationRenderer,
+			timeline: TimelineRenderer,
+			formula_steps: FormulaStepsRenderer,
+			study_map: StudyMapRenderer,
+			recall_deck: RecallDeckRenderer
+		};
+		function RegisteredVisual({ content, focusedIds, storageKey }) {
+			const Renderer = VISUAL_RENDERER_REGISTRY[content.kind];
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Renderer, {
+				content,
+				focusedIds,
+				storageKey
+			});
+		}
+		function LearningVisualV4({ visual, storageKey, labels: suppliedLabels }) {
+			const titleId = (0, react.useId)();
+			const descriptionId = (0, react.useId)();
+			const initialFrameIndex = visual.sequence === void 0 ? 0 : Math.max(0, visual.sequence.frames.findIndex((frame) => frame.id === visual.sequence?.initialFrameId));
+			const [frameIndex, setFrameIndex] = (0, react.useState)(initialFrameIndex);
+			const frame = visual.sequence?.frames[frameIndex];
+			const focusedIds = (0, react.useMemo)(() => new Set(frame?.focusIds ?? []), [frame?.focusIds]);
+			const labels = (0, react.useMemo)(() => ({
+				...DEFAULT_LABELS,
+				...suppliedLabels
+			}), [suppliedLabels]);
+			(0, react.useEffect)(() => setFrameIndex(initialFrameIndex), [initialFrameIndex, visual]);
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VisualLabelsContext.Provider, {
+				value: labels,
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+					className: LearningVisualV4_module_css_default.visualShell,
+					"data-learning-visual": visual.content.kind,
+					"data-render-state": "ready",
+					"aria-labelledby": titleId,
+					"aria-describedby": visual.description === void 0 ? void 0 : descriptionId,
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+							className: LearningVisualV4_module_css_default.visualHeader,
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									className: LearningVisualV4_module_css_default.visualEyebrow,
+									"aria-hidden": "true",
+									children: labels.eyebrow
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+									id: titleId,
+									children: visual.title
+								}),
+								visual.description === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+									id: descriptionId,
+									children: visual.description
+								})
+							]
+						}),
+						visual.sequence === void 0 || visual.sequence.frames.length === 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SequenceController, {
+							sequence: visual.sequence,
+							frameIndex,
+							onFrameChange: setFrameIndex
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(VisualErrorBoundary, {
+							fallbackMarkdown: visual.fallbackMarkdown,
+							labels,
+							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RegisteredVisual, {
+								content: visual.content,
+								focusedIds,
+								storageKey
+							})
+						}, `${visual.protocol}:${visual.title}:${visual.content.kind}`)
+					]
+				})
+			});
+		}
+		//#endregion
 		//#region src/client/LearningToolView.tsx
+		const VISUAL_LABEL_KEYS = {
+			eyebrow: "visualEyebrow",
+			errorTitle: "visualErrorTitle",
+			errorContinue: "visualErrorContinue",
+			sequenceLabel: "visualSequenceLabel",
+			previousStep: "visualPreviousStep",
+			nextStep: "visualNextStep",
+			reset: "visualReset",
+			chartProbeHint: "visualChartProbeHint",
+			metricsLabel: "visualMetricsLabel",
+			legendLabel: "visualLegendLabel",
+			plotInteractionHint: "visualPlotInteractionHint",
+			nodeLinkSummary: "visualNodeLinkSummary",
+			connection: "visualConnection",
+			layerLabel: "visualLayerLabel",
+			edgeLabel: "visualEdgeLabel",
+			nodeLinkInteractionHint: "visualNodeLinkInteractionHint",
+			nodeKind: "visualNodeKind",
+			edgeKind: "visualEdgeKind",
+			noDetail: "visualNoDetail",
+			closeDetail: "visualCloseDetail",
+			elementFallback: "visualElementFallback",
+			sceneSummary: "visualSceneSummary",
+			sceneInteractionHint: "visualSceneInteractionHint",
+			elementKind: "visualElementKind",
+			comparisonCaption: "visualComparisonCaption",
+			comparisonDimension: "visualComparisonDimension",
+			comparisonSubject: "visualComparisonSubject",
+			comparisonInteractionHint: "visualComparisonInteractionHint",
+			matrixCaption: "visualMatrixCaption",
+			matrixAxes: "visualMatrixAxes",
+			noRelation: "visualNoRelation",
+			matrixInteractionHint: "visualMatrixInteractionHint",
+			setsLabel: "visualSetsLabel",
+			noExclusiveItems: "visualNoExclusiveItems",
+			intersections: "visualIntersections",
+			uncategorized: "visualUncategorized",
+			setsInteractionHint: "visualSetsInteractionHint",
+			timelineLabel: "visualTimelineLabel",
+			timelineEventKind: "visualTimelineEventKind",
+			timelineEraKind: "visualTimelineEraKind",
+			timelineInteractionHint: "visualTimelineInteractionHint",
+			formulaLabel: "visualFormulaLabel",
+			formulaProgress: "visualFormulaProgress",
+			formulaRule: "visualFormulaRule",
+			formulaConclusion: "visualFormulaConclusion",
+			revealNextFormulaStep: "visualRevealNextFormulaStep",
+			formulaComplete: "visualFormulaComplete",
+			formulaInteractionHint: "visualFormulaInteractionHint",
+			studySource: "visualStudySource",
+			studyGoal: "visualStudyGoal",
+			studySections: "visualStudySections",
+			studyConcepts: "visualStudyConcepts",
+			studyAnchor: "visualStudyAnchor",
+			studySummary: "visualStudySummary",
+			prerequisite: "visualPrerequisite",
+			noPrerequisite: "visualNoPrerequisite",
+			roleFoundation: "visualRoleFoundation",
+			roleCore: "visualRoleCore",
+			roleExtension: "visualRoleExtension",
+			rolePractice: "visualRolePractice",
+			studyInteractionHint: "visualStudyInteractionHint",
+			recallDeckLabel: "visualRecallDeckLabel",
+			recallProgress: "visualRecallProgress",
+			recallPrompt: "visualRecallPrompt",
+			recallHint: "visualRecallHint",
+			recallAnswer: "visualRecallAnswer",
+			showHint: "visualShowHint",
+			showAnswer: "visualShowAnswer",
+			previousCard: "visualPreviousCard",
+			nextCard: "visualNextCard",
+			resetDeck: "visualResetDeck",
+			mastered: "visualMastered",
+			reviewAgain: "visualReviewAgain",
+			unrated: "visualUnrated",
+			recallStatus: "visualRecallStatus",
+			recallInteractionHint: "visualRecallInteractionHint"
+		};
+		function visualLabelsOf(t) {
+			return Object.fromEntries(Object.entries(VISUAL_LABEL_KEYS).map(([label, key]) => [label, t(key)]));
+		}
 		function pendingActivity(interactions, sessionId, activity, callId) {
 			if (activity === void 0) return void 0;
+			if (activity.protocol === "dsh-learning/visual@3" || activity.protocol === "dsh-learning/visual@4") return void 0;
 			if (activity.protocol === "dsh-learning/activity@2") return interactions.find((interaction) => {
 				if (interaction.kind !== "question" || String(interaction.sessionId) !== sessionId) return false;
 				const envelope = envelopeOf(interaction);
@@ -2462,7 +6102,28 @@ window.__ModuleLoader__.load({
 			if (raw === void 0 || raw === "") return void 0;
 			try {
 				const parsed = JSON.parse(raw);
+				if (parsed.protocol === "dsh-learning/visual@4") return parseLearningVisualV4(parsed);
+				if (parsed.protocol === "dsh-learning/visual@3") return parseLearningVisualV3(parsed);
 				return parsed.protocol === "dsh-learning/activity@2" ? parseLearningActivityV2(parsed) : parseLearningActivity(parsed);
+			} catch {
+				return;
+			}
+		}
+		function visualTextFallbackOf(block) {
+			const raw = "kind" in block ? block.call?.argsRaw : block.argsRaw;
+			if (raw === void 0 || raw === "" || raw.length > 65536) return void 0;
+			try {
+				const parsed = JSON.parse(raw);
+				if (parsed.protocol !== "dsh-learning/visual@4" && parsed.protocol !== "dsh-learning/visual@3") return void 0;
+				const title = typeof parsed.title === "string" && parsed.title.trim() !== "" && parsed.title.length <= 200 ? parsed.title.trim() : void 0;
+				const description = typeof parsed.description === "string" && parsed.description.trim() !== "" && parsed.description.length <= 1e3 ? parsed.description.trim() : void 0;
+				const markdown = typeof parsed.fallbackMarkdown === "string" && parsed.fallbackMarkdown.trim() !== "" && parsed.fallbackMarkdown.length <= 8e3 ? parsed.fallbackMarkdown : void 0;
+				if (markdown === void 0 && description === void 0 && title === void 0) return void 0;
+				return {
+					...markdown === void 0 ? {} : { markdown },
+					text: description ?? title ?? "",
+					protocol: parsed.protocol
+				};
 			} catch {
 				return;
 			}
@@ -2478,10 +6139,38 @@ window.__ModuleLoader__.load({
 				return;
 			}
 		}
+		function visualResultOf(block) {
+			if (!("kind" in block)) return void 0;
+			const content = block.content.filter((item) => item.type === "text").map((item) => item.text).join("");
+			if (content === "") return void 0;
+			try {
+				const parsed = JSON.parse(content);
+				return parsed.protocol === "dsh-learning/visual-result@4" ? parseLearningVisualResultV4(parsed) : parseLearningVisualResultV3(parsed);
+			} catch {
+				return;
+			}
+		}
 		function explanationOf(response) {
 			if (response?.action !== "submit" || typeof response.answer !== "object" || response.answer === null || Array.isArray(response.answer)) return void 0;
 			const explanation = response.answer.explanation;
 			return typeof explanation === "string" && explanation.trim() !== "" ? explanation.trim() : void 0;
+		}
+		function compactAnswer(answer) {
+			if (answer === void 0 || answer === null) return void 0;
+			if (typeof answer === "string" || typeof answer === "number" || typeof answer === "boolean") return String(answer);
+			if (!Array.isArray(answer)) for (const key of [
+				"text",
+				"explanation",
+				"answer"
+			]) {
+				const candidate = answer[key];
+				if (typeof candidate === "string" || typeof candidate === "number") return String(candidate);
+			}
+			try {
+				return JSON.stringify(answer);
+			} catch {
+				return;
+			}
 		}
 		function answerRecord(response) {
 			if (response?.action !== "submit" || typeof response.answer !== "object" || response.answer === null || Array.isArray(response.answer)) return void 0;
@@ -2516,6 +6205,7 @@ window.__ModuleLoader__.load({
 			const interactions = useSession((snapshot) => snapshot.pending);
 			const callId = "kind" in block ? block.callId : block.callId;
 			const raw = "kind" in block ? block.call?.argsRaw : block.argsRaw;
+			const invalidVisualFallback = activity === void 0 && done ? visualTextFallbackOf(block) : void 0;
 			(0, react.useEffect)(() => {
 				if (done || raw === void 0 || raw === "") return;
 				if (activity === void 0) emitLearningCallLifecycle("learning.call.stream_started", { callId });
@@ -2549,10 +6239,81 @@ window.__ModuleLoader__.load({
 						})
 					]
 				});
+				if (invalidVisualFallback !== void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: LearningActivity_module_css_default.inlineFallback,
+					"data-learning-result": "invalid",
+					"data-learning-fallback": invalidVisualFallback.protocol,
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+						className: LearningActivity_module_css_default.inlineResult,
+						role: "alert",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: LearningActivity_module_css_default.errorMark,
+							"aria-hidden": "true",
+							children: "!"
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("invalidActivity") })]
+					}), invalidVisualFallback.markdown === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningActivity_module_css_default.visualTextFallback,
+						children: invalidVisualFallback.text
+					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: LearningActivity_module_css_default.fallbackText,
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: invalidVisualFallback.markdown })
+					})]
+				});
 				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 					className: LearningActivity_module_css_default.inlineStatus,
 					"data-state": done ? "done" : "running",
 					children: t("invalidActivity")
+				});
+			}
+			if (activity.protocol === "dsh-learning/visual@4") {
+				const result = done ? visualResultOf(block) : void 0;
+				if (done && ("kind" in block && block.isError || result?.protocol !== "dsh-learning/visual-result@4")) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: LearningActivity_module_css_default.inlineFallback,
+					"data-learning-result": "error",
+					"data-learning-fallback": "visual-v4",
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+						className: LearningActivity_module_css_default.inlineResult,
+						role: "alert",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: LearningActivity_module_css_default.errorMark,
+							"aria-hidden": "true",
+							children: "!"
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("visualFailed") })]
+					}), activity.fallbackMarkdown === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningActivity_module_css_default.visualTextFallback,
+						children: activity.description ?? activity.title
+					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: LearningActivity_module_css_default.fallbackText,
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: activity.fallbackMarkdown })
+					})]
+				});
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningVisualV4, {
+					visual: activity,
+					storageKey: `${String(sessionId)}:${callId ?? "visual"}`,
+					labels: visualLabelsOf(t)
+				});
+			}
+			if (activity.protocol === "dsh-learning/visual@3") {
+				const result = done ? visualResultOf(block) : void 0;
+				if (done && ("kind" in block && block.isError || result?.protocol !== "dsh-learning/visual-result@3")) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: LearningActivity_module_css_default.inlineFallback,
+					"data-learning-result": "error",
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+						className: LearningActivity_module_css_default.inlineResult,
+						role: "alert",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: LearningActivity_module_css_default.errorMark,
+							"aria-hidden": "true",
+							children: "!"
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("visualFailed") })]
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningActivity_module_css_default.visualTextFallback,
+						children: activity.description ?? activity.title
+					})]
+				});
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningVisual, {
+					visual: activity,
+					storageKey: `${String(sessionId)}:${callId ?? "visual"}`
 				});
 			}
 			if (activity.protocol === "dsh-learning/activity@2") {
@@ -2580,15 +6341,49 @@ window.__ModuleLoader__.load({
 					});
 				}
 				const v2Response = response?.protocol === "dsh-learning/response@2" ? response : void 0;
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: LearningActivity_module_css_default.completedRound,
-					"data-learning-result": v2Response?.action ?? "unknown",
-					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RoundActivity, {
-						activity,
-						completed: true,
-						initialAnswer: v2Response?.phase === "question" ? v2Response.answer : void 0,
-						t
-					})
+				if (v2Response === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: LearningActivity_module_css_default.inlineFallback,
+					"data-learning-result": "error",
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+						className: LearningActivity_module_css_default.inlineResult,
+						role: "alert",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: LearningActivity_module_css_default.errorMark,
+							"aria-hidden": "true",
+							children: "!"
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("invalidResult") })]
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: LearningActivity_module_css_default.fallbackText,
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: activity.fallbackMarkdown })
+					})]
+				});
+				if (activity.phase === "question") {
+					const answer = v2Response.phase === "question" ? compactAnswer(v2Response.answer) : void 0;
+					return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+						className: LearningActivity_module_css_default.inlineResult,
+						"data-learning-result": v2Response.action,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: LearningActivity_module_css_default.resultMark,
+								"aria-hidden": "true",
+								children: "✓"
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: v2Response.action === "submit" ? t("completed") : v2Response.action === "skip" ? t("skipped") : t("cancelled") }),
+							answer === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+								className: LearningActivity_module_css_default.resultAnswer,
+								children: [
+									"“",
+									answer,
+									"”"
+								]
+							})
+						]
+					});
+				}
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: LearningActivity_module_css_default.legacyReveal,
+					"data-learning-result": v2Response.action,
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: activity.feedback.explanation }), activity.feedback.answer === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: activity.feedback.answer })]
 				});
 			}
 			if (!done) {
@@ -2689,12 +6484,89 @@ window.__ModuleLoader__.load({
 			increaseParameter: "增大{label}",
 			chartLabel: "参数变化曲线",
 			chartDescription: "参数：{parameters}。横轴：{xAxis}。纵轴：{yAxis}。曲线：{curves}。",
-			invalidActivity: "该互动活动无法安全显示，已保留 Markdown 降级内容。",
+			invalidActivity: "该互动活动无法安全显示；如有文字说明，已在下方保留。",
+			visualFailed: "交互图未能完成，已保留文字说明",
 			error: "提交失败：{message}",
 			submitAnswer: "提交回答",
 			awaitingReveal: "回答已提交，正在等待讲解…",
 			continue: "继续",
-			roundProgress: "第 {current} / {total} 轮"
+			roundProgress: "第 {current} / {total} 轮",
+			visualEyebrow: "交互可视化",
+			visualErrorTitle: "视觉组件暂时无法显示",
+			visualErrorContinue: "你仍可继续阅读上下文。",
+			visualSequenceLabel: "视觉讲解步骤",
+			visualPreviousStep: "上一步",
+			visualNextStep: "下一步",
+			visualReset: "重置",
+			visualChartProbeHint: "图表，按左右方向键开始探查数值",
+			visualMetricsLabel: "当前指标",
+			visualLegendLabel: "图例与系列显示",
+			visualPlotInteractionHint: "鼠标移入图表可探查数值；键盘聚焦图表后可用 ← → 移动。",
+			visualNodeLinkSummary: "{nodes} 个节点，{edges} 条连线。",
+			visualConnection: "{from} 到 {to}",
+			visualLayerLabel: "第 {index} 层",
+			visualEdgeLabel: "连线",
+			visualNodeLinkInteractionHint: "选择节点或连线查看解释；键盘可用 Tab 与 Enter 操作。",
+			visualNodeKind: "节点",
+			visualEdgeKind: "连线",
+			visualNoDetail: "暂无补充说明。",
+			visualCloseDetail: "关闭详细说明",
+			visualElementFallback: "图元 {id}",
+			visualSceneSummary: "二维场景，{elements} 个图元。{labels}",
+			visualSceneInteractionHint: "选择图中的点、线或形状查看说明。",
+			visualElementKind: "图元",
+			visualComparisonCaption: "特征对比表",
+			visualComparisonDimension: "对比维度",
+			visualComparisonSubject: "对比对象",
+			visualComparisonInteractionHint: "按行阅读可对比同一维度；选择表头可查看补充说明。",
+			visualMatrixCaption: "关系矩阵",
+			visualMatrixAxes: "行 ↓ / 列 →",
+			visualNoRelation: "无关系",
+			visualMatrixInteractionHint: "从行与列的交点读取关系；选择单元格可查看细节。",
+			visualSetsLabel: "集合关系图",
+			visualNoExclusiveItems: "无独有项",
+			visualIntersections: "交集 / 共有",
+			visualUncategorized: "未归类",
+			visualSetsInteractionHint: "单一归属项在各集合内，多重归属项在交集区。",
+			visualTimelineLabel: "时间线",
+			visualTimelineEventKind: "事件",
+			visualTimelineEraKind: "时期",
+			visualTimelineInteractionHint: "选择事件或时期可查看补充说明。",
+			visualFormulaLabel: "公式推导",
+			visualFormulaProgress: "第 {current} / {total} 步",
+			visualFormulaRule: "规则",
+			visualFormulaConclusion: "结论",
+			visualRevealNextFormulaStep: "显示下一步",
+			visualFormulaComplete: "推导已完成",
+			visualFormulaInteractionHint: "先预测下一步，再逐步揭示变形规则。",
+			visualStudySource: "学习来源",
+			visualStudyGoal: "学习目标",
+			visualStudySections: "来源章节",
+			visualStudyConcepts: "本节概念",
+			visualStudyAnchor: "位置",
+			visualStudySummary: "摘要",
+			visualPrerequisite: "前置概念",
+			visualNoPrerequisite: "无",
+			visualRoleFoundation: "基础",
+			visualRoleCore: "核心",
+			visualRoleExtension: "拓展",
+			visualRolePractice: "练习",
+			visualStudyInteractionHint: "按来源章节导览，选择概念查看作用、前置关系与详细说明。",
+			visualRecallDeckLabel: "回忆卡组",
+			visualRecallProgress: "第 {current} / {total} 张",
+			visualRecallPrompt: "问题",
+			visualRecallHint: "提示",
+			visualRecallAnswer: "答案",
+			visualShowHint: "查看提示",
+			visualShowAnswer: "显示答案",
+			visualPreviousCard: "上一张",
+			visualNextCard: "下一张",
+			visualResetDeck: "重置卡组",
+			visualMastered: "已掌握",
+			visualReviewAgain: "待复习",
+			visualUnrated: "未标记",
+			visualRecallStatus: "掌握 {mastered} · 待复习 {review}",
+			visualRecallInteractionHint: "先在心中回答，再查看提示和答案，最后标记掌握状态。"
 		};
 		const en = {
 			scaffold: "Hint",
@@ -2725,17 +6597,95 @@ window.__ModuleLoader__.load({
 			increaseParameter: "Increase {label}",
 			chartLabel: "Parameter relationship chart",
 			chartDescription: "Parameters: {parameters}. X axis: {xAxis}. Y axis: {yAxis}. Curves: {curves}.",
-			invalidActivity: "This activity could not be displayed safely. Its Markdown fallback is preserved.",
+			invalidActivity: "This activity could not be displayed safely; any available text explanation is preserved below.",
+			visualFailed: "The interactive visual could not complete; the text explanation is preserved",
 			error: "Submission failed: {message}",
 			submitAnswer: "Submit answer",
 			awaitingReveal: "Answer submitted. Waiting for the reveal…",
 			continue: "Continue",
-			roundProgress: "Round {current} / {total}"
+			roundProgress: "Round {current} / {total}",
+			visualEyebrow: "Interactive visual",
+			visualErrorTitle: "The visual could not be displayed",
+			visualErrorContinue: "You can still continue with the surrounding explanation.",
+			visualSequenceLabel: "Visual explanation steps",
+			visualPreviousStep: "Previous step",
+			visualNextStep: "Next step",
+			visualReset: "Reset",
+			visualChartProbeHint: "Chart; use the left and right arrow keys to inspect values",
+			visualMetricsLabel: "Current metrics",
+			visualLegendLabel: "Legend and series visibility",
+			visualPlotInteractionHint: "Move over the chart to inspect values, or focus it and use ← →.",
+			visualNodeLinkSummary: "{nodes} nodes and {edges} connections.",
+			visualConnection: "{from} to {to}",
+			visualLayerLabel: "Layer {index}",
+			visualEdgeLabel: "Connection",
+			visualNodeLinkInteractionHint: "Select a node or connection for details; use Tab and Enter from the keyboard.",
+			visualNodeKind: "Node",
+			visualEdgeKind: "Connection",
+			visualNoDetail: "No additional detail.",
+			visualCloseDetail: "Close details",
+			visualElementFallback: "Element {id}",
+			visualSceneSummary: "Two-dimensional scene with {elements} elements. {labels}",
+			visualSceneInteractionHint: "Select a point, line, or shape for its explanation.",
+			visualElementKind: "Element",
+			visualComparisonCaption: "Feature comparison",
+			visualComparisonDimension: "Dimension",
+			visualComparisonSubject: "Subject",
+			visualComparisonInteractionHint: "Read across a row to compare one dimension; select a heading for details.",
+			visualMatrixCaption: "Relationship matrix",
+			visualMatrixAxes: "Rows ↓ / columns →",
+			visualNoRelation: "No relationship",
+			visualMatrixInteractionHint: "Read a relationship at the row-column intersection; select a cell for details.",
+			visualSetsLabel: "Set relationship",
+			visualNoExclusiveItems: "No exclusive items",
+			visualIntersections: "Intersection / shared",
+			visualUncategorized: "Uncategorized",
+			visualSetsInteractionHint: "Exclusive items sit inside one set; multi-set items appear in the intersection.",
+			visualTimelineLabel: "Timeline",
+			visualTimelineEventKind: "Event",
+			visualTimelineEraKind: "Era",
+			visualTimelineInteractionHint: "Select an event or era for additional detail.",
+			visualFormulaLabel: "Formula derivation",
+			visualFormulaProgress: "Step {current} / {total}",
+			visualFormulaRule: "Rule",
+			visualFormulaConclusion: "Conclusion",
+			visualRevealNextFormulaStep: "Reveal next step",
+			visualFormulaComplete: "Derivation complete",
+			visualFormulaInteractionHint: "Predict the next expression, then reveal each transformation rule.",
+			visualStudySource: "Learning source",
+			visualStudyGoal: "Learning goal",
+			visualStudySections: "Source sections",
+			visualStudyConcepts: "Concepts in this section",
+			visualStudyAnchor: "Location",
+			visualStudySummary: "Summary",
+			visualPrerequisite: "Prerequisites",
+			visualNoPrerequisite: "None",
+			visualRoleFoundation: "Foundation",
+			visualRoleCore: "Core",
+			visualRoleExtension: "Extension",
+			visualRolePractice: "Practice",
+			visualStudyInteractionHint: "Navigate by source section, then select a concept for its role, prerequisites, and detail.",
+			visualRecallDeckLabel: "Recall deck",
+			visualRecallProgress: "Card {current} / {total}",
+			visualRecallPrompt: "Prompt",
+			visualRecallHint: "Hint",
+			visualRecallAnswer: "Answer",
+			visualShowHint: "Show hint",
+			visualShowAnswer: "Show answer",
+			visualPreviousCard: "Previous card",
+			visualNextCard: "Next card",
+			visualResetDeck: "Reset deck",
+			visualMastered: "Mastered",
+			visualReviewAgain: "Review again",
+			visualUnrated: "Not rated",
+			visualRecallStatus: "{mastered} mastered · {review} to review",
+			visualRecallInteractionHint: "Answer from memory before revealing the hint and answer, then mark your recall."
 		};
 		//#endregion
 		//#region src/client/index.ts
 		const NS = "interactive-learning";
 		const LEARNING_TOOL_VIEW_KEYS = [
+			"learning_visual",
 			"learning_activity",
 			"learning_question",
 			"learning_reveal"

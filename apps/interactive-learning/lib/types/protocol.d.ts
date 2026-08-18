@@ -5,11 +5,19 @@ export declare const TRANSPORT_PROTOCOL: "dsh-learning/transport@1";
 export declare const ACTIVITY_PROTOCOL_V2: "dsh-learning/activity@2";
 export declare const RESPONSE_PROTOCOL_V2: "dsh-learning/response@2";
 export declare const TRANSPORT_PROTOCOL_V2: "dsh-learning/wait@2";
+export declare const VISUAL_PROTOCOL_V3: "dsh-learning/visual@3";
+export declare const VISUAL_RESULT_PROTOCOL_V3: "dsh-learning/visual-result@3";
+export declare const VISUAL_PROTOCOL_V4: "dsh-learning/visual@4";
+export declare const VISUAL_RESULT_PROTOCOL_V4: "dsh-learning/visual-result@4";
+export declare const LEARNING_VISUAL_KINDS_V4: readonly ["plot", "node_link", "scene_2d", "relation", "timeline", "formula_steps", "study_map", "recall_deck"];
 export declare const LEARNING_ACTIVITY_KINDS: readonly ["parameter_explorer", "process_stepper", "structure_compare"];
 export declare const MAX_ACTIVITY_BYTES: number;
 export declare const MAX_RESPONSE_BYTES: number;
 export declare const MAX_MATH_DEPTH = 8;
 export declare const MAX_MATH_NODES = 64;
+export declare const MAX_VISUAL_MATH_DEPTH = 4;
+export declare const MATH_BINARY_OPERATORS: readonly ["add", "sub", "mul", "div", "pow"];
+export declare const MATH_UNARY_OPERATORS: readonly ["neg", "abs", "sqrt", "sin", "cos", "exp", "log", "sigmoid"];
 export type LearningActivityKind = typeof LEARNING_ACTIVITY_KINDS[number];
 export type LearningAction = 'submit' | 'skip' | 'cancel';
 export type LearningJson = null | boolean | number | string | LearningJson[] | {
@@ -26,7 +34,7 @@ export type MathExpressionV1 = {
     left: MathExpressionV1;
     right: MathExpressionV1;
 } | {
-    op: 'neg' | 'abs' | 'sqrt' | 'sin' | 'cos' | 'exp' | 'log';
+    op: 'neg' | 'abs' | 'sqrt' | 'sin' | 'cos' | 'exp' | 'log' | 'sigmoid';
     value: MathExpressionV1;
 };
 export interface ParameterDefinitionV1 {
@@ -248,6 +256,331 @@ export interface LearningWaitEnvelopeV2 {
     activity: LearningActivityV2;
 }
 export type LearningWaitEnvelopeInputV2 = Omit<LearningWaitEnvelopeV2, 'transport'>;
+export type LearningVisualToneV3 = 'blue' | 'green' | 'red' | 'orange' | 'purple' | 'gray';
+export type LearningVisualStrokeV3 = 'solid' | 'dashed' | 'dotted';
+export interface LearningVisualAxisV3 {
+    label?: string;
+    min: number;
+    max: number;
+    samples?: number;
+}
+export interface LearningVisualCurveV3 {
+    type: 'curve';
+    id: string;
+    label: string;
+    expression: MathExpressionV1;
+    tone?: LearningVisualToneV3;
+    stroke?: LearningVisualStrokeV3;
+}
+export interface LearningVisualPointV3 {
+    x: number;
+    y: number;
+    label?: string;
+}
+export interface LearningVisualPointSeriesV3 {
+    type: 'points';
+    id: string;
+    label: string;
+    points: LearningVisualPointV3[];
+    tone?: LearningVisualToneV3;
+}
+export type LearningVisualSeriesV3 = LearningVisualCurveV3 | LearningVisualPointSeriesV3;
+export interface LearningVisualMetricV3 {
+    id: string;
+    label: string;
+    expression: MathExpressionV1;
+    digits?: number;
+    suffix?: string;
+}
+/**
+ * A non-blocking, replayable visual embedded in the assistant's normal turn.
+ * It never owns learner input: the ordinary conversation composer remains live.
+ */
+export interface LearningVisualV3 {
+    protocol: typeof VISUAL_PROTOCOL_V3;
+    kind: 'parameter_chart';
+    title: string;
+    description?: string;
+    parameters: ParameterDefinitionV1[];
+    xAxis: LearningVisualAxisV3;
+    yAxis: LearningVisualAxisV3;
+    series: LearningVisualSeriesV3[];
+    metrics?: LearningVisualMetricV3[];
+}
+export interface LearningVisualResultV3 {
+    protocol: typeof VISUAL_RESULT_PROTOCOL_V3;
+    status: 'ready';
+}
+export type LearningVisualKindV4 = typeof LEARNING_VISUAL_KINDS_V4[number];
+export type LearningVisualToneV4 = LearningVisualToneV3;
+export type LearningVisualStrokeV4 = LearningVisualStrokeV3;
+export interface LearningVisualLineSeriesV4 {
+    type: 'line';
+    id: string;
+    label: string;
+    points: LearningVisualPointV3[];
+    tone?: LearningVisualToneV4;
+    stroke?: LearningVisualStrokeV4;
+}
+export interface LearningVisualBarSeriesV4 {
+    type: 'bars';
+    id: string;
+    label: string;
+    points: LearningVisualPointV3[];
+    tone?: LearningVisualToneV4;
+}
+export type LearningPlotSeriesV4 = LearningVisualCurveV3 | LearningVisualPointSeriesV3 | LearningVisualLineSeriesV4 | LearningVisualBarSeriesV4;
+export interface LearningPlotV4 {
+    kind: 'plot';
+    parameters?: ParameterDefinitionV1[];
+    xAxis: LearningVisualAxisV3;
+    yAxis: LearningVisualAxisV3;
+    series: LearningPlotSeriesV4[];
+    metrics?: LearningVisualMetricV3[];
+}
+export interface LearningNodeGroupV4 {
+    id: string;
+    label: string;
+}
+export interface LearningNodeV4 {
+    id: string;
+    label: string;
+    detail?: string;
+    group?: string;
+    tone?: LearningVisualToneV4;
+}
+export interface LearningEdgeV4 {
+    id: string;
+    from: string;
+    to: string;
+    label?: string;
+    detail?: string;
+    tone?: LearningVisualToneV4;
+    stroke?: LearningVisualStrokeV4;
+    directed?: boolean;
+}
+export interface LearningNodeLinkV4 {
+    kind: 'node_link';
+    layout: 'layered' | 'hierarchy' | 'radial';
+    groups?: LearningNodeGroupV4[];
+    nodes: LearningNodeV4[];
+    edges: LearningEdgeV4[];
+}
+interface LearningSceneElementBaseV4 {
+    id: string;
+    label?: string;
+    detail?: string;
+    tone?: LearningVisualToneV4;
+}
+export interface LearningScenePointV4 extends LearningSceneElementBaseV4 {
+    type: 'point';
+    x: number;
+    y: number;
+    size?: number;
+}
+export interface LearningSceneSegmentV4 extends LearningSceneElementBaseV4 {
+    type: 'segment' | 'arrow';
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    stroke?: LearningVisualStrokeV4;
+}
+export interface LearningSceneCircleV4 extends LearningSceneElementBaseV4 {
+    type: 'circle';
+    cx: number;
+    cy: number;
+    r: number;
+}
+export interface LearningSceneRectV4 extends LearningSceneElementBaseV4 {
+    type: 'rect';
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+export interface LearningScenePolygonV4 extends LearningSceneElementBaseV4 {
+    type: 'polygon';
+    points: Array<{
+        x: number;
+        y: number;
+    }>;
+}
+export interface LearningSceneLabelV4 extends LearningSceneElementBaseV4 {
+    type: 'label';
+    x: number;
+    y: number;
+    text: string;
+}
+export type LearningSceneElementV4 = LearningScenePointV4 | LearningSceneSegmentV4 | LearningSceneCircleV4 | LearningSceneRectV4 | LearningScenePolygonV4 | LearningSceneLabelV4;
+export interface LearningScene2DV4 {
+    kind: 'scene_2d';
+    xAxis: LearningVisualAxisV3;
+    yAxis: LearningVisualAxisV3;
+    grid?: boolean;
+    elements: LearningSceneElementV4[];
+}
+export interface LearningRelationSubjectV4 {
+    id: string;
+    label: string;
+    detail?: string;
+    tone?: LearningVisualToneV4;
+}
+export interface LearningRelationComparisonRowV4 {
+    id: string;
+    label: string;
+    cells: Array<{
+        subjectId: string;
+        value: string;
+        tone?: LearningVisualToneV4;
+    }>;
+    detail?: string;
+}
+export interface LearningComparisonRelationV4 {
+    kind: 'relation';
+    variant: 'comparison';
+    subjects: LearningRelationSubjectV4[];
+    rows: LearningRelationComparisonRowV4[];
+}
+export interface LearningRelationAxisItemV4 {
+    id: string;
+    label: string;
+}
+export interface LearningRelationMatrixCellV4 {
+    id: string;
+    rowId: string;
+    columnId: string;
+    label: string;
+    detail?: string;
+    tone?: LearningVisualToneV4;
+}
+export interface LearningMatrixRelationV4 {
+    kind: 'relation';
+    variant: 'matrix';
+    rows: LearningRelationAxisItemV4[];
+    columns: LearningRelationAxisItemV4[];
+    cells: LearningRelationMatrixCellV4[];
+}
+export interface LearningRelationSetV4 {
+    id: string;
+    label: string;
+    detail?: string;
+    tone?: LearningVisualToneV4;
+}
+export interface LearningRelationSetItemV4 {
+    id: string;
+    label: string;
+    setIds: string[];
+    detail?: string;
+}
+export interface LearningSetsRelationV4 {
+    kind: 'relation';
+    variant: 'sets';
+    sets: LearningRelationSetV4[];
+    items: LearningRelationSetItemV4[];
+}
+export type LearningRelationV4 = LearningComparisonRelationV4 | LearningMatrixRelationV4 | LearningSetsRelationV4;
+export interface LearningTimelineEventV4 {
+    id: string;
+    time: string;
+    label: string;
+    detail?: string;
+    /** Optional normalized position from 0 to 1; omit for equal spacing. */
+    position?: number;
+    tone?: LearningVisualToneV4;
+}
+export interface LearningTimelineEraV4 {
+    id: string;
+    label: string;
+    startEventId: string;
+    endEventId: string;
+    detail?: string;
+    tone?: LearningVisualToneV4;
+}
+export interface LearningTimelineV4 {
+    kind: 'timeline';
+    orientation?: 'horizontal' | 'vertical';
+    events: LearningTimelineEventV4[];
+    eras?: LearningTimelineEraV4[];
+}
+export interface LearningFormulaStepV4 {
+    id: string;
+    /** A single trusted Markdown-math expression, preferably LaTeX without delimiters. */
+    expression: string;
+    label?: string;
+    /** The named rule that transforms the preceding expression into this one. */
+    rule?: string;
+    detail?: string;
+    tone?: LearningVisualToneV4;
+}
+export interface LearningFormulaStepsV4 {
+    kind: 'formula_steps';
+    notation?: string;
+    steps: LearningFormulaStepV4[];
+    conclusion?: string;
+}
+export interface LearningStudySectionV4 {
+    id: string;
+    label: string;
+    /** Human-readable source location such as “Chapter 2” or “pp. 18–23”. */
+    anchor?: string;
+    summary?: string;
+}
+export interface LearningStudyConceptV4 {
+    id: string;
+    label: string;
+    sectionId: string;
+    detail?: string;
+    prerequisiteIds?: string[];
+    role?: 'foundation' | 'core' | 'extension' | 'practice';
+    tone?: LearningVisualToneV4;
+}
+export interface LearningStudyMapV4 {
+    kind: 'study_map';
+    sourceLabel: string;
+    goal?: string;
+    sections: LearningStudySectionV4[];
+    concepts: LearningStudyConceptV4[];
+}
+export interface LearningRecallCardV4 {
+    id: string;
+    prompt: string;
+    answer: string;
+    hint?: string;
+    tags?: string[];
+}
+export interface LearningRecallDeckV4 {
+    kind: 'recall_deck';
+    instructions?: string;
+    cards: LearningRecallCardV4[];
+}
+export type LearningVisualContentV4 = LearningPlotV4 | LearningNodeLinkV4 | LearningScene2DV4 | LearningRelationV4 | LearningTimelineV4 | LearningFormulaStepsV4 | LearningStudyMapV4 | LearningRecallDeckV4;
+export interface LearningVisualFrameV4 {
+    id: string;
+    label: string;
+    description?: string;
+    focusIds: string[];
+}
+export interface LearningVisualSequenceV4 {
+    initialFrameId?: string;
+    frames: LearningVisualFrameV4[];
+}
+/**
+ * A semantic, non-blocking visual. The content discriminator selects a trusted
+ * native renderer; arbitrary markup and executable payloads are never accepted.
+ */
+export interface LearningVisualV4 {
+    protocol: typeof VISUAL_PROTOCOL_V4;
+    title: string;
+    description?: string;
+    content: LearningVisualContentV4;
+    sequence?: LearningVisualSequenceV4;
+    fallbackMarkdown?: string;
+}
+export interface LearningVisualResultV4 {
+    protocol: typeof VISUAL_RESULT_PROTOCOL_V4;
+    status: 'ready';
+}
 /** A stable, actionable protocol rejection surfaced to the tool call. */
 export declare class LearningProtocolError extends Error {
     readonly issues: readonly string[];
@@ -263,5 +596,11 @@ export declare function parseLearningActivityV2(value: unknown): LearningActivit
 export type ExpectedLearningResponseV2 = Partial<Pick<LearningResponseV2, 'activityId' | 'phase' | 'lessonToken' | 'roundToken' | 'seq'>>;
 /** Validate a phase-bound Client receipt before the Broker changes lesson state. */
 export declare function parseLearningResponseV2(value: unknown, expected?: ExpectedLearningResponseV2): LearningResponseV2;
+/** Validate the preferred, non-blocking visual protocol. */
+export declare function parseLearningVisualV3(value: unknown): LearningVisualV3;
+/** Validate the semantic, model-facing visual protocol while retaining V3 replay separately. */
+export declare function parseLearningVisualV4(value: unknown): LearningVisualV4;
+export declare function parseLearningVisualResultV4(value: unknown): LearningVisualResultV4;
+export declare function parseLearningVisualResultV3(value: unknown): LearningVisualResultV3;
 export {};
 //# sourceMappingURL=protocol.d.ts.map

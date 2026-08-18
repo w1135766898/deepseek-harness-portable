@@ -5,6 +5,20 @@ export const TRANSPORT_PROTOCOL = 'dsh-learning/transport@1';
 export const ACTIVITY_PROTOCOL_V2 = 'dsh-learning/activity@2';
 export const RESPONSE_PROTOCOL_V2 = 'dsh-learning/response@2';
 export const TRANSPORT_PROTOCOL_V2 = 'dsh-learning/wait@2';
+export const VISUAL_PROTOCOL_V3 = 'dsh-learning/visual@3';
+export const VISUAL_RESULT_PROTOCOL_V3 = 'dsh-learning/visual-result@3';
+export const VISUAL_PROTOCOL_V4 = 'dsh-learning/visual@4';
+export const VISUAL_RESULT_PROTOCOL_V4 = 'dsh-learning/visual-result@4';
+export const LEARNING_VISUAL_KINDS_V4 = [
+    'plot',
+    'node_link',
+    'scene_2d',
+    'relation',
+    'timeline',
+    'formula_steps',
+    'study_map',
+    'recall_deck',
+];
 export const LEARNING_ACTIVITY_KINDS = [
     'parameter_explorer',
     'process_stepper',
@@ -14,6 +28,9 @@ export const MAX_ACTIVITY_BYTES = 64 * 1024;
 export const MAX_RESPONSE_BYTES = 32 * 1024;
 export const MAX_MATH_DEPTH = 8;
 export const MAX_MATH_NODES = 64;
+export const MAX_VISUAL_MATH_DEPTH = 4;
+export const MATH_BINARY_OPERATORS = ['add', 'sub', 'mul', 'div', 'pow'];
+export const MATH_UNARY_OPERATORS = ['neg', 'abs', 'sqrt', 'sin', 'cos', 'exp', 'log', 'sigmoid'];
 /** A stable, actionable protocol rejection surfaced to the tool call. */
 export class LearningProtocolError extends Error {
     issues;
@@ -112,9 +129,9 @@ function validateJson(value, path, issues) {
     }
     return issues.length === 0;
 }
-function validateMath(value, parameterIds, path, issues) {
-    const binary = new Set(['add', 'sub', 'mul', 'div', 'pow']);
-    const unary = new Set(['neg', 'abs', 'sqrt', 'sin', 'cos', 'exp', 'log']);
+function validateMath(value, parameterIds, path, issues, allowX = true, maxDepth = MAX_MATH_DEPTH) {
+    const binary = new Set(MATH_BINARY_OPERATORS);
+    const unary = new Set(MATH_UNARY_OPERATORS);
     const stack = [{ value, path, depth: 1 }];
     let nodes = 0;
     while (stack.length > 0) {
@@ -124,8 +141,8 @@ function validateMath(value, parameterIds, path, issues) {
             issues.push(`${path} exceeds ${String(MAX_MATH_NODES)} AST nodes`);
             return;
         }
-        if (node.depth > MAX_MATH_DEPTH) {
-            issues.push(`${node.path} exceeds AST depth ${String(MAX_MATH_DEPTH)}`);
+        if (node.depth > maxDepth) {
+            issues.push(`${node.path} exceeds AST depth ${String(maxDepth)}`);
             return;
         }
         if (!record(node.value) || typeof node.value.op !== 'string') {
@@ -142,8 +159,9 @@ function validateMath(value, parameterIds, path, issues) {
         }
         else if (op === 'variable') {
             onlyKeys(expression, ['op', 'name'], node.path, issues);
-            if (typeof expression.name !== 'string' || (expression.name !== 'x' && !parameterIds.has(expression.name))) {
-                issues.push(`${node.path}.name must be x or a declared parameter id`);
+            if (typeof expression.name !== 'string'
+                || (!parameterIds.has(expression.name) && !(allowX && expression.name === 'x'))) {
+                issues.push(`${node.path}.name must be ${allowX ? 'x or ' : ''}a declared parameter id`);
             }
         }
         else if (binary.has(op)) {
@@ -669,6 +687,1035 @@ export function parseLearningResponseV2(value, expected = {}) {
         if (expectedValue !== undefined && value[key] !== expectedValue)
             issues.push(`response.${key} does not match the pending activity`);
     }
+    if (issues.length > 0)
+        throw new LearningProtocolError(issues);
+    return value;
+}
+const VISUAL_TONES_V3 = new Set(['blue', 'green', 'red', 'orange', 'purple', 'gray']);
+const VISUAL_STROKES_V3 = new Set(['solid', 'dashed', 'dotted']);
+function validateVisualAxisV3(value, path, issues, samplesAllowed) {
+    if (!record(value)) {
+        issues.push(`${path} must be an object`);
+        return;
+    }
+    onlyKeys(value, samplesAllowed ? ['label', 'min', 'max', 'samples'] : ['label', 'min', 'max'], path, issues);
+    if (value.label !== undefined)
+        text(value.label, `${path}.label`, issues, 120);
+    const minOk = finite(value.min, `${path}.min`, issues);
+    const maxOk = finite(value.max, `${path}.max`, issues);
+    if (minOk && maxOk && value.min >= value.max) {
+        issues.push(`${path}.min must be less than max`);
+    }
+    if (samplesAllowed && value.samples !== undefined
+        && (!integer(value.samples, `${path}.samples`, issues, 24) || value.samples > 256)) {
+        issues.push(`${path}.samples must be an integer from 24 to 256`);
+    }
+}
+function validateVisualParametersV3(value, issues) {
+    const path = 'visual.parameters';
+    if (!Array.isArray(value) || value.length < 1 || value.length > 3) {
+        issues.push(`${path} must contain 1 to 3 parameters`);
+        return [];
+    }
+    const parameters = value.filter(record);
+    if (parameters.length !== value.length)
+        issues.push(`${path} entries must be objects`);
+    uniqueIds(parameters, path, issues);
+    for (const [index, parameter] of parameters.entries()) {
+        const itemPath = `${path}[${String(index)}]`;
+        onlyKeys(parameter, ['id', 'label', 'min', 'max', 'step', 'initial'], itemPath, issues);
+        id(parameter.id, `${itemPath}.id`, issues);
+        if (parameter.id === 'x')
+            issues.push(`${itemPath}.id must not use the reserved x-axis variable`);
+        text(parameter.label, `${itemPath}.label`, issues, 120);
+        const minOk = finite(parameter.min, `${itemPath}.min`, issues);
+        const maxOk = finite(parameter.max, `${itemPath}.max`, issues);
+        const stepOk = finite(parameter.step, `${itemPath}.step`, issues);
+        const initialOk = finite(parameter.initial, `${itemPath}.initial`, issues);
+        if (minOk && maxOk && parameter.min >= parameter.max) {
+            issues.push(`${itemPath}.min must be less than max`);
+        }
+        if (stepOk && parameter.step <= 0)
+            issues.push(`${itemPath}.step must be positive`);
+        if (minOk && maxOk && stepOk && parameter.step > parameter.max - parameter.min) {
+            issues.push(`${itemPath}.step must not exceed the parameter range`);
+        }
+        if (minOk && maxOk && initialOk
+            && (parameter.initial < parameter.min
+                || parameter.initial > parameter.max)) {
+            issues.push(`${itemPath}.initial must be inside the parameter range`);
+        }
+    }
+    return parameters;
+}
+/** Validate the preferred, non-blocking visual protocol. */
+export function parseLearningVisualV3(value) {
+    const issues = [];
+    const bytes = jsonBytes(value);
+    if (bytes === undefined)
+        issues.push('visual must be serializable JSON');
+    else if (bytes > MAX_ACTIVITY_BYTES)
+        issues.push(`visual exceeds ${String(MAX_ACTIVITY_BYTES)} bytes`);
+    if (!record(value))
+        throw new LearningProtocolError([...issues, 'visual must be an object']);
+    onlyKeys(value, ['protocol', 'kind', 'title', 'description', 'parameters', 'xAxis', 'yAxis', 'series', 'metrics'], 'visual', issues);
+    if (value.protocol !== VISUAL_PROTOCOL_V3)
+        issues.push(`visual.protocol must be ${VISUAL_PROTOCOL_V3}`);
+    if (value.kind !== 'parameter_chart')
+        issues.push('visual.kind must be parameter_chart');
+    text(value.title, 'visual.title', issues, 200);
+    if (value.description !== undefined)
+        text(value.description, 'visual.description', issues, 1_000);
+    const parameters = validateVisualParametersV3(value.parameters, issues);
+    const parameterIds = new Set(parameters.flatMap(parameter => typeof parameter.id === 'string' ? [parameter.id] : []));
+    validateVisualAxisV3(value.xAxis, 'visual.xAxis', issues, true);
+    validateVisualAxisV3(value.yAxis, 'visual.yAxis', issues, false);
+    if (!Array.isArray(value.series) || value.series.length < 1 || value.series.length > 8) {
+        issues.push('visual.series must contain 1 to 8 series');
+    }
+    else {
+        const series = value.series.filter(record);
+        if (series.length !== value.series.length)
+            issues.push('visual.series entries must be objects');
+        uniqueIds(series, 'visual.series', issues);
+        let curveCount = 0;
+        for (const [index, item] of series.entries()) {
+            const path = `visual.series[${String(index)}]`;
+            id(item.id, `${path}.id`, issues);
+            text(item.label, `${path}.label`, issues, 160);
+            if (item.tone !== undefined && !VISUAL_TONES_V3.has(item.tone)) {
+                issues.push(`${path}.tone is unknown`);
+            }
+            if (item.type === 'curve') {
+                curveCount += 1;
+                onlyKeys(item, ['type', 'id', 'label', 'expression', 'tone', 'stroke'], path, issues);
+                if (item.stroke !== undefined && !VISUAL_STROKES_V3.has(item.stroke)) {
+                    issues.push(`${path}.stroke is unknown`);
+                }
+                validateMath(item.expression, parameterIds, `${path}.expression`, issues, true, MAX_VISUAL_MATH_DEPTH);
+            }
+            else if (item.type === 'points') {
+                onlyKeys(item, ['type', 'id', 'label', 'points', 'tone'], path, issues);
+                if (!Array.isArray(item.points) || item.points.length < 1 || item.points.length > 128) {
+                    issues.push(`${path}.points must contain 1 to 128 points`);
+                    continue;
+                }
+                for (const [pointIndex, point] of item.points.entries()) {
+                    const pointPath = `${path}.points[${String(pointIndex)}]`;
+                    if (!record(point)) {
+                        issues.push(`${pointPath} must be an object`);
+                        continue;
+                    }
+                    onlyKeys(point, ['x', 'y', 'label'], pointPath, issues);
+                    finite(point.x, `${pointPath}.x`, issues);
+                    finite(point.y, `${pointPath}.y`, issues);
+                    if (point.label !== undefined)
+                        text(point.label, `${pointPath}.label`, issues, 160);
+                }
+            }
+            else {
+                issues.push(`${path}.type must be curve or points`);
+            }
+        }
+        if (curveCount === 0)
+            issues.push('visual.series must contain at least one curve');
+    }
+    if (value.metrics !== undefined) {
+        if (!Array.isArray(value.metrics) || value.metrics.length > 4) {
+            issues.push('visual.metrics must contain at most 4 metrics');
+        }
+        else {
+            const metrics = value.metrics.filter(record);
+            if (metrics.length !== value.metrics.length)
+                issues.push('visual.metrics entries must be objects');
+            uniqueIds(metrics, 'visual.metrics', issues);
+            for (const [index, metric] of metrics.entries()) {
+                const path = `visual.metrics[${String(index)}]`;
+                onlyKeys(metric, ['id', 'label', 'expression', 'digits', 'suffix'], path, issues);
+                id(metric.id, `${path}.id`, issues);
+                text(metric.label, `${path}.label`, issues, 160);
+                validateMath(metric.expression, parameterIds, `${path}.expression`, issues, false, MAX_VISUAL_MATH_DEPTH);
+                if (metric.digits !== undefined
+                    && (!integer(metric.digits, `${path}.digits`, issues) || metric.digits > 6)) {
+                    issues.push(`${path}.digits must be an integer from 0 to 6`);
+                }
+                if (metric.suffix !== undefined)
+                    text(metric.suffix, `${path}.suffix`, issues, 80);
+            }
+        }
+    }
+    if (issues.length > 0)
+        throw new LearningProtocolError(issues);
+    return value;
+}
+function validateVisualToneV4(value, path, issues) {
+    if (value !== undefined && !VISUAL_TONES_V3.has(value)) {
+        issues.push(`${path} is unknown`);
+    }
+}
+function validateVisualStrokeV4(value, path, issues) {
+    if (value !== undefined && !VISUAL_STROKES_V3.has(value)) {
+        issues.push(`${path} is unknown`);
+    }
+}
+function registerVisualIdV4(ids, value, path, issues) {
+    if (typeof value !== 'string')
+        return;
+    if (ids.has(value))
+        issues.push(`${path} duplicates visual id ${value}`);
+    else
+        ids.add(value);
+}
+function validateVisualParametersV4(value, issues) {
+    const path = 'visual.content.parameters';
+    if (value === undefined)
+        return [];
+    if (!Array.isArray(value) || value.length > 3) {
+        issues.push(`${path} must contain at most 3 parameters`);
+        return [];
+    }
+    const parameters = value.filter(record);
+    if (parameters.length !== value.length)
+        issues.push(`${path} entries must be objects`);
+    uniqueIds(parameters, path, issues);
+    for (const [index, parameter] of parameters.entries()) {
+        const itemPath = `${path}[${String(index)}]`;
+        onlyKeys(parameter, ['id', 'label', 'min', 'max', 'step', 'initial'], itemPath, issues);
+        id(parameter.id, `${itemPath}.id`, issues);
+        if (parameter.id === 'x')
+            issues.push(`${itemPath}.id must not use the reserved x-axis variable`);
+        text(parameter.label, `${itemPath}.label`, issues, 120);
+        const minOk = finite(parameter.min, `${itemPath}.min`, issues);
+        const maxOk = finite(parameter.max, `${itemPath}.max`, issues);
+        const stepOk = finite(parameter.step, `${itemPath}.step`, issues);
+        const initialOk = finite(parameter.initial, `${itemPath}.initial`, issues);
+        if (minOk && maxOk && parameter.min >= parameter.max) {
+            issues.push(`${itemPath}.min must be less than max`);
+        }
+        if (stepOk && parameter.step <= 0)
+            issues.push(`${itemPath}.step must be positive`);
+        if (minOk && maxOk && stepOk && parameter.step > parameter.max - parameter.min) {
+            issues.push(`${itemPath}.step must not exceed the parameter range`);
+        }
+        if (minOk && maxOk && initialOk
+            && (parameter.initial < parameter.min
+                || parameter.initial > parameter.max)) {
+            issues.push(`${itemPath}.initial must be inside the parameter range`);
+        }
+    }
+    return parameters;
+}
+function validateVisualPointsV4(value, path, issues, maximum = 256) {
+    if (!Array.isArray(value) || value.length < 1 || value.length > maximum) {
+        issues.push(`${path} must contain 1 to ${String(maximum)} points`);
+        return;
+    }
+    for (const [index, point] of value.entries()) {
+        const pointPath = `${path}[${String(index)}]`;
+        if (!record(point)) {
+            issues.push(`${pointPath} must be an object`);
+            continue;
+        }
+        onlyKeys(point, ['x', 'y', 'label'], pointPath, issues);
+        finite(point.x, `${pointPath}.x`, issues);
+        finite(point.y, `${pointPath}.y`, issues);
+        if (point.label !== undefined)
+            text(point.label, `${pointPath}.label`, issues, 160);
+    }
+}
+function validateVisualMetricsV4(value, parameterIds, issues) {
+    if (value === undefined)
+        return [];
+    if (!Array.isArray(value) || value.length > 4) {
+        issues.push('visual.content.metrics must contain at most 4 metrics');
+        return [];
+    }
+    const metrics = value.filter(record);
+    if (metrics.length !== value.length)
+        issues.push('visual.content.metrics entries must be objects');
+    uniqueIds(metrics, 'visual.content.metrics', issues);
+    for (const [index, metric] of metrics.entries()) {
+        const path = `visual.content.metrics[${String(index)}]`;
+        onlyKeys(metric, ['id', 'label', 'expression', 'digits', 'suffix'], path, issues);
+        id(metric.id, `${path}.id`, issues);
+        text(metric.label, `${path}.label`, issues, 160);
+        validateMath(metric.expression, parameterIds, `${path}.expression`, issues, false, MAX_VISUAL_MATH_DEPTH);
+        if (metric.digits !== undefined
+            && (!integer(metric.digits, `${path}.digits`, issues) || metric.digits > 6)) {
+            issues.push(`${path}.digits must be an integer from 0 to 6`);
+        }
+        if (metric.suffix !== undefined)
+            text(metric.suffix, `${path}.suffix`, issues, 80);
+    }
+    return metrics;
+}
+function validatePlotV4(value, issues) {
+    const ids = new Set();
+    onlyKeys(value, ['kind', 'parameters', 'xAxis', 'yAxis', 'series', 'metrics'], 'visual.content', issues);
+    const parameters = validateVisualParametersV4(value.parameters, issues);
+    const parameterIds = new Set(parameters.flatMap(parameter => typeof parameter.id === 'string' ? [parameter.id] : []));
+    for (const parameterId of parameterIds)
+        registerVisualIdV4(ids, parameterId, 'visual.content.parameters', issues);
+    validateVisualAxisV3(value.xAxis, 'visual.content.xAxis', issues, true);
+    validateVisualAxisV3(value.yAxis, 'visual.content.yAxis', issues, false);
+    if (!Array.isArray(value.series) || value.series.length < 1 || value.series.length > 8) {
+        issues.push('visual.content.series must contain 1 to 8 series');
+    }
+    else {
+        const series = value.series.filter(record);
+        if (series.length !== value.series.length)
+            issues.push('visual.content.series entries must be objects');
+        uniqueIds(series, 'visual.content.series', issues);
+        for (const [index, item] of series.entries()) {
+            const path = `visual.content.series[${String(index)}]`;
+            if (id(item.id, `${path}.id`, issues))
+                registerVisualIdV4(ids, item.id, `${path}.id`, issues);
+            text(item.label, `${path}.label`, issues, 160);
+            validateVisualToneV4(item.tone, `${path}.tone`, issues);
+            if (item.type === 'curve') {
+                onlyKeys(item, ['type', 'id', 'label', 'expression', 'tone', 'stroke'], path, issues);
+                validateVisualStrokeV4(item.stroke, `${path}.stroke`, issues);
+                validateMath(item.expression, parameterIds, `${path}.expression`, issues, true, MAX_VISUAL_MATH_DEPTH);
+            }
+            else if (item.type === 'points' || item.type === 'bars') {
+                onlyKeys(item, ['type', 'id', 'label', 'points', 'tone'], path, issues);
+                validateVisualPointsV4(item.points, `${path}.points`, issues, item.type === 'bars' ? 64 : 256);
+            }
+            else if (item.type === 'line') {
+                onlyKeys(item, ['type', 'id', 'label', 'points', 'tone', 'stroke'], path, issues);
+                validateVisualStrokeV4(item.stroke, `${path}.stroke`, issues);
+                validateVisualPointsV4(item.points, `${path}.points`, issues);
+            }
+            else {
+                issues.push(`${path}.type must be curve, points, line, or bars`);
+            }
+        }
+    }
+    const metrics = validateVisualMetricsV4(value.metrics, parameterIds, issues);
+    for (const [index, metric] of metrics.entries()) {
+        if (typeof metric.id === 'string')
+            registerVisualIdV4(ids, metric.id, `visual.content.metrics[${String(index)}].id`, issues);
+    }
+    return ids;
+}
+function validateNodeLinkV4(value, issues) {
+    const focusIds = new Set();
+    onlyKeys(value, ['kind', 'layout', 'groups', 'nodes', 'edges'], 'visual.content', issues);
+    if (!['layered', 'hierarchy', 'radial'].includes(value.layout)) {
+        issues.push('visual.content.layout must be layered, hierarchy, or radial');
+    }
+    let groups = [];
+    if (value.groups !== undefined) {
+        if (!Array.isArray(value.groups) || value.groups.length < 1 || value.groups.length > 12) {
+            issues.push('visual.content.groups must contain 1 to 12 groups');
+        }
+        else {
+            groups = value.groups.filter(record);
+            if (groups.length !== value.groups.length)
+                issues.push('visual.content.groups entries must be objects');
+            uniqueIds(groups, 'visual.content.groups', issues);
+            for (const [index, group] of groups.entries()) {
+                const path = `visual.content.groups[${String(index)}]`;
+                onlyKeys(group, ['id', 'label'], path, issues);
+                if (id(group.id, `${path}.id`, issues))
+                    registerVisualIdV4(focusIds, group.id, `${path}.id`, issues);
+                text(group.label, `${path}.label`, issues, 120);
+            }
+        }
+    }
+    const groupIds = new Set(groups.flatMap(group => typeof group.id === 'string' ? [group.id] : []));
+    let nodes = [];
+    if (!Array.isArray(value.nodes) || value.nodes.length < 2 || value.nodes.length > 48) {
+        issues.push('visual.content.nodes must contain 2 to 48 nodes');
+    }
+    else {
+        nodes = value.nodes.filter(record);
+        if (nodes.length !== value.nodes.length)
+            issues.push('visual.content.nodes entries must be objects');
+        uniqueIds(nodes, 'visual.content.nodes', issues);
+        for (const [index, node] of nodes.entries()) {
+            const path = `visual.content.nodes[${String(index)}]`;
+            onlyKeys(node, ['id', 'label', 'detail', 'group', 'tone'], path, issues);
+            if (id(node.id, `${path}.id`, issues))
+                registerVisualIdV4(focusIds, node.id, `${path}.id`, issues);
+            text(node.label, `${path}.label`, issues, 120);
+            if (node.detail !== undefined)
+                text(node.detail, `${path}.detail`, issues, 1_000);
+            if (node.group !== undefined && (typeof node.group !== 'string' || !groupIds.has(node.group))) {
+                issues.push(`${path}.group must reference a declared group`);
+            }
+            validateVisualToneV4(node.tone, `${path}.tone`, issues);
+        }
+    }
+    if (value.layout === 'layered' && (groups.length === 0 || nodes.some(node => typeof node.group !== 'string'))) {
+        issues.push('visual.content layered layouts require groups and a group on every node');
+    }
+    const nodeIds = new Set(nodes.flatMap(node => typeof node.id === 'string' ? [node.id] : []));
+    if (!Array.isArray(value.edges) || value.edges.length < 1 || value.edges.length > 160) {
+        issues.push('visual.content.edges must contain 1 to 160 edges');
+    }
+    else {
+        const edges = value.edges.filter(record);
+        if (edges.length !== value.edges.length)
+            issues.push('visual.content.edges entries must be objects');
+        uniqueIds(edges, 'visual.content.edges', issues);
+        for (const [index, edge] of edges.entries()) {
+            const path = `visual.content.edges[${String(index)}]`;
+            onlyKeys(edge, ['id', 'from', 'to', 'label', 'detail', 'tone', 'stroke', 'directed'], path, issues);
+            if (id(edge.id, `${path}.id`, issues))
+                registerVisualIdV4(focusIds, edge.id, `${path}.id`, issues);
+            if (typeof edge.from !== 'string' || !nodeIds.has(edge.from))
+                issues.push(`${path}.from must reference a declared node`);
+            if (typeof edge.to !== 'string' || !nodeIds.has(edge.to))
+                issues.push(`${path}.to must reference a declared node`);
+            if (edge.label !== undefined)
+                text(edge.label, `${path}.label`, issues, 120);
+            if (edge.detail !== undefined)
+                text(edge.detail, `${path}.detail`, issues, 1_000);
+            validateVisualToneV4(edge.tone, `${path}.tone`, issues);
+            validateVisualStrokeV4(edge.stroke, `${path}.stroke`, issues);
+            if (edge.directed !== undefined && typeof edge.directed !== 'boolean')
+                issues.push(`${path}.directed must be a boolean`);
+        }
+    }
+    return focusIds;
+}
+function validateSceneElementBaseV4(element, path, allowed, issues) {
+    onlyKeys(element, ['type', 'id', 'label', 'detail', 'tone', ...allowed], path, issues);
+    id(element.id, `${path}.id`, issues);
+    if (element.label !== undefined)
+        text(element.label, `${path}.label`, issues, 120);
+    if (element.detail !== undefined)
+        text(element.detail, `${path}.detail`, issues, 1_000);
+    validateVisualToneV4(element.tone, `${path}.tone`, issues);
+}
+function validateScene2DV4(value, issues) {
+    const focusIds = new Set();
+    onlyKeys(value, ['kind', 'xAxis', 'yAxis', 'grid', 'elements'], 'visual.content', issues);
+    validateVisualAxisV3(value.xAxis, 'visual.content.xAxis', issues, false);
+    validateVisualAxisV3(value.yAxis, 'visual.content.yAxis', issues, false);
+    if (value.grid !== undefined && typeof value.grid !== 'boolean') {
+        issues.push('visual.content.grid must be a boolean');
+    }
+    if (!Array.isArray(value.elements) || value.elements.length < 1 || value.elements.length > 64) {
+        issues.push('visual.content.elements must contain 1 to 64 elements');
+        return focusIds;
+    }
+    const elements = value.elements.filter(record);
+    if (elements.length !== value.elements.length)
+        issues.push('visual.content.elements entries must be objects');
+    uniqueIds(elements, 'visual.content.elements', issues);
+    for (const [index, element] of elements.entries()) {
+        const path = `visual.content.elements[${String(index)}]`;
+        registerVisualIdV4(focusIds, element.id, `${path}.id`, issues);
+        if (element.type === 'point') {
+            validateSceneElementBaseV4(element, path, ['x', 'y', 'size'], issues);
+            finite(element.x, `${path}.x`, issues);
+            finite(element.y, `${path}.y`, issues);
+            if (element.size !== undefined
+                && (finite(element.size, `${path}.size`, issues) && (element.size <= 0 || element.size > 64))) {
+                issues.push(`${path}.size must be greater than 0 and at most 64`);
+            }
+        }
+        else if (element.type === 'segment' || element.type === 'arrow') {
+            validateSceneElementBaseV4(element, path, ['x1', 'y1', 'x2', 'y2', 'stroke'], issues);
+            finite(element.x1, `${path}.x1`, issues);
+            finite(element.y1, `${path}.y1`, issues);
+            finite(element.x2, `${path}.x2`, issues);
+            finite(element.y2, `${path}.y2`, issues);
+            validateVisualStrokeV4(element.stroke, `${path}.stroke`, issues);
+        }
+        else if (element.type === 'circle') {
+            validateSceneElementBaseV4(element, path, ['cx', 'cy', 'r'], issues);
+            finite(element.cx, `${path}.cx`, issues);
+            finite(element.cy, `${path}.cy`, issues);
+            if (finite(element.r, `${path}.r`, issues) && element.r <= 0)
+                issues.push(`${path}.r must be positive`);
+        }
+        else if (element.type === 'rect') {
+            validateSceneElementBaseV4(element, path, ['x', 'y', 'width', 'height'], issues);
+            finite(element.x, `${path}.x`, issues);
+            finite(element.y, `${path}.y`, issues);
+            if (finite(element.width, `${path}.width`, issues) && element.width <= 0)
+                issues.push(`${path}.width must be positive`);
+            if (finite(element.height, `${path}.height`, issues) && element.height <= 0)
+                issues.push(`${path}.height must be positive`);
+        }
+        else if (element.type === 'polygon') {
+            validateSceneElementBaseV4(element, path, ['points'], issues);
+            if (!Array.isArray(element.points) || element.points.length < 3 || element.points.length > 24) {
+                issues.push(`${path}.points must contain 3 to 24 points`);
+            }
+            else {
+                for (const [pointIndex, point] of element.points.entries()) {
+                    const pointPath = `${path}.points[${String(pointIndex)}]`;
+                    if (!record(point)) {
+                        issues.push(`${pointPath} must be an object`);
+                        continue;
+                    }
+                    onlyKeys(point, ['x', 'y'], pointPath, issues);
+                    finite(point.x, `${pointPath}.x`, issues);
+                    finite(point.y, `${pointPath}.y`, issues);
+                }
+            }
+        }
+        else if (element.type === 'label') {
+            validateSceneElementBaseV4(element, path, ['x', 'y', 'text'], issues);
+            finite(element.x, `${path}.x`, issues);
+            finite(element.y, `${path}.y`, issues);
+            text(element.text, `${path}.text`, issues, 240);
+        }
+        else {
+            issues.push(`${path}.type must be point, segment, arrow, circle, rect, polygon, or label`);
+        }
+    }
+    return focusIds;
+}
+function validateRelationSubjectsV4(value, path, issues) {
+    if (!Array.isArray(value) || value.length < 2 || value.length > 4) {
+        issues.push(`${path} must contain 2 to 4 subjects`);
+        return [];
+    }
+    const subjects = value.filter(record);
+    if (subjects.length !== value.length)
+        issues.push(`${path} entries must be objects`);
+    uniqueIds(subjects, path, issues);
+    for (const [index, subject] of subjects.entries()) {
+        const itemPath = `${path}[${String(index)}]`;
+        onlyKeys(subject, ['id', 'label', 'detail', 'tone'], itemPath, issues);
+        id(subject.id, `${itemPath}.id`, issues);
+        text(subject.label, `${itemPath}.label`, issues, 120);
+        if (subject.detail !== undefined)
+            text(subject.detail, `${itemPath}.detail`, issues, 1_000);
+        validateVisualToneV4(subject.tone, `${itemPath}.tone`, issues);
+    }
+    return subjects;
+}
+function validateRelationAxisV4(value, path, issues) {
+    if (!Array.isArray(value) || value.length < 1 || value.length > 10) {
+        issues.push(`${path} must contain 1 to 10 items`);
+        return [];
+    }
+    const items = value.filter(record);
+    if (items.length !== value.length)
+        issues.push(`${path} entries must be objects`);
+    uniqueIds(items, path, issues);
+    for (const [index, item] of items.entries()) {
+        const itemPath = `${path}[${String(index)}]`;
+        onlyKeys(item, ['id', 'label'], itemPath, issues);
+        id(item.id, `${itemPath}.id`, issues);
+        text(item.label, `${itemPath}.label`, issues, 120);
+    }
+    return items;
+}
+function validateRelationV4(value, issues) {
+    const focusIds = new Set();
+    if (value.variant === 'comparison') {
+        onlyKeys(value, ['kind', 'variant', 'subjects', 'rows'], 'visual.content', issues);
+        const subjects = validateRelationSubjectsV4(value.subjects, 'visual.content.subjects', issues);
+        const subjectIds = new Set(subjects.flatMap(subject => typeof subject.id === 'string' ? [subject.id] : []));
+        for (const subjectId of subjectIds)
+            registerVisualIdV4(focusIds, subjectId, 'visual.content.subjects', issues);
+        if (!Array.isArray(value.rows) || value.rows.length < 1 || value.rows.length > 16) {
+            issues.push('visual.content.rows must contain 1 to 16 comparison rows');
+            return focusIds;
+        }
+        const rows = value.rows.filter(record);
+        if (rows.length !== value.rows.length)
+            issues.push('visual.content.rows entries must be objects');
+        uniqueIds(rows, 'visual.content.rows', issues);
+        for (const [index, row] of rows.entries()) {
+            const path = `visual.content.rows[${String(index)}]`;
+            onlyKeys(row, ['id', 'label', 'cells', 'detail'], path, issues);
+            if (id(row.id, `${path}.id`, issues))
+                registerVisualIdV4(focusIds, row.id, `${path}.id`, issues);
+            text(row.label, `${path}.label`, issues, 120);
+            if (row.detail !== undefined)
+                text(row.detail, `${path}.detail`, issues, 1_000);
+            if (!Array.isArray(row.cells) || row.cells.length < 1 || row.cells.length > 4) {
+                issues.push(`${path}.cells must contain 1 to 4 cells`);
+                continue;
+            }
+            const seenSubjects = new Set();
+            for (const [cellIndex, cell] of row.cells.entries()) {
+                const cellPath = `${path}.cells[${String(cellIndex)}]`;
+                if (!record(cell)) {
+                    issues.push(`${cellPath} must be an object`);
+                    continue;
+                }
+                onlyKeys(cell, ['subjectId', 'value', 'tone'], cellPath, issues);
+                if (typeof cell.subjectId !== 'string' || !subjectIds.has(cell.subjectId)) {
+                    issues.push(`${cellPath}.subjectId must reference a declared subject`);
+                }
+                else if (seenSubjects.has(cell.subjectId)) {
+                    issues.push(`${cellPath}.subjectId duplicates ${cell.subjectId}`);
+                }
+                else
+                    seenSubjects.add(cell.subjectId);
+                text(cell.value, `${cellPath}.value`, issues, 500);
+                validateVisualToneV4(cell.tone, `${cellPath}.tone`, issues);
+            }
+        }
+    }
+    else if (value.variant === 'matrix') {
+        onlyKeys(value, ['kind', 'variant', 'rows', 'columns', 'cells'], 'visual.content', issues);
+        const rows = validateRelationAxisV4(value.rows, 'visual.content.rows', issues);
+        const columns = validateRelationAxisV4(value.columns, 'visual.content.columns', issues);
+        const rowIds = new Set(rows.flatMap(row => typeof row.id === 'string' ? [row.id] : []));
+        const columnIds = new Set(columns.flatMap(column => typeof column.id === 'string' ? [column.id] : []));
+        for (const rowId of rowIds)
+            registerVisualIdV4(focusIds, rowId, 'visual.content.rows', issues);
+        for (const columnId of columnIds)
+            registerVisualIdV4(focusIds, columnId, 'visual.content.columns', issues);
+        if (!Array.isArray(value.cells) || value.cells.length < 1 || value.cells.length > 64) {
+            issues.push('visual.content.cells must contain 1 to 64 matrix cells');
+            return focusIds;
+        }
+        const cells = value.cells.filter(record);
+        if (cells.length !== value.cells.length)
+            issues.push('visual.content.cells entries must be objects');
+        uniqueIds(cells, 'visual.content.cells', issues);
+        const coordinates = new Set();
+        for (const [index, cell] of cells.entries()) {
+            const path = `visual.content.cells[${String(index)}]`;
+            onlyKeys(cell, ['id', 'rowId', 'columnId', 'label', 'detail', 'tone'], path, issues);
+            if (id(cell.id, `${path}.id`, issues))
+                registerVisualIdV4(focusIds, cell.id, `${path}.id`, issues);
+            if (typeof cell.rowId !== 'string' || !rowIds.has(cell.rowId))
+                issues.push(`${path}.rowId must reference a declared row`);
+            if (typeof cell.columnId !== 'string' || !columnIds.has(cell.columnId))
+                issues.push(`${path}.columnId must reference a declared column`);
+            if (typeof cell.rowId === 'string' && typeof cell.columnId === 'string') {
+                const coordinate = `${cell.rowId}\u0000${cell.columnId}`;
+                if (coordinates.has(coordinate))
+                    issues.push(`${path} duplicates a matrix coordinate`);
+                coordinates.add(coordinate);
+            }
+            text(cell.label, `${path}.label`, issues, 240);
+            if (cell.detail !== undefined)
+                text(cell.detail, `${path}.detail`, issues, 1_000);
+            validateVisualToneV4(cell.tone, `${path}.tone`, issues);
+        }
+    }
+    else if (value.variant === 'sets') {
+        onlyKeys(value, ['kind', 'variant', 'sets', 'items'], 'visual.content', issues);
+        const sets = validateRelationSubjectsV4(value.sets, 'visual.content.sets', issues);
+        if (sets.length > 3)
+            issues.push('visual.content.sets must contain at most 3 sets');
+        const setIds = new Set(sets.flatMap(item => typeof item.id === 'string' ? [item.id] : []));
+        for (const setId of setIds)
+            registerVisualIdV4(focusIds, setId, 'visual.content.sets', issues);
+        if (!Array.isArray(value.items) || value.items.length < 1 || value.items.length > 24) {
+            issues.push('visual.content.items must contain 1 to 24 set items');
+            return focusIds;
+        }
+        const items = value.items.filter(record);
+        if (items.length !== value.items.length)
+            issues.push('visual.content.items entries must be objects');
+        uniqueIds(items, 'visual.content.items', issues);
+        for (const [index, item] of items.entries()) {
+            const path = `visual.content.items[${String(index)}]`;
+            onlyKeys(item, ['id', 'label', 'setIds', 'detail'], path, issues);
+            if (id(item.id, `${path}.id`, issues))
+                registerVisualIdV4(focusIds, item.id, `${path}.id`, issues);
+            text(item.label, `${path}.label`, issues, 120);
+            if (item.detail !== undefined)
+                text(item.detail, `${path}.detail`, issues, 1_000);
+            if (!Array.isArray(item.setIds) || item.setIds.length < 1 || item.setIds.length > 3) {
+                issues.push(`${path}.setIds must contain 1 to 3 set ids`);
+            }
+            else {
+                const memberships = new Set();
+                for (const setId of item.setIds) {
+                    if (typeof setId !== 'string' || !setIds.has(setId))
+                        issues.push(`${path}.setIds must reference declared sets`);
+                    else if (memberships.has(setId))
+                        issues.push(`${path}.setIds duplicates ${setId}`);
+                    else
+                        memberships.add(setId);
+                }
+            }
+        }
+    }
+    else {
+        issues.push('visual.content.variant must be comparison, matrix, or sets');
+    }
+    return focusIds;
+}
+function validateTimelineV4(value, issues) {
+    const focusIds = new Set();
+    onlyKeys(value, ['kind', 'orientation', 'events', 'eras'], 'visual.content', issues);
+    if (value.orientation !== undefined && value.orientation !== 'horizontal' && value.orientation !== 'vertical') {
+        issues.push('visual.content.orientation must be horizontal or vertical');
+    }
+    let events = [];
+    if (!Array.isArray(value.events) || value.events.length < 2 || value.events.length > 32) {
+        issues.push('visual.content.events must contain 2 to 32 events');
+    }
+    else {
+        events = value.events.filter(record);
+        if (events.length !== value.events.length)
+            issues.push('visual.content.events entries must be objects');
+        uniqueIds(events, 'visual.content.events', issues);
+        const hasPositions = events.filter(event => event.position !== undefined).length;
+        if (hasPositions !== 0 && hasPositions !== events.length) {
+            issues.push('visual.content.events.position must be provided for every event or omitted for every event');
+        }
+        let previousPosition = -1;
+        for (const [index, event] of events.entries()) {
+            const path = `visual.content.events[${String(index)}]`;
+            onlyKeys(event, ['id', 'time', 'label', 'detail', 'position', 'tone'], path, issues);
+            if (id(event.id, `${path}.id`, issues))
+                registerVisualIdV4(focusIds, event.id, `${path}.id`, issues);
+            text(event.time, `${path}.time`, issues, 80);
+            text(event.label, `${path}.label`, issues, 160);
+            if (event.detail !== undefined)
+                text(event.detail, `${path}.detail`, issues, 1_500);
+            if (event.position !== undefined && finite(event.position, `${path}.position`, issues)) {
+                const position = event.position;
+                if (position < 0 || position > 1)
+                    issues.push(`${path}.position must be from 0 to 1`);
+                if (position <= previousPosition)
+                    issues.push(`${path}.position must be greater than the preceding event position`);
+                previousPosition = position;
+            }
+            validateVisualToneV4(event.tone, `${path}.tone`, issues);
+        }
+    }
+    const eventIds = new Set(events.flatMap(event => typeof event.id === 'string' ? [event.id] : []));
+    const eventIndexes = new Map(events.flatMap((event, index) => typeof event.id === 'string' ? [[event.id, index]] : []));
+    if (value.eras !== undefined) {
+        if (!Array.isArray(value.eras) || value.eras.length < 1 || value.eras.length > 8) {
+            issues.push('visual.content.eras must contain 1 to 8 eras');
+        }
+        else {
+            const eras = value.eras.filter(record);
+            if (eras.length !== value.eras.length)
+                issues.push('visual.content.eras entries must be objects');
+            uniqueIds(eras, 'visual.content.eras', issues);
+            for (const [index, era] of eras.entries()) {
+                const path = `visual.content.eras[${String(index)}]`;
+                onlyKeys(era, ['id', 'label', 'startEventId', 'endEventId', 'detail', 'tone'], path, issues);
+                if (id(era.id, `${path}.id`, issues))
+                    registerVisualIdV4(focusIds, era.id, `${path}.id`, issues);
+                text(era.label, `${path}.label`, issues, 120);
+                if (typeof era.startEventId !== 'string' || !eventIds.has(era.startEventId)) {
+                    issues.push(`${path}.startEventId must reference a declared event`);
+                }
+                if (typeof era.endEventId !== 'string' || !eventIds.has(era.endEventId)) {
+                    issues.push(`${path}.endEventId must reference a declared event`);
+                }
+                if (typeof era.startEventId === 'string' && typeof era.endEventId === 'string') {
+                    const startIndex = eventIndexes.get(era.startEventId);
+                    const endIndex = eventIndexes.get(era.endEventId);
+                    if (startIndex !== undefined && endIndex !== undefined && startIndex > endIndex) {
+                        issues.push(`${path}.startEventId must not occur after endEventId`);
+                    }
+                }
+                if (era.detail !== undefined)
+                    text(era.detail, `${path}.detail`, issues, 1_000);
+                validateVisualToneV4(era.tone, `${path}.tone`, issues);
+            }
+        }
+    }
+    return focusIds;
+}
+function validateFormulaStepsV4(value, issues) {
+    const focusIds = new Set();
+    onlyKeys(value, ['kind', 'notation', 'steps', 'conclusion'], 'visual.content', issues);
+    if (value.notation !== undefined)
+        text(value.notation, 'visual.content.notation', issues, 300);
+    if (value.conclusion !== undefined)
+        text(value.conclusion, 'visual.content.conclusion', issues, 1_000);
+    if (!Array.isArray(value.steps) || value.steps.length < 2 || value.steps.length > 16) {
+        issues.push('visual.content.steps must contain 2 to 16 formula steps');
+        return focusIds;
+    }
+    const steps = value.steps.filter(record);
+    if (steps.length !== value.steps.length)
+        issues.push('visual.content.steps entries must be objects');
+    uniqueIds(steps, 'visual.content.steps', issues);
+    for (const [index, step] of steps.entries()) {
+        const path = `visual.content.steps[${String(index)}]`;
+        onlyKeys(step, ['id', 'expression', 'label', 'rule', 'detail', 'tone'], path, issues);
+        if (id(step.id, `${path}.id`, issues))
+            registerVisualIdV4(focusIds, step.id, `${path}.id`, issues);
+        text(step.expression, `${path}.expression`, issues, 500);
+        if (step.label !== undefined)
+            text(step.label, `${path}.label`, issues, 120);
+        if (step.rule !== undefined)
+            text(step.rule, `${path}.rule`, issues, 240);
+        if (step.detail !== undefined)
+            text(step.detail, `${path}.detail`, issues, 1_500);
+        validateVisualToneV4(step.tone, `${path}.tone`, issues);
+    }
+    return focusIds;
+}
+function validateStudyMapV4(value, issues) {
+    const focusIds = new Set();
+    onlyKeys(value, ['kind', 'sourceLabel', 'goal', 'sections', 'concepts'], 'visual.content', issues);
+    text(value.sourceLabel, 'visual.content.sourceLabel', issues, 240);
+    if (value.goal !== undefined)
+        text(value.goal, 'visual.content.goal', issues, 600);
+    let sections = [];
+    if (!Array.isArray(value.sections) || value.sections.length < 1 || value.sections.length > 16) {
+        issues.push('visual.content.sections must contain 1 to 16 sections');
+    }
+    else {
+        sections = value.sections.filter(record);
+        if (sections.length !== value.sections.length)
+            issues.push('visual.content.sections entries must be objects');
+        uniqueIds(sections, 'visual.content.sections', issues);
+        for (const [index, section] of sections.entries()) {
+            const path = `visual.content.sections[${String(index)}]`;
+            onlyKeys(section, ['id', 'label', 'anchor', 'summary'], path, issues);
+            if (id(section.id, `${path}.id`, issues))
+                registerVisualIdV4(focusIds, section.id, `${path}.id`, issues);
+            text(section.label, `${path}.label`, issues, 160);
+            if (section.anchor !== undefined)
+                text(section.anchor, `${path}.anchor`, issues, 160);
+            if (section.summary !== undefined)
+                text(section.summary, `${path}.summary`, issues, 1_000);
+        }
+    }
+    const sectionIds = new Set(sections.flatMap(section => typeof section.id === 'string' ? [section.id] : []));
+    let concepts = [];
+    if (!Array.isArray(value.concepts) || value.concepts.length < 1 || value.concepts.length > 48) {
+        issues.push('visual.content.concepts must contain 1 to 48 concepts');
+    }
+    else {
+        concepts = value.concepts.filter(record);
+        if (concepts.length !== value.concepts.length)
+            issues.push('visual.content.concepts entries must be objects');
+        uniqueIds(concepts, 'visual.content.concepts', issues);
+        for (const [index, concept] of concepts.entries()) {
+            const path = `visual.content.concepts[${String(index)}]`;
+            onlyKeys(concept, ['id', 'label', 'sectionId', 'detail', 'prerequisiteIds', 'role', 'tone'], path, issues);
+            if (id(concept.id, `${path}.id`, issues))
+                registerVisualIdV4(focusIds, concept.id, `${path}.id`, issues);
+            text(concept.label, `${path}.label`, issues, 160);
+            if (typeof concept.sectionId !== 'string' || !sectionIds.has(concept.sectionId)) {
+                issues.push(`${path}.sectionId must reference a declared section`);
+            }
+            if (concept.detail !== undefined)
+                text(concept.detail, `${path}.detail`, issues, 1_500);
+            if (concept.role !== undefined && !['foundation', 'core', 'extension', 'practice'].includes(concept.role)) {
+                issues.push(`${path}.role must be foundation, core, extension, or practice`);
+            }
+            validateVisualToneV4(concept.tone, `${path}.tone`, issues);
+        }
+    }
+    const conceptIds = new Set(concepts.flatMap(concept => typeof concept.id === 'string' ? [concept.id] : []));
+    const prerequisiteGraph = new Map();
+    for (const [index, concept] of concepts.entries()) {
+        if (concept.prerequisiteIds === undefined)
+            continue;
+        const path = `visual.content.concepts[${String(index)}].prerequisiteIds`;
+        if (!Array.isArray(concept.prerequisiteIds) || concept.prerequisiteIds.length > 8) {
+            issues.push(`${path} must contain at most 8 concept ids`);
+            continue;
+        }
+        const seen = new Set();
+        for (const prerequisiteId of concept.prerequisiteIds) {
+            if (typeof prerequisiteId !== 'string' || !conceptIds.has(prerequisiteId)) {
+                issues.push(`${path} must reference declared concepts`);
+            }
+            else if (prerequisiteId === concept.id) {
+                issues.push(`${path} must not reference its own concept`);
+            }
+            else if (seen.has(prerequisiteId)) {
+                issues.push(`${path} duplicates ${prerequisiteId}`);
+            }
+            else
+                seen.add(prerequisiteId);
+        }
+        if (typeof concept.id === 'string')
+            prerequisiteGraph.set(concept.id, [...seen]);
+    }
+    const visited = new Set();
+    const visiting = new Set();
+    const visit = (conceptId) => {
+        if (visiting.has(conceptId))
+            return true;
+        if (visited.has(conceptId))
+            return false;
+        visiting.add(conceptId);
+        const cyclic = (prerequisiteGraph.get(conceptId) ?? []).some(visit);
+        visiting.delete(conceptId);
+        visited.add(conceptId);
+        return cyclic;
+    };
+    if ([...conceptIds].some(visit)) {
+        issues.push('visual.content.concepts prerequisiteIds must not contain a cycle');
+    }
+    return focusIds;
+}
+function validateRecallDeckV4(value, issues) {
+    const focusIds = new Set();
+    onlyKeys(value, ['kind', 'instructions', 'cards'], 'visual.content', issues);
+    if (value.instructions !== undefined)
+        text(value.instructions, 'visual.content.instructions', issues, 600);
+    if (!Array.isArray(value.cards) || value.cards.length < 2 || value.cards.length > 32) {
+        issues.push('visual.content.cards must contain 2 to 32 cards');
+        return focusIds;
+    }
+    const cards = value.cards.filter(record);
+    if (cards.length !== value.cards.length)
+        issues.push('visual.content.cards entries must be objects');
+    uniqueIds(cards, 'visual.content.cards', issues);
+    for (const [index, card] of cards.entries()) {
+        const path = `visual.content.cards[${String(index)}]`;
+        onlyKeys(card, ['id', 'prompt', 'answer', 'hint', 'tags'], path, issues);
+        if (id(card.id, `${path}.id`, issues))
+            registerVisualIdV4(focusIds, card.id, `${path}.id`, issues);
+        text(card.prompt, `${path}.prompt`, issues, 1_000);
+        text(card.answer, `${path}.answer`, issues, 2_000);
+        if (card.hint !== undefined)
+            text(card.hint, `${path}.hint`, issues, 800);
+        if (card.tags !== undefined) {
+            if (!Array.isArray(card.tags) || card.tags.length > 6) {
+                issues.push(`${path}.tags must contain at most 6 labels`);
+            }
+            else {
+                const seen = new Set();
+                for (const [tagIndex, tag] of card.tags.entries()) {
+                    const tagPath = `${path}.tags[${String(tagIndex)}]`;
+                    if (text(tag, tagPath, issues, 80) && typeof tag === 'string') {
+                        if (seen.has(tag))
+                            issues.push(`${path}.tags duplicates ${tag}`);
+                        else
+                            seen.add(tag);
+                    }
+                }
+            }
+        }
+    }
+    return focusIds;
+}
+function validateVisualSequenceV4(value, focusIds, issues) {
+    if (value === undefined)
+        return;
+    if (!record(value)) {
+        issues.push('visual.sequence must be an object');
+        return;
+    }
+    onlyKeys(value, ['initialFrameId', 'frames'], 'visual.sequence', issues);
+    if (!Array.isArray(value.frames) || value.frames.length < 2 || value.frames.length > 12) {
+        issues.push('visual.sequence.frames must contain 2 to 12 frames');
+        return;
+    }
+    const frames = value.frames.filter(record);
+    if (frames.length !== value.frames.length)
+        issues.push('visual.sequence.frames entries must be objects');
+    uniqueIds(frames, 'visual.sequence.frames', issues);
+    const frameIds = new Set();
+    for (const [index, frame] of frames.entries()) {
+        const path = `visual.sequence.frames[${String(index)}]`;
+        onlyKeys(frame, ['id', 'label', 'description', 'focusIds'], path, issues);
+        if (id(frame.id, `${path}.id`, issues))
+            frameIds.add(frame.id);
+        text(frame.label, `${path}.label`, issues, 120);
+        if (frame.description !== undefined)
+            text(frame.description, `${path}.description`, issues, 1_000);
+        if (!Array.isArray(frame.focusIds) || frame.focusIds.length > 64) {
+            issues.push(`${path}.focusIds must contain at most 64 ids`);
+            continue;
+        }
+        const seen = new Set();
+        for (const [focusIndex, focusId] of frame.focusIds.entries()) {
+            if (typeof focusId !== 'string' || !focusIds.has(focusId)) {
+                issues.push(`${path}.focusIds[${String(focusIndex)}] must reference visual content`);
+            }
+            else if (seen.has(focusId)) {
+                issues.push(`${path}.focusIds duplicates ${focusId}`);
+            }
+            else
+                seen.add(focusId);
+        }
+    }
+    if (value.initialFrameId !== undefined
+        && (typeof value.initialFrameId !== 'string' || !frameIds.has(value.initialFrameId))) {
+        issues.push('visual.sequence.initialFrameId must reference a declared frame');
+    }
+}
+/** Validate the semantic, model-facing visual protocol while retaining V3 replay separately. */
+export function parseLearningVisualV4(value) {
+    const issues = [];
+    const bytes = jsonBytes(value);
+    if (bytes === undefined)
+        issues.push('visual must be serializable JSON');
+    else if (bytes > MAX_ACTIVITY_BYTES)
+        issues.push(`visual exceeds ${String(MAX_ACTIVITY_BYTES)} bytes`);
+    if (!record(value))
+        throw new LearningProtocolError([...issues, 'visual must be an object']);
+    onlyKeys(value, ['protocol', 'title', 'description', 'content', 'sequence', 'fallbackMarkdown'], 'visual', issues);
+    if (value.protocol !== VISUAL_PROTOCOL_V4)
+        issues.push(`visual.protocol must be ${VISUAL_PROTOCOL_V4}`);
+    text(value.title, 'visual.title', issues, 200);
+    if (value.description !== undefined)
+        text(value.description, 'visual.description', issues, 1_000);
+    if (value.fallbackMarkdown !== undefined)
+        text(value.fallbackMarkdown, 'visual.fallbackMarkdown', issues, 8_000);
+    let focusIds = new Set();
+    if (!record(value.content)) {
+        issues.push('visual.content must be an object');
+    }
+    else if (value.content.kind === 'plot') {
+        focusIds = validatePlotV4(value.content, issues);
+    }
+    else if (value.content.kind === 'node_link') {
+        focusIds = validateNodeLinkV4(value.content, issues);
+    }
+    else if (value.content.kind === 'scene_2d') {
+        focusIds = validateScene2DV4(value.content, issues);
+    }
+    else if (value.content.kind === 'relation') {
+        focusIds = validateRelationV4(value.content, issues);
+    }
+    else if (value.content.kind === 'timeline') {
+        focusIds = validateTimelineV4(value.content, issues);
+    }
+    else if (value.content.kind === 'formula_steps') {
+        focusIds = validateFormulaStepsV4(value.content, issues);
+    }
+    else if (value.content.kind === 'study_map') {
+        focusIds = validateStudyMapV4(value.content, issues);
+    }
+    else if (value.content.kind === 'recall_deck') {
+        focusIds = validateRecallDeckV4(value.content, issues);
+    }
+    else {
+        issues.push(`visual.content.kind must be one of ${LEARNING_VISUAL_KINDS_V4.join(', ')}`);
+    }
+    validateVisualSequenceV4(value.sequence, focusIds, issues);
+    if (issues.length > 0)
+        throw new LearningProtocolError(issues);
+    return value;
+}
+export function parseLearningVisualResultV4(value) {
+    const issues = [];
+    if (!record(value))
+        throw new LearningProtocolError(['visual result must be an object']);
+    onlyKeys(value, ['protocol', 'status'], 'visualResult', issues);
+    if (value.protocol !== VISUAL_RESULT_PROTOCOL_V4) {
+        issues.push(`visualResult.protocol must be ${VISUAL_RESULT_PROTOCOL_V4}`);
+    }
+    if (value.status !== 'ready')
+        issues.push('visualResult.status must be ready');
+    if (issues.length > 0)
+        throw new LearningProtocolError(issues);
+    return value;
+}
+export function parseLearningVisualResultV3(value) {
+    const issues = [];
+    if (!record(value))
+        throw new LearningProtocolError(['visual result must be an object']);
+    onlyKeys(value, ['protocol', 'status'], 'visualResult', issues);
+    if (value.protocol !== VISUAL_RESULT_PROTOCOL_V3) {
+        issues.push(`visualResult.protocol must be ${VISUAL_RESULT_PROTOCOL_V3}`);
+    }
+    if (value.status !== 'ready')
+        issues.push('visualResult.status must be ready');
     if (issues.length > 0)
         throw new LearningProtocolError(issues);
     return value;

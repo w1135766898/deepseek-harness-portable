@@ -1,8 +1,9 @@
-import type { LearningActivityKind } from './protocol.ts';
+import type { LearningVisualV4 } from './protocol.ts';
+export type TeachingVisualKind = LearningVisualV4['content']['kind'];
 export interface TeachingEvalCase {
     id: string;
     learnerPrompt: string;
-    expectedActivityKind: LearningActivityKind | null;
+    expectedActivityKind: TeachingVisualKind | null;
     requiredContinuationTerms: string[];
     responseEvidence?: string;
     shouldEndSegment?: boolean;
@@ -10,7 +11,7 @@ export interface TeachingEvalCase {
 }
 export interface TeachingEvalCandidate {
     caseId: string;
-    activityKind: LearningActivityKind | null;
+    activityKind: TeachingVisualKind | null;
     continuation: string;
     endedSegment: boolean;
 }

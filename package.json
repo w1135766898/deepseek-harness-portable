@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "preinstall": "node scripts/prepare-upstream-submodule.cjs",
-    "test": "pnpm run packaging:test && pnpm run runtime:test && pnpm run desktop:test && pnpm run desktop:updater:test",
+    "test": "pnpm run packaging:test && pnpm run runtime:test && pnpm run learning:test && pnpm run desktop:test && pnpm run desktop:updater:test",
     "packaging:test": "tsx --test scripts/packaging-cache.test.ts scripts/build/targets.test.ts scripts/build/packaged-smoke.test.ts scripts/build/patch-manifest.test.ts scripts/build/runtime-patches.test.ts scripts/build/artifact-inventory.test.ts scripts/build/artifact-verification.test.ts scripts/build/pipeline.test.ts scripts/build/setup-runtime-preflight.test.ts scripts/release/source-identity.test.ts scripts/release/desktop-verification.test.ts scripts/release/publish-verified.test.ts scripts/release/version-consistency.test.ts scripts/runtime/dependency-closure.test.ts packages/release-manifest/src/index.test.ts && node --test packages/desktop-protocol/src/index.test.cjs",
     "release:version:check": "tsx --test scripts/release/version-consistency.test.ts",
     "readme:check": "node scripts/check-readme-i18n.cjs",
@@ -13,6 +13,7 @@
     "desktop:bootstrap": "git submodule update --init --recursive && pnpm install",
     "desktop:dev": "pnpm --filter dsh-desktop-web-pkg start",
     "runtime:test": "pnpm --filter @dsh-portable/runtime test",
+    "learning:test": "pnpm --filter @dsh-portable/interactive-learning test",
     "runtime:deps:sync": "tsx scripts/runtime/sync-runtime-deps.ts",
     "runtime:deps:check": "tsx scripts/runtime/sync-runtime-deps.ts --check",
     "desktop:test": "pnpm --filter dsh-desktop-web-pkg test",

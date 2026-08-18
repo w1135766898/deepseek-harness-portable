@@ -12,7 +12,13 @@ export { ActivityRendererRegistry, activityRendererRegistry } from './ActivityRe
 export { subscribeLearningUiLifecycle, type LearningUiLifecycleEvent } from './lifecycle.ts'
 
 const NS = 'interactive-learning'
-export const LEARNING_TOOL_VIEW_KEYS = ['learning_activity', 'learning_question', 'learning_reveal'] as const
+export const LEARNING_TOOL_VIEW_KEYS = [
+  'learning_visual',
+  // Replay support for conversations created by the retired blocking protocol.
+  'learning_activity',
+  'learning_question',
+  'learning_reveal',
+] as const
 
 export const name = 'interactive-learning-client'
 export const inject = ['slots', 'locale']

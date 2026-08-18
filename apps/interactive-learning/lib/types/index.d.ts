@@ -1,5 +1,5 @@
 /** Host entry: one non-model-facing Learning Activity broker service. */
 export { LearningActivityBroker, type LearningLifecycleEvent, type PresentLearningActivityRequest, type PresentLearningGateRequest, } from './broker.ts';
 export { LearningActivityBroker as default } from './broker.ts';
-export type { LearningActivityV1, LearningActivityV2, LearningQuestionV2, LearningRevealV2, LearningResponseV1, LearningResponseV2, LearningActivityKind, } from './protocol.ts';
+export type { LearningActivityV1, LearningActivityV2, LearningQuestionV2, LearningRevealV2, LearningResponseV1, LearningResponseV2, LearningActivityKind, LearningVisualV3, LearningVisualSeriesV3, LearningVisualResultV3, LearningVisualV4, LearningVisualContentV4, LearningVisualKindV4, LearningPlotSeriesV4, LearningPlotV4, LearningNodeLinkV4, LearningScene2DV4, LearningRelationV4, LearningTimelineV4, LearningFormulaStepsV4, LearningStudyMapV4, LearningRecallDeckV4, LearningVisualResultV4, } from './protocol.ts';
 //# sourceMappingURL=index.d.ts.map

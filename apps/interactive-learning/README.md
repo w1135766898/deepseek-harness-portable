@@ -1,163 +1,157 @@
 # Interactive Learning Experience Pack
 
-`@dsh-portable/interactive-learning` is an independently installable DeepSeek
-Harness experience pack. It adds one explicit `learning` Agent preset without
-adding model-visible tools or prompt sections to Standard, Code, Minimal, or
-Cordis.
+`@dsh-portable/interactive-learning` adds an explicit `learning` Agent preset to
+DeepSeek Harness. Standard, Code, Minimal, and Cordis keep their original tool
+schemas and prompts.
 
-## Boundaries
+## Architecture
 
-- The package root is the Host capability. It registers only the
-  `learningActivities` broker service.
-- `./agent` is mounted only by the Learning preset. It registers the two narrow
-  `learning_question` and `learning_reveal` tools plus the compact standing policy.
-- The Learning preset also mounts rc.7's native `ask_user_question` tool for
-  user-owned choices about direction, depth, or pace. Reasonable defaults do
-  not open a choice; teaching evidence stays in the Question/Reveal gates.
-- `./client` supplies the composer takeover, completed-call renderer, and the
-  native activity registry.
-- `./protocol` is the versioned, declarative Activity/Response contract.
-- `preset/learning/skills/interactive-teaching` is the detailed teaching
-  resource loaded on demand; it is not the product shell.
+- The package root keeps the legacy `learningActivities` Host broker so old V1/V2
+  conversations can replay safely. It registers no model-visible tools.
+- `./agent` is mounted only by the Learning preset. It registers one preferred
+  tool, `learning_visual`, and a compact teaching policy.
+- `./client` renders the visual inline and keeps the ordinary conversation
+  composer active. It also retains read-only replay support for old
+  `learning_activity`, `learning_question`, and `learning_reveal` calls.
+- `./protocol` owns the closed, versioned declarative contracts.
+- `preset/learning/skills/interactive-teaching` provides detailed teaching
+  judgment on demand.
 
-The Client bundle may be present globally, but it claims the composer only for
-a pending question carrying the exact Host-generated Learning envelope and the
-matching session id. An ordinary question, including one from another preset,
-is ignored. A fork therefore cannot revive an ancestor session's pending
-activity.
+The current design separates explanation from interaction. A visual is an
+illustration inside a normal assistant response, not a form that owns the user
+turn.
 
-## Pinned rc.7 gated transport
+## Non-blocking learning flow
 
-The pinned kernel already exposes stable pending `ToolCallBlock.callId` values,
-keyed `tool.call.toolview` slots, and durable question `PendingWait` replay. The
-MVP reuses that question wait instead of patching the wire protocol:
+1. The assistant explains the missing idea in ordinary prose.
+2. When manipulation is genuinely useful, it calls `learning_visual` once with
+   a safe declarative chart.
+3. Validation returns `visual-result@4 { status: "ready" }` immediately. No
+   lesson token, pending question, submit button, reveal call, or five-minute
+   user wait is created.
+4. The chart renders in the tool call's place and remains interactive after the
+   completed call is replayed.
+5. The assistant continues with the interpretation and, if useful, one natural
+   question. The learner answers through the normal composer on the next turn.
 
-1. The Agent calls `learning_question` with one `activity@2` current frame. The
-   Host validates it, issues lesson/round tokens, and opens one durable wait.
-2. The learner response resolves that Question call. Only then does the model
-   construct `learning_reveal` for the same token and sequence.
-3. Reveal remains pending while the keyed inline renderer animates. Continue is
-   disabled until animation completion (reduced motion commits the final frame),
-   and the wait resolves only after an explicit learner continue.
-4. Only after that canonical `response@2` is saved may the model produce the
-   next Question. New waits use opaque ids and correlate by session, stable
-   `ToolRunContext.callId`, activity, phase, and sequence rather than serialized
-   activity equality.
+This removes the old Question → Reveal split that duplicated rounds and left a
+model turn running while it waited for the learner. The surrounding prose must
+still make sense if a Client cannot render the enhancement.
 
-If no live Client is connected when the call begins, the broker returns
-`action: "skip"` immediately with the fallback Markdown in
-`interactionState`. A disconnect after presentation remains recoverable by the
-kernel wait until the Client reconnects or the bounded wait expires. The
-default five-minute timeout, session abort, or plugin disposal always resolves
-the tool with a canonical `skip`/`cancel` response, so a headless or stale
-Client cannot leave the model waiting forever.
+## Semantic visual protocol v4
 
-This transport is intentionally isolated behind `LearningActivityBroker` so it
-can later move to a first-class Learning `PendingWait`/Conversation Node without
-changing the model tool or activity renderers.
+`dsh-learning/visual@4` selects a trusted native renderer by concept semantics:
 
-## Protocol v2
+- `plot` for functions, data, probability, bars, and quantitative relationships;
+- `node_link` for neural-network layers, trees, processes, causality, and topology;
+- `scene_2d` for geometry, vectors, forces, and annotated spatial schematics;
+- `relation` for comparisons, matrices, classifications, and set membership;
+- `timeline` for historical events, discoveries, phases, and eras;
+- `formula_steps` for derivations, algebraic transformations, and proof chains;
+- `study_map` for anchored sections, prerequisites, and concept roles in reference material;
+- `recall_deck` for hinted active-recall cards with local review state.
 
-Current-frame visuals support:
+Any kind can add local sequence frames that progressively focus declared ids.
+The controls remain exploratory and never replace the ordinary conversation
+composer. Renderers provide a visible title, keyboard-accessible inspection,
+responsive layouts, structured text alternatives, and a local error boundary.
 
-- `parameter`: one or two bounded parameters and one to three curves;
-- `process`: exactly one current frame for Question, or one before/after pair for Reveal;
-- `structure`: one current aligned comparison.
+Plot content supports optional bounded sliders, static points, polylines, bars,
+computed curves, stable axes, and parameter-derived metrics. A slider is omitted
+when manipulation is not the lesson. In particular, formula recall is answered
+directly; a requested network structure is rendered as nodes and explicit edges
+instead of being substituted with a curve or Markdown art.
 
-Question schemas contain no answer/reveal/future-step fields. Reveal schemas
-contain no next question or input control. Both reject unknown fields, invalid
-references, non-finite values, and oversized or excessively deep data. Curves
-use a closed mathematical AST. `activity@1` remains available only for legacy
-session replay; it is not exposed as a live model tool.
+When the learner supplies a document, PDF, slide deck, or several sources, the
+system preserves observed section and page/title anchors, uses `study_map` for a
+navigable overview when useful, and then routes each concept to its more specific
+renderer. It does not flatten a whole source into one mega-graph or mechanically
+turn every attachment into flashcards.
 
-## Development
+Curves use a closed recursive mathematical AST. Supported leaves are
+`constant` and `variable`; binary operators are `add`, `sub`, `mul`, `div`, and
+`pow`; unary operators are `neg`, `abs`, `sqrt`, `sin`, `cos`, `exp`, `log`, and
+the numerically stable `sigmoid`. Curve variables are `x` plus declared
+parameter ids. Metrics may use declared parameters but not `x`.
+
+The model schema and runtime parser share the same expression-depth limit.
+Unknown fields, undeclared variables, non-finite values, excessive payloads,
+invalid references, and invalid ranges are rejected. Model-provided HTML,
+Markdown diagrams, SVG markup, and JavaScript are never executed.
+
+V3 parameter charts and V1/V2 activities remain parseable only for historical
+replay. Their model tools are no
+longer exposed by the Learning preset. A failed historical result is shown as
+an explicit error/fallback instead of a disabled “completed” activity.
+
+## Development and verification
+
+The real desktop/web runtime reads package exports from `lib`, so rebuild and
+fully restart after source changes:
 
 ```powershell
 pnpm --filter @dsh-portable/interactive-learning run build
 pnpm --filter @dsh-portable/interactive-learning test
+pnpm run desktop:dev
 ```
 
-The credential-free teaching gate is deterministic and does not claim to be a
-remote-model quality score:
+The browser fixture imports source components directly and is useful for rapid
+visual inspection:
 
 ```powershell
-pnpm --filter @dsh-portable/interactive-learning run build
+& 'vendor/deepseek-harness/apps/web/node_modules/.bin/vite.cmd' `
+  --config 'apps/interactive-learning/tests/browser/vite.config.mjs'
+```
+
+Open `http://127.0.0.1:41739/`. This is a component harness, not a substitute
+for the packaged desktop smoke.
+
+The credential-free teaching evaluation is deterministic and does not claim to
+be a remote-model quality score:
+
+```powershell
 node apps/interactive-learning/lib/eval-cli.js
 ```
 
-It covers visual restraint, continuation from evidence, stopping after transfer,
-one gate per model step, Question/Reveal temporal order, and configured answer
-or future-round leakage markers. Scoring a live remote model remains an
-explicit external authorization gate and is never run with user credentials by
-these tests.
+Release verification should also run the repository test suite and the normal
+Windows package pipeline (without `--skip-build`).
 
-The package exports a safe user-preset installer as
-`dsh-learning-preset`. It writes
-`$DSH_HOME/.agent-presets/learning/.dsh-managed.json`, upgrades only files whose
-hash still matches package ownership, stages new versions beside user-modified
-files, and removes only unmodified owned files.
+## External activation
 
-```powershell
-dsh-learning-preset install
-dsh-learning-preset uninstall
-```
+From a clean package install:
 
-## External package activation
-
-From a clean tarball or registry install:
-
-1. Add the package root to the Host composition so
-   `@dsh-portable/interactive-learning` provides the broker. Do not mount
-   `./agent` globally.
+1. Add the package root to the Host composition:
 
    ```yaml
    - id: interactive-learning
      name: '@dsh-portable/interactive-learning'
    ```
 
-2. Let the DSH Web module loader discover the package's `dsh.client` manifest;
-   it loads `./client` and its declared inject dependencies.
-3. Run `dsh-learning-preset install --home <DSH_HOME>`, restart the Host/Web
-   runtime, and explicitly select the `learning` preset.
-4. For removal, first stop selecting Learning, remove the Host package row,
-   restart, then run `dsh-learning-preset uninstall --home <DSH_HOME>`.
+2. Let the Web module loader discover the package's `dsh.client` manifest.
+3. Install the preset and restart Host/Web:
 
-Upgrades may rerun `install`. Files that still match the owned hash are
-replaced; modified files remain in place and the package version is staged
-beside them. `uninstall` removes only hashes still owned by the package.
+   ```powershell
+   dsh-learning-preset install --home <DSH_HOME>
+   ```
 
-The package-local clean-tarball acceptance test imports the Host, Agent,
-protocol, preset and eval exports, observes the Client module-loader handoff,
-and executes install, content upgrade and safe uninstall from the extracted
-artifact:
+4. Explicitly select Learning for a new conversation.
+
+The installer records ownership in
+`.agent-presets/learning/.dsh-managed.json`, updates only unmodified owned files,
+stages new versions beside user-modified files, and removes only owned hashes.
+
+```powershell
+dsh-learning-preset uninstall --home <DSH_HOME>
+```
+
+The clean-tarball lifecycle test verifies Host/Agent/protocol exports, Client
+activation metadata, and safe install/upgrade/uninstall behavior:
 
 ```powershell
 node apps/interactive-learning/tests/package-lifecycle.mjs <package.tgz>
 ```
 
-Portable distributions can instead merge `interactiveLearningPresetRoot` into
-their immutable shipped preset catalog, as this repository does.
-
-## Phase 0 compatibility result
-
-The implementation is based on the pinned kernel `0.1.0-rc.7` checkout rather
-than unreleased upstream contracts. Focused composition tests boot the actual pinned
-Web layers and prove that Standard, Code, Minimal and Cordis retain byte-for-byte
-equivalent model-visible tool schemas and assembled standing prompts before and
-after the Host broker is mounted. The pinned keyed tool renderer, pending wait,
-cancellation/duplicate-response guard, stable session/call identity, and
-replayable canonical tool result path support the two-gate flow. Tool execution
-already exposes stable `callId`/`rootCallId`; `tools/pre-execute`, `tools/execute`,
-`tools/post-execute`, `tools/result`, and `agent/pre-step` provide observation
-points without adding a private telemetry dependency.
-
-The real-browser fixture uses the production components and native DOM events.
-It verifies conversational prediction, range-key interaction, all three renderers,
-submit/cancel, evidence-based continuation, completed replay after refresh,
-non-revival after fork, Standard-mode UI isolation, and zero Learning network
-requests. The clean tarball gate additionally verifies external Host/Client
-activation metadata and install/upgrade/uninstall ownership behavior.
-
-Deferred by design: cross-session mastery, spaced repetition, knowledge graphs,
-Obsidian/LMS adapters, arbitrary widget code, third-party activity kinds, and
-Electron-specific Learning behavior.
+Deferred by design: arbitrary executable widgets, cross-session mastery,
+spaced repetition, knowledge graphs, LMS adapters, and silent collection of
+slider state. If exact parameter values matter, the learner should describe or
+quote them in the normal reply.

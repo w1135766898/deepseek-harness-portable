@@ -14,10 +14,13 @@ async function fixture() {
   roots.push(root)
   const source = join(root, 'source')
   const home = join(root, 'home')
-  await mkdir(join(source, 'skills', 'teaching'), { recursive: true })
+  await mkdir(join(source, 'skills', 'teaching', 'references'), { recursive: true })
   await writeFile(join(source, 'agent.cordis.yml'), 'version: one\n')
   await writeFile(join(source, 'preset.yml'), 'name: Learning\n')
   await writeFile(join(source, 'skills', 'teaching', 'SKILL.md'), '# Teach\n')
+  await writeFile(join(source, 'skills', 'teaching', 'references', 'visual-routing.md'), '# Visual routing\n')
+  await writeFile(join(source, 'skills', 'teaching', 'references', 'visual-protocol.md'), '# Visual protocol\n')
+  await writeFile(join(source, 'skills', 'teaching', 'references', 'reference-materials.md'), '# Reference materials\n')
   return { root, source, home, target: join(home, '.agent-presets', 'learning') }
 }
 
@@ -26,6 +29,16 @@ afterEach(async () => {
 })
 
 describe('managed preset lifecycle', () => {
+  it('installs progressive-disclosure Skill references as managed files', async () => {
+    const fx = await fixture()
+    const result = await installLearningPreset({ dshHome: fx.home, source: fx.source })
+    for (const name of ['visual-routing.md', 'visual-protocol.md', 'reference-materials.md']) {
+      const relative = `skills/teaching/references/${name}`
+      expect(result.installed).toContain(relative)
+      expect(await readFile(join(fx.target, relative), 'utf8')).toMatch(/^# /)
+    }
+  })
+
   it('updates unchanged owned files', async () => {
     const fx = await fixture()
     await installLearningPreset({ dshHome: fx.home, source: fx.source })

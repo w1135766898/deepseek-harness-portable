@@ -1,12 +1,8 @@
-import { m as parseLearningActivityV2, n as ACTIVITY_PROTOCOL_V2, u as RESPONSE_PROTOCOL_V2 } from "./protocol-i6-ANvLY.js";
+import { O as parseLearningVisualV4, b as VISUAL_RESULT_PROTOCOL_V4, o as MATH_BINARY_OPERATORS, s as MATH_UNARY_OPERATORS, v as VISUAL_PROTOCOL_V4 } from "./protocol-Bo-NX8ZC.js";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 //#region lib/types/agent.js
 const name = "interactive-learning-agent";
-const inject = [
-	"tools",
-	"systemPrompt",
-	"learningActivities"
-];
+const inject = ["tools", "systemPrompt"];
 function closeParameterRoot(tool) {
 	return {
 		...tool,
@@ -16,83 +12,13 @@ function closeParameterRoot(tool) {
 		}
 	};
 }
-var LearningGateError = class extends Error {
-	code = "MULTIPLE_LEARNING_GATES_IN_STEP";
-	constructor() {
-		super("A model step may execute only one Learning gate");
-		this.name = "LearningGateError";
-	}
-};
-const claimedGateByAgent = /* @__PURE__ */ new WeakMap();
-function openStepKey(agent) {
-	const closed = /* @__PURE__ */ new Set();
-	const events = agent.session.events;
-	for (let index = events.length - 1; index >= 0; index -= 1) {
-		const event = events[index];
-		if (event.type !== "step/start" && event.type !== "step/end") continue;
-		const key = `${String(event.data.turn)}:${String(event.data.step)}`;
-		if (event.type === "step/end") closed.add(key);
-		else if (!closed.has(key)) return key;
-	}
-}
-/** Claim the current durable model step, if one exists, for one Learning gate. */
-function assertLearningGateAvailable(agent) {
-	if (agent === void 0) return;
-	const key = openStepKey(agent);
-	if (key === void 0) return;
-	if (claimedGateByAgent.get(agent) === key) throw new LearningGateError();
-	claimedGateByAgent.set(agent, key);
-}
-const focus = {
-	type: "object",
-	additionalProperties: false,
-	required: true,
-	properties: {
-		title: {
-			type: "string",
-			required: true
-		},
-		progress: {
-			type: "object",
-			additionalProperties: false,
-			properties: {
-				current: {
-					type: "integer",
-					description: "1-based progress position; must be 1 or greater.",
-					required: true
-				},
-				total: {
-					type: "integer",
-					description: "Optional total round count; must be 1 or greater."
-				}
-			}
-		}
-	}
-};
-const frame = {
-	type: "object",
-	additionalProperties: false,
-	required: true,
-	properties: {
-		id: {
-			type: "string",
-			description: "Lowercase identifier starting with a letter; use only a-z, 0-9, _ or -.",
-			required: true
-		},
-		title: {
-			type: "string",
-			required: true
-		},
-		content: { type: "string" }
-	}
-};
 const parameter = {
 	type: "object",
 	additionalProperties: false,
 	properties: {
 		id: {
 			type: "string",
-			description: "Lowercase identifier starting with a letter.",
+			description: "Identifier: 1 to 32 characters, start with a lowercase letter, then use only a-z, 0-9, _ or -. The id x is reserved for the chart axis.",
 			required: true
 		},
 		label: {
@@ -117,108 +43,139 @@ const parameter = {
 		}
 	}
 };
-const expressionLeaf = { oneOf: [{
+function mathExpressionSchema(depth) {
+	const leaves = [{
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			op: {
+				type: "string",
+				const: "constant",
+				required: true
+			},
+			value: {
+				type: "number",
+				required: true
+			}
+		}
+	}, {
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			op: {
+				type: "string",
+				const: "variable",
+				required: true
+			},
+			name: {
+				type: "string",
+				description: "Use x or one of this visual's parameter ids.",
+				required: true
+			}
+		}
+	}];
+	if (depth <= 1) return { oneOf: leaves };
+	const nested = mathExpressionSchema(depth - 1);
+	return { oneOf: [
+		...leaves,
+		{
+			type: "object",
+			additionalProperties: false,
+			properties: {
+				op: {
+					type: "string",
+					enum: MATH_UNARY_OPERATORS,
+					required: true
+				},
+				value: {
+					...nested,
+					required: true
+				}
+			}
+		},
+		{
+			type: "object",
+			additionalProperties: false,
+			properties: {
+				op: {
+					type: "string",
+					enum: MATH_BINARY_OPERATORS,
+					required: true
+				},
+				left: {
+					...nested,
+					required: true
+				},
+				right: {
+					...nested,
+					required: true
+				}
+			}
+		}
+	] };
+}
+function required(schema) {
+	return {
+		...schema,
+		required: true
+	};
+}
+const requiredExpression = required(mathExpressionSchema(4));
+const identifier = {
+	type: "string",
+	description: "Identifier: 1 to 32 characters, start with a lowercase letter, then use only a-z, 0-9, _ or -."
+};
+const tone = {
+	type: "string",
+	enum: [
+		"blue",
+		"green",
+		"red",
+		"orange",
+		"purple",
+		"gray"
+	]
+};
+const stroke = {
+	type: "string",
+	enum: [
+		"solid",
+		"dashed",
+		"dotted"
+	]
+};
+const point = {
 	type: "object",
 	additionalProperties: false,
 	properties: {
-		op: {
-			type: "string",
-			const: "constant",
+		x: {
+			type: "number",
 			required: true
 		},
-		value: {
+		y: {
+			type: "number",
+			required: true
+		},
+		label: { type: "string" }
+	}
+};
+const coordinate = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		x: {
+			type: "number",
+			required: true
+		},
+		y: {
 			type: "number",
 			required: true
 		}
 	}
-}, {
-	type: "object",
-	additionalProperties: false,
-	properties: {
-		op: {
-			type: "string",
-			const: "variable",
-			required: true
-		},
-		name: {
-			type: "string",
-			required: true
-		}
-	}
-}] };
-const curve = {
-	type: "object",
-	additionalProperties: false,
-	properties: {
-		id: {
-			type: "string",
-			description: "Lowercase identifier starting with a letter.",
-			required: true
-		},
-		label: {
-			type: "string",
-			required: true
-		},
-		expression: {
-			oneOf: [
-				...expressionLeaf.oneOf,
-				{
-					type: "object",
-					additionalProperties: false,
-					properties: {
-						op: {
-							type: "string",
-							enum: [
-								"neg",
-								"abs",
-								"sqrt",
-								"sin",
-								"cos",
-								"exp",
-								"log"
-							],
-							required: true
-						},
-						value: {
-							...expressionLeaf,
-							required: true
-						}
-					}
-				},
-				{
-					type: "object",
-					additionalProperties: false,
-					properties: {
-						op: {
-							type: "string",
-							enum: [
-								"add",
-								"sub",
-								"mul",
-								"div",
-								"pow"
-							],
-							required: true
-						},
-						left: {
-							...expressionLeaf,
-							required: true
-						},
-						right: {
-							...expressionLeaf,
-							required: true
-						}
-					}
-				}
-			],
-			required: true
-		}
-	}
 };
-const xAxis = {
+const axis = {
 	type: "object",
 	additionalProperties: false,
-	required: true,
 	properties: {
 		label: { type: "string" },
 		min: {
@@ -228,230 +185,954 @@ const xAxis = {
 		max: {
 			type: "number",
 			required: true
-		},
-		samples: { type: "integer" }
+		}
 	}
 };
-const structureSide = {
+const curveSeries = {
 	type: "object",
 	additionalProperties: false,
-	required: true,
 	properties: {
-		title: {
+		type: {
+			type: "string",
+			const: "curve",
+			required: true
+		},
+		id: {
+			...identifier,
+			required: true
+		},
+		label: {
 			type: "string",
 			required: true
 		},
-		items: {
+		expression: requiredExpression,
+		tone,
+		stroke
+	}
+};
+const pointSeries = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		type: {
+			type: "string",
+			const: "points",
+			required: true
+		},
+		id: {
+			...identifier,
+			required: true
+		},
+		label: {
+			type: "string",
+			required: true
+		},
+		points: {
+			type: "array",
+			required: true,
+			items: point,
+			description: "1 to 256 points."
+		},
+		tone
+	}
+};
+const lineSeries = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		type: {
+			type: "string",
+			const: "line",
+			required: true
+		},
+		id: {
+			...identifier,
+			required: true
+		},
+		label: {
+			type: "string",
+			required: true
+		},
+		points: {
+			type: "array",
+			required: true,
+			items: point,
+			description: "1 to 256 points."
+		},
+		tone,
+		stroke
+	}
+};
+const barSeries = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		type: {
+			type: "string",
+			const: "bars",
+			required: true
+		},
+		id: {
+			...identifier,
+			required: true
+		},
+		label: {
+			type: "string",
+			required: true
+		},
+		points: {
+			type: "array",
+			required: true,
+			items: point,
+			description: "1 to 64 bars."
+		},
+		tone
+	}
+};
+const plotContent = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		kind: {
+			type: "string",
+			const: "plot",
+			required: true,
+			description: "Functions, quantitative data, probability, distributions, or tangent/secant geometry on Cartesian axes."
+		},
+		parameters: {
+			type: "array",
+			items: parameter,
+			description: "Optional; omit for a static plot. Use at most three only when changing the value teaches the mechanism."
+		},
+		xAxis: {
+			...axis,
+			required: true,
+			properties: {
+				...axis.properties,
+				samples: {
+					type: "integer",
+					description: "Optional curve samples from 24 to 256."
+				}
+			}
+		},
+		yAxis: required(axis),
+		series: {
+			type: "array",
+			required: true,
+			items: { oneOf: [
+				curveSeries,
+				pointSeries,
+				lineSeries,
+				barSeries
+			] },
+			description: "1 to 8 series."
+		},
+		metrics: {
 			type: "array",
 			items: {
 				type: "object",
 				additionalProperties: false,
 				properties: {
 					id: {
-						type: "string",
-						description: "Lowercase identifier starting with a letter.",
+						...identifier,
 						required: true
 					},
 					label: {
 						type: "string",
 						required: true
 					},
-					detail: { type: "string" }
+					expression: requiredExpression,
+					digits: { type: "integer" },
+					suffix: { type: "string" }
 				}
 			},
-			required: true
+			description: "Optional; at most 4 metrics."
 		}
 	}
 };
-const alignment = {
+const nodeGroup = {
 	type: "object",
 	additionalProperties: false,
 	properties: {
 		id: {
-			type: "string",
-			description: "Lowercase identifier starting with a letter.",
+			...identifier,
 			required: true
 		},
-		leftId: { type: "string" },
-		rightId: { type: "string" },
-		prompt: { type: "string" }
+		label: {
+			type: "string",
+			required: true
+		}
 	}
 };
-function optionalSchema(schema) {
-	const { required: _required, ...optional } = schema;
-	return optional;
-}
-const questionVisual = {
+const node = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		id: {
+			...identifier,
+			required: true
+		},
+		label: {
+			type: "string",
+			required: true
+		},
+		detail: { type: "string" },
+		group: { type: "string" },
+		tone
+	}
+};
+const edge = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		id: {
+			...identifier,
+			required: true
+		},
+		from: {
+			type: "string",
+			required: true
+		},
+		to: {
+			type: "string",
+			required: true
+		},
+		label: { type: "string" },
+		detail: { type: "string" },
+		tone,
+		stroke,
+		directed: { type: "boolean" }
+	}
+};
+const nodeLinkContent = {
 	type: "object",
 	additionalProperties: false,
 	properties: {
 		kind: {
 			type: "string",
+			const: "node_link",
+			required: true,
+			description: "Networks, fully connected layers, trees, causality, concept maps, state transitions, and dependency topology."
+		},
+		layout: {
+			type: "string",
 			enum: [
-				"process",
-				"parameter",
-				"structure"
+				"layered",
+				"hierarchy",
+				"radial"
 			],
-			description: "process requires frame; parameter requires parameters, xAxis and curves; structure requires left, right and alignments.",
 			required: true
 		},
-		frame: optionalSchema(frame),
-		parameters: {
+		groups: {
 			type: "array",
-			items: parameter
+			items: nodeGroup,
+			description: "Optional 1 to 12 ordered layers for layered layout; every node must reference one group."
 		},
-		xAxis: optionalSchema(xAxis),
-		curves: {
+		nodes: {
 			type: "array",
-			items: curve
+			items: node,
+			required: true,
+			description: "2 to 48 nodes."
 		},
-		left: optionalSchema(structureSide),
-		right: optionalSchema(structureSide),
-		alignments: {
+		edges: {
 			type: "array",
-			items: alignment
+			items: edge,
+			required: true,
+			description: "1 to 160 edges; include every semantically required connection."
 		}
 	}
 };
-const revealVisual = {
+const sceneBase = {
+	id: {
+		...identifier,
+		required: true
+	},
+	label: { type: "string" },
+	detail: { type: "string" },
+	tone
+};
+const sceneElement = { oneOf: [
+	{
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			type: {
+				type: "string",
+				const: "point",
+				required: true
+			},
+			...sceneBase,
+			x: {
+				type: "number",
+				required: true
+			},
+			y: {
+				type: "number",
+				required: true
+			},
+			size: { type: "number" }
+		}
+	},
+	{
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			type: {
+				type: "string",
+				enum: ["segment", "arrow"],
+				required: true
+			},
+			...sceneBase,
+			x1: {
+				type: "number",
+				required: true
+			},
+			y1: {
+				type: "number",
+				required: true
+			},
+			x2: {
+				type: "number",
+				required: true
+			},
+			y2: {
+				type: "number",
+				required: true
+			},
+			stroke
+		}
+	},
+	{
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			type: {
+				type: "string",
+				const: "circle",
+				required: true
+			},
+			...sceneBase,
+			cx: {
+				type: "number",
+				required: true
+			},
+			cy: {
+				type: "number",
+				required: true
+			},
+			r: {
+				type: "number",
+				required: true
+			}
+		}
+	},
+	{
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			type: {
+				type: "string",
+				const: "rect",
+				required: true
+			},
+			...sceneBase,
+			x: {
+				type: "number",
+				required: true
+			},
+			y: {
+				type: "number",
+				required: true
+			},
+			width: {
+				type: "number",
+				required: true
+			},
+			height: {
+				type: "number",
+				required: true
+			}
+		}
+	},
+	{
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			type: {
+				type: "string",
+				const: "polygon",
+				required: true
+			},
+			...sceneBase,
+			points: {
+				type: "array",
+				required: true,
+				items: coordinate,
+				description: "3 to 24 polygon vertices."
+			}
+		}
+	},
+	{
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			type: {
+				type: "string",
+				const: "label",
+				required: true
+			},
+			...sceneBase,
+			x: {
+				type: "number",
+				required: true
+			},
+			y: {
+				type: "number",
+				required: true
+			},
+			text: {
+				type: "string",
+				required: true
+			}
+		}
+	}
+] };
+const sceneContent = {
 	type: "object",
 	additionalProperties: false,
 	properties: {
 		kind: {
 			type: "string",
-			enum: [
-				"process",
-				"parameter",
-				"structure"
-			],
-			description: "process requires before and after; parameter requires parameters, xAxis and curves; structure requires left, right and alignments.",
-			required: true
+			const: "scene_2d",
+			required: true,
+			description: "Geometry, vectors, forces, spatial relationships, and annotated scientific schematics."
 		},
-		before: optionalSchema(frame),
-		after: optionalSchema(frame),
-		parameters: {
+		xAxis: required(axis),
+		yAxis: required(axis),
+		grid: { type: "boolean" },
+		elements: {
 			type: "array",
-			items: parameter
-		},
-		xAxis: optionalSchema(xAxis),
-		curves: {
-			type: "array",
-			items: curve
-		},
-		emphasis: { type: "string" },
-		left: optionalSchema(structureSide),
-		right: optionalSchema(structureSide),
-		alignments: {
-			type: "array",
-			items: alignment
-		},
-		emphasisAlignmentIds: {
-			type: "array",
-			items: { type: "string" }
+			items: sceneElement,
+			required: true,
+			description: "1 to 64 scene elements."
 		}
 	}
 };
-const responseBase = {
-	protocol: {
-		type: "string",
-		const: RESPONSE_PROTOCOL_V2,
-		required: true
+const relationSubject = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		id: {
+			...identifier,
+			required: true
+		},
+		label: {
+			type: "string",
+			required: true
+		},
+		detail: { type: "string" },
+		tone
+	}
+};
+const relationAxisItem = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		id: {
+			...identifier,
+			required: true
+		},
+		label: {
+			type: "string",
+			required: true
+		}
+	}
+};
+const relationContent = { oneOf: [
+	{
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			kind: {
+				type: "string",
+				const: "relation",
+				required: true
+			},
+			variant: {
+				type: "string",
+				const: "comparison",
+				required: true
+			},
+			subjects: {
+				type: "array",
+				items: relationSubject,
+				required: true,
+				description: "2 to 4 subjects."
+			},
+			rows: {
+				type: "array",
+				required: true,
+				items: {
+					type: "object",
+					additionalProperties: false,
+					properties: {
+						id: {
+							...identifier,
+							required: true
+						},
+						label: {
+							type: "string",
+							required: true
+						},
+						detail: { type: "string" },
+						cells: {
+							type: "array",
+							required: true,
+							items: {
+								type: "object",
+								additionalProperties: false,
+								properties: {
+									subjectId: {
+										type: "string",
+										required: true
+									},
+									value: {
+										type: "string",
+										required: true
+									},
+									tone
+								}
+							},
+							description: "1 to 4 cells; each subjectId must reference a declared subject."
+						}
+					}
+				},
+				description: "1 to 16 comparison rows."
+			}
+		}
 	},
-	activityId: {
-		type: "string",
-		required: true
+	{
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			kind: {
+				type: "string",
+				const: "relation",
+				required: true
+			},
+			variant: {
+				type: "string",
+				const: "matrix",
+				required: true
+			},
+			rows: {
+				type: "array",
+				items: relationAxisItem,
+				required: true,
+				description: "1 to 10 matrix rows."
+			},
+			columns: {
+				type: "array",
+				items: relationAxisItem,
+				required: true,
+				description: "1 to 10 matrix columns."
+			},
+			cells: {
+				type: "array",
+				required: true,
+				items: {
+					type: "object",
+					additionalProperties: false,
+					properties: {
+						id: {
+							...identifier,
+							required: true
+						},
+						rowId: {
+							type: "string",
+							required: true
+						},
+						columnId: {
+							type: "string",
+							required: true
+						},
+						label: {
+							type: "string",
+							required: true
+						},
+						detail: { type: "string" },
+						tone
+					}
+				},
+				description: "1 to 64 matrix cells; rowId and columnId must reference declared axes."
+			}
+		}
 	},
-	lessonToken: {
-		type: "string",
-		required: true
-	},
-	roundToken: {
-		type: "string",
-		required: true
-	},
-	seq: {
-		type: "integer",
-		required: true
-	},
-	receiptId: {
-		type: "string",
-		required: true
-	},
-	interactionState: { type: "json" }
+	{
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			kind: {
+				type: "string",
+				const: "relation",
+				required: true
+			},
+			variant: {
+				type: "string",
+				const: "sets",
+				required: true
+			},
+			sets: {
+				type: "array",
+				items: relationSubject,
+				required: true,
+				description: "2 to 3 sets."
+			},
+			items: {
+				type: "array",
+				required: true,
+				items: {
+					type: "object",
+					additionalProperties: false,
+					properties: {
+						id: {
+							...identifier,
+							required: true
+						},
+						label: {
+							type: "string",
+							required: true
+						},
+						setIds: {
+							type: "array",
+							items: { type: "string" },
+							required: true,
+							description: "1 to 3 unique ids referencing declared sets."
+						},
+						detail: { type: "string" }
+					}
+				},
+				description: "1 to 24 set items."
+			}
+		}
+	}
+] };
+const timelineContent = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		kind: {
+			type: "string",
+			const: "timeline",
+			required: true,
+			description: "Ordered historical events, scientific discoveries, biographies, eras, or other chronology where time order is the structure."
+		},
+		orientation: {
+			type: "string",
+			enum: ["horizontal", "vertical"]
+		},
+		events: {
+			type: "array",
+			items: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					id: {
+						...identifier,
+						required: true
+					},
+					time: {
+						type: "string",
+						required: true
+					},
+					label: {
+						type: "string",
+						required: true
+					},
+					detail: { type: "string" },
+					position: {
+						type: "number",
+						description: "Optional normalized position from 0 to 1. Provide it for every event or omit it for every event."
+					},
+					tone
+				}
+			},
+			required: true,
+			description: "2 to 32 events in chronological order."
+		},
+		eras: {
+			type: "array",
+			items: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					id: {
+						...identifier,
+						required: true
+					},
+					label: {
+						type: "string",
+						required: true
+					},
+					startEventId: {
+						type: "string",
+						required: true
+					},
+					endEventId: {
+						type: "string",
+						required: true
+					},
+					detail: { type: "string" },
+					tone
+				}
+			},
+			description: "Optional 1 to 8 eras; startEventId and endEventId must reference declared events in order."
+		}
+	}
+};
+const formulaStepsContent = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		kind: {
+			type: "string",
+			const: "formula_steps",
+			required: true,
+			description: "A derivation, algebraic transformation, proof chain, or symbolic simplification where the rule between steps matters. Not for merely recalling one formula."
+		},
+		notation: {
+			type: "string",
+			description: "Optional short notation key used across the derivation."
+		},
+		steps: {
+			type: "array",
+			required: true,
+			items: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					id: {
+						...identifier,
+						required: true
+					},
+					expression: {
+						type: "string",
+						required: true,
+						description: "One LaTeX display expression without dollar delimiters; use commands such as \\lim_{h \\to 0} and ^{\\prime}."
+					},
+					label: { type: "string" },
+					rule: { type: "string" },
+					detail: { type: "string" },
+					tone
+				}
+			},
+			description: "2 to 16 formula steps."
+		},
+		conclusion: { type: "string" }
+	}
+};
+const studyMapContent = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		kind: {
+			type: "string",
+			const: "study_map",
+			required: true,
+			description: "A navigable overview of a supplied document, chapter, slide deck, or multi-concept learning source. Preserve source sections and anchors instead of flattening the material."
+		},
+		sourceLabel: {
+			type: "string",
+			required: true
+		},
+		goal: { type: "string" },
+		sections: {
+			type: "array",
+			required: true,
+			items: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					id: {
+						...identifier,
+						required: true
+					},
+					label: {
+						type: "string",
+						required: true
+					},
+					anchor: {
+						type: "string",
+						description: "Human-readable source location, such as Chapter 2 or pp. 18–23."
+					},
+					summary: { type: "string" }
+				}
+			},
+			description: "1 to 16 source sections."
+		},
+		concepts: {
+			type: "array",
+			required: true,
+			items: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					id: {
+						...identifier,
+						required: true
+					},
+					label: {
+						type: "string",
+						required: true
+					},
+					sectionId: {
+						type: "string",
+						required: true
+					},
+					detail: { type: "string" },
+					prerequisiteIds: {
+						type: "array",
+						items: { type: "string" },
+						description: "Optional; at most 8 unique declared concept ids, excluding this concept, with no cycles."
+					},
+					role: {
+						type: "string",
+						enum: [
+							"foundation",
+							"core",
+							"extension",
+							"practice"
+						]
+					},
+					tone
+				}
+			},
+			description: "1 to 48 concepts; every sectionId must reference a declared section."
+		}
+	}
+};
+const recallDeckContent = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		kind: {
+			type: "string",
+			const: "recall_deck",
+			required: true,
+			description: "A requested flashcard or active-recall set with hidden answers, hints, and local review state. Use only after the relevant material is known."
+		},
+		instructions: { type: "string" },
+		cards: {
+			type: "array",
+			required: true,
+			items: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					id: {
+						...identifier,
+						required: true
+					},
+					prompt: {
+						type: "string",
+						required: true
+					},
+					answer: {
+						type: "string",
+						required: true
+					},
+					hint: { type: "string" },
+					tags: {
+						type: "array",
+						items: { type: "string" },
+						description: "Optional; at most 6 unique labels."
+					}
+				}
+			},
+			description: "2 to 32 recall cards."
+		}
+	}
+};
+const sequence = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		initialFrameId: { type: "string" },
+		frames: {
+			type: "array",
+			required: true,
+			items: {
+				type: "object",
+				additionalProperties: false,
+				properties: {
+					id: {
+						...identifier,
+						required: true
+					},
+					label: {
+						type: "string",
+						required: true
+					},
+					description: { type: "string" },
+					focusIds: {
+						type: "array",
+						items: { type: "string" },
+						required: true,
+						description: "At most 64 unique ids already declared by content."
+					}
+				}
+			},
+			description: "2 to 12 sequence frames."
+		}
+	}
 };
 function apply(ctx) {
 	const services = ctx;
 	services.tools.register(closeParameterRoot(defineTool({
-		name: "learning_question",
-		description: "Present exactly one current learning question and wait for the learner response. This call cannot contain an answer, reveal, or future round.",
+		name: "learning_visual",
+		description: [
+			"Render one trusted, native, non-blocking semantic visual inline in the current teaching response.",
+			"Choose the content kind by the concept itself: plot for quantitative axes; node_link for topology; scene_2d for space; relation for comparisons; timeline for chronology; formula_steps for derivations; study_map for supplied multi-section material; recall_deck for requested active recall.",
+			"Do not call this tool merely because Learning mode is active. A request to recall a formula, definition, or short fact normally needs direct prose, not a chart.",
+			"Never substitute a plot for a requested structure diagram. A fully connected neural layer is node_link with layered groups and all connections, not a sigmoid curve.",
+			"The call completes immediately: after it returns, continue naturally with the interpretation and at most one ordinary conversational question.",
+			"Optional sequence frames highlight ids already declared by the chosen content; they create local step-through exploration without taking over learner input.",
+			"Plot curves use a closed recursive math AST. Metrics must depend only on declared parameters.",
+			"Hard limits: the complete call must stay within 64 KiB; every id is 1 to 32 lowercase-safe characters; keep labels to 120 characters, ordinary detail text to 1000, LaTeX expressions to 500, recall prompts to 1000 and answers to 2000. Array limits are stated on each field and are mandatory."
+		].join(" "),
 		parameters: {
 			protocol: {
 				type: "string",
-				const: ACTIVITY_PROTOCOL_V2,
+				const: VISUAL_PROTOCOL_V4,
 				required: true
 			},
-			phase: {
+			title: {
 				type: "string",
-				const: "question",
+				description: "Concise visible and accessible visual title.",
 				required: true
 			},
-			lessonToken: {
+			description: {
 				type: "string",
-				description: "Omit for the first round; otherwise use the Host-issued lesson token."
+				description: "Optional one-sentence exploration hint; do not repeat surrounding prose."
 			},
-			seq: {
-				type: "integer",
-				required: true
-			},
-			focus,
-			prompt: {
-				type: "string",
-				required: true
-			},
-			scaffold: { type: "string" },
-			input: {
-				type: "object",
-				additionalProperties: false,
+			content: {
+				oneOf: [
+					plotContent,
+					nodeLinkContent,
+					sceneContent,
+					relationContent,
+					timelineContent,
+					formulaStepsContent,
+					studyMapContent,
+					recallDeckContent
+				],
 				required: true,
-				properties: {
-					kind: {
-						type: "string",
-						enum: [
-							"single_choice",
-							"short_text",
-							"number"
-						],
-						required: true
-					},
-					options: {
-						type: "array",
-						items: {
-							type: "object",
-							additionalProperties: false,
-							properties: {
-								id: {
-									type: "string",
-									description: "Lowercase identifier starting with a letter, for example a, b, or option_1.",
-									required: true
-								},
-								label: {
-									type: "string",
-									required: true
-								}
-							}
-						}
-					},
-					placeholder: { type: "string" },
-					maxLength: { type: "integer" },
-					min: { type: "number" },
-					max: { type: "number" },
-					step: { type: "number" }
-				}
+				description: "Exactly one closed native visual content object. Never provide HTML, Markdown diagrams, SVG markup, or JavaScript."
 			},
-			visual: questionVisual,
+			sequence,
 			fallbackMarkdown: {
 				type: "string",
-				required: true
+				description: "Optional concise text equivalent for accessibility or an unavailable renderer; do not use it instead of valid content."
 			}
 		},
 		output: {
@@ -459,171 +1140,15 @@ function apply(ctx) {
 				type: "object",
 				additionalProperties: false,
 				properties: {
-					...responseBase,
-					phase: {
+					protocol: {
 						type: "string",
-						const: "question",
+						const: VISUAL_RESULT_PROTOCOL_V4,
 						required: true
 					},
-					action: {
+					status: {
 						type: "string",
-						enum: [
-							"submit",
-							"skip",
-							"cancel"
-						],
+						const: "ready",
 						required: true
-					},
-					answer: { type: "json" }
-				}
-			},
-			render: (_args, value) => [{
-				type: "text",
-				text: JSON.stringify(value)
-			}]
-		},
-		isConcurrencySafe: () => false,
-		async execute(args, exec) {
-			const activity = parseLearningActivityV2(args);
-			if (activity.phase !== "question") throw new TypeError("learning_question requires the question phase");
-			assertLearningGateAvailable(exec.agent);
-			return services.learningActivities.presentQuestion({
-				activity,
-				callId: String(exec.callId),
-				...exec.agent === void 0 ? {} : { agent: exec.agent },
-				signal: exec.signal
-			});
-		},
-		presentCall: (args) => ({
-			card: "generic",
-			title: args.focus.title,
-			kind: "read"
-		})
-	})));
-	services.tools.register(closeParameterRoot(defineTool({
-		name: "learning_reveal",
-		description: "Evaluate the learner response, reveal only that same round, and wait for animation completion plus explicit continue.",
-		parameters: {
-			protocol: {
-				type: "string",
-				const: ACTIVITY_PROTOCOL_V2,
-				required: true
-			},
-			phase: {
-				type: "string",
-				const: "reveal",
-				required: true
-			},
-			lessonToken: {
-				type: "string",
-				required: true
-			},
-			roundToken: {
-				type: "string",
-				required: true
-			},
-			seq: {
-				type: "integer",
-				required: true
-			},
-			focus,
-			feedback: {
-				type: "object",
-				additionalProperties: false,
-				required: true,
-				properties: {
-					verdict: {
-						type: "string",
-						enum: [
-							"correct",
-							"partial",
-							"misconception",
-							"neutral"
-						]
-					},
-					learnerEcho: { type: "string" },
-					explanation: {
-						type: "string",
-						required: true
-					},
-					answer: { type: "string" }
-				}
-			},
-			visual: revealVisual,
-			animation: {
-				type: "object",
-				additionalProperties: false,
-				required: true,
-				properties: {
-					kind: {
-						type: "string",
-						enum: [
-							"draw",
-							"morph",
-							"highlight",
-							"step_complete"
-						],
-						required: true
-					},
-					preferredDurationMs: { type: "integer" },
-					reducedMotion: {
-						type: "string",
-						const: "commit-final-state",
-						required: true
-					}
-				}
-			},
-			advance: {
-				type: "object",
-				additionalProperties: false,
-				required: true,
-				properties: {
-					mode: {
-						type: "string",
-						const: "user-after-animation",
-						required: true
-					},
-					label: { type: "string" }
-				}
-			},
-			fallbackMarkdown: {
-				type: "string",
-				required: true
-			}
-		},
-		output: {
-			schema: {
-				type: "object",
-				additionalProperties: false,
-				properties: {
-					...responseBase,
-					phase: {
-						type: "string",
-						const: "reveal",
-						required: true
-					},
-					action: {
-						type: "string",
-						enum: [
-							"continue",
-							"skip",
-							"cancel"
-						],
-						required: true
-					},
-					animation: {
-						type: "object",
-						additionalProperties: false,
-						required: true,
-						properties: {
-							completed: {
-								type: "boolean",
-								required: true
-							},
-							skipped: { type: "boolean" },
-							reducedMotion: { type: "boolean" },
-							error: { type: "string" }
-						}
 					}
 				}
 			},
@@ -632,21 +1157,17 @@ function apply(ctx) {
 				text: JSON.stringify(value)
 			}]
 		},
-		isConcurrencySafe: () => false,
-		async execute(args, exec) {
-			const activity = parseLearningActivityV2(args);
-			if (activity.phase !== "reveal") throw new TypeError("learning_reveal requires the reveal phase");
-			assertLearningGateAvailable(exec.agent);
-			return services.learningActivities.presentReveal({
-				activity,
-				callId: String(exec.callId),
-				...exec.agent === void 0 ? {} : { agent: exec.agent },
-				signal: exec.signal
-			});
+		isConcurrencySafe: () => true,
+		async execute(args) {
+			parseLearningVisualV4(args);
+			return {
+				protocol: VISUAL_RESULT_PROTOCOL_V4,
+				status: "ready"
+			};
 		},
 		presentCall: (args) => ({
 			card: "generic",
-			title: args.focus.title,
+			title: typeof args.title === "string" ? args.title : "Interactive visual",
 			kind: "read"
 		})
 	})));
@@ -654,14 +1175,15 @@ function apply(ctx) {
 		name: "learning:policy",
 		order: 20,
 		text: [
-			"The user selected Learning mode. Diagnose only the missing gap, then choose the smallest useful move: direct explanation, guided discovery, a parallel worked example, one interactive round, or a reflective pause. Adapt to learner evidence, give a foothold when they are stuck, and end explicitly after demonstrated understanding.",
-			"Use ask_user_question only for a user-owned choice about direction, depth, or pace that materially changes the lesson. Ask exactly one single-select question with two or three broad mutually exclusive options. Infer a reasonable default instead of opening a choice merely to display controls; teaching evidence belongs in learning_question.",
-			"An interactive round has one hard gate per model step. Ask exactly one current question with learning_question. After its result, evaluate that response with learning_reveal. Wait for the reveal result before constructing the next question. A short bridge sentence may precede a gate, but no second question may appear outside it.",
-			"Question content is current-round only and contains no answer or future title. Reveal content is same-round only and contains no next question. Fallbacks follow the same phase boundary. These are protocol boundaries, not a reason to force an activity when concise teaching is better.",
-			"If focus.progress is present, current is 1-based (never 0) and total is at least current.",
+			"The user selected Learning mode. Teach as a thoughtful conversation in the learner's language and register. When the goal is already clear, begin with the missing idea instead of opening with a questionnaire. Use a compact explanation, analogy, worked example, prediction, or reflection according to the actual gap, and stop when the learner demonstrates transfer.",
+			"Keep learner input in the ordinary conversation. Ask at most one focused question at a time, let the normal message composer collect the answer, and continue from the learner's actual words. Do not turn a lesson into a sequence of submit buttons, reveal gates, duplicated cards, or fixed rounds.",
+			"Use learning_visual at most once in a response, and only when a diagram or local manipulation materially improves understanding. Match the representation to the concept: plot for quantitative relationships; node_link for topology, causes, dependencies, or processes; scene_2d for geometry and spatial mechanisms; relation for comparison, matrix, classification, or sets; timeline for chronology; formula_steps for a derivation whose transformations matter; study_map for a supplied multi-section source; recall_deck when the learner asks for flashcards or active recall. Use sequence frames only when progressive focus helps. Make the surrounding prose self-sufficient, let the visual complete immediately, then continue in the same response with the key interpretation and, if useful, one natural question. Never ask the learner to submit visual state through a custom form.",
+			"Do not force a visual for a formula, definition, fact, or already-clear explanation. If the learner asks for a derivative formula, give the formula directly; use a plot or scene only if they ask why it works or need the secant-to-tangent geometry. If the learner asks for a fully connected neuron or layer, use node_link with layered groups and explicit edges; never replace structural topology with an activation-function plot or ASCII/Markdown art.",
+			"When the learner supplies a reference file, inspect its actual organization and their goal before choosing a visual. Use study_map for a source-level overview with stable section or page anchors, then teach one concept at a time with the most specific visual kind. Do not compress an entire document into one giant graph, invent unseen sections, or turn every attachment into flashcards. Use recall_deck only when requested or when an agreed review phase begins.",
+			"Use ask_user_question only for a user-owned choice about direction, depth, or pace that materially changes the lesson. Ask exactly one single-select question with two or three broad mutually exclusive options; otherwise infer a reasonable default and continue.",
 			"Load the interactive-teaching skill when a multi-turn lesson needs teaching judgment beyond these standing rules."
 		].join("\n\n")
 	});
 }
 //#endregion
-export { LearningGateError, apply, assertLearningGateAvailable, inject, name };
+export { apply, inject, name };
