@@ -221,6 +221,7 @@ button:focus-visible, textarea:focus-visible { outline: 2px solid #6d9ff3; outli
   main { padding: 18px 14px 34px; }
   .acceptance-header { flex-direction: column; }
   .conversation-shell { margin-top: 24px; }
+  .ordinary-composer { position: static; }
   .status span:not(:last-child)::after { content: none; }
 }
 

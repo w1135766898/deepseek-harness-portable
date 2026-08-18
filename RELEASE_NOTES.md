@@ -1,13 +1,15 @@
-# DeepSeek Harness Desktop v1.3.1
+# DeepSeek Harness Desktop v1.3.2
 
 [中文](RELEASE_NOTES.zh.md)
 
 Windows x64, macOS Apple Silicon, and Linux x64 desktop release · 2026-08-18
 
-This is the v1.3.1 desktop release. It moves the runtime to DeepSeek Harness rc.7, fixes overwrite-install first launch and forward-compatible session history, and brings the Learning preset into the native desktop conversation experience.
+This is the v1.3.2 test build. It keeps the DeepSeek Harness rc.7 runtime and makes the desktop About and release-notes entry points open their native modal reliably.
 
 ## New Features & Improvements
 
+- **No-console Windows startup**: desktop and Start menu shortcuts use a GUI bootstrap that preserves interrupted-update recovery without flashing a command window; existing shortcuts migrate automatically and roll back safely.
+- **Reliable About and release notes**: desktop menu actions now open the native modal directly instead of routing through the Web runtime menu bridge.
 - **Native Learning choices**: learning direction, depth, and pace now use the rc.7 client choice control instead of a custom activity form.
 - **Inline teaching graphics**: parameter explorers, process steppers, and structure comparisons render inside the assistant message, persist in session replay, and include text equivalents and non-color-only labels.
 - **Forward-compatible session history**: the portable runtime accepts the exact legacy `portable-runtime/mode-resolution` event and marks new occurrences ignorable; unrelated unknown non-ignorable events remain rejected.
@@ -26,10 +28,10 @@ This is the v1.3.1 desktop release. It moves the runtime to DeepSeek Harness rc.
 
 ## Components
 
-- Distribution: 1.3.1
+- Distribution: 1.3.2
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.0-rc.7 (@deepseek-ai/dsh-web-app)
-- Tag: v1.3.1
+- Tag: v1.3.2
 
 ## Checksums and security
 

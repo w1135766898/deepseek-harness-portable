@@ -1,6 +1,7 @@
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { existsSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { join, relative, resolve } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { boot, healProfilesModuleFallback, loadOverlayPatches } from '@deepseek-ai/dsh-app-boot'
 import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
@@ -15,9 +16,9 @@ const pinnedRoot = join(repositoryRoot, 'vendor/deepseek-harness')
 const configRoot = join(pinnedRoot, 'apps/cli/config')
 const basePatch = join(pinnedRoot, 'packages/bundle/base/cordis.patch.yml')
 const webPatch = join(pinnedRoot, 'packages/bundle/web-app/cordis.patch.yml')
-// The restored packaged closure is a flat, resolvable installation anchor;
-// using it exercises the same package bytes without running an install.
-const installAnchor = join(repositoryRoot, 'dist-desktop/node/package.json')
+// A workspace install always materializes this package and its dependency
+// links; the isolation test must remain runnable from a clean checkout.
+const installAnchor = join(repositoryRoot, 'apps/runtime/package.json')
 
 let ctx: Context
 let temporaryRoot = ''
@@ -86,6 +87,19 @@ afterAll(async () => {
 })
 
 describe('exact non-Learning catalog isolation', () => {
+  it('boots from a clean-checkout workspace anchor instead of generated desktop output', () => {
+    const anchorPath = relative(repositoryRoot, installAnchor).replaceAll('\\', '/')
+    const manifest = JSON.parse(readFileSync(installAnchor, 'utf8')) as {
+      name?: string
+      dependencies?: Record<string, string>
+    }
+    expect(existsSync(installAnchor)).toBe(true)
+    expect(anchorPath).toBe('apps/runtime/package.json')
+    expect(anchorPath).not.toContain('dist-')
+    expect(manifest.name).toBe('@dsh-portable/runtime')
+    expect(manifest.dependencies?.['@dsh-portable/interactive-learning']).toBe('workspace:^')
+  })
+
   it('leaves Standard, Code, Minimal, and Cordis tool schemas and assembled prompts byte-equivalent', async () => {
     const handles = await Promise.all(['standard', 'code', 'minimal', 'cordis'].map(createAgent))
     try {

@@ -1,14 +1,34 @@
 /** Host entry: one non-model-facing Learning Activity broker service. */
+import { registerInteractiveLearningSessionCompatibility } from './bootstrap.ts'
+
+registerInteractiveLearningSessionCompatibility()
+
+export { registerInteractiveLearningSessionCompatibility } from './bootstrap.ts'
 export {
   LearningActivityBroker,
+  type LearningStateUpdateRequest,
+  type LearningStateUpdateResult,
+  type ObservableLearnerStateUpdate,
   type LearningLifecycleEvent,
   type PresentLearningActivityRequest,
+  type PresentLearningCheckpointRequest,
   type PresentLearningGateRequest,
 } from './broker.ts'
 export { LearningActivityBroker as default } from './broker.ts'
 export type {
   LearningActivityV1,
   LearningActivityV2,
+  LearningCheckpointCancelledResultV1,
+  LearningCheckpointEvidenceKindV1,
+  LearningCheckpointKindV1,
+  LearningCheckpointOptionV1,
+  LearningCheckpointResponseV1,
+  LearningCheckpointResultV1,
+  LearningCheckpointSkippedResultV1,
+  LearningCheckpointSubmittedResultV1,
+  LearningCheckpointV1,
+  LearningCheckpointWaitEnvelopeInputV1,
+  LearningCheckpointWaitEnvelopeV1,
   LearningQuestionV2,
   LearningRevealV2,
   LearningResponseV1,
@@ -31,3 +51,25 @@ export type {
   LearningRecallDeckV4,
   LearningVisualResultV4,
 } from './protocol.ts'
+export {
+  DEFAULT_TRANSCRIPT_TOKEN_BUDGET,
+  LEARNER_STATE_EVENT_PROTOCOL,
+  LEARNER_STATE_PROTOCOL,
+  LEARNER_STATE_SESSION_EVENT_TYPE,
+  createInitialLearnerState,
+  createLearnerStateSnapshotEvent,
+  foldLearnerStateSession,
+  hydrateLearnerStateSnapshot,
+  parseLearnerStateSnapshotEvent,
+  reduceLearnerState,
+  registerLearningSessionEventType,
+  renderLearnerStateTranscript,
+  resetLearnerState,
+  serializeLearnerStateSnapshot,
+  type LearnerState,
+  type LearnerStateCorrection,
+  type LearnerStateEvent,
+  type LearnerStateSnapshot,
+  type LearnerStateSnapshotEvent,
+  type ObservableLearnerEvent,
+} from './learner-state.ts'

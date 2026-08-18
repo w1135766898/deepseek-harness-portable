@@ -14,6 +14,8 @@ declare module '@deepseek-ai/dsh-session' {
 }
 /** Register the exact legacy portable event understood by this distribution. */
 export declare function registerPortableSessionCompatibility(): void;
+/** Register every required event understood by the packaged runtime before persistence can read. */
+export declare function registerPackagedSessionCompatibility(): void;
 /** Minimal append capability required by the portable diagnostic producer. */
 export interface PortableModeResolutionWriter {
     append(type: typeof PORTABLE_MODE_RESOLUTION_EVENT_TYPE, data: RuntimeModeTrace, opts: {

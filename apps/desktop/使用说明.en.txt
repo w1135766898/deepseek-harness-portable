@@ -1,10 +1,11 @@
-DeepSeek Harness for Win v1.3.1
+DeepSeek Harness for Win v1.3.2
 ================================
 
 Chinese guide: 使用说明.txt
 
-1. start-desktop.cmd
-   Launches the bundled Electron desktop shell.
+1. DeepSeek Harness Launcher.exe
+   Launches the bundled Electron desktop shell without opening a command window.
+   start-desktop.cmd remains available for console diagnostics and update recovery.
 
 2. start-web.cmd
    Uses Electron's embedded Node.js to launch the Web surface; no system Node.js is required.

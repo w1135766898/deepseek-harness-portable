@@ -4,24 +4,46 @@ import {
   defineTool,
   type ParameterPropertySpec,
   type ToolDefinition,
+  type ToolRunContext,
   type ToolRuntime,
   type ValueSchemaSpec,
 } from '@deepseek-ai/dsh-tools'
 import type SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import {
+  CHECKPOINT_PROTOCOL,
+  CHECKPOINT_RESULT_PROTOCOL,
+  LEARNING_CHECKPOINT_EVIDENCE_KINDS,
+  LEARNING_CHECKPOINT_KINDS,
   VISUAL_PROTOCOL_V4,
   VISUAL_RESULT_PROTOCOL_V4,
   MAX_VISUAL_MATH_DEPTH,
   MATH_BINARY_OPERATORS,
   MATH_UNARY_OPERATORS,
+  LearningProtocolError,
+  parseLearningCheckpointV1,
   parseLearningVisualV4,
+  type LearningCheckpointResultV1,
   type LearningVisualResultV4,
 } from './protocol.ts'
+import type {
+  LearningActivityBroker,
+  LearningStateUpdateResult,
+  ObservableLearnerStateUpdate,
+} from './broker.ts'
+import type {
+  LearnerStateCorrection,
+  ObservableLearnerEvent,
+} from './learner-state.ts'
+import { LEARNING_TEACHING_POLICY } from './teaching-policy.ts'
 
 export const name = 'interactive-learning-agent'
-export const inject = ['tools', 'systemPrompt']
+export const inject = ['tools', 'systemPrompt', 'learningActivities']
 
-type LearningAgentContext = Context & { tools: ToolRuntime; systemPrompt: SystemPrompt }
+type LearningAgentContext = Context & {
+  tools: ToolRuntime
+  systemPrompt: SystemPrompt
+  learningActivities: LearningActivityBroker
+}
 
 function closeParameterRoot<T extends ToolDefinition>(tool: T): T {
   return { ...tool, parameters: { ...tool.parameters, additionalProperties: false } } as T
@@ -394,6 +416,219 @@ const sequence = { type: 'object', additionalProperties: false, properties: {
   }, description: '2 to 12 sequence frames.' },
 } } as const
 
+const checkpointOption = { type: 'object', additionalProperties: false, properties: {
+  id: { ...identifier, required: true },
+  label: { type: 'string', required: true },
+} } as const
+
+const checkpointResponse = { oneOf: [
+  { type: 'object', additionalProperties: false, properties: {
+    text: { type: 'string', required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    optionId: { ...identifier, required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    number: { type: 'number', required: true },
+  } },
+] } as const
+
+const checkpointOutput = { oneOf: [
+  { type: 'object', additionalProperties: false, properties: {
+    protocol: { type: 'string', const: CHECKPOINT_RESULT_PROTOCOL, required: true },
+    checkpointId: { type: 'string', required: true },
+    status: { type: 'string', const: 'submitted', required: true },
+    response: { ...checkpointResponse, required: true },
+    receiptId: { type: 'string', required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    protocol: { type: 'string', const: CHECKPOINT_RESULT_PROTOCOL, required: true },
+    checkpointId: { type: 'string', required: true },
+    status: { type: 'string', enum: ['skipped', 'cancelled'], required: true },
+    receiptId: { type: 'string', required: true },
+  } },
+] } as const
+
+const learnerObservation = { type: 'object', additionalProperties: false, properties: {
+  id: {
+    type: 'string',
+    required: true,
+    description: 'Stable id for this one concrete observation within the current session.',
+  },
+  source: {
+    type: 'string',
+    enum: ['learner-message', 'learner-action'],
+    required: true,
+  },
+  summary: {
+    type: 'string',
+    required: true,
+    description: 'Concise concrete utterance/action/source fact supporting the update; never a hidden trait.',
+  },
+  turn: { type: 'integer' },
+} } as const
+
+const sourceMaterialObservation = { type: 'object', additionalProperties: false, properties: {
+  id: { type: 'string', required: true },
+  source: { type: 'string', const: 'source-material', required: true },
+  summary: { type: 'string', required: true },
+  turn: { type: 'integer' },
+} } as const
+
+const userCorrectionObservation = { type: 'object', additionalProperties: false, properties: {
+  id: { type: 'string', required: true },
+  source: { type: 'string', const: 'user-correction', required: true },
+  summary: { type: 'string', required: true },
+  turn: { type: 'integer' },
+} } as const
+
+const learnerEvidenceFields = {
+  summary: { type: 'string', required: true },
+  confidence: { type: 'string', enum: ['low', 'medium', 'high'] },
+  correctness: { type: 'string', enum: ['correct', 'incorrect', 'unknown'] },
+  independence: { type: 'string', enum: ['independent', 'guided', 'unknown'] },
+} as const
+
+const learnerEvidenceInput = { oneOf: [
+  { type: 'object', additionalProperties: false, properties: {
+    kind: {
+      type: 'string',
+      enum: ['attempt', 'prediction', 'explanation', 'contrast', 'error'],
+      required: true,
+    },
+    ...learnerEvidenceFields,
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    kind: { type: 'string', const: 'transfer', required: true },
+    transferContext: { type: 'string', enum: ['same', 'fresh', 'unknown'], required: true },
+    ...learnerEvidenceFields,
+  } },
+] } as const
+
+const learnerStateEvent = { oneOf: [
+  { type: 'object', additionalProperties: false, properties: {
+    type: { type: 'string', const: 'goal_observed', required: true },
+    goal: { type: 'string', required: true },
+    observation: { ...learnerObservation, required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    type: { type: 'string', const: 'request_kind_observed', required: true },
+    requestKind: {
+      type: 'string',
+      enum: ['concept', 'procedure', 'topic', 'source-study', 'practice', 'resource', 'direct-task', 'unknown'],
+      required: true,
+    },
+    observation: { ...learnerObservation, required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    type: { type: 'string', const: 'prior_knowledge_observed', required: true },
+    level: { type: 'string', enum: ['novice', 'intermediate', 'advanced', 'unknown'] },
+    items: { type: 'array', items: { type: 'string' } },
+    mode: { type: 'string', enum: ['append', 'replace'] },
+    observation: { ...learnerObservation, required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    type: { type: 'string', const: 'gap_observed', required: true },
+    gap: {
+      type: 'string',
+      enum: ['concept', 'procedure', 'notation', 'task-model', 'prerequisite', 'unknown'],
+      required: true,
+    },
+    misconceptions: { type: 'array', items: { type: 'string' } },
+    misconceptionMode: { type: 'string', enum: ['append', 'replace'] },
+    observation: { ...learnerObservation, required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    type: { type: 'string', const: 'readiness_observed', required: true },
+    readiness: { type: 'string', enum: ['can-reason', 'needs-foothold', 'unknown'], required: true },
+    observation: { ...learnerObservation, required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    type: { type: 'string', const: 'progress_observed', required: true },
+    progressSignal: {
+      type: 'string',
+      enum: ['progressing', 'impatient', 'stuck', 'shutdown-risk', 'unknown'],
+      required: true,
+    },
+    observation: { ...learnerObservation, required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    type: { type: 'string', const: 'urgency_observed', required: true },
+    urgency: { type: 'string', enum: ['none', 'initial-blocker', 'later-pressure', 'unknown'], required: true },
+    observation: { ...learnerObservation, required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    type: { type: 'string', const: 'assessment_context_observed', required: true },
+    assessmentContext: { type: 'string', enum: ['self-study', 'graded', 'unknown'], required: true },
+    observation: { ...learnerObservation, required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    type: { type: 'string', const: 'learner_evidence_observed', required: true },
+    evidence: { ...learnerEvidenceInput, required: true },
+    observation: { ...learnerObservation, required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    type: { type: 'string', const: 'source_anchors_observed', required: true },
+    anchors: { type: 'array', items: { type: 'string' }, required: true },
+    mode: { type: 'string', enum: ['append', 'replace'] },
+    observation: { ...sourceMaterialObservation, required: true },
+  } },
+] } as const
+
+const learnerStateCorrection = { type: 'object', additionalProperties: false, properties: {
+  goal: { oneOf: [{ type: 'string' }, { type: 'null' }] },
+  requestKind: {
+    type: 'string',
+    enum: ['concept', 'procedure', 'topic', 'source-study', 'practice', 'resource', 'direct-task', 'unknown'],
+  },
+  level: { type: 'string', enum: ['novice', 'intermediate', 'advanced', 'unknown'] },
+  priorKnowledge: { type: 'array', items: { type: 'string' } },
+  gap: { type: 'string', enum: ['concept', 'procedure', 'notation', 'task-model', 'prerequisite', 'unknown'] },
+  misconceptions: { type: 'array', items: { type: 'string' } },
+  readiness: { type: 'string', enum: ['can-reason', 'needs-foothold', 'unknown'] },
+  progressSignal: { type: 'string', enum: ['progressing', 'impatient', 'stuck', 'shutdown-risk', 'unknown'] },
+  urgency: { type: 'string', enum: ['none', 'initial-blocker', 'later-pressure', 'unknown'] },
+  supportLevel: { type: 'integer', enum: [0, 1, 2, 3, 4, 5] },
+  assessmentContext: { type: 'string', enum: ['self-study', 'graded', 'unknown'] },
+  mastery: { type: 'string', enum: ['unseen', 'emerging', 'transfer'] },
+  evidence: { type: 'array', items: learnerEvidenceInput },
+  lastMove: {
+    type: 'string',
+    enum: ['none', 'visual', 'checkpoint'],
+  },
+  sourceAnchors: { type: 'array', items: { type: 'string' } },
+} } as const
+
+const learnerStateUpdateOutput = { type: 'object', additionalProperties: false, properties: {
+  status: { type: 'string', enum: ['updated', 'corrected', 'reset'], required: true },
+  revision: { type: 'integer', required: true },
+} } as const
+
+function assertSingleCheckpointInModelStep(exec: ToolRunContext): void {
+  const agent = exec.agent
+  if (agent === undefined) {
+    throw new LearningProtocolError(['learning_checkpoint requires a live agent session'])
+  }
+  const calls = agent.session.events.filter(event => event.type === 'tool/call')
+  const ownCalls = calls.filter(event => event.data.callId === exec.callId)
+  if (ownCalls.length === 0) {
+    throw new LearningProtocolError(['learning_checkpoint callId is absent from the session tool/call log'])
+  }
+  const locations = new Set(ownCalls.map(event => `${String(event.data.turn)}:${String(event.data.step)}`))
+  if (locations.size !== 1 || ownCalls.some(event => event.data.name !== 'learning_checkpoint')) {
+    throw new LearningProtocolError(['learning_checkpoint callId does not identify one checkpoint model step'])
+  }
+  const own = ownCalls[ownCalls.length - 1]!
+  const checkpointCallIds = new Set(calls
+    .filter(event => event.data.turn === own.data.turn
+      && event.data.step === own.data.step
+      && event.data.name === 'learning_checkpoint')
+    .map(event => String(event.data.callId)))
+  if (checkpointCallIds.size > 1) {
+    throw new LearningProtocolError(['a model step may contain at most one learning_checkpoint call'])
+  }
+}
+
 export function apply(ctx: Context): void {
   const services = ctx as LearningAgentContext
   services.tools.register(closeParameterRoot(defineTool({
@@ -440,8 +675,9 @@ export function apply(ctx: Context): void {
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
     isConcurrencySafe: () => true,
-    async execute(args) {
+    async execute(args, exec) {
       parseLearningVisualV4(args)
+      services.learningActivities.recordVisual(exec.agent, String(exec.callId))
       return {
         protocol: VISUAL_RESULT_PROTOCOL_V4,
         status: 'ready',
@@ -454,17 +690,130 @@ export function apply(ctx: Context): void {
     }),
   })))
 
+  services.tools.register(closeParameterRoot(defineTool({
+    name: 'learning_state_update',
+    description: [
+      'Internal, immediate, non-rich session-state update from concrete observable evidence in the current learner message, learner action, or supplied source.',
+      'Call only when the observation substantively changes the next teaching move; never call mechanically every turn and never infer a hidden trait, personality, emotion, or learning style.',
+      'Use update for one new observation, correct only after an explicit user correction, and reset only at a real session-local learning-boundary reset.',
+      'The Host reads the current revision synchronously and applies compare-and-swap protection; do not invent or guess revision metadata.',
+      'Assistant visual and checkpoint moves are recorded automatically; do not duplicate them here. This tool performs no user wait and must not replace ordinary conversation.',
+    ].join(' '),
+    parameters: {
+      action: { type: 'string', enum: ['update', 'correct', 'reset'], required: true },
+      event: {
+        ...learnerStateEvent,
+        description: 'Required only for action=update; exactly one concrete observable state event.',
+      },
+      correction: {
+        ...learnerStateCorrection,
+        description: 'Required only for action=correct; fields explicitly corrected by the user.',
+      },
+      observation: {
+        ...userCorrectionObservation,
+        description: 'Required only for action=correct; the explicit user correction that justifies it.',
+      },
+    },
+    output: {
+      schema: learnerStateUpdateOutput,
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+    },
+    isConcurrencySafe: () => false,
+    async execute(args, exec) {
+      const agent = exec.agent
+      if (agent === undefined) throw new Error('learning_state_update requires a live agent session')
+      const expectedRevision = services.learningActivities.learnerState(agent).revision
+      if (args.action === 'update') {
+        if (args.event === undefined || args.correction !== undefined || args.observation !== undefined) {
+          throw new TypeError('action=update requires only event')
+        }
+        return services.learningActivities.updateLearnerState({
+          action: 'update',
+          agent,
+          expectedRevision,
+          event: args.event as unknown as ObservableLearnerStateUpdate,
+        }) satisfies LearningStateUpdateResult
+      }
+      if (args.action === 'correct') {
+        if (args.event !== undefined || args.correction === undefined || args.observation === undefined) {
+          throw new TypeError('action=correct requires only correction and observation')
+        }
+        return services.learningActivities.updateLearnerState({
+          action: 'correct',
+          agent,
+          expectedRevision,
+          correction: args.correction as unknown as LearnerStateCorrection,
+          observation: args.observation as unknown as ObservableLearnerEvent & { source: 'user-correction' },
+        }) satisfies LearningStateUpdateResult
+      }
+      if (args.event !== undefined || args.correction !== undefined || args.observation !== undefined) {
+        throw new TypeError('action=reset accepts no event, correction, or observation')
+      }
+      return services.learningActivities.updateLearnerState({
+        action: 'reset',
+        agent,
+        expectedRevision,
+      }) satisfies LearningStateUpdateResult
+    },
+  })))
+
+  services.tools.register(closeParameterRoot(defineTool({
+    name: 'learning_checkpoint',
+    description: [
+      'Optionally request one high-value learner contribution when their response materially changes the next teaching move.',
+      'The normal path is ordinary non-blocking conversation; never call this once per turn or as a Continue ritual.',
+      'Use only for a prediction, explanation, contrast, design choice, debugging diagnosis, boundary case, or transfer application.',
+      'The payload is answer-free: never include a correct answer, grading rubric, solution, future step, Reveal, animation, or Continue content.',
+      'Ask only one current-step prompt. A skipped, cancelled, unavailable, or failed checkpoint means continue in ordinary conversation without withholding teaching.',
+      'The result is terminal for this tool call. Evaluate it only in the next model step.',
+    ].join(' '),
+    parameters: {
+      protocol: { type: 'string', const: CHECKPOINT_PROTOCOL, required: true },
+      kind: { type: 'string', enum: LEARNING_CHECKPOINT_KINDS, required: true },
+      prompt: { type: 'string', required: true },
+      context: { type: 'string' },
+      expectedEvidence: { type: 'string', enum: LEARNING_CHECKPOINT_EVIDENCE_KINDS, required: true },
+      options: {
+        type: 'array',
+        items: checkpointOption,
+        description: 'Required only for single_choice; 2 to 8 answer-free options.',
+      },
+      fallbackMarkdown: {
+        type: 'string',
+        required: true,
+        description: 'Self-sufficient ordinary-conversation fallback; never include the answer.',
+      },
+    },
+    output: {
+      schema: checkpointOutput,
+      render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+    },
+    isConcurrencySafe: () => false,
+    async execute(args, exec) {
+      const checkpoint = parseLearningCheckpointV1(args)
+      assertSingleCheckpointInModelStep(exec)
+      return await services.learningActivities.presentCheckpoint({
+        checkpoint,
+        agent: exec.agent,
+        signal: exec.signal,
+        callId: String(exec.callId),
+      }) satisfies LearningCheckpointResultV1
+    },
+  })))
+
   services.systemPrompt.section({
     name: 'learning:policy',
     order: 20,
-    text: [
-      'The user selected Learning mode. Teach as a thoughtful conversation in the learner\'s language and register. When the goal is already clear, begin with the missing idea instead of opening with a questionnaire. Use a compact explanation, analogy, worked example, prediction, or reflection according to the actual gap, and stop when the learner demonstrates transfer.',
-      'Keep learner input in the ordinary conversation. Ask at most one focused question at a time, let the normal message composer collect the answer, and continue from the learner\'s actual words. Do not turn a lesson into a sequence of submit buttons, reveal gates, duplicated cards, or fixed rounds.',
-      'Use learning_visual at most once in a response, and only when a diagram or local manipulation materially improves understanding. Match the representation to the concept: plot for quantitative relationships; node_link for topology, causes, dependencies, or processes; scene_2d for geometry and spatial mechanisms; relation for comparison, matrix, classification, or sets; timeline for chronology; formula_steps for a derivation whose transformations matter; study_map for a supplied multi-section source; recall_deck when the learner asks for flashcards or active recall. Use sequence frames only when progressive focus helps. Make the surrounding prose self-sufficient, let the visual complete immediately, then continue in the same response with the key interpretation and, if useful, one natural question. Never ask the learner to submit visual state through a custom form.',
-      'Do not force a visual for a formula, definition, fact, or already-clear explanation. If the learner asks for a derivative formula, give the formula directly; use a plot or scene only if they ask why it works or need the secant-to-tangent geometry. If the learner asks for a fully connected neuron or layer, use node_link with layered groups and explicit edges; never replace structural topology with an activation-function plot or ASCII/Markdown art.',
-      'When the learner supplies a reference file, inspect its actual organization and their goal before choosing a visual. Use study_map for a source-level overview with stable section or page anchors, then teach one concept at a time with the most specific visual kind. Do not compress an entire document into one giant graph, invent unseen sections, or turn every attachment into flashcards. Use recall_deck only when requested or when an agreed review phase begins.',
-      'Use ask_user_question only for a user-owned choice about direction, depth, or pace that materially changes the lesson. Ask exactly one single-select question with two or three broad mutually exclusive options; otherwise infer a reasonable default and continue.',
-      'Load the interactive-teaching skill when a multi-turn lesson needs teaching judgment beyond these standing rules.',
-    ].join('\n\n'),
+    text: LEARNING_TEACHING_POLICY,
+  })
+  services.systemPrompt.context({
+    name: 'learning:learner-state',
+    order: 20,
+    text: context => {
+      const agent = context.agent ?? services.agent
+      return agent === undefined
+        ? ''
+        : services.learningActivities.learnerStateTranscript(agent, 300)
+    },
   })
 }

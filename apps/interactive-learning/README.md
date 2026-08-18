@@ -6,20 +6,24 @@ schemas and prompts.
 
 ## Architecture
 
-- The package root keeps the legacy `learningActivities` Host broker so old V1/V2
-  conversations can replay safely. It registers no model-visible tools.
-- `./agent` is mounted only by the Learning preset. It registers one preferred
-  tool, `learning_visual`, and a compact teaching policy.
-- `./client` renders the visual inline and keeps the ordinary conversation
-  composer active. It also retains read-only replay support for old
-  `learning_activity`, `learning_question`, and `learning_reveal` calls.
+- The package root provides the `learningActivities` Host broker and registers
+  the required `learning/state` session-event discriminator before persisted
+  Learning sessions can be loaded. It registers no model-visible tools.
+- `./agent` is mounted only by the Learning preset. It registers the immediate
+  `learning_visual`, silent `learning_state_update`, and optional
+  `learning_checkpoint` tools. Its standing policy comes from one canonical
+  TypeScript source rather than being duplicated in the Skill.
+- `./client` renders visuals and optional checkpoints inline. State updates have
+  an explicitly empty tool view. V1/V2 activity calls and V3 visuals retain
+  read-only replay support.
 - `./protocol` owns the closed, versioned declarative contracts.
 - `preset/learning/skills/interactive-teaching` provides detailed teaching
   judgment on demand.
 
-The current design separates explanation from interaction. A visual is an
-illustration inside a normal assistant response, not a form that owns the user
-turn.
+The ordinary conversation remains the default. A visual is an illustration
+inside a normal assistant response, not a form that owns the user turn. A
+checkpoint is the sole exception: when deliberately selected for a high-value
+learner action, it creates exactly one user-result wait and then terminates.
 
 ## Non-blocking learning flow
 
@@ -37,6 +41,57 @@ turn.
 This removes the old Question → Reveal split that duplicated rounds and left a
 model turn running while it waited for the learner. The surrounding prose must
 still make sense if a Client cannot render the enhancement.
+
+## Session-scoped learner state
+
+Learning keeps a small, tentative teaching state for the current session only:
+the learner's immediate goal, demonstrated prior knowledge, current gap or
+misconception, learner-evidence-derived support need, urgency or stuck evidence, assessment context,
+and independently demonstrated evidence including fresh transfer.
+
+The production path is explicit and auditable:
+
+1. The ordinary learner message remains in the normal conversation transcript.
+   When a concrete observation materially changes teaching, the model may call
+   the internal `learning_state_update`; it must not call it mechanically.
+2. A completed visual and a checkpoint terminal result contribute only facts the
+   Host can observe deterministically. Submission alone records an unevaluated
+   learner action; it never implies correctness, independence, progress, or
+   mastery.
+3. Every accepted update appends a strict, identity-free full snapshot as the
+   required `learning/state` session event. Unknown required events fail closed.
+4. Before every subsequent model step, the dynamic prompt context folds the
+   durable events and renders a bounded 100–300-token tentative summary.
+
+Persisted snapshots do not contain a session id. Refresh and resume fold the
+same event log; a fork rebinds inherited snapshots to its new identity and then
+diverges independently. Reset appends a cleared snapshot and advances the
+revision, so a late asynchronous update cannot resurrect prior state. Disposal
+drops only the process-local fold cache. This is not a cross-session learner
+profile, personality model, learning-style classifier, or long-term mastery
+record. A learner correction is supplied in ordinary conversation and is
+accepted only as a correction—not as self-certified mastery.
+
+## Optional checkpoint protocol v1
+
+`dsh-learning/checkpoint@1` is reserved for a prediction, explanation, contrast,
+design choice, debugging diagnosis, boundary case, or transfer application that
+will materially change the next teaching move. It is not the default input path
+and must never become a per-turn Continue ceremony.
+
+- At most one checkpoint may be pending in a session and at most one distinct
+  checkpoint may be emitted in a model step.
+- Its five closed kinds are `free_text`, `single_choice`, `numeric`,
+  `prediction`, and `code_slot`. Single-choice results carry the stable option
+  id; labels are presentation only.
+- The pending payload may contain only the current prompt, context, expected
+  evidence, answer-free options, and a self-sufficient fallback. Correct
+  answers, grading rubrics, solutions, and future steps are rejected.
+- The only terminal statuses are `submitted`, `skipped`, and `cancelled`.
+  Refresh recovers the same wait and draft; call and receipt replays are
+  idempotent, while conflicting reuse fails closed.
+- Skip, cancel, timeout, renderer failure, or an unavailable rich Client restores
+  ordinary conversation without a Reveal, animation, Continue, or second wait.
 
 ## Semantic visual protocol v4
 
@@ -103,14 +158,37 @@ visual inspection:
   --config 'apps/interactive-learning/tests/browser/vite.config.mjs'
 ```
 
-Open `http://127.0.0.1:41739/`. This is a component harness, not a substitute
-for the packaged desktop smoke.
+Open `http://127.0.0.1:41739/`. It covers visual replay plus checkpoint submit,
+skip, cancel, refresh-draft, and session-isolation states. This is a component
+harness, not a substitute for the packaged desktop smoke; its separate fixture
+input does not prove the real Host composer lifecycle.
 
-The credential-free teaching evaluation is deterministic and does not claim to
-be a remote-model quality score:
+The credential-free teaching evaluation contains hand-written rubric fixtures.
+It checks the grader and protocol invariants; it is not evidence that a model
+actually teaches well:
 
 ```powershell
-node apps/interactive-learning/lib/eval-cli.js
+pnpm --filter @dsh-portable/interactive-learning eval
+```
+
+The retired V2 Question → Reveal → animation → Continue sequence is available
+only through the explicitly named `gradeLegacyV2ReplayTranscript` read-only
+replay audit. It is not called by the default V4.1 eval and is not a current
+teaching success criterion.
+
+`tests/model-canary.mts` is a separately labelled, optional real-model smoke for
+one non-blocking visual call. It is not a multi-turn teaching-quality result and
+requires `DSH_CANARY_API_KEY`. Any real-model report must retain its provenance
+and must not be merged with fixture results.
+
+Package-level verification builds the package, scans published JS/maps for
+checkout or drive-letter paths, creates a real tarball, installs it into a clean
+temporary consumer, resolves Host/Agent/Client exports, and exercises the
+managed preset lifecycle:
+
+```powershell
+pnpm --filter @dsh-portable/interactive-learning run test:package:purity
+pnpm --filter @dsh-portable/interactive-learning run test:package
 ```
 
 Release verification should also run the repository test suite and the normal
@@ -120,21 +198,34 @@ Windows package pipeline (without `--skip-build`).
 
 From a clean package install:
 
-1. Add the package root to the Host composition:
+1. Before constructing the Loader, agent loop, or any configured session
+   resume, import the side-effect bootstrap (calling its exported function
+   again is safe):
+
+   ```ts
+   import '@dsh-portable/interactive-learning/bootstrap'
+   ```
+
+   A Host may instead place the package's compatibility bootstrap composition
+   row explicitly before `agent-loop`, but a late ordinary plugin row is not an
+   equivalent load-order guarantee. The portable runtime obtains this ordering
+   from its pre-boot static `./preset` import.
+
+2. Add the package root to the Host composition:
 
    ```yaml
    - id: interactive-learning
      name: '@dsh-portable/interactive-learning'
    ```
 
-2. Let the Web module loader discover the package's `dsh.client` manifest.
-3. Install the preset and restart Host/Web:
+3. Let the Web module loader discover the package's `dsh.client` manifest.
+4. Install the preset and restart Host/Web:
 
    ```powershell
    dsh-learning-preset install --home <DSH_HOME>
    ```
 
-4. Explicitly select Learning for a new conversation.
+5. Explicitly select Learning for a new conversation.
 
 The installer records ownership in
 `.agent-presets/learning/.dsh-managed.json`, updates only unmodified owned files,
@@ -142,13 +233,6 @@ stages new versions beside user-modified files, and removes only owned hashes.
 
 ```powershell
 dsh-learning-preset uninstall --home <DSH_HOME>
-```
-
-The clean-tarball lifecycle test verifies Host/Agent/protocol exports, Client
-activation metadata, and safe install/upgrade/uninstall behavior:
-
-```powershell
-node apps/interactive-learning/tests/package-lifecycle.mjs <package.tgz>
 ```
 
 Deferred by design: arbitrary executable widgets, cross-session mastery,

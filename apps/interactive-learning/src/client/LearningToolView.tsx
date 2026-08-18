@@ -4,6 +4,9 @@ import { MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
 import type { PendingInteraction, ToolCallBlock } from '@deepseek-ai/dsh-client-runtime/client'
 import {
+  parseLearningCheckpointV1,
+  parseLearningCheckpointResultV1,
+  isLearningCheckpointDisplayTextSafe,
   parseLearningActivity,
   parseLearningActivityV2,
   parseLearningVisualV3,
@@ -12,12 +15,17 @@ import {
   parseLearningVisualResultV4,
   parseLearningResponse,
   parseLearningResponseV2,
+  CHECKPOINT_PROTOCOL,
+  CHECKPOINT_RESULT_PROTOCOL,
   ACTIVITY_PROTOCOL_V2,
+  RESPONSE_PROTOCOL,
   RESPONSE_PROTOCOL_V2,
   VISUAL_PROTOCOL_V3,
   VISUAL_PROTOCOL_V4,
   VISUAL_RESULT_PROTOCOL_V3,
   VISUAL_RESULT_PROTOCOL_V4,
+  type LearningCheckpointV1,
+  type LearningCheckpointResultV1,
   type LearningActivityV1,
   type LearningActivityV2,
   type LearningResponseV1,
@@ -123,16 +131,26 @@ function visualLabelsOf(t: LearningToolViewProps['t']): LearningVisualV4Labels {
 function pendingActivity(
   interactions: readonly PendingInteraction[],
   sessionId: string,
-  activity: LearningActivityV1 | LearningActivityV2 | LearningVisualV3 | LearningVisualV4Definition | undefined,
+  activity: LearningActivityV1 | LearningActivityV2 | LearningCheckpointV1 | LearningVisualV3 | LearningVisualV4Definition | undefined,
   callId: string | undefined,
 ): LearningQuestionWait | undefined {
   if (activity === undefined) return undefined
   if (activity.protocol === VISUAL_PROTOCOL_V3 || activity.protocol === VISUAL_PROTOCOL_V4) return undefined
+  if (activity.protocol === CHECKPOINT_PROTOCOL) {
+    return interactions.find((interaction): interaction is LearningQuestionWait => {
+      if (interaction.kind !== 'question' || String(interaction.sessionId) !== sessionId) return false
+      const envelope = envelopeOf(interaction)
+      return envelope !== undefined
+        && 'checkpoint' in envelope
+        && envelope.sessionId === sessionId
+        && envelope.callId === callId
+    })
+  }
   if (activity.protocol === ACTIVITY_PROTOCOL_V2) {
     return interactions.find((interaction): interaction is LearningQuestionWait => {
       if (interaction.kind !== 'question' || String(interaction.sessionId) !== sessionId) return false
       const envelope = envelopeOf(interaction)
-      if (envelope === undefined || !('waitId' in envelope)) return false
+      if (envelope === undefined || !('phase' in envelope)) return false
       if (envelope.callId !== undefined && envelope.callId !== callId) return false
       return envelope.phase === activity.phase
         && envelope.seq === activity.seq
@@ -144,18 +162,35 @@ function pendingActivity(
   return interactions.find((interaction): interaction is LearningQuestionWait => {
     if (interaction.kind !== 'question' || String(interaction.sessionId) !== sessionId) return false
     const envelope = envelopeOf(interaction)
-    return envelope !== undefined && JSON.stringify(envelope.activity) === canonical
+    return envelope !== undefined && 'activity' in envelope && JSON.stringify(envelope.activity) === canonical
   })
 }
 
-function activityOf(block: ToolCallBlock): LearningActivityV1 | LearningActivityV2 | LearningVisualV3 | LearningVisualV4Definition | undefined {
+function activityOf(block: ToolCallBlock): LearningActivityV1 | LearningActivityV2 | LearningCheckpointV1 | LearningVisualV3 | LearningVisualV4Definition | undefined {
   const raw = 'kind' in block ? block.call?.argsRaw : block.argsRaw
   if (raw === undefined || raw === '') return undefined
   try {
     const parsed = JSON.parse(raw) as { protocol?: unknown }
+    if (parsed.protocol === CHECKPOINT_PROTOCOL) return parseLearningCheckpointV1(parsed)
     if (parsed.protocol === VISUAL_PROTOCOL_V4) return parseLearningVisualV4(parsed)
     if (parsed.protocol === VISUAL_PROTOCOL_V3) return parseLearningVisualV3(parsed)
     return parsed.protocol === ACTIVITY_PROTOCOL_V2 ? parseLearningActivityV2(parsed) : parseLearningActivity(parsed)
+  } catch {
+    return undefined
+  }
+}
+
+function checkpointTextFallbackOf(block: ToolCallBlock): { markdown: string; protocol: string } | undefined {
+  const raw = 'kind' in block ? block.call?.argsRaw : block.argsRaw
+  if (raw === undefined || raw === '' || raw.length > 64 * 1024) return undefined
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    if (parsed.protocol !== CHECKPOINT_PROTOCOL
+      || typeof parsed.fallbackMarkdown !== 'string'
+      || parsed.fallbackMarkdown.trim() === ''
+      || parsed.fallbackMarkdown.length > 8_000
+      || !isLearningCheckpointDisplayTextSafe(parsed.fallbackMarkdown)) return undefined
+    return { markdown: parsed.fallbackMarkdown, protocol: CHECKPOINT_PROTOCOL }
   } catch {
     return undefined
   }
@@ -189,12 +224,18 @@ function visualTextFallbackOf(block: ToolCallBlock): { markdown?: string; text: 
   }
 }
 
-function responseOf(block: ToolCallBlock): LearningResponseV1 | LearningResponseV2 | undefined {
+function responseOf(
+  block: ToolCallBlock,
+  activity: LearningActivityV1 | LearningActivityV2 | LearningCheckpointV1 | LearningVisualV3 | LearningVisualV4Definition | undefined,
+): LearningResponseV1 | LearningResponseV2 | LearningCheckpointResultV1 | undefined {
   if (!('kind' in block)) return undefined
   const text = block.content.filter(item => item.type === 'text').map(item => item.text).join('')
   if (text === '') return undefined
   try {
     const parsed = JSON.parse(text) as { protocol?: unknown }
+    if (parsed.protocol === CHECKPOINT_RESULT_PROTOCOL) {
+      return parseLearningCheckpointResultV1(parsed, activity?.protocol === CHECKPOINT_PROTOCOL ? { checkpoint: activity } : {})
+    }
     return parsed.protocol === RESPONSE_PROTOCOL_V2 ? parseLearningResponseV2(parsed) : parseLearningResponse(parsed)
   } catch {
     return undefined
@@ -268,15 +309,27 @@ function evidenceOf(
     : undefined
 }
 
+function checkpointAnswerOf(activity: LearningCheckpointV1, result: LearningCheckpointResultV1): string | undefined {
+  if (result.status !== 'submitted') return undefined
+  const response = result.response
+  if ('optionId' in response) {
+    return activity.options?.find(option => option.id === response.optionId)?.label ?? response.optionId
+  }
+  if ('number' in response) return String(response.number)
+  const text = response.text.trim()
+  return text.length <= 500 ? text : `${text.slice(0, 499)}…`
+}
+
 export function LearningToolView({ block, inspect, t, useSession, sessionId }: LearningToolViewProps) {
   void inspect
   const activity = activityOf(block)
   const done = 'kind' in block
-  const response = responseOf(block)
+  const response = responseOf(block, activity)
   const interactions = useSession(snapshot => snapshot.pending)
   const callId = 'kind' in block ? block.callId : block.callId
   const raw = 'kind' in block ? block.call?.argsRaw : block.argsRaw
   const invalidVisualFallback = activity === undefined && done ? visualTextFallbackOf(block) : undefined
+  const invalidCheckpointFallback = activity === undefined && done ? checkpointTextFallbackOf(block) : undefined
   useEffect(() => {
     if (done || raw === undefined || raw === '') return
     if (activity === undefined) emitLearningCallLifecycle('learning.call.stream_started', { callId })
@@ -297,20 +350,53 @@ export function LearningToolView({ block, inspect, t, useSession, sessionId }: L
         </p>
       )
     }
-    if (invalidVisualFallback !== undefined) {
+    const invalidFallback = invalidCheckpointFallback ?? invalidVisualFallback
+    if (invalidFallback !== undefined) {
       return (
-        <div className={css.inlineFallback} data-learning-result="invalid" data-learning-fallback={invalidVisualFallback.protocol}>
+        <div className={css.inlineFallback} data-learning-result="invalid" data-learning-fallback={invalidFallback.protocol}>
           <p className={css.inlineResult} role="alert">
             <span className={css.errorMark} aria-hidden="true">!</span>
             <span>{t('invalidActivity')}</span>
           </p>
-          {invalidVisualFallback.markdown === undefined
-            ? <p className={css.visualTextFallback}>{invalidVisualFallback.text}</p>
-            : <div className={css.fallbackText}><MarkdownText text={invalidVisualFallback.markdown} /></div>}
+          {'text' in invalidFallback && invalidFallback.markdown === undefined
+            ? <p className={css.visualTextFallback}>{invalidFallback.text}</p>
+            : <div className={css.fallbackText}><MarkdownText text={invalidFallback.markdown ?? ''} /></div>}
         </div>
       )
     }
     return <p className={css.inlineStatus} data-state={done ? 'done' : 'running'}>{t('invalidActivity')}</p>
+  }
+  if (activity.protocol === CHECKPOINT_PROTOCOL) {
+    if (!done) {
+      if (matched !== undefined) return <LearningInteraction matched={matched} t={t} />
+      return (
+        <p className={css.inlineStatus} data-state="running" role="status" aria-live="polite">
+          <span className={css.runningDot} aria-hidden="true" />
+          <span>{t('waiting')}</span>
+          <span className={css.skeletonLine} aria-hidden="true" />
+        </p>
+      )
+    }
+    const checkpointResult = response?.protocol === CHECKPOINT_RESULT_PROTOCOL ? response : undefined
+    if (('kind' in block && block.isError) || checkpointResult === undefined) {
+      return (
+        <div className={css.inlineFallback} data-learning-result="error" data-learning-fallback={CHECKPOINT_PROTOCOL}>
+          <p className={css.inlineResult} role="alert">
+            <span className={css.errorMark} aria-hidden="true">!</span>
+            <span>{t('invalidResult')}</span>
+          </p>
+          <div className={css.fallbackText}><MarkdownText text={activity.fallbackMarkdown} /></div>
+        </div>
+      )
+    }
+    const answer = checkpointAnswerOf(activity, checkpointResult)
+    return (
+      <p className={css.inlineResult} data-learning-result={checkpointResult.status}>
+        <span className={css.resultMark} aria-hidden="true">✓</span>
+        <span>{checkpointResult.status === 'submitted' ? t('completed') : checkpointResult.status === 'skipped' ? t('skipped') : t('cancelled')}</span>
+        {answer === undefined ? null : <span className={css.resultAnswer}>“{answer}”</span>}
+      </p>
+    )
   }
   if (activity.protocol === VISUAL_PROTOCOL_V4) {
     const result = done ? visualResultOf(block) : undefined
@@ -418,7 +504,7 @@ export function LearningToolView({ block, inspect, t, useSession, sessionId }: L
       </div>
     )
   }
-  const legacyResponse = response.protocol === RESPONSE_PROTOCOL_V2 ? undefined : response
+  const legacyResponse = response.protocol === RESPONSE_PROTOCOL ? response : undefined
   const status = legacyResponse?.action === 'submit' ? t('completed')
     : legacyResponse?.action === 'skip' ? t('skipped')
       : legacyResponse?.action === 'cancel' ? t('cancelled') : t('invalidResult')

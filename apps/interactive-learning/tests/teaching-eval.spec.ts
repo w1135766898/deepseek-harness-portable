@@ -6,6 +6,7 @@ import {
   TEACHING_EVAL_CASES,
   gradeTeachingSuite,
 } from '../src/eval.ts'
+import { LEARNING_TEACHING_POLICY } from '../src/teaching-policy.ts'
 
 describe('non-blocking teaching behavior evaluation', () => {
   it('covers visual restraint, conversational adaptation, and stopping after transfer', () => {
@@ -71,7 +72,7 @@ describe('non-blocking teaching behavior evaluation', () => {
     expect(verdicts.find(item => item.caseId === 'transfer-stop')?.passed).toBe(false)
   })
 
-  it('keeps the standing policy and detailed Skill aligned with the V4 semantic visual model', () => {
+  it('keeps the single standing policy and reference-routing Skill aligned with the V4 semantic visual model', () => {
     const root = resolve(import.meta.dirname, '..')
     const agent = readFileSync(join(root, 'src/agent.ts'), 'utf8')
     const skillRoot = join(root, 'preset/learning/skills/interactive-teaching')
@@ -91,19 +92,17 @@ describe('non-blocking teaching behavior evaluation', () => {
       'node_link with layered groups and explicit edges',
       'derivative formula',
     ]) {
-      expect(agent).toContain(phrase)
+      expect(LEARNING_TEACHING_POLICY).toContain(phrase)
     }
     for (const phrase of [
-      'Keep one continuous conversation',
-      'Choose the smallest useful move',
-      'Match the native visual to the concept',
-      'immediate ready result',
-      'Continue from evidence',
-      'Know when to stop',
-      'eight native kinds',
+      'single authoritative source',
+      'must not restate, weaken, or override',
+      'Semantic visual references',
+      'Supplied-material references',
       'references/visual-routing.md',
+      'references/visual-protocol.md',
       'references/reference-materials.md',
-      'A derivative formula is prose/math',
+      'tool schema—not this Skill—define',
     ]) {
       expect(skill).toContain(phrase)
     }
@@ -132,6 +131,8 @@ describe('non-blocking teaching behavior evaluation', () => {
     ]) {
       expect(referenceMaterials).toContain(phrase)
     }
+    expect(agent).toContain("import { LEARNING_TEACHING_POLICY } from './teaching-policy.ts'")
+    expect(agent).toContain('text: LEARNING_TEACHING_POLICY')
     expect(agent).not.toContain('assertLearningGateAvailable')
     expect(agent).not.toContain("name: 'learning_question'")
     expect(agent).not.toContain("name: 'learning_reveal'")

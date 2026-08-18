@@ -4,6 +4,12 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { MeasuredModeSupport, TargetSpec } from '../../packages/platform-contract/src/index.js'
+import type { InteractiveLearningReleaseEvidence } from '../../packages/release-manifest/src/index.js'
+import {
+  assertMaterializedInteractiveLearningPreset,
+  inspectInteractiveLearningApp,
+  interactiveLearningCompositionRows,
+} from './interactive-learning-contract.js'
 
 const require = createRequire(import.meta.url)
 const { waitForOnboardingReady } = require('../../apps/desktop/src/ready-url.cjs') as {
@@ -75,6 +81,7 @@ export interface PackagedRuntimeEvidence {
     readonly capabilitySnapshotHash: string
   }
   readonly modeSupport: Readonly<Record<string, MeasuredModeSupport>>
+  readonly interactiveLearning: InteractiveLearningReleaseEvidence
 }
 
 /** Managed UI links that old Windows installations commonly leave dangling. */
@@ -101,29 +108,99 @@ export async function stageStaleManagedFallback(home: string, platform: NodeJS.P
   }
 }
 
-function validateEvidence(value: unknown, target: TargetSpec): PackagedRuntimeEvidence {
+type CorePackagedRuntimeEvidence = Omit<PackagedRuntimeEvidence, 'interactiveLearning'>
+
+function validateEvidence(value: unknown, target: TargetSpec): CorePackagedRuntimeEvidence {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('runtime evidence must be an object')
-  const evidence = value as Partial<PackagedRuntimeEvidence>
-  const reportTarget = evidence.capabilityReport?.target
-  const catalogTarget = evidence.modeCatalog?.target
+  const evidence = value as Partial<CorePackagedRuntimeEvidence>
+  const report = evidence.capabilityReport
+  const catalog = evidence.modeCatalog
+  const reportTarget = report?.target
+  const catalogTarget = catalog?.target
   if (evidence.schemaVersion !== 1
+    || report === undefined
+    || catalog === undefined
     || `${reportTarget?.platform}-${reportTarget?.arch}` !== target.id
     || `${catalogTarget?.platform}-${catalogTarget?.arch}` !== target.id) {
     throw new Error(`runtime evidence target mismatch; expected ${target.id}`)
   }
-  if (!/^[a-f0-9]{64}$/.test(evidence.capabilityReport.snapshotHash)
-    || evidence.modeCatalog.capabilitySnapshotHash !== evidence.capabilityReport.snapshotHash) {
+  if (!/^[a-f0-9]{64}$/.test(report.snapshotHash)
+    || catalog.capabilitySnapshotHash !== report.snapshotHash) {
     throw new Error('runtime evidence capability snapshot is missing or inconsistent')
   }
   if (typeof evidence.modeSupport !== 'object' || evidence.modeSupport === null) {
     throw new Error('runtime evidence is missing measured mode support')
   }
-  return evidence as PackagedRuntimeEvidence
+  return evidence as CorePackagedRuntimeEvidence
+}
+
+function object(value: unknown, label: string): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error(`packaged Learning ${label} must be an object`)
+  }
+  return value as Record<string, unknown>
+}
+
+/** Validate the selector and authored composition exposed by the live packaged Host API. */
+export function validateInteractiveLearningPresetSurface(
+  listValue: unknown,
+  readValue: unknown,
+  expected: InteractiveLearningReleaseEvidence,
+): void {
+  const list = object(listValue, 'agentPreset.list value')
+  if (!Array.isArray(list.presets)) throw new Error('packaged Learning agentPreset.list has no presets array')
+  const matches = list.presets.filter(value => object(value, 'preset row').id === expected.preset.id)
+  if (matches.length !== 1) throw new Error('packaged Learning selector must expose exactly one learning preset')
+  const preset = object(matches[0], 'preset row')
+  if (preset.trust !== 'system' || preset.broken !== undefined
+    || preset.name !== expected.preset.name || preset.description !== expected.preset.description) {
+    throw new Error('packaged Learning preset is not a healthy system selector row with its shipped description')
+  }
+
+  const read = object(readValue, 'agentPreset.read value')
+  if (read.agentPreset !== expected.preset.id || read.trust !== 'system'
+    || read.name !== expected.preset.name || read.description !== expected.preset.description
+    || typeof read.content !== 'string') {
+    throw new Error('packaged Learning preset readback does not match its selector metadata')
+  }
+  const rows = interactiveLearningCompositionRows(read.content)
+  if (JSON.stringify(rows) !== JSON.stringify(expected.preset.compositionRows)) {
+    throw new Error('packaged Learning preset readback differs from the staged agent composition')
+  }
+}
+
+export async function runtimeRpc(baseUrl: string, method: string, payload: Record<string, unknown>, timeoutMs: number): Promise<unknown> {
+  const rpcId = `packaged-smoke-${method}-${Date.now()}`
+  const response = await fetch(new URL(`/api/${method}`, baseUrl), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'client-request',
+      rpcId,
+      method,
+      payload,
+    }),
+    signal: AbortSignal.timeout(timeoutMs),
+  })
+  if (!response.ok) throw new Error(`packaged Learning ${method} returned HTTP ${response.status}`)
+  const body = object(await response.json(), `${method} response`)
+  if (body.type !== 'server-response' || body.rpcId !== rpcId) {
+    throw new Error(`packaged Learning ${method} returned an invalid or mismatched RPC envelope`)
+  }
+  const result = object(body.result, `${method} result`)
+  if (result.ok !== true) {
+    const error = typeof result.error === 'object' && result.error !== null
+      ? (result.error as { message?: unknown }).message
+      : undefined
+    throw new Error(`packaged Learning ${method} failed: ${typeof error === 'string' ? error : 'unknown RPC error'}`)
+  }
+  return result.value
 }
 
 /** Launch the final packaged runtime and wait for the same readiness gate as the desktop shell. */
 export async function runPackagedSmoke(options: PackagedSmokeOptions): Promise<PackagedRuntimeEvidence> {
   const timeoutMs = options.timeoutMs ?? 90_000
+  const interactiveLearning = await inspectInteractiveLearningApp(options.appResources)
   const temporaryRoot = await mkdtemp(join(tmpdir(), 'dsh-packaged-smoke-'))
   const dshHome = join(temporaryRoot, '.dsh')
   await stageStaleManagedFallback(dshHome)
@@ -133,6 +210,7 @@ export async function runPackagedSmoke(options: PackagedSmokeOptions): Promise<P
   let readiness: Promise<void> | undefined
   let settled = false
   let timeout: NodeJS.Timeout | undefined
+  let runtimeUrl: string | undefined
   const handshake = new RuntimeHandshake()
 
   const child = spawn(executable, [entry, ...runtimeLaunchArguments()], {
@@ -162,6 +240,7 @@ export async function runPackagedSmoke(options: PackagedSmokeOptions): Promise<P
       try {
         const url = handshake.accept(event, child.pid)
         if (url === undefined) return
+        runtimeUrl = url
         if (readiness !== undefined) throw new Error('runtime readiness was already started')
         readiness = waitForOnboardingReady(url, { timeoutMs: Math.max(1, timeoutMs - 2_000) })
         readiness.then(() => finish(), cause => finish(new Error(
@@ -204,8 +283,17 @@ export async function runPackagedSmoke(options: PackagedSmokeOptions): Promise<P
     for (const packageName of STALE_MANAGED_FALLBACK_PACKAGES) {
       await readFile(join(dshHome, 'profiles', 'node_modules', packageName, 'package.json'), 'utf8')
     }
+    await assertMaterializedInteractiveLearningPreset(dshHome)
+    if (runtimeUrl === undefined) throw new Error('packaged Learning smoke completed without a listening URL')
+    const rpcTimeout = Math.min(10_000, Math.max(1_000, Math.floor(timeoutMs / 3)))
+    const listValue = await runtimeRpc(runtimeUrl, 'agentPreset.list', {}, rpcTimeout)
+    const readValue = await runtimeRpc(runtimeUrl, 'agentPreset.read', { agentPreset: 'learning' }, rpcTimeout)
+    validateInteractiveLearningPresetSurface(listValue, readValue, interactiveLearning)
     const evidencePath = join(dshHome, '.system-agent-presets', '.runtime-capabilities.json')
-    return validateEvidence(JSON.parse(await readFile(evidencePath, 'utf8')) as unknown, options.target)
+    return {
+      ...validateEvidence(JSON.parse(await readFile(evidencePath, 'utf8')) as unknown, options.target),
+      interactiveLearning,
+    }
   } finally {
     if (child.exitCode === null && child.signalCode === null) {
       child.kill()

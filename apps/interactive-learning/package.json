@@ -21,6 +21,10 @@
       "types": "./lib/types/agent.d.ts",
       "default": "./lib/agent.js"
     },
+    "./bootstrap": {
+      "types": "./lib/types/bootstrap.d.ts",
+      "default": "./lib/bootstrap.js"
+    },
     "./client": {
       "types": "./lib/types/client/index.d.ts",
       "default": "./lib/client.js"
@@ -50,25 +54,54 @@
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-conversation",
         "@deepseek-ai/dsh-client-ui-tool",
-        "@deepseek-ai/dsh-client-ui-slots",
         "@deepseek-ai/dsh-api-remotes"
       ],
       "platform": "web"
     }
   },
   "files": [
-    "lib/**/*.js",
-    "lib/**/*.js.map",
-    "lib/types/**/*.d.ts",
+    "lib/*.js",
+    "lib/*.js.map",
+    "lib/types/index.d.ts",
+    "lib/types/agent.d.ts",
+    "lib/types/bootstrap.d.ts",
+    "lib/types/broker.d.ts",
+    "lib/types/client/index.d.ts",
+    "lib/types/client/ActivityRenderer.d.ts",
+    "lib/types/client/lifecycle.d.ts",
+    "lib/types/client/types.d.ts",
+    "lib/types/eval.d.ts",
+    "lib/types/installer.d.ts",
+    "lib/types/learner-state.d.ts",
+    "lib/types/preset.d.ts",
+    "lib/types/protocol.d.ts",
+    "lib/types/index.d.ts.map",
+    "lib/types/agent.d.ts.map",
+    "lib/types/bootstrap.d.ts.map",
+    "lib/types/broker.d.ts.map",
+    "lib/types/client/index.d.ts.map",
+    "lib/types/client/ActivityRenderer.d.ts.map",
+    "lib/types/client/lifecycle.d.ts.map",
+    "lib/types/client/types.d.ts.map",
+    "lib/types/eval.d.ts.map",
+    "lib/types/installer.d.ts.map",
+    "lib/types/learner-state.d.ts.map",
+    "lib/types/preset.d.ts.map",
+    "lib/types/protocol.d.ts.map",
     "preset/**/*",
     "README.zh.md"
   ],
   "scripts": {
-    "build": "tsc -b && tsdown",
-    "bundle": "tsdown",
-    "test": "vitest run",
+    "build": "node scripts/build-package.mjs",
+    "bundle": "pnpm run build",
+    "test:source": "vitest run",
+    "test": "pnpm run test:source && pnpm run test:package",
     "eval": "node lib/eval-cli.js",
-    "test:package": "node tests/package-lifecycle.mjs"
+    "test:package:purity": "node tests/package-purity.mjs lib",
+    "test:package": "pnpm run build && node tests/package-lifecycle.mjs",
+    "package:prepare": "pnpm run build && pnpm run test:package:purity && node scripts/assert-package-output.mjs",
+    "prepack": "pnpm run package:prepare",
+    "prepublishOnly": "pnpm run package:prepare"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "workspace:^",
@@ -82,6 +115,7 @@
     "@deepseek-ai/dsh-host-apiproxy": "workspace:^",
     "@deepseek-ai/dsh-client-modules": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
+    "@deepseek-ai/dsh-session": "workspace:^",
     "@deepseek-ai/dsh-system-prompt": "workspace:^",
     "@deepseek-ai/dsh-tool-ask-user": "workspace:^",
     "@deepseek-ai/dsh-tools": "workspace:^",
@@ -90,6 +124,7 @@
   },
   "devDependencies": {
     "@deepseek-ai/dsh-api-remotes": "workspace:^",
+    "@deepseek-ai/dsh-session-persistence-jsonl": "workspace:^",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.20.0",
     "@types/react": "^18.3.18",

@@ -37,9 +37,11 @@ import { openBrowser } from './open-browser.js';
 import { ensureMarketplacePreinstalled, materializeMarketplaceSeed, MARKETPLACE_PACKAGE, } from './marketplace-bootstrap.js';
 import { createProfileFirstPackageJsonResolver } from './profile-module-resolver.js';
 import { composeAfterManagedFallback } from './profile-startup.js';
-import { appendPortableModeResolution, PORTABLE_MODE_RESOLUTION_EVENT_TYPE, registerPortableSessionCompatibility, } from './session-compatibility.js';
+import { appendPortableModeResolution, PORTABLE_MODE_RESOLUTION_EVENT_TYPE, registerPackagedSessionCompatibility, } from './session-compatibility.js';
 import { adaptWin32SubprocessRuntime } from './win32-terminal-inspector.js';
-registerPortableSessionCompatibility();
+// Required persistence discriminators must exist before Loader can construct
+// AgentLoop rows that synchronously restore configured sessions.
+registerPackagedSessionCompatibility();
 /** Diagnostic prefix for every fail-loud and load error. */
 const NAME = 'dsh-desktop';
 /** The profile the exe boots, matching the shipped `web` template. */
@@ -356,6 +358,7 @@ function isLauncherFlag(arg) {
 const REQUIRED_CLIENT_ENTRIES = [
     '@deepseek-ai/dsh-client-runtime',
     '@deepseek-ai/dsh-client-ui-layout',
+    '@dsh-portable/interactive-learning',
 ];
 /**
  * Check the boot graph embedded in the exact index document that the browser

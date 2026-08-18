@@ -80,7 +80,7 @@ DeepSeek Harness Desktop 是 [DeepSeek Harness](https://github.com/deepseek-ai/d
 7. **Linux x64 deb（手动）：** 下载 `DeepSeek-Harness-<version>-linux-x64.deb`，运行 `sudo apt install ./DeepSeek-Harness-<version>-linux-x64.deb` 安装。
 8. **卸载：** 使用平台常规的应用移除流程。Windows 便携包包含卸载脚本；除非明确删除，否则会保留用户数据。
 
-> **注意：** `setup-shortcuts.ps1`（安装程序以及便携包中的 `创建桌面快捷方式.bat` 会调用它）会创建桌面快捷方式，并把便携目录加入**用户 PATH**；卸载程序会一并移除这两项。
+> **注意：** `setup-shortcuts.ps1`（安装程序以及便携包中的 `创建桌面快捷方式.bat` 会调用它）会创建指向无控制台 GUI 启动器的桌面快捷方式，并把便携目录加入**用户 PATH**；卸载程序会一并移除这两项。
 
 安装器和更新器会校验 ZIP 摘要、发布清单、应用清单以及必要的原生模块，不会创建证书，也不会修改 Windows 信任存储。
 
@@ -90,7 +90,8 @@ DeepSeek Harness Desktop 是 [DeepSeek Harness](https://github.com/deepseek-ai/d
     ├─ dsh.cmd                     命令行入口：网页模式、`dsh update`、`dsh desktop`、`dsh trust`
     ├─ pnpm.cmd                    插件管理使用的内置包管理器入口
     ├─ start-web.cmd               使用内置 Electron/Node runtime 的浏览器模式入口
-    ├─ start-desktop.cmd           桌面模式入口
+    ├─ DeepSeek Harness Launcher.exe  无控制台桌面启动与更新恢复入口
+    ├─ start-desktop.cmd           控制台诊断与恢复后备入口
     ├─ update.ps1                  便携版更新器
     ├─ setup-shortcuts.ps1         快捷方式和 PATH 设置
     ├─ release-manifest.json       分发/外壳/内核版本清单
@@ -116,7 +117,7 @@ Linux AppImage 和 deb 包内含原生 Electron runtime 与桌面入口。未压
 
 ## 启动与更新
 
-- Windows 使用 `start-desktop.cmd`（或 `启动桌面版.bat`）启动内置 Electron 桌面端；Linux 使用 AppImage/deb 的桌面入口或未压缩目录中的 `start-desktop.sh`；macOS 从“应用程序”启动应用。
+- Windows 快捷方式与便携版用户使用 `DeepSeek Harness Launcher.exe`，在保留更新恢复能力的同时不打开命令行窗口；`start-desktop.cmd` 保留为控制台诊断后备入口。Linux 使用 AppImage/deb 的桌面入口或未压缩目录中的 `start-desktop.sh`；macOS 从“应用程序”启动应用。
 - Windows 使用 `start-web.cmd`（或 `启动网页版.bat`），Linux 使用 `start-web.sh`，通过内置 Electron/Node runtime 启动网页版，无需安装系统 Node.js。
 - Windows 的 `dsh.cmd` 提供同样的网页版入口、内置插件管理 CLI，并支持分发版子命令：`dsh update`、`dsh desktop`、`dsh trust`。
 - 桌面托盘菜单提供“检查更新”“更新日志”和“关于”。

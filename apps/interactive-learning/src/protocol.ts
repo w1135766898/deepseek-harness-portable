@@ -10,6 +10,23 @@ export const VISUAL_PROTOCOL_V3 = 'dsh-learning/visual@3' as const
 export const VISUAL_RESULT_PROTOCOL_V3 = 'dsh-learning/visual-result@3' as const
 export const VISUAL_PROTOCOL_V4 = 'dsh-learning/visual@4' as const
 export const VISUAL_RESULT_PROTOCOL_V4 = 'dsh-learning/visual-result@4' as const
+export const CHECKPOINT_PROTOCOL = 'dsh-learning/checkpoint@1' as const
+export const CHECKPOINT_RESULT_PROTOCOL = 'dsh-learning/checkpoint-result@1' as const
+export const CHECKPOINT_TRANSPORT_PROTOCOL = 'dsh-learning/checkpoint-wait@1' as const
+export const LEARNING_CHECKPOINT_KINDS = [
+  'free_text',
+  'single_choice',
+  'numeric',
+  'prediction',
+  'code_slot',
+] as const
+export const LEARNING_CHECKPOINT_EVIDENCE_KINDS = [
+  'attempt',
+  'prediction',
+  'explanation',
+  'contrast',
+  'transfer',
+] as const
 export const LEARNING_VISUAL_KINDS_V4 = [
   'plot',
   'node_link',
@@ -37,6 +54,8 @@ export const MATH_UNARY_OPERATORS = ['neg', 'abs', 'sqrt', 'sin', 'cos', 'exp', 
 export type LearningActivityKind = typeof LEARNING_ACTIVITY_KINDS[number]
 export type LearningAction = 'submit' | 'skip' | 'cancel'
 export type LearningJson = null | boolean | number | string | LearningJson[] | { [key: string]: LearningJson }
+export type LearningCheckpointKindV1 = typeof LEARNING_CHECKPOINT_KINDS[number]
+export type LearningCheckpointEvidenceKindV1 = typeof LEARNING_CHECKPOINT_EVIDENCE_KINDS[number]
 
 export type MathExpressionV1 =
   | { op: 'constant'; value: number }
@@ -180,6 +199,63 @@ export interface LearningWaitEnvelopeV2 {
   lessonToken: string; roundToken: string; seq: number; phase: 'question' | 'reveal'; activity: LearningActivityV2
 }
 export type LearningWaitEnvelopeInputV2 = Omit<LearningWaitEnvelopeV2, 'transport'>
+
+export interface LearningCheckpointOptionV1 {
+  id: string
+  label: string
+}
+
+/** One answer-free, current-step learner contribution request. */
+export interface LearningCheckpointV1 {
+  protocol: typeof CHECKPOINT_PROTOCOL
+  kind: LearningCheckpointKindV1
+  prompt: string
+  context?: string
+  expectedEvidence: LearningCheckpointEvidenceKindV1
+  options?: LearningCheckpointOptionV1[]
+  fallbackMarkdown: string
+}
+
+export type LearningCheckpointResponseV1 =
+  | { text: string }
+  | { optionId: string }
+  | { number: number }
+
+interface LearningCheckpointResultBaseV1 {
+  protocol: typeof CHECKPOINT_RESULT_PROTOCOL
+  checkpointId: string
+  receiptId: string
+}
+
+export interface LearningCheckpointSubmittedResultV1 extends LearningCheckpointResultBaseV1 {
+  status: 'submitted'
+  response: LearningCheckpointResponseV1
+}
+
+export interface LearningCheckpointSkippedResultV1 extends LearningCheckpointResultBaseV1 {
+  status: 'skipped'
+}
+
+export interface LearningCheckpointCancelledResultV1 extends LearningCheckpointResultBaseV1 {
+  status: 'cancelled'
+}
+
+export type LearningCheckpointResultV1 =
+  | LearningCheckpointSubmittedResultV1
+  | LearningCheckpointSkippedResultV1
+  | LearningCheckpointCancelledResultV1
+
+/** Durable safe projection used only to recover one pending checkpoint wait. */
+export interface LearningCheckpointWaitEnvelopeV1 {
+  transport: typeof CHECKPOINT_TRANSPORT_PROTOCOL
+  sessionId: string
+  callId: string
+  waitId: string
+  checkpointId: string
+  checkpoint: LearningCheckpointV1
+}
+
+export type LearningCheckpointWaitEnvelopeInputV1 = Omit<LearningCheckpointWaitEnvelopeV1, 'transport'>
 
 export type LearningVisualToneV3 = 'blue' | 'green' | 'red' | 'orange' | 'purple' | 'gray'
 export type LearningVisualStrokeV3 = 'solid' | 'dashed' | 'dotted'
@@ -1162,6 +1238,169 @@ export function parseLearningResponseV2(value: unknown, expected: ExpectedLearni
   }
   if (issues.length > 0) throw new LearningProtocolError(issues)
   return value as unknown as LearningResponseV2
+}
+
+const CHECKPOINT_RAW_HTML = /<(?:!DOCTYPE\b|!--|\/?[A-Za-z][^<>]*>)/i
+const CHECKPOINT_LEAKAGE_COPY = /\b(?:correct\s+answer|model\s+answer|answer\s+key|(?:the\s+)?answer\s*(?:is|was|[:：])|solution\s*[:：]|expected\s+(?:answer|response|result)\s*[:：]|grading\s+rubric|scoring\s+rubric|future\s+(?:step|question)|next\s+question\s*:)|(?:正确|标准|参考|模型)(?:答案|解答)|标准解\s*[:：]?|(?:答案|解答)\s*[:：]|答案(?:是|为)|评分(?:标准|细则)|下一(?:步|题|个问题)|后续步骤|未来步骤/iu
+
+/** Canonical fail-closed predicate shared by protocol parsing and Client fallback extraction. */
+export function isLearningCheckpointDisplayTextSafe(value: string): boolean {
+  return !CHECKPOINT_RAW_HTML.test(value) && !CHECKPOINT_LEAKAGE_COPY.test(value)
+}
+
+function checkpointDisplayText(
+  value: unknown,
+  path: string,
+  issues: string[],
+  max: number,
+): value is string {
+  const valid = text(value, path, issues, max)
+  if (valid && !isLearningCheckpointDisplayTextSafe(value)) {
+    issues.push(`${path} must not contain raw HTML, an answer key, scoring rubric, or future-step copy`)
+    return false
+  }
+  return valid
+}
+
+/** Strict, answer-free protocol for one optional learner checkpoint. */
+export function parseLearningCheckpointV1(value: unknown): LearningCheckpointV1 {
+  const issues: string[] = []
+  const bytes = jsonBytes(value)
+  if (bytes === undefined) issues.push('checkpoint must be serializable JSON')
+  else if (bytes > MAX_ACTIVITY_BYTES) issues.push(`checkpoint exceeds ${String(MAX_ACTIVITY_BYTES)} bytes`)
+  if (!record(value)) throw new LearningProtocolError([...issues, 'checkpoint must be an object'])
+
+  onlyKeys(
+    value,
+    ['protocol', 'kind', 'prompt', 'context', 'expectedEvidence', 'options', 'fallbackMarkdown'],
+    'checkpoint',
+    issues,
+  )
+  if (value.protocol !== CHECKPOINT_PROTOCOL) {
+    issues.push(`checkpoint.protocol must be ${CHECKPOINT_PROTOCOL}`)
+  }
+  if (!LEARNING_CHECKPOINT_KINDS.includes(value.kind as LearningCheckpointKindV1)) {
+    issues.push(`checkpoint.kind must be one of ${LEARNING_CHECKPOINT_KINDS.join(', ')}`)
+  }
+  checkpointDisplayText(value.prompt, 'checkpoint.prompt', issues, 2_000)
+  if (value.context !== undefined) checkpointDisplayText(value.context, 'checkpoint.context', issues, 4_000)
+  if (!LEARNING_CHECKPOINT_EVIDENCE_KINDS.includes(value.expectedEvidence as LearningCheckpointEvidenceKindV1)) {
+    issues.push(`checkpoint.expectedEvidence must be one of ${LEARNING_CHECKPOINT_EVIDENCE_KINDS.join(', ')}`)
+  }
+  checkpointDisplayText(value.fallbackMarkdown, 'checkpoint.fallbackMarkdown', issues, 8_000)
+
+  if (value.kind === 'single_choice') {
+    if (!Array.isArray(value.options) || value.options.length < 2 || value.options.length > 8) {
+      issues.push('checkpoint.options must contain 2 to 8 options for single_choice')
+    } else {
+      const options = value.options.filter(record)
+      if (options.length !== value.options.length) issues.push('checkpoint.options entries must be objects')
+      uniqueIds(options, 'checkpoint.options', issues)
+      for (const [index, option] of options.entries()) {
+        const path = `checkpoint.options[${String(index)}]`
+        onlyKeys(option, ['id', 'label'], path, issues)
+        id(option.id, `${path}.id`, issues)
+        checkpointDisplayText(option.label, `${path}.label`, issues, 500)
+      }
+    }
+  } else if (value.options !== undefined) {
+    issues.push('checkpoint.options is supported only for single_choice')
+  }
+
+  if (issues.length > 0) throw new LearningProtocolError(issues)
+  return value as unknown as LearningCheckpointV1
+}
+
+export interface ExpectedLearningCheckpointResultV1 {
+  checkpointId?: string
+  checkpoint?: LearningCheckpointV1
+}
+
+/** Validate one phase-bound checkpoint receipt before the Host accepts it. */
+export function parseLearningCheckpointResultV1(
+  value: unknown,
+  expected: ExpectedLearningCheckpointResultV1 = {},
+): LearningCheckpointResultV1 {
+  const issues: string[] = []
+  const bytes = jsonBytes(value)
+  if (bytes === undefined) issues.push('checkpoint result must be serializable JSON')
+  else if (bytes > MAX_RESPONSE_BYTES) {
+    issues.push(`checkpoint result exceeds ${String(MAX_RESPONSE_BYTES)} bytes`)
+  }
+  if (!record(value)) throw new LearningProtocolError([...issues, 'checkpoint result must be an object'])
+
+  const submitted = value.status === 'submitted'
+  onlyKeys(
+    value,
+    submitted
+      ? ['protocol', 'checkpointId', 'status', 'response', 'receiptId']
+      : ['protocol', 'checkpointId', 'status', 'receiptId'],
+    'checkpointResult',
+    issues,
+  )
+  if (value.protocol !== CHECKPOINT_RESULT_PROTOCOL) {
+    issues.push(`checkpointResult.protocol must be ${CHECKPOINT_RESULT_PROTOCOL}`)
+  }
+  token(value.checkpointId, 'checkpointResult.checkpointId', issues)
+  token(value.receiptId, 'checkpointResult.receiptId', issues)
+  if (!['submitted', 'skipped', 'cancelled'].includes(value.status as string)) {
+    issues.push('checkpointResult.status must be submitted, skipped, or cancelled')
+  }
+  if (expected.checkpointId !== undefined && value.checkpointId !== expected.checkpointId) {
+    issues.push('checkpointResult.checkpointId does not match the pending checkpoint')
+  }
+
+  let checkpoint: LearningCheckpointV1 | undefined
+  if (expected.checkpoint !== undefined) {
+    try {
+      checkpoint = parseLearningCheckpointV1(expected.checkpoint)
+    } catch (cause) {
+      if (cause instanceof LearningProtocolError) {
+        issues.push(...cause.issues.map(issue => `expected ${issue}`))
+      } else throw cause
+    }
+  }
+
+  if (submitted) {
+    if (!record(value.response)) {
+      issues.push('checkpointResult.response must be an object when submitted')
+    } else {
+      const response = value.response
+      const responsePath = 'checkpointResult.response'
+      const expectedKind = checkpoint?.kind
+      const shape = expectedKind === 'single_choice'
+        ? 'optionId'
+        : expectedKind === 'numeric'
+          ? 'number'
+          : expectedKind === undefined
+            ? undefined
+            : 'text'
+
+      if (shape === 'optionId' || (shape === undefined && Object.hasOwn(response, 'optionId'))) {
+        onlyKeys(response, ['optionId'], responsePath, issues)
+        const optionIdOk = id(response.optionId, `${responsePath}.optionId`, issues)
+        if (optionIdOk && checkpoint?.options !== undefined
+          && !checkpoint.options.some(option => option.id === response.optionId)) {
+          issues.push(`${responsePath}.optionId must reference a declared checkpoint option`)
+        }
+      } else if (shape === 'number' || (shape === undefined && Object.hasOwn(response, 'number'))) {
+        onlyKeys(response, ['number'], responsePath, issues)
+        finite(response.number, `${responsePath}.number`, issues)
+      } else if (shape === 'text' || (shape === undefined && Object.hasOwn(response, 'text'))) {
+        onlyKeys(response, ['text'], responsePath, issues)
+        text(response.text, `${responsePath}.text`, issues, expectedKind === 'code_slot' ? 16_000 : 8_000)
+      } else {
+        issues.push(`${responsePath} must contain exactly one of text, optionId, or number`)
+        onlyKeys(response, [], responsePath, issues)
+      }
+    }
+  } else if (value.response !== undefined) {
+    // `onlyKeys` reports the unsupported field; retain an explicit semantic issue too.
+    issues.push('checkpointResult.response is allowed only when status is submitted')
+  }
+
+  if (issues.length > 0) throw new LearningProtocolError(issues)
+  return value as unknown as LearningCheckpointResultV1
 }
 
 const VISUAL_TONES_V3 = new Set<LearningVisualToneV3>(['blue', 'green', 'red', 'orange', 'purple', 'gray'])

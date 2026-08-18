@@ -1,5 +1,6 @@
 /** Portable runtime session-event compatibility declarations. */
 import { KNOWN_SESSION_EVENT_TYPES, } from '@deepseek-ai/dsh-session';
+import { registerInteractiveLearningSessionCompatibility } from '@dsh-portable/interactive-learning/bootstrap';
 /** Exact durable discriminator used by portable mode-resolution diagnostics. */
 export const PORTABLE_MODE_RESOLUTION_EVENT_TYPE = 'portable-runtime/mode-resolution';
 /** Register the exact legacy portable event understood by this distribution. */
@@ -8,6 +9,13 @@ export function registerPortableSessionCompatibility() {
     // process-wide Set also read by persistence. Extend only this exact event.
     ;
     KNOWN_SESSION_EVENT_TYPES.add(PORTABLE_MODE_RESOLUTION_EVENT_TYPE);
+}
+/** Register every required event understood by the packaged runtime before persistence can read. */
+export function registerPackagedSessionCompatibility() {
+    // Learning state is required durable data. Register it; never downgrade it
+    // to an ignorable event merely to make an older startup path accept it.
+    registerInteractiveLearningSessionCompatibility();
+    registerPortableSessionCompatibility();
 }
 /**
  * Append an informational mode-resolution trace with forward-safe metadata.

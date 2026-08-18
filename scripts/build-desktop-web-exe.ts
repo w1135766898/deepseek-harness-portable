@@ -15,7 +15,7 @@
 
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { chmod, copyFile, cp, lstat, mkdir, open, readFile, readdir, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
+import { chmod, copyFile, cp, lstat, mkdir, open, readFile, readdir, realpath, rename, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { delimiter, dirname, join, resolve, sep } from 'node:path'
 import { parseArgs } from 'node:util'
@@ -24,12 +24,30 @@ import { createReleaseManifest, serializeReleaseManifest } from '../packages/rel
 import { collectArtifactInventory } from './build/artifact-inventory.js'
 import { writeArtifactVerification } from './build/artifact-verification.js'
 import { getTargetSpec, getTargetSpecFor, TARGET_SPECS } from './build/targets.js'
+import {
+  assertInteractiveLearningContainerInventory,
+  inspectInteractiveLearningApp,
+  inspectInteractiveLearningPackage,
+  interactiveLearningAppRequiredPaths,
+  interactiveLearningPackageRequiredPaths,
+  pruneInteractiveLearningPackageToPublishedFiles,
+} from './build/interactive-learning-contract.js'
 import type { PatchAttestation } from './build/patch-manifest.js'
 import { electronExecutable, runPackagedSmoke, type PackagedRuntimeEvidence } from './build/packaged-smoke.js'
 import { runBuildStages } from './build/pipeline.js'
 import { applyRuntimePatchLayer } from './build/runtime-patches.js'
 import { discoverDesktopVerificationFiles } from './release/desktop-verification.js'
 import { resolveSourceIdentity } from './release/source-identity.js'
+import {
+  preserveWorkspaceNodeModules,
+  readRuntimeWorkspacePackages,
+  repairRuntimeWorkspaceLinks,
+} from './runtime/workspace-links.js'
+import {
+  assertWindowsZipFileInventory,
+  inspectWindowsZipBytes,
+  windowsPortableFileEntries,
+} from './build/windows-zip.js'
 import {
   cacheLayerMatches,
   completeCacheLayer,
@@ -54,6 +72,20 @@ const DEFAULT_NODE_RANGE = 'node24'
 const PKG_SPEC = '@yao-pkg/pkg@6.21.0'
 /** The checked-in Windows icon applied to the Windows executable. */
 const DESKTOP_ICON = resolve(root, 'apps/desktop/assets/deepseek.ico')
+/** Source and root-level product name for the no-console Windows bootstrap. */
+const WINDOWS_DESKTOP_LAUNCHER_SOURCE = resolve(root, 'apps/desktop/launcher/DeepSeekHarnessLauncher.cs')
+const WINDOWS_DESKTOP_LAUNCHER_NAME = 'DeepSeek Harness Launcher.exe'
+const WINDOWS_ZIP_SCRIPT = resolve(root, 'scripts/build/create-windows-zip.ps1')
+const WINDOWS_UNICODE_ROOT_FILES = [
+  '创建桌面快捷方式.bat',
+  '启动网页版.bat',
+  '启动桌面版.bat',
+  '启动桌面窗口.bat',
+  '使用说明.en.txt',
+  '使用说明.txt',
+  '一键解除拦截(自签名信任).bat',
+  '在线更新.bat',
+] as const
 /** An optional checked-in macOS icon; otherwise it is generated from the shell logo. */
 const MAC_DESKTOP_ICON = resolve(root, 'apps/desktop/assets/deepseek.icns')
 /** The native shell's product name and packaged executable path. */
@@ -143,8 +175,11 @@ const BUILD_INPUT_PATHS = [
   'apps/vision-bridge/tsdown.config.ts',
   'apps/vision-bridge/src',
   'apps/interactive-learning/package.json',
+  'apps/interactive-learning/README.md',
+  'apps/interactive-learning/README.zh.md',
   'apps/interactive-learning/tsconfig.json',
   'apps/interactive-learning/tsdown.config.ts',
+  'apps/interactive-learning/scripts',
   'apps/interactive-learning/src',
   'apps/interactive-learning/preset',
   'vendor/deepseek-harness/package.json',
@@ -163,6 +198,7 @@ const BUILD_INPUT_PATHS = [
 ]
 
 const STAGING_INPUT_PATHS = [
+  'LICENSE',
   'package.json',
   'pnpm-lock.yaml',
   'pnpm-workspace.yaml',
@@ -170,6 +206,7 @@ const STAGING_INPUT_PATHS = [
   'scripts/build',
   'scripts/packaging-cache.ts',
   'apps/desktop/electron-builder.yml',
+  'apps/desktop/launcher',
   'patches',
 ]
 
@@ -440,24 +477,28 @@ class DesktopExeBuild {
 
   /** Build all package artifacts unless `--skip-build` was passed. */
   async build(): Promise<void> {
-    if (this.cli.skipBuild) {
-      console.log('build-desktop-web-exe: skipping pnpm run build (--skip-build)')
-      return
-    }
+    const learningPackage = join(root, 'apps', 'interactive-learning')
     const required = [
       join(root, 'apps', 'runtime', ENTRY_BIN),
       join(root, 'apps', 'vision-bridge', 'lib', 'index.js'),
-      join(root, 'apps', 'interactive-learning', 'lib', 'index.js'),
+      ...interactiveLearningPackageRequiredPaths(learningPackage),
       join(root, 'vendor', 'deepseek-harness', 'apps', 'web', 'dist', 'index.html'),
       join(root, 'vendor', 'deepseek-harness', 'packages', 'bundle', 'web-app', 'lib', 'index.js'),
     ]
+    if (this.cli.skipBuild) {
+      console.log('build-desktop-web-exe: skipping pnpm run build (--skip-build)')
+      if (!this.cli.dryRun) await inspectInteractiveLearningPackage(learningPackage)
+      return
+    }
     if (!this.cli.noCache && cacheLayerMatches(this.cacheState.build, this.buildKey, required)) {
+      await inspectInteractiveLearningPackage(learningPackage)
       console.log(`build-desktop-web-exe: build cache hit (${this.buildKey.slice(0, 12)})`)
       return
     }
     console.log(`build-desktop-web-exe: build cache miss (${this.buildKey.slice(0, 12)})`)
     await this.timed('build', () => this.run('build', pnpmBin(), ['run', 'build']))
     if (!this.cli.dryRun) {
+      await inspectInteractiveLearningPackage(learningPackage)
       this.cacheState = completeCacheLayer(this.cacheState, 'build', this.buildKey)
       await writePackagingCache(this.cachePath, this.cacheState)
     }
@@ -494,23 +535,27 @@ class DesktopExeBuild {
       join(this.staging, 'node_modules', 'dsh-plugin-marketplace', 'cordis.patch.yml'),
       join(this.staging, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs'),
       join(this.staging, 'runtime-patch-attestations.json'),
+      ...interactiveLearningAppRequiredPaths(this.staging),
       ...this.cli.target.nativeAssets.map(asset => this.stagedNativeAssetPath(asset)),
     ]
     if (!this.cli.noCache && cacheLayerMatches(this.cacheState.staging, this.stagingKey, required)) {
       console.log(`build-desktop-web-exe: staging cache hit (${this.stagingKey.slice(0, 12)})`)
       this.patchAttestations = JSON.parse(await readFile(join(this.staging, 'runtime-patch-attestations.json'), 'utf8')) as PatchAttestation[]
       await this.validateMarketplaceStaging()
+      await this.validateInteractiveLearningStaging()
       return
     }
     console.log(`build-desktop-web-exe: staging cache miss (${this.stagingKey.slice(0, 12)})`)
     await this.timed('prepare staging', async () => {
       await this.deployStaging()
+      await this.pruneInteractiveLearningStaging()
       await this.stageDesktopShell()
       await this.stageNativeAddons()
       await this.applyRuntimePatches()
       await this.pruneReleasePayload()
       await this.injectPkgConfig()
       await this.validateMarketplaceStaging()
+      await this.validateInteractiveLearningStaging()
     })
     if (!this.cli.dryRun) {
       this.cacheState = completeCacheLayer(this.cacheState, 'staging', this.stagingKey)
@@ -549,7 +594,20 @@ class DesktopExeBuild {
       await action()
       return
     }
-    await preserveFiles(HOST_INSTALL_STATE_FILES.map(path => join(root, path)), action)
+    const runtimeRoot = resolve(root, 'apps', 'runtime')
+    const workspacePackages = await readRuntimeWorkspacePackages(runtimeRoot)
+    try {
+      await preserveWorkspaceNodeModules(root, workspacePackages, () => (
+        preserveFiles(HOST_INSTALL_STATE_FILES.map(path => join(root, path)), action)
+      ))
+    } finally {
+      const repaired = await repairRuntimeWorkspaceLinks(
+        root,
+        runtimeRoot,
+        workspacePackages,
+      )
+      console.log(`build-desktop-web-exe: restored ${String(repaired.length)} host workspace link(s) after legacy deploy`)
+    }
     console.log('build-desktop-web-exe: preserved host pnpm install state across legacy deploy')
   }
 
@@ -570,11 +628,13 @@ class DesktopExeBuild {
       dependencies?: Record<string, string>
     }
     const sourceNodeModules = resolve(root, DEPLOY_SOURCE_NODE_MODULES)
+    const workspaceSources = new Map((await readRuntimeWorkspacePackages(resolve(root, 'apps', 'runtime')))
+      .map(pkg => [pkg.name, resolve(root, pkg.path)] as const))
     const restored: string[] = []
     for (const dependency of Object.keys(manifest.dependencies ?? {}).sort()) {
       const destination = join(this.staging, 'node_modules', dependency)
       if (existsSync(destination)) continue
-      const source = join(sourceNodeModules, dependency)
+      const source = workspaceSources.get(dependency) ?? join(sourceNodeModules, dependency)
       if (!existsSync(source)) {
         throw new Error(
           `build-desktop-web-exe: deployed dependency ${dependency} is absent from both ${destination} and ${source}.`,
@@ -924,6 +984,34 @@ class DesktopExeBuild {
     }
   }
 
+  /** Remove workspace-only Learning inputs before staging becomes reusable. */
+  private async pruneInteractiveLearningStaging(): Promise<void> {
+    const packageRoot = join(this.staging, 'node_modules', '@dsh-portable', 'interactive-learning')
+    const licenseSource = join(root, 'LICENSE')
+    const licenseDestination = join(packageRoot, 'LICENSE')
+    if (this.cli.dryRun) {
+      console.log(`build-desktop-web-exe: [dry-run] materialize ${licenseSource} -> ${licenseDestination}`)
+      console.log(`build-desktop-web-exe: [dry-run] prune Interactive Learning to package.json files at ${packageRoot}`)
+      return
+    }
+    const license = await stat(licenseSource)
+    if (!license.isFile() || license.size === 0) {
+      throw new Error(`build-desktop-web-exe: repository LICENSE is missing or empty: ${licenseSource}`)
+    }
+    await copyFile(licenseSource, licenseDestination)
+    const retained = await pruneInteractiveLearningPackageToPublishedFiles(packageRoot)
+    console.log(`build-desktop-web-exe: retained ${String(retained)} manifest-selected Interactive Learning files`)
+  }
+
+  /** Reject deploy/cache layers whose Learning Host, preset, Agent, or Client contract is incomplete. */
+  private async validateInteractiveLearningStaging(): Promise<void> {
+    if (this.cli.dryRun) {
+      console.log(`build-desktop-web-exe: [dry-run] validate Interactive Learning contract at ${this.staging}`)
+      return
+    }
+    await inspectInteractiveLearningApp(this.staging)
+  }
+
   /** Remove native variants and source metadata that are never loaded by the target runtime. */
   async pruneReleasePayload(): Promise<void> {
     if (this.cli.dryRun) {
@@ -970,6 +1058,7 @@ class DesktopExeBuild {
   private async removeUnusedStagedFiles(nodePty: string): Promise<Record<'pdb' | 'map' | 'declaration' | 'source', number>> {
     const removed = { pdb: 0, map: 0, declaration: 0, source: 0 }
     const removals: string[] = []
+    const learningPackage = join(this.staging, 'node_modules', '@dsh-portable', 'interactive-learning')
     const visit = async (directory: string): Promise<void> => {
       for (const entry of await readdir(directory, { withFileTypes: true })) {
         const path = join(directory, entry.name)
@@ -977,11 +1066,12 @@ class DesktopExeBuild {
           await visit(path)
         } else if (entry.isFile()) {
           const lower = path.toLowerCase()
+          const publishedLearningFile = path.startsWith(learningPackage + sep)
           let category: keyof typeof removed | undefined
           if (path.startsWith(nodePty + sep) && lower.endsWith('.pdb')) category = 'pdb'
-          else if (lower.endsWith('.map')) category = 'map'
-          else if (lower.endsWith('.d.ts')) category = 'declaration'
-          else if (this.cli.pruneSources && /\.(?:ts|tsx)$/i.test(path)) category = 'source'
+          else if (!publishedLearningFile && lower.endsWith('.map')) category = 'map'
+          else if (!publishedLearningFile && lower.endsWith('.d.ts')) category = 'declaration'
+          else if (!publishedLearningFile && this.cli.pruneSources && /\.(?:ts|tsx)$/i.test(path)) category = 'source'
           if (category) {
             removed[category] += 1
             removals.push(path)
@@ -1087,11 +1177,19 @@ class DesktopExeBuild {
           product,
           this.appResourcesDir(product),
           join(this.appResourcesDir(product), ENTRY_BIN),
+          ...interactiveLearningAppRequiredPaths(this.appResourcesDir(product)),
           join(this.appResourcesDir(product), 'node_modules', '@deepseek-ai', 'dsh-web-app', 'package.json'),
           join(this.appResourcesDir(product), 'node_modules', 'dsh-plugin-marketplace', 'package.json'),
+          ...(this.cli.platform === 'win32'
+            ? [
+                join(this.artifactRoot(product), WINDOWS_DESKTOP_LAUNCHER_NAME),
+                join(this.artifactRoot(product), 'runtime', WINDOWS_DESKTOP_LAUNCHER_NAME),
+              ]
+            : []),
         ]
       : [product]
     if (!this.cli.noCache && cacheLayerMatches(this.cacheState.electron, artifactKey, required)) {
+      if (this.cli.electron) await inspectInteractiveLearningApp(this.appResourcesDir(product))
       console.log(`build-desktop-web-exe: artifact cache hit (${artifactKey.slice(0, 12)})`)
       return product
     }
@@ -1105,6 +1203,7 @@ class DesktopExeBuild {
       } else if (this.cli.electron) await this.packElectron()
       else await this.packSea(product)
       await this.pruneElectronLocales(product)
+      if (this.cli.electron && !this.cli.dryRun) await inspectInteractiveLearningApp(this.appResourcesDir(product))
     })
     if (!this.cli.dryRun) {
       this.cacheState = completeCacheLayer(this.cacheState, 'electron', artifactKey)
@@ -1135,11 +1234,17 @@ class DesktopExeBuild {
     if (!existsSync(kernelPackage)) throw new Error(`build-desktop-web-exe: kernel package is missing: ${kernelPackage}`)
     const kernel = JSON.parse(readFileSync(kernelPackage, 'utf8')) as { version?: unknown }
     if (typeof kernel.version !== 'string') throw new Error(`build-desktop-web-exe: kernel version is missing from ${kernelPackage}`)
+    // Re-inspect the exact final app bytes. Source- or staging-derived evidence
+    // must never attest a reused unpacked product that contains older files.
+    const interactiveLearning = await inspectInteractiveLearningApp(resources)
     const modeCatalogHash = await fingerprintPaths({
-      baseDir: root,
-      paths: ['apps/runtime/config/agent-presets', 'apps/interactive-learning/preset'],
+      baseDir: resources,
+      paths: [
+        'config/agent-presets',
+        'node_modules/@dsh-portable/interactive-learning/preset',
+      ],
       excludedDirectoryNames: FINGERPRINT_EXCLUDED_DIRECTORIES,
-      salt: ['mode-catalog-v1'],
+      salt: ['mode-catalog-final-app-v2'],
     })
     const source = resolveSourceIdentity(root)
     const files = await collectArtifactInventory(this.artifactRoot(product))
@@ -1158,6 +1263,7 @@ class DesktopExeBuild {
       ).closureHash,
       modeCatalogHash,
       measuredModeSupport: evidence.modeSupport,
+      experiencePacks: { interactiveLearning },
       files,
       patches: this.patchAttestations,
     })
@@ -1198,6 +1304,9 @@ class DesktopExeBuild {
     evidence: PackagedRuntimeEvidence,
     artifacts: readonly string[],
   ): Promise<string> {
+    // Re-attestation is independently fail-closed even when called outside
+    // the normal stage sequence.
+    await this.verifyPlatformContainers(artifacts, evidence)
     const verification = await writeArtifactVerification({
       target: this.cli.target,
       evidence,
@@ -1209,7 +1318,10 @@ class DesktopExeBuild {
   }
 
   /** Validate final containers read-only; no stage may modify them after this boundary. */
-  async verifyPlatformContainers(artifacts: readonly string[]): Promise<void> {
+  async verifyPlatformContainers(
+    artifacts: readonly string[],
+    evidence: PackagedRuntimeEvidence | undefined,
+  ): Promise<void> {
     if (!this.cli.electron || this.cli.dryRun) return
     if (artifacts.length !== this.cli.target.formats.length) {
       throw new Error(`build-desktop-web-exe: ${this.cli.target.id} produced ${artifacts.length} containers for ${this.cli.target.formats.length} declared formats`)
@@ -1220,15 +1332,52 @@ class DesktopExeBuild {
       if (zip === undefined || setup === undefined || statSync(setup).size === 0) {
         throw new Error('build-desktop-web-exe: Windows container verification requires a non-empty ZIP and Setup.exe')
       }
-      const archiveRoot = `${ELECTRON_APP_NAME}-win32-${this.cli.arch}`
-      const listing = spawnSync('tar.exe', [
-        '-tf', zip,
-        `${archiveRoot}/release-manifest.json`,
-        `${archiveRoot}/runtime/DeepSeek Harness.exe`,
-      ], { encoding: 'utf8', windowsHide: true })
-      if (listing.status !== 0) {
-        throw new Error(`build-desktop-web-exe: Windows ZIP verification failed: ${String(listing.stderr)}`)
+      if (evidence === undefined) {
+        throw new Error('build-desktop-web-exe: Windows container verification requires final-byte runtime evidence')
       }
+      const archiveRoot = `${ELECTRON_APP_NAME}-win32-${this.cli.arch}`
+      const zipBytes = await readFile(zip)
+      const zipInventory = inspectWindowsZipBytes(zipBytes, archiveRoot)
+      const expectedZipFiles = await windowsPortableFileEntries(resolve(this.electronOutDir, archiveRoot))
+      assertWindowsZipFileInventory(
+        zipInventory,
+        expectedZipFiles,
+        WINDOWS_UNICODE_ROOT_FILES.map(name => `${archiveRoot}/${name}`),
+      )
+      const listing = spawnSync('tar.exe', ['-tf', zip], {
+        encoding: 'utf8',
+        windowsHide: true,
+        maxBuffer: 16 * 1024 * 1024,
+      })
+      if (listing.error !== undefined || listing.status !== 0) {
+        throw new Error(`build-desktop-web-exe: Windows ZIP verification failed: ${listing.error?.message ?? String(listing.stderr)}`)
+      }
+      const archiveEntries = zipInventory.entries
+      for (const required of [
+        `${archiveRoot}/release-manifest.json`,
+        `${archiveRoot}/${WINDOWS_DESKTOP_LAUNCHER_NAME}`,
+        `${archiveRoot}/runtime/${WINDOWS_DESKTOP_LAUNCHER_NAME}`,
+        `${archiveRoot}/runtime/DeepSeek Harness.exe`,
+      ]) {
+        if (!archiveEntries.includes(required)) {
+          throw new Error(`build-desktop-web-exe: Windows ZIP is missing required entry: ${required}`)
+        }
+      }
+      assertInteractiveLearningContainerInventory(
+        archiveEntries,
+        `${archiveRoot}/runtime/resources/app/node_modules/@dsh-portable/interactive-learning`,
+        evidence.interactiveLearning.publishedFiles,
+      )
+      // setup.iss stores the already-verified portable ZIP with nocompression.
+      // Requiring its exact contiguous bytes proves Setup carries that same
+      // inventory rather than a stale or independently assembled payload.
+      const setupBytes = await readFile(setup)
+      const embeddedOffset = setupBytes.indexOf(zipBytes)
+      if (embeddedOffset < 0 || setupBytes.indexOf(zipBytes, embeddedOffset + 1) >= 0) {
+        throw new Error('build-desktop-web-exe: Windows Setup must embed the exact verified portable ZIP bytes exactly once')
+      }
+      console.log(`build-desktop-web-exe: Windows ZIP contains exactly ${String(evidence.interactiveLearning.publishedFiles.length)} published Learning files`)
+      console.log('build-desktop-web-exe: Windows Setup embeds the exact verified portable ZIP bytes')
       return
     }
     if (this.cli.platform === 'linux') {
@@ -1668,13 +1817,34 @@ class DesktopExeBuild {
     if (process.platform !== 'win32' || process.arch !== 'x64') {
       throw new Error('build-desktop-web-exe: Windows containers require a native win32-x64 host')
     }
+    const launcher = join(portableRoot, WINDOWS_DESKTOP_LAUNCHER_NAME)
+    const compatibilityLauncher = join(portableRoot, 'runtime', WINDOWS_DESKTOP_LAUNCHER_NAME)
+    if (!existsSync(launcher) || !existsSync(compatibilityLauncher)) {
+      throw new Error(
+        `build-desktop-web-exe: Windows portable root is missing its no-console launcher pair: ${launcher}, ${compatibilityLauncher}`,
+      )
+    }
     const iscc = this.findIscc()
     if (iscc === undefined) throw new Error('build-desktop-web-exe: Inno Setup 6 is required to produce the declared inno-setup format (set ISCC_PATH)')
+    const archiveRoot = portableRoot.slice(portableRoot.lastIndexOf(sep) + 1)
+    const expectedZipFiles = await windowsPortableFileEntries(portableRoot)
     await rm(artifactDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
     await mkdir(artifactDir, { recursive: true })
-    await this.run('Windows portable ZIP packaging', 'tar.exe', [
-      '-a', '-c', '-f', zip, '-C', dirname(portableRoot), portableRoot.slice(portableRoot.lastIndexOf(sep) + 1),
+    await this.run('Windows portable UTF-8 ZIP packaging', process.env.PWSH_PATH || 'pwsh.exe', [
+      '-NoLogo',
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy', 'Bypass',
+      '-File', WINDOWS_ZIP_SCRIPT,
+      '-SourceDirectory', portableRoot,
+      '-DestinationZip', zip,
     ])
+    const zipInventory = inspectWindowsZipBytes(await readFile(zip), archiveRoot)
+    assertWindowsZipFileInventory(
+      zipInventory,
+      expectedZipFiles,
+      WINDOWS_UNICODE_ROOT_FILES.map(name => `${archiveRoot}/${name}`),
+    )
     await this.run('Windows Inno Setup packaging', iscc, [
       `/DMyAppVersion=${version}`,
       `/DMyZipName=${zipName}`,
@@ -1942,6 +2112,8 @@ class DesktopExeBuild {
           console.log(`build-desktop-web-exe: staged updater module into ${updaterDest}`)
         }
       }
+
+      await this.compileWindowsDesktopLauncher(rootDir)
     }
 
     if (this.cli.electron && this.cli.platform === 'linux') {
@@ -1969,6 +2141,49 @@ class DesktopExeBuild {
         }
       }
     }
+  }
+
+  /** Compile the root bootstrap as a Windows-GUI PE so Explorer never opens a console. */
+  private async compileWindowsDesktopLauncher(rootDir: string): Promise<void> {
+    const destination = join(rootDir, WINDOWS_DESKTOP_LAUNCHER_NAME)
+    if (this.cli.dryRun) {
+      console.log(`build-desktop-web-exe: [dry-run] compile ${WINDOWS_DESKTOP_LAUNCHER_SOURCE} -> ${destination}`)
+      return
+    }
+    if (process.platform !== 'win32') {
+      throw new Error('build-desktop-web-exe: the Windows desktop launcher requires a native Windows host')
+    }
+    if (!existsSync(WINDOWS_DESKTOP_LAUNCHER_SOURCE)) {
+      throw new Error(`build-desktop-web-exe: Windows desktop launcher source is missing: ${WINDOWS_DESKTOP_LAUNCHER_SOURCE}`)
+    }
+
+    const systemRoot = process.env.SystemRoot || process.env.WINDIR || 'C:\\Windows'
+    const candidates = [
+      join(systemRoot, 'Microsoft.NET', 'Framework64', 'v4.0.30319', 'csc.exe'),
+      join(systemRoot, 'Microsoft.NET', 'Framework', 'v4.0.30319', 'csc.exe'),
+    ]
+    const compiler = candidates.find(candidate => existsSync(candidate))
+    if (compiler === undefined) {
+      throw new Error(`build-desktop-web-exe: .NET Framework C# compiler is unavailable (${candidates.join(', ')})`)
+    }
+
+    await this.run('Windows no-console launcher', compiler, [
+      '/nologo',
+      '/target:winexe',
+      '/platform:anycpu',
+      '/optimize+',
+      '/reference:System.Web.Extensions.dll',
+      `/win32icon:${DESKTOP_ICON}`,
+      `/out:${destination}`,
+      WINDOWS_DESKTOP_LAUNCHER_SOURCE,
+    ])
+    if (!existsSync(destination)) {
+      throw new Error(`build-desktop-web-exe: Windows desktop launcher was not produced: ${destination}`)
+    }
+    const compatibilityDestination = join(rootDir, 'runtime', WINDOWS_DESKTOP_LAUNCHER_NAME)
+    await copyFile(destination, compatibilityDestination)
+    console.log(`build-desktop-web-exe: staged no-console launcher ${destination}`)
+    console.log(`build-desktop-web-exe: staged legacy-updater launcher fallback ${compatibilityDestination}`)
   }
 
   private async timed<T>(label: string, action: () => Promise<T>): Promise<T> {
@@ -2066,7 +2281,8 @@ async function main(): Promise<void> {
       current.verified = await pipeline.smokeTestArtifact(product())
       if (current.verified === undefined
         || current.verified.capabilityReport.snapshotHash !== current.measured.capabilityReport.snapshotHash
-        || JSON.stringify(current.verified.modeSupport) !== JSON.stringify(current.measured.modeSupport)) {
+        || JSON.stringify(current.verified.modeSupport) !== JSON.stringify(current.measured.modeSupport)
+        || JSON.stringify(current.verified.interactiveLearning) !== JSON.stringify(current.measured.interactiveLearning)) {
         throw new Error('final-byte smoke evidence differs from the pre-manifest measurement')
       }
     } },
@@ -2077,7 +2293,7 @@ async function main(): Promise<void> {
       current.finalPackages = [...(windows ?? []), ...(linux ?? []), ...(dmg === undefined ? [] : [dmg])]
     } },
     { id: 'verify-platform-containers', run: async current => {
-      await pipeline.verifyPlatformContainers(current.finalPackages)
+      await pipeline.verifyPlatformContainers(current.finalPackages, current.verified)
     } },
     { id: 'attest-immutable-artifacts', run: async current => {
       if (current.verified === undefined || cli.dryRun) return

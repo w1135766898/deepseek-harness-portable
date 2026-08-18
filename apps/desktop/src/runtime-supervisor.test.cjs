@@ -40,6 +40,7 @@ test('supervisor launches through protocol and waits for Harness readiness', asy
   assert.equal(readinessUrl, 'http://127.0.0.1:4567/')
   assert.deepEqual(spawnCall.args.slice(1), ['--host', '127.0.0.1', '--port', '0', '--no-open'])
   assert.equal(spawnCall.options.env.DSH_RUNTIME_PROTOCOL_VERSION, '1')
+  assert.equal(spawnCall.options.windowsHide, true)
 })
 
 test('supervisor keeps stderr diagnostics out of the stdout protocol stream', async () => {

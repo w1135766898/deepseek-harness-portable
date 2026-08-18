@@ -1,13 +1,15 @@
-# DeepSeek Harness Desktop v1.3.1
+# DeepSeek Harness Desktop v1.3.2
 
 [English](RELEASE_NOTES.md)
 
 Windows x64、macOS Apple Silicon 与 Linux x64 桌面版 · 2026-08-18
 
-这是 v1.3.1 桌面版发布：运行时升级至 DeepSeek Harness rc.7，修复覆盖安装首次启动与新版事件导致的历史会话兼容问题，并把 Learning 预设真正融入桌面客户端对话体验。
+这是 v1.3.2 测试版：继续使用 DeepSeek Harness rc.7 runtime，并确保桌面端“关于”和“更新记录”入口可靠地打开原生模态窗口。
 
 ## 新功能与体验优化
 
+- **Windows 无控制台启动**：桌面与开始菜单快捷方式改用 GUI 引导程序，在保留更新中断恢复能力的同时不再闪现命令行窗口；现有快捷方式会自动迁移，并可随版本回滚安全恢复。
+- **可靠的关于与更新记录入口**：桌面菜单操作现在直接打开原生模态窗口，不再绕行 Web runtime 菜单桥接。
 - **原生 Learning 选择**：学习方向、深度和节奏改用 rc.7 客户端原生选择控件，不再展示自定义活动表单。
 - **对话内教学图示**：参数探索、过程分步和结构比较直接渲染在助手消息中，可随会话持久回放，并提供文字等价说明和非单纯依赖颜色的标注。
 - **历史会话向前兼容**：精确兼容旧版 `portable-runtime/mode-resolution` 事件，新写入事件标记为可忽略；其他未知且不可忽略事件仍会拒绝加载。
@@ -26,10 +28,10 @@ Windows x64、macOS Apple Silicon 与 Linux x64 桌面版 · 2026-08-18
 
 ## 组件版本
 
-- 分发：1.3.1
+- 分发：1.3.2
 - 桌面外壳：0.1.0-shell.2
 - 内核：0.1.0-rc.7（@deepseek-ai/dsh-web-app）
-- 标签：v1.3.1
+- 标签：v1.3.2
 
 ## 校验和与安全
 

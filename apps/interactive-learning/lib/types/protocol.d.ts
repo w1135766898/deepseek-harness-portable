@@ -9,6 +9,11 @@ export declare const VISUAL_PROTOCOL_V3: "dsh-learning/visual@3";
 export declare const VISUAL_RESULT_PROTOCOL_V3: "dsh-learning/visual-result@3";
 export declare const VISUAL_PROTOCOL_V4: "dsh-learning/visual@4";
 export declare const VISUAL_RESULT_PROTOCOL_V4: "dsh-learning/visual-result@4";
+export declare const CHECKPOINT_PROTOCOL: "dsh-learning/checkpoint@1";
+export declare const CHECKPOINT_RESULT_PROTOCOL: "dsh-learning/checkpoint-result@1";
+export declare const CHECKPOINT_TRANSPORT_PROTOCOL: "dsh-learning/checkpoint-wait@1";
+export declare const LEARNING_CHECKPOINT_KINDS: readonly ["free_text", "single_choice", "numeric", "prediction", "code_slot"];
+export declare const LEARNING_CHECKPOINT_EVIDENCE_KINDS: readonly ["attempt", "prediction", "explanation", "contrast", "transfer"];
 export declare const LEARNING_VISUAL_KINDS_V4: readonly ["plot", "node_link", "scene_2d", "relation", "timeline", "formula_steps", "study_map", "recall_deck"];
 export declare const LEARNING_ACTIVITY_KINDS: readonly ["parameter_explorer", "process_stepper", "structure_compare"];
 export declare const MAX_ACTIVITY_BYTES: number;
@@ -23,6 +28,8 @@ export type LearningAction = 'submit' | 'skip' | 'cancel';
 export type LearningJson = null | boolean | number | string | LearningJson[] | {
     [key: string]: LearningJson;
 };
+export type LearningCheckpointKindV1 = typeof LEARNING_CHECKPOINT_KINDS[number];
+export type LearningCheckpointEvidenceKindV1 = typeof LEARNING_CHECKPOINT_EVIDENCE_KINDS[number];
 export type MathExpressionV1 = {
     op: 'constant';
     value: number;
@@ -256,6 +263,53 @@ export interface LearningWaitEnvelopeV2 {
     activity: LearningActivityV2;
 }
 export type LearningWaitEnvelopeInputV2 = Omit<LearningWaitEnvelopeV2, 'transport'>;
+export interface LearningCheckpointOptionV1 {
+    id: string;
+    label: string;
+}
+/** One answer-free, current-step learner contribution request. */
+export interface LearningCheckpointV1 {
+    protocol: typeof CHECKPOINT_PROTOCOL;
+    kind: LearningCheckpointKindV1;
+    prompt: string;
+    context?: string;
+    expectedEvidence: LearningCheckpointEvidenceKindV1;
+    options?: LearningCheckpointOptionV1[];
+    fallbackMarkdown: string;
+}
+export type LearningCheckpointResponseV1 = {
+    text: string;
+} | {
+    optionId: string;
+} | {
+    number: number;
+};
+interface LearningCheckpointResultBaseV1 {
+    protocol: typeof CHECKPOINT_RESULT_PROTOCOL;
+    checkpointId: string;
+    receiptId: string;
+}
+export interface LearningCheckpointSubmittedResultV1 extends LearningCheckpointResultBaseV1 {
+    status: 'submitted';
+    response: LearningCheckpointResponseV1;
+}
+export interface LearningCheckpointSkippedResultV1 extends LearningCheckpointResultBaseV1 {
+    status: 'skipped';
+}
+export interface LearningCheckpointCancelledResultV1 extends LearningCheckpointResultBaseV1 {
+    status: 'cancelled';
+}
+export type LearningCheckpointResultV1 = LearningCheckpointSubmittedResultV1 | LearningCheckpointSkippedResultV1 | LearningCheckpointCancelledResultV1;
+/** Durable safe projection used only to recover one pending checkpoint wait. */
+export interface LearningCheckpointWaitEnvelopeV1 {
+    transport: typeof CHECKPOINT_TRANSPORT_PROTOCOL;
+    sessionId: string;
+    callId: string;
+    waitId: string;
+    checkpointId: string;
+    checkpoint: LearningCheckpointV1;
+}
+export type LearningCheckpointWaitEnvelopeInputV1 = Omit<LearningCheckpointWaitEnvelopeV1, 'transport'>;
 export type LearningVisualToneV3 = 'blue' | 'green' | 'red' | 'orange' | 'purple' | 'gray';
 export type LearningVisualStrokeV3 = 'solid' | 'dashed' | 'dotted';
 export interface LearningVisualAxisV3 {
@@ -596,6 +650,16 @@ export declare function parseLearningActivityV2(value: unknown): LearningActivit
 export type ExpectedLearningResponseV2 = Partial<Pick<LearningResponseV2, 'activityId' | 'phase' | 'lessonToken' | 'roundToken' | 'seq'>>;
 /** Validate a phase-bound Client receipt before the Broker changes lesson state. */
 export declare function parseLearningResponseV2(value: unknown, expected?: ExpectedLearningResponseV2): LearningResponseV2;
+/** Canonical fail-closed predicate shared by protocol parsing and Client fallback extraction. */
+export declare function isLearningCheckpointDisplayTextSafe(value: string): boolean;
+/** Strict, answer-free protocol for one optional learner checkpoint. */
+export declare function parseLearningCheckpointV1(value: unknown): LearningCheckpointV1;
+export interface ExpectedLearningCheckpointResultV1 {
+    checkpointId?: string;
+    checkpoint?: LearningCheckpointV1;
+}
+/** Validate one phase-bound checkpoint receipt before the Host accepts it. */
+export declare function parseLearningCheckpointResultV1(value: unknown, expected?: ExpectedLearningCheckpointResultV1): LearningCheckpointResultV1;
 /** Validate the preferred, non-blocking visual protocol. */
 export declare function parseLearningVisualV3(value: unknown): LearningVisualV3;
 /** Validate the semantic, model-facing visual protocol while retaining V3 replay separately. */

@@ -9,6 +9,11 @@ import {
   resolveWorkspaceDependencyClosure,
   type WorkspacePackage,
 } from './dependency-closure.js'
+import {
+  auditRuntimeWorkspaceLinks,
+  repairRuntimeWorkspaceLinks,
+  type RuntimeWorkspacePackageLink,
+} from './workspace-links.js'
 
 const root = resolve(import.meta.dirname, '..', '..')
 const runtimeRoot = join(root, 'apps', 'runtime')
@@ -97,7 +102,14 @@ async function modeRoots(): Promise<string[]> {
 
 export async function generatedRuntimeState(): Promise<{
   manifest: Record<string, unknown>
-  generated: Record<string, unknown>
+  generated: {
+    schemaVersion: number
+    generatedBy: string
+    roots: string[]
+    closureHash: string
+    packages: RuntimeWorkspacePackageLink[]
+    dependencies: Record<string, string>
+  }
 }> {
   const [packages, configRoots] = await Promise.all([workspacePackages(), modeRoots()])
   const roots = [...new Set([...STATIC_WORKSPACE_ROOTS, ...configRoots])].sort()
@@ -116,8 +128,15 @@ export async function generatedRuntimeState(): Promise<{
   return { manifest: { ...manifest, dependencies }, generated }
 }
 
-export async function syncRuntimeDependencies(check = false): Promise<void> {
+export async function syncRuntimeDependencies(check = false, repairLinksOnly = false): Promise<void> {
   const state = await generatedRuntimeState()
+  if (repairLinksOnly) {
+    const repaired = await repairRuntimeWorkspaceLinks(root, runtimeRoot, state.generated.packages)
+    console.log(repaired.length === 0
+      ? 'runtime workspace links are current'
+      : `runtime workspace links repaired: ${repaired.join(', ')}`)
+    return
+  }
   const manifestText = `${JSON.stringify(state.manifest, null, 2)}\n`
   const generatedText = `${JSON.stringify(state.generated, null, 2)}\n`
   if (check) {
@@ -126,6 +145,7 @@ export async function syncRuntimeDependencies(check = false): Promise<void> {
     if (!existsSync(generatedPath) || await readFile(generatedPath, 'utf8') !== generatedText) {
       mismatches.push(relative(root, generatedPath))
     }
+    mismatches.push(...await auditRuntimeWorkspaceLinks(root, runtimeRoot, state.generated.packages))
     if (mismatches.length > 0) throw new Error(`runtime dependency closure is stale: ${mismatches.join(', ')}`)
     console.log(`runtime dependency closure is current: ${state.generated.packages.length} workspace packages`)
     return
@@ -134,10 +154,11 @@ export async function syncRuntimeDependencies(check = false): Promise<void> {
     writeFile(runtimeManifestPath, manifestText),
     writeFile(generatedPath, generatedText),
   ])
-  console.log(`runtime dependency closure synchronized: ${state.generated.packages.length} workspace packages`)
+  const repaired = await repairRuntimeWorkspaceLinks(root, runtimeRoot, state.generated.packages)
+  console.log(`runtime dependency closure synchronized: ${state.generated.packages.length} workspace packages; ${repaired.length} link(s) repaired`)
 }
 
 const invokedPath = process.argv[1] === undefined ? undefined : resolve(process.argv[1])
 if (invokedPath === fileURLToPath(import.meta.url)) {
-  await syncRuntimeDependencies(process.argv.includes('--check'))
+  await syncRuntimeDependencies(process.argv.includes('--check'), process.argv.includes('--repair-links'))
 }

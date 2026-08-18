@@ -1,4 +1,6 @@
 import { satisfiesModeSupport, } from '../../platform-contract/src/index.js';
+import { assertInteractiveLearningReleaseContract, } from './learning-contract.js';
+export { assertInteractiveLearningReleaseContract, INTERACTIVE_LEARNING_APP_FILES, INTERACTIVE_LEARNING_DISTRIBUTION_FILES, INTERACTIVE_LEARNING_PACKAGE_FILES, INTERACTIVE_LEARNING_PUBLIC_DECLARATION_FILES, assertInteractiveLearningPublishedPathPolicy, interactiveLearningInventoryPaths, } from './learning-contract.js';
 function validateHash(value, label) {
     if (!/^[a-f0-9]{64}$/.test(value))
         throw new Error(`${label} must be a lowercase SHA-256 digest`);
@@ -76,6 +78,7 @@ export function createReleaseManifest(input) {
     validateFiles(input.files);
     validateMeasuredSupport(input.target, input.measuredModeSupport, input.source.upstreamCommit);
     validatePatches(input.patches);
+    assertInteractiveLearningReleaseContract(input.target, input.files, input.experiencePacks?.interactiveLearning);
     if (input.signingEvidence !== undefined && input.signingEvidence.adapter !== input.target.signing.adapter) {
         throw new Error(`signing evidence uses ${input.signingEvidence.adapter}; target requires ${input.target.signing.adapter}`);
     }
@@ -107,6 +110,7 @@ export function createReleaseManifest(input) {
             runtimeClosureHash: input.runtimeClosureHash,
         },
         modeCatalog: { hash: input.modeCatalogHash, support: input.measuredModeSupport },
+        experiencePacks: input.experiencePacks,
         files: input.files,
         fileInventory: { algorithm: 'sha256', excludes: ['release-manifest.json'] },
         patches: input.patches,

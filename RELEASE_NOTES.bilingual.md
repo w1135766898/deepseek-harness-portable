@@ -1,11 +1,13 @@
-# DeepSeek Harness for Win v1.3.1
+# DeepSeek Harness for Win v1.3.2
 
 Windows x64 便携版 · 2026-08-18
 
-这是本 Windows 分发版的 v1.3.1 版本，修复覆盖安装首次启动和历史会话兼容问题，并将 Learning 原生选择与对话内图示带入 rc.7 客户端。
+这是本 Windows 分发版的 v1.3.2 测试版本，继续使用 rc.7 runtime，并修复桌面端“关于”和“更新记录”入口未可靠打开原生窗口的问题。
 
 ## 新功能与体验优化
 
+- **Windows 无控制台启动**：桌面与开始菜单快捷方式改用 GUI 引导程序，在保留更新中断恢复能力的同时不再闪现命令行窗口；现有快捷方式会自动迁移，并可随版本回滚安全恢复。
+- **可靠的关于与更新记录入口**：桌面菜单操作直接打开原生模态窗口，不再绕行 Web runtime 菜单桥接。
 - **Learning 原生交互**：方向、深度和节奏使用客户端原生选择；教学图示直接出现在助手消息中，并支持持久回放与文字等价说明。
 - **覆盖安装首次启动修复**：profile 依赖保持优先，Setup Finish 启动遇到 junction 替换窗口时回退到已安装 runtime。
 - **历史兼容修复**：兼容旧版 `portable-runtime/mode-resolution` 事件，并将新写入事件标记为可忽略。
@@ -22,7 +24,7 @@ Windows x64 便携版 · 2026-08-18
 
 ## 组件版本
 
-- 分发：1.3.1
+- 分发：1.3.2
 - 桌面外壳：0.1.0-shell.2
 - 运行时内核：0.1.0-rc.7
 
@@ -32,10 +34,12 @@ Windows x64 便携版 · 2026-08-18
 
 Windows x64 portable release · 2026-08-18
 
-This is the v1.3.1 Windows distribution. It fixes overwrite-install first launch and session history compatibility, and brings native Learning choices and inline teaching graphics to the rc.7 client.
+This is the v1.3.2 Windows test build. It keeps the rc.7 runtime and fixes unreliable desktop About and release-notes entry points.
 
 ### New Features & Improvements
 
+- **No-console Windows startup**: desktop and Start menu shortcuts use a GUI bootstrap that preserves interrupted-update recovery without flashing a command window; existing shortcuts migrate automatically and roll back safely.
+- **Reliable About and release notes**: desktop menu actions open the native modal directly instead of routing through the Web runtime menu bridge.
 - **Native Learning interaction**: direction, depth, and pace use the client choice control; teaching graphics render inside assistant messages with durable replay and text equivalents.
 - **Overwrite-install first-launch fix**: profile dependencies retain priority, with an installed-runtime fallback during the Setup Finish junction replacement window.
 - **Session compatibility fix**: legacy `portable-runtime/mode-resolution` events load, and new events are explicitly marked ignorable.
@@ -52,7 +56,7 @@ This is the v1.3.1 Windows distribution. It fixes overwrite-install first launch
 
 ### Component Versions
 
-- Distribution: 1.3.1
+- Distribution: 1.3.2
 - Desktop Shell: 0.1.0-shell.2
 - Runtime Kernel: 0.1.0-rc.7
 
@@ -65,6 +69,6 @@ This is the v1.3.1 Windows distribution. It fixes overwrite-install first launch
 The final portable ZIP and Setup installer SHA-256 values are recorded in SHA256SUMS.txt and attached to the GitHub Release.
 
 ```
-65D1A2B6D36B6B906B4AC20E2386589C29D01B66C69B0F206DFF686F18CEB37E *DeepSeek-Harness-1.3.1-win32-x64.zip
-2596B7BD026E6B30113C43FDA19FE16D963155C42B50F2F96222563B49BC3F86 *DeepSeek-Harness-Setup-1.3.1-win32-x64.exe
+4A2A4E05F50102FB285E6C7B152F7BEDD6D86EC5FAF978C9C41500AA20AB2AC2 *DeepSeek-Harness-1.3.2-win32-x64.zip
+4985F3BF95AA2E58DE90AAC241F4E7DB1256AB0FE5D7F7EBF2CF520DC93A116F *DeepSeek-Harness-Setup-1.3.2-win32-x64.exe
 ```

@@ -14,11 +14,18 @@ export { subscribeLearningUiLifecycle, type LearningUiLifecycleEvent } from './l
 const NS = 'interactive-learning'
 export const LEARNING_TOOL_VIEW_KEYS = [
   'learning_visual',
+  'learning_checkpoint',
+  'learning_state_update',
   // Replay support for conversations created by the retired blocking protocol.
   'learning_activity',
   'learning_question',
   'learning_reveal',
 ] as const
+
+/** Learner-state writes are internal bookkeeping and never produce a card. */
+export function LearningStateUpdateToolView(): null {
+  return null
+}
 
 export const name = 'interactive-learning-client'
 export const inject = ['slots', 'locale']
@@ -34,6 +41,14 @@ export function apply(ctx: ClientContext): void {
   }, LearningComposer))
 
   for (const key of LEARNING_TOOL_VIEW_KEYS) {
+    if (key === 'learning_state_update') {
+      ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
+        name: 'tool.call.toolview',
+        key,
+        locale: NS,
+      }, LearningStateUpdateToolView))
+      continue
+    }
     ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
       name: 'tool.call.toolview',
       key,

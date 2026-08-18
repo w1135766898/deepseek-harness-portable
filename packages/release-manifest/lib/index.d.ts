@@ -1,4 +1,6 @@
 import { type MeasuredModeSupport, type TargetSpec } from '../../platform-contract/src/index.js';
+import { type InteractiveLearningReleaseEvidence } from './learning-contract.js';
+export { assertInteractiveLearningReleaseContract, INTERACTIVE_LEARNING_APP_FILES, INTERACTIVE_LEARNING_DISTRIBUTION_FILES, INTERACTIVE_LEARNING_PACKAGE_FILES, INTERACTIVE_LEARNING_PUBLIC_DECLARATION_FILES, assertInteractiveLearningPublishedPathPolicy, interactiveLearningInventoryPaths, type InteractiveLearningCompositionRow, type InteractiveLearningReleaseEvidence, } from './learning-contract.js';
 export interface ReleaseSourceIdentity {
     readonly portableCommit: string;
     readonly upstreamCommit: string;
@@ -37,6 +39,9 @@ export interface ReleaseManifestInput {
     readonly runtimeClosureHash: string;
     readonly modeCatalogHash: string;
     readonly measuredModeSupport: Readonly<Record<string, MeasuredModeSupport>>;
+    readonly experiencePacks: {
+        readonly interactiveLearning: InteractiveLearningReleaseEvidence;
+    };
     readonly files: readonly ReleaseFile[];
     readonly patches: readonly ReleasePatch[];
     readonly signingEvidence?: ReleaseSigningEvidence;
@@ -72,6 +77,9 @@ export interface ReleaseManifest {
     readonly modeCatalog: {
         readonly hash: string;
         readonly support: Readonly<Record<string, MeasuredModeSupport>>;
+    };
+    readonly experiencePacks: {
+        readonly interactiveLearning: InteractiveLearningReleaseEvidence;
     };
     readonly files: readonly ReleaseFile[];
     readonly fileInventory: {

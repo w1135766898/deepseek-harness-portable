@@ -11,10 +11,11 @@ function readyUrl(output) {
   return clean.match(/(?:^|\r?\n)dsh web:\s*(http:\/\/127\.0\.0\.1:\d+)/)?.[1]
 }
 
-/** The browser shell cannot activate until these two graph entries exist. */
+/** The browser shell cannot activate until its shell and Learning roots exist. */
 const REQUIRED_CLIENT_ENTRIES = [
   '@deepseek-ai/dsh-client-runtime',
   '@deepseek-ai/dsh-client-ui-layout',
+  '@dsh-portable/interactive-learning',
 ]
 
 /** Build the settings RPC endpoint without producing a double-slash path. */

@@ -70,11 +70,13 @@ import { composeAfterManagedFallback } from './profile-startup.js'
 import {
   appendPortableModeResolution,
   PORTABLE_MODE_RESOLUTION_EVENT_TYPE,
-  registerPortableSessionCompatibility,
+  registerPackagedSessionCompatibility,
 } from './session-compatibility.js'
 import { adaptWin32SubprocessRuntime } from './win32-terminal-inspector.js'
 
-registerPortableSessionCompatibility()
+// Required persistence discriminators must exist before Loader can construct
+// AgentLoop rows that synchronously restore configured sessions.
+registerPackagedSessionCompatibility()
 
 /** Diagnostic prefix for every fail-loud and load error. */
 const NAME = 'dsh-desktop'
@@ -425,6 +427,7 @@ function isLauncherFlag(arg: string): arg is '--no-open' | '--open' {
 const REQUIRED_CLIENT_ENTRIES = [
   '@deepseek-ai/dsh-client-runtime',
   '@deepseek-ai/dsh-client-ui-layout',
+  '@dsh-portable/interactive-learning',
 ]
 
 /**

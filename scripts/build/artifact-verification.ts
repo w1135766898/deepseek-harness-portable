@@ -3,6 +3,7 @@ import { createReadStream, existsSync } from 'node:fs'
 import { copyFile, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import type { TargetSpec } from '../../packages/platform-contract/src/index.js'
+import { assertInteractiveLearningReleaseContract } from '../../packages/release-manifest/src/index.js'
 import type { PackagedRuntimeEvidence } from './packaged-smoke.js'
 
 export interface VerifiedArtifact {
@@ -63,9 +64,19 @@ export async function writeArtifactVerification(
     target?: { id?: unknown }
     distribution?: { classification?: unknown }
     files?: unknown
+    experiencePacks?: { interactiveLearning?: unknown }
   }
   if (manifest.schemaVersion !== 3 || manifest.target?.id !== options.target.id || !Array.isArray(manifest.files)) {
     throw new Error('final release manifest is missing its target-bound files[] inventory')
+  }
+  assertInteractiveLearningReleaseContract(
+    options.target,
+    manifest.files as readonly { readonly path: string }[],
+    manifest.experiencePacks?.interactiveLearning,
+  )
+  if (JSON.stringify(manifest.experiencePacks?.interactiveLearning)
+    !== JSON.stringify(options.evidence.interactiveLearning)) {
+    throw new Error('final release manifest Interactive Learning evidence differs from final-byte smoke evidence')
   }
   const classification = manifest.distribution?.classification
   if (classification !== 'non-official-unsigned' && classification !== 'official') {
@@ -82,9 +93,15 @@ export async function writeArtifactVerification(
     if (names.has(name)) throw new Error(`final package basename is duplicated: ${name}`)
     names.add(name)
     const destination = join(directory, name)
+    const sourceMetadata = await stat(source)
+    const sourceSha256 = await sha256File(source)
     await copyFile(source, destination)
     const metadata = await stat(destination)
-    artifacts.push({ name, size: metadata.size, sha256: await sha256File(destination) })
+    const sha256 = await sha256File(destination)
+    if (metadata.size !== sourceMetadata.size || sha256 !== sourceSha256) {
+      throw new Error(`verified artifact copy differs from its immutable source: ${name}`)
+    }
+    artifacts.push({ name, size: metadata.size, sha256 })
   }
   artifacts.sort((left, right) => left.name.localeCompare(right.name))
   const record: ArtifactVerificationRecord = {

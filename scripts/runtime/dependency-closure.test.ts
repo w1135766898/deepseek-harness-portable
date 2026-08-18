@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict'
+import { existsSync } from 'node:fs'
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { test } from 'node:test'
 import {
   collectPackageReferences,
@@ -6,6 +10,11 @@ import {
   resolveWorkspaceDependencyClosure,
   type WorkspacePackage,
 } from './dependency-closure.js'
+import {
+  auditRuntimeWorkspaceLinks,
+  preserveWorkspaceNodeModules,
+  repairRuntimeWorkspaceLinks,
+} from './workspace-links.js'
 
 test('runtime closure follows workspace dependencies, peers, and optional providers', () => {
   const manifests = new Map<string, WorkspacePackage>([
@@ -45,4 +54,56 @@ test('unknown workspace roots fail closed', () => {
     () => resolveWorkspaceDependencyClosure(new Map(), ['@deepseek-ai/missing']),
     /not a workspace package/,
   )
+})
+
+test('runtime workspace link repair replaces deploy copies and stale ignored entries', async (context) => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-runtime-links-'))
+  context.after(() => rm(root, { recursive: true, force: true }))
+  const runtimeRoot = join(root, 'apps', 'runtime')
+  const source = join(root, 'packages', 'example')
+  const destination = join(runtimeRoot, 'node_modules', '@example', 'package')
+  const ignored = join(runtimeRoot, 'node_modules', '@example', '.ignored_package')
+  await Promise.all([
+    mkdir(source, { recursive: true }),
+    mkdir(destination, { recursive: true }),
+    mkdir(ignored, { recursive: true }),
+  ])
+  await writeFile(join(source, 'value.txt'), 'workspace')
+  await writeFile(join(destination, 'value.txt'), 'stale deploy copy')
+  const packages = [{ name: '@example/package', path: 'packages/example' }]
+
+  assert.deepEqual(await auditRuntimeWorkspaceLinks(root, runtimeRoot, packages), [
+    '@example/package: runtime dependency is a stale materialized copy',
+    '@example/package: stale pnpm .ignored entry exists',
+  ])
+  assert.deepEqual(await repairRuntimeWorkspaceLinks(root, runtimeRoot, packages), ['@example/package'])
+  assert.equal(await realpath(destination), await realpath(source))
+  assert.equal(await readFile(join(destination, 'value.txt'), 'utf8'), 'workspace')
+  assert.equal(existsSync(ignored), false)
+  assert.deepEqual(await auditRuntimeWorkspaceLinks(root, runtimeRoot, packages), [])
+})
+
+test('workspace node_modules survive a failing legacy deploy action exactly', async (context) => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-workspace-install-'))
+  context.after(() => rm(root, { recursive: true, force: true }))
+  const existing = join(root, 'packages', 'existing', 'node_modules')
+  const initiallyAbsent = join(root, 'packages', 'absent', 'node_modules')
+  await mkdir(existing, { recursive: true })
+  await mkdir(join(root, 'packages', 'absent'), { recursive: true })
+  await writeFile(join(existing, 'marker.txt'), 'original install')
+  const packages = [
+    { name: '@example/existing', path: 'packages/existing' },
+    { name: '@example/absent', path: 'packages/absent' },
+  ]
+
+  await assert.rejects(preserveWorkspaceNodeModules(root, packages, async () => {
+    assert.equal(existsSync(existing), false)
+    await mkdir(existing, { recursive: true })
+    await mkdir(initiallyAbsent, { recursive: true })
+    await writeFile(join(existing, 'marker.txt'), 'deploy mutation')
+    throw new Error('legacy deploy failed')
+  }), /legacy deploy failed/)
+
+  assert.equal(await readFile(join(existing, 'marker.txt'), 'utf8'), 'original install')
+  assert.equal(existsSync(initiallyAbsent), false)
 })

@@ -6,6 +6,7 @@
 #define MyAppPublisher "DeepSeek Harness Contributors"
 #define MyAppURL "https://github.com/wsnxxxs/deepseek-harness-portable"
 #define MyAppExeName "runtime\DeepSeek Harness.exe"
+#define MyLauncherExeName "DeepSeek Harness Launcher.exe"
 #ifndef MyAppVersion
   #define MyAppVersion "0.0.0"
 #endif
@@ -55,14 +56,14 @@ Source: "{#MyIconPath}"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "setup-runtime-preflight.ps1"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\start-desktop.cmd"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyLauncherExeName}"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}"
 Name: "{group}\DeepSeek Harness (网页服务模式)"; Filename: "{app}\启动网页版.bat"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}"
 Name: "{group}\在线更新"; Filename: "{app}\在线更新.bat"; WorkingDir: "{app}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\start-desktop.cmd"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyLauncherExeName}"; IconFilename: "{app}\assets\deepseek.ico"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\start-desktop.cmd"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; WorkingDir: "{app}"; Flags: shellexec nowait postinstall skipifsilent
+Filename: "{app}\{#MyLauncherExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; WorkingDir: "{app}"; Flags: shellexec nowait postinstall skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
@@ -248,7 +249,7 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
   ZipPath, AppDir, StageDir, TarExe, RobocopyExe, RunId: String;
-  MainExe, SafeLauncher, TransactionGate, PickerWorker, MarketplaceManifest, ReleaseManifest: String;
+  MainExe, SafeLauncher, CompatibilityLauncher, ScriptLauncher, TransactionGate, PickerWorker, MarketplaceManifest, ReleaseManifest: String;
   OldRuntime, NewRuntime, BackupRuntime, FailedRuntime, LockReport, OrphanRuntime: String;
   ReportText: AnsiString;
   HadOldRuntime, RuntimeSwapped: Boolean;
@@ -288,7 +289,9 @@ begin
       RaiseException(Format('Runtime staging failed (tar exit code %d).', [ResultCode]));
 
     MainExe := AddBackslash(StageDir) + '{#MyAppExeName}';
-    SafeLauncher := AddBackslash(StageDir) + 'start-desktop.cmd';
+    SafeLauncher := AddBackslash(StageDir) + '{#MyLauncherExeName}';
+    CompatibilityLauncher := AddBackslash(StageDir) + 'runtime\{#MyLauncherExeName}';
+    ScriptLauncher := AddBackslash(StageDir) + 'start-desktop.cmd';
     TransactionGate := AddBackslash(StageDir) + 'runtime\resources\app\src\update-transaction.cjs';
     ReleaseManifest := AddBackslash(StageDir) + 'release-manifest.json';
     PickerWorker := AddBackslash(StageDir) +
@@ -301,6 +304,10 @@ begin
       RaiseException('Staged release is missing the main executable.');
     if not FileExists(SafeLauncher) then
       RaiseException('Staged release is missing the safe desktop launcher.');
+    if not FileExists(CompatibilityLauncher) then
+      RaiseException('Staged release is missing the legacy-updater launcher fallback.');
+    if not FileExists(ScriptLauncher) then
+      RaiseException('Staged release is missing the desktop recovery script.');
     if not FileExists(TransactionGate) then
       RaiseException('Staged release is missing the update transaction launch gate.');
     if not FileExists(PickerWorker) then

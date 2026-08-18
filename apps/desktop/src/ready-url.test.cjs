@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { createServer } = require('node:http')
-const { readyUrl, settingsDescribeUrl, waitForOnboardingReady } = require('./ready-url.cjs')
+const { hasRequiredClientGraph, readyUrl, settingsDescribeUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 
 test('extracts only the loopback readiness URL', () => {
   assert.equal(readyUrl('dsh web: http://127.0.0.1:43127\n'), 'http://127.0.0.1:43127')
@@ -24,6 +24,22 @@ test('normalizes a trailing listening slash to the exact settings RPC route', ()
   )
 })
 
+test('client readiness requires the Interactive Learning Client row', () => {
+  const shellOnly = {
+    entries: [
+      { id: '@deepseek-ai/dsh-client-runtime', inject: [] },
+      { id: '@deepseek-ai/dsh-client-ui-layout', inject: ['@deepseek-ai/dsh-client-runtime'] },
+    ],
+  }
+  assert.equal(hasRequiredClientGraph(shellOnly), false)
+  assert.equal(hasRequiredClientGraph({
+    entries: [
+      ...shellOnly.entries,
+      { id: '@dsh-portable/interactive-learning', inject: ['@deepseek-ai/dsh-client-runtime'] },
+    ],
+  }), true)
+})
+
 test('waits for onboarding and the complete client graph instead of trusting the first HTTP 200', async () => {
   let settingsAttempts = 0
   let indexAttempts = 0
@@ -36,6 +52,7 @@ test('waits for onboarding and the complete client graph instead of trusting the
             { id: '@deepseek-ai/dsh-client-runtime', inject: ['@deepseek-ai/dsh-client-connection'] },
             { id: '@deepseek-ai/dsh-client-connection', inject: [] },
             { id: '@deepseek-ai/dsh-client-ui-layout', inject: ['@deepseek-ai/dsh-client-runtime'] },
+            { id: '@dsh-portable/interactive-learning', inject: ['@deepseek-ai/dsh-client-runtime'] },
           ]
       response.writeHead(200, { 'content-type': 'text/html' })
       response.end(`<html><head><script>window.__DSH_BOOT__ = ${JSON.stringify({ entries })}</script></head></html>`)

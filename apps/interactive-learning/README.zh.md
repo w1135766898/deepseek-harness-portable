@@ -6,17 +6,18 @@ standing prompt 保持不变。
 
 ## 架构
 
-- 包根保留旧 `learningActivities` Host broker，只用于安全回放 V1/V2 历史会话；
-  它不注册任何模型可见工具。
-- `./agent` 只由 Learning preset 挂载，注册一个首选工具 `learning_visual` 和精简
-  教学策略。
-- `./client` 在对话流中原位渲染交互图，同时保持普通消息输入框可用；它也为旧
-  `learning_activity`、`learning_question`、`learning_reveal` 调用保留只读回放。
+- 包根提供 `learningActivities` Host broker，并在加载持久化 Learning 会话前注册
+  必需的 `learning/state` session event 类型；它不注册任何模型可见工具。
+- `./agent` 只由 Learning preset 挂载，注册即时完成的 `learning_visual`、静默的
+  `learning_state_update` 和可选的 `learning_checkpoint`。standing policy 只来自
+  一个规范 TypeScript 源，不再由 Skill 复制维护。
+- `./client` 在对话流中原位渲染 visual 与可选 checkpoint；state update 明确为空
+  视图。V1/V2 活动和 V3 visual 仍保留只读回放。
 - `./protocol` 维护封闭、版本化的声明式协议。
 - `preset/learning/skills/interactive-teaching` 按需提供更细的教学判断。
 
-当前设计把“解释”和“交互”解耦：图表是普通回答里的可操作插图，而不是接管用户
-回合的表单。
+普通对话仍是默认路径。图表是普通回答里的可操作插图，不会接管用户回合。唯一例外
+是模型明确选择的高价值 checkpoint：它只形成一次 user-result wait，然后终止。
 
 ## 非阻塞学习流程
 
@@ -32,6 +33,44 @@ standing prompt 保持不变。
 这条链路移除了旧 Question → Reveal 双工具结构。旧结构会天然重复轮次，并让模型
 回合在等待用户期间一直处于运行状态。周围文字仍须自洽，因此 Client 无法渲染时
 只会失去增强图，而不会卡住模型或用户。
+
+## Session-scoped LearnerState
+
+Learning 只为当前 session 保存一份小型、暂定的教学状态：当前目标、已展示的先验、
+误解或缺口、由 learner evidence 推导的支架需求、急迫/真正卡住的证据、评估语境，以及独立完成（含新情境
+迁移）的证据。
+
+生产链路是显式且可审计的：
+
+1. 普通 learner message 仍进入正常会话。只有具体观察会实质改变下一教学动作时，
+   模型才可调用内部 `learning_state_update`，不能机械地每轮调用。
+2. visual 完成与 checkpoint 终态只写入 Host 能确定观察到的事实。仅“提交”只证明发生
+   了 learner action，绝不自动代表正确、独立、取得进展或掌握。
+3. 每次有效更新都会把去除 session identity 的严格完整快照追加为必需的
+   `learning/state` 事件；未知的必需事件会 fail closed。
+4. 每个后续 model step 前，动态 prompt context 都会重新 fold 持久事件，并生成
+   100–300 token 的有界 tentative summary。
+
+快照不携带 session id。刷新和 resume 会 fold 同一日志；fork 会把继承快照重新绑定
+到新 identity，之后各自独立变化。Reset 追加清空后的新 revision，因此旧异步结果
+不能复活之前的状态；dispose 只清理进程内 fold cache。这不是跨会话用户画像、人格或
+“学习风格”分类，也不是长期掌握度。学习者可在普通对话中纠正状态，但自称掌握不能
+替代独立正确证据。
+
+## 可选 Checkpoint Protocol v1
+
+`dsh-learning/checkpoint@1` 只用于会实质改变下一教学动作的预测、解释、对比、设计选择、
+调试诊断、边界情况或迁移应用。它不是默认输入路径，也不能变成每轮 Continue 仪式。
+
+- 每个 session 最多一个 pending checkpoint；每个 model step 最多一个不同 checkpoint。
+- 五种封闭类型为 `free_text`、`single_choice`、`numeric`、`prediction` 和
+  `code_slot`。单选结果传稳定 option id，label 只负责展示。
+- pending payload 只能包含当前 prompt、context、expected evidence、无答案 options
+  和自洽 fallback；正确答案、评分 rubric、solution 与未来步骤都会被拒绝。
+- 终态只有 `submitted`、`skipped`、`cancelled`。刷新恢复同一 wait 和 draft；call 与
+  receipt 重放幂等，冲突复用则 fail closed。
+- Skip、Cancel、timeout、renderer failure 或无 rich Client 都会恢复普通对话；不会再
+  产生 Reveal、animation、Continue 或第二次等待。
 
 ## 语义 Visual Protocol v4
 
@@ -89,12 +128,32 @@ pnpm run desktop:dev
   --config 'apps/interactive-learning/tests/browser/vite.config.mjs'
 ```
 
-打开 `http://127.0.0.1:41739/`。它是组件验收页，不能替代真实打包桌面 smoke。
+打开 `http://127.0.0.1:41739/`。它覆盖 visual 回放，以及 checkpoint 的提交、跳过、
+取消、刷新草稿和 session 隔离；但仍只是组件验收页，不能替代真实打包桌面 smoke，
+页面自带的测试输入框也不能证明真实 Host composer 的生命周期。
 
-离线教学评估不读取真实用户凭证，也不冒充远程模型质量评分：
+无凭证离线教学评估使用手写 rubric fixture，只验证 grader 与协议不变量；它不是
+“模型已经会教学”的真实行为证据：
 
 ```powershell
-node apps/interactive-learning/lib/eval-cli.js
+pnpm --filter @dsh-portable/interactive-learning eval
+```
+
+退役的 V2 Question → Reveal → animation → Continue 时序只保留为明确命名的
+`gradeLegacyV2ReplayTranscript` 只读历史回放审计。默认 V4.1 eval 不会调用它，
+也不会把双门时序当作当前教学成功标准。
+
+`tests/model-canary.mts` 是单独标注、可选的真实模型 smoke，只验证一次非阻塞 visual
+调用；它不是多轮教学质量结论，并需要 `DSH_CANARY_API_KEY`。真实模型结果必须保留
+provenance，不能与 fixture 结果混报。
+
+包级验证会构建产物、扫描已发布 JS/map 是否泄漏 checkout 或盘符绝对路径、创建真实
+tarball、安装到干净临时 consumer、解析 Host/Agent/Client exports，并验证托管 preset
+生命周期：
+
+```powershell
+pnpm --filter @dsh-portable/interactive-learning run test:package:purity
+pnpm --filter @dsh-portable/interactive-learning run test:package
 ```
 
 发布前还应运行仓库完整测试和正常 Windows 打包流程，不要使用 `--skip-build`。
@@ -103,21 +162,32 @@ node apps/interactive-learning/lib/eval-cli.js
 
 从干净包安装时：
 
-1. 在 Host composition 中加入包根：
+1. 在构造 Loader、agent-loop 或恢复任何 configured session 之前，先导入带副作用的
+   bootstrap（再次显式调用其导出函数也是安全的）：
+
+   ```ts
+   import '@dsh-portable/interactive-learning/bootstrap'
+   ```
+
+   Host 也可把兼容性 bootstrap composition row 明确放在 `agent-loop` 之前，但普通的
+   晚加载插件 row 不能提供同等时序保证。portable runtime 通过 boot 前静态导入
+   `./preset` 获得这一顺序。
+
+2. 在 Host composition 中加入包根：
 
    ```yaml
    - id: interactive-learning
      name: '@dsh-portable/interactive-learning'
    ```
 
-2. 让 Web module loader 读取包内 `dsh.client` 声明。
-3. 安装 preset 并重启 Host/Web：
+3. 让 Web module loader 读取包内 `dsh.client` 声明。
+4. 安装 preset 并重启 Host/Web：
 
    ```powershell
    dsh-learning-preset install --home <DSH_HOME>
    ```
 
-4. 在新会话中显式选择 Learning。
+5. 在新会话中显式选择 Learning。
 
 安装器在 `.agent-presets/learning/.dsh-managed.json` 中记录所有权，只更新未被用户
 修改的 owned file；用户修改过的文件会保留，新版本放到 sidecar。卸载同样只删除
@@ -125,13 +195,6 @@ hash 仍归包所有的文件。
 
 ```powershell
 dsh-learning-preset uninstall --home <DSH_HOME>
-```
-
-干净 tarball 生命周期测试验证 Host/Agent/protocol export、Client 激活元数据，以及
-安全安装、升级和卸载：
-
-```powershell
-node apps/interactive-learning/tests/package-lifecycle.mjs <package.tgz>
 ```
 
 暂不包含：任意可执行 widget、跨会话掌握度、间隔复习、知识图谱、LMS 适配，以及

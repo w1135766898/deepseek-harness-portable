@@ -29,7 +29,7 @@ if (Test-Path -LiteralPath $payloadScript) {
 } else {
     $global:RELEASE_PAYLOAD = @(
         'release-manifest.json', 'dsh.cmd', 'pnpm.cmd', 'uninstall.cmd', 'uninstall.ps1', 'update.ps1', 'update.cmd',
-        'setup-shortcuts.ps1', 'start-web.cmd', 'start-desktop.cmd', '启动网页版.bat', '启动桌面窗口.bat',
+        'setup-shortcuts.ps1', 'start-web.cmd', 'start-desktop.cmd', 'DeepSeek Harness Launcher.exe', '启动网页版.bat', '启动桌面窗口.bat',
         '启动桌面版.bat', '在线更新.bat', '创建桌面快捷方式.bat', '一键解除拦截(自签名信任).bat',
         '使用说明.txt', '使用说明.en.txt', 'smoke-native.cjs',
         'updater\updater.psm1', 'updater\release-payload.ps1'
@@ -179,6 +179,90 @@ function Restore-ReleasePayload {
         Ensure-ParentDirectory -Path $destination
         Copy-Item -LiteralPath $source -Destination $destination -Force
     }
+}
+
+function Sync-DesktopLauncherShortcuts {
+    param(
+        [Parameter(Mandatory = $true)][string]$AppRoot,
+        [string[]]$ShortcutRoots,
+        [switch]$PreferScriptLauncher,
+        [switch]$FailOnError
+    )
+
+    $root = [System.IO.Path]::GetFullPath($AppRoot).TrimEnd('\')
+    $guiLauncher = Join-Path $root 'DeepSeek Harness Launcher.exe'
+    $scriptLauncher = Join-Path $root 'start-desktop.cmd'
+    $target = if ($PreferScriptLauncher) {
+        $scriptLauncher
+    } elseif (Test-Path -LiteralPath $guiLauncher -PathType Leaf) {
+        $guiLauncher
+    } else {
+        $scriptLauncher
+    }
+    $targetExists = Test-Path -LiteralPath $target -PathType Leaf
+    if (-not $targetExists -and -not $FailOnError) { return 0 }
+
+    $migratableTargets = @(
+        [System.IO.Path]::GetFullPath($guiLauncher)
+        [System.IO.Path]::GetFullPath($scriptLauncher)
+    )
+
+    if (-not $PSBoundParameters.ContainsKey('ShortcutRoots')) {
+        $programs = [Environment]::GetFolderPath('Programs')
+        $ShortcutRoots = @(
+            [Environment]::GetFolderPath('Desktop'),
+            $(if ([string]::IsNullOrWhiteSpace($programs)) { '' } else { Join-Path $programs 'DeepSeek Harness' })
+        )
+    }
+
+    $wsh = New-Object -ComObject WScript.Shell
+    $updated = 0
+    $failures = @()
+    foreach ($shortcutRoot in @($ShortcutRoots | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)) {
+        if (-not (Test-Path -LiteralPath $shortcutRoot -PathType Container)) { continue }
+        try {
+            $shortcutFiles = @(Get-ChildItem -LiteralPath $shortcutRoot -Filter '*.lnk' -File -ErrorAction Stop)
+        } catch {
+            $message = 'Could not enumerate launcher shortcuts under ' + $shortcutRoot + ': ' + $_.Exception.Message
+            Write-Verbose $message
+            if ($FailOnError) { $failures += $message }
+            continue
+        }
+        foreach ($file in $shortcutFiles) {
+            $ownedShortcut = $false
+            try {
+                $shortcut = $wsh.CreateShortcut($file.FullName)
+                if (-not [string]::IsNullOrWhiteSpace([string]$shortcut.Arguments)) { continue }
+                if ([string]::IsNullOrWhiteSpace([string]$shortcut.TargetPath)) { continue }
+                $shortcutTarget = [System.IO.Path]::GetFullPath([string]$shortcut.TargetPath)
+                $matches = @($migratableTargets | Where-Object {
+                    [string]::Equals($_, $shortcutTarget, [System.StringComparison]::OrdinalIgnoreCase)
+                }).Count -gt 0
+                if (-not $matches) { continue }
+                $ownedShortcut = $true
+                if (-not $targetExists) {
+                    $failures += ('The required shortcut target is missing: ' + $target)
+                    continue
+                }
+                if ([string]::Equals($shortcutTarget, $target, [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+                $shortcut.TargetPath = $target
+                $shortcut.WorkingDirectory = $root
+                $shortcut.WindowStyle = 1
+                $shortcut.Save()
+                $updated++
+            } catch {
+                $message = 'Could not inspect launcher shortcut ' + $file.FullName + ': ' + $_.Exception.Message
+                Write-Verbose $message
+                if ($FailOnError -and ($ownedShortcut -or $file.Name -ieq 'DeepSeek Harness.lnk')) {
+                    $failures += $message
+                }
+            }
+        }
+    }
+    if ($failures.Count -gt 0) {
+        throw ($failures -join [Environment]::NewLine)
+    }
+    return $updated
 }
 
 function Normalize-Version {
@@ -638,9 +722,11 @@ function Test-PortableLayout {
         'update.ps1',
         'update.cmd',
         'setup-shortcuts.ps1',
+        'DeepSeek Harness Launcher.exe',
         'updater\updater.psm1',
         'updater\release-payload.ps1',
         'runtime\DeepSeek Harness.exe',
+        'runtime\DeepSeek Harness Launcher.exe',
         'runtime\resources\app\package.json',
         'runtime\resources\app\lib\packaged-bin.js',
         'runtime\resources\app\lib\marketplace-bootstrap.js',
@@ -920,6 +1006,19 @@ function Install-ReleaseWithTransaction {
             }
         }
 
+        # Migrate owned shortcuts before the terminal journal write. If the
+        # process stops here, normal transaction recovery restores both the old
+        # payload and the old shortcut target instead of leaving a committed
+        # transaction whose shortcuts still point at the console fallback.
+        try {
+            $migratedShortcuts = Sync-DesktopLauncherShortcuts -AppRoot $AppRoot
+            if ($migratedShortcuts -gt 0) {
+                Write-Host ('Migrated ' + $migratedShortcuts + ' desktop launcher shortcut(s).') -ForegroundColor Green
+            }
+        } catch {
+            Write-Warning ('The update succeeded, but existing launcher shortcuts could not be migrated: ' + $_.Exception.Message)
+        }
+
         # 5. Commit transaction & retain rollback slot
         $transactionState.phase = 'committed'
         Write-JsonAtomic -Path $transactionPath -Data $transactionState
@@ -979,6 +1078,15 @@ function Invoke-Rollback {
     }
     Stop-ProcessTree -AppRoot $AppRoot
 
+    # Downgrade owned shortcuts while the current console fallback still
+    # exists and before Restore-ReleasePayload may remove the GUI launcher.
+    # A failure here leaves the transaction pending and the installed payload
+    # untouched, so a later recovery attempt can retry safely.
+    $null = Sync-DesktopLauncherShortcuts `
+        -AppRoot $AppRoot `
+        -PreferScriptLauncher `
+        -FailOnError
+
     $runtimeDir = Join-Path $AppRoot 'runtime'
     $backupRuntimeDir = Join-Path $BackupDir 'runtime'
     $failedRuntimeDir = Join-Path $BackupDir ('failed-runtime-' + [Guid]::NewGuid().ToString('N'))
@@ -1014,6 +1122,11 @@ function Invoke-Rollback {
             -From $FromVersion -Target $restoredVersion
     }
     Write-Host 'Rollback complete: previous version runtime and manifests restored.' -ForegroundColor Green
+    try {
+        $null = Sync-DesktopLauncherShortcuts -AppRoot $AppRoot
+    } catch {
+        Write-Warning ('Rollback completed, but launcher shortcuts could not be restored: ' + $_.Exception.Message)
+    }
 
     if ($RelaunchAfterRollback) {
         $desktopExe = Join-Path $AppRoot 'runtime\DeepSeek Harness.exe'
@@ -1265,6 +1378,7 @@ Export-ModuleMember -Function `
     Find-CachedUpdatePackage, `
     Download-And-Verify, `
     Test-PathSafety, `
+    Sync-DesktopLauncherShortcuts, `
     Test-PortableLayout, `
     Stop-ProcessTree, `
     Extract-ReleaseSafe, `

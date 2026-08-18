@@ -3,6 +3,22 @@ import {
   type MeasuredModeSupport,
   type TargetSpec,
 } from '../../platform-contract/src/index.js'
+import {
+  assertInteractiveLearningReleaseContract,
+  type InteractiveLearningReleaseEvidence,
+} from './learning-contract.js'
+
+export {
+  assertInteractiveLearningReleaseContract,
+  INTERACTIVE_LEARNING_APP_FILES,
+  INTERACTIVE_LEARNING_DISTRIBUTION_FILES,
+  INTERACTIVE_LEARNING_PACKAGE_FILES,
+  INTERACTIVE_LEARNING_PUBLIC_DECLARATION_FILES,
+  assertInteractiveLearningPublishedPathPolicy,
+  interactiveLearningInventoryPaths,
+  type InteractiveLearningCompositionRow,
+  type InteractiveLearningReleaseEvidence,
+} from './learning-contract.js'
 
 export interface ReleaseSourceIdentity {
   readonly portableCommit: string
@@ -47,6 +63,9 @@ export interface ReleaseManifestInput {
   readonly runtimeClosureHash: string
   readonly modeCatalogHash: string
   readonly measuredModeSupport: Readonly<Record<string, MeasuredModeSupport>>
+  readonly experiencePacks: {
+    readonly interactiveLearning: InteractiveLearningReleaseEvidence
+  }
   readonly files: readonly ReleaseFile[]
   readonly patches: readonly ReleasePatch[]
   readonly signingEvidence?: ReleaseSigningEvidence
@@ -83,6 +102,9 @@ export interface ReleaseManifest {
   readonly modeCatalog: {
     readonly hash: string
     readonly support: Readonly<Record<string, MeasuredModeSupport>>
+  }
+  readonly experiencePacks: {
+    readonly interactiveLearning: InteractiveLearningReleaseEvidence
   }
   readonly files: readonly ReleaseFile[]
   readonly fileInventory: {
@@ -172,6 +194,11 @@ export function createReleaseManifest(input: ReleaseManifestInput): ReleaseManif
   validateFiles(input.files)
   validateMeasuredSupport(input.target, input.measuredModeSupport, input.source.upstreamCommit)
   validatePatches(input.patches)
+  assertInteractiveLearningReleaseContract(
+    input.target,
+    input.files,
+    (input.experiencePacks as ReleaseManifestInput['experiencePacks'] | undefined)?.interactiveLearning,
+  )
   if (input.signingEvidence !== undefined && input.signingEvidence.adapter !== input.target.signing.adapter) {
     throw new Error(`signing evidence uses ${input.signingEvidence.adapter}; target requires ${input.target.signing.adapter}`)
   }
@@ -203,6 +230,7 @@ export function createReleaseManifest(input: ReleaseManifestInput): ReleaseManif
       runtimeClosureHash: input.runtimeClosureHash,
     },
     modeCatalog: { hash: input.modeCatalogHash, support: input.measuredModeSupport },
+    experiencePacks: input.experiencePacks,
     files: input.files,
     fileInventory: { algorithm: 'sha256', excludes: ['release-manifest.json'] },
     patches: input.patches,

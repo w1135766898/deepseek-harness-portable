@@ -13,6 +13,7 @@ $global:RELEASE_PAYLOAD = @(
     'setup-shortcuts.ps1',
     'start-web.cmd',
     'start-desktop.cmd',
+    'DeepSeek Harness Launcher.exe',
     '启动网页版.bat',
     '启动桌面窗口.bat',
     '启动桌面版.bat',

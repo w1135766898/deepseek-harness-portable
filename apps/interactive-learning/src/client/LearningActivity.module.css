@@ -814,6 +814,60 @@
   white-space: nowrap;
 }
 
+.checkpoint {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  margin: 4px 0 10px;
+  border-left: 2px solid var(--dsw-alias-brand-primary);
+  padding: 4px 0 4px 14px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.checkpointHeader,
+.checkpointForm,
+.checkpointField {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.checkpointHeader { gap: 3px; }
+.checkpointForm { gap: 9px; }
+.checkpointField { gap: 5px; color: var(--dsw-alias-label-secondary); font-size: 13px; }
+.checkpointEyebrow { color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 20px; }
+.checkpointHeader h2 { margin: 0; font-size: 17px; font-weight: 500; line-height: 26px; }
+.checkpointHeader p { margin: 0; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 22px; }
+
+.checkpointInput {
+  width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  padding: 7px 9px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.checkpointInput:focus-visible,
+.checkpointOption input:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
+.checkpointCode { font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Consolas, monospace); }
+.checkpointChoices { display: grid; gap: 6px; margin: 0; border: 0; padding: 0; }
+.checkpointChoices legend { margin-bottom: 3px; padding: 0; color: var(--dsw-alias-label-secondary); font-size: 13px; }
+.checkpointOption { display: flex; align-items: flex-start; gap: 8px; color: var(--dsw-alias-label-primary); font-size: 14px; line-height: 22px; cursor: pointer; }
+.checkpointOption input { margin: 4px 0 0; accent-color: var(--dsw-alias-brand-primary); }
+.checkpointActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.checkpointHint { margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 18px; }
+
 .learningVisual {
   display: flex;
   min-width: 0;

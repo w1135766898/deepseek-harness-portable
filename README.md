@@ -80,7 +80,7 @@ Read the [English release notes](RELEASE_NOTES.md) or open **Release Notes** fro
 7. **Linux x64 deb (manual):** download `DeepSeek-Harness-<version>-linux-x64.deb` and install it with `sudo apt install ./DeepSeek-Harness-<version>-linux-x64.deb`.
 8. **Uninstall:** use the platform's normal app removal flow. Windows uninstall scripts are included; user data is kept unless explicitly removed.
 
-> **Note:** `setup-shortcuts.ps1` (called by the installer and by `创建桌面快捷方式.bat` in the portable package) creates a desktop shortcut and adds the portable directory to your **user PATH**. The uninstaller removes both.
+> **Note:** `setup-shortcuts.ps1` (called by the installer and by `创建桌面快捷方式.bat` in the portable package) creates a desktop shortcut that targets the no-console GUI launcher and adds the portable directory to your **user PATH**. The uninstaller removes both.
 
 The installer and updater verify the ZIP digest, release manifest, application manifest, and required native modules. They do not create certificates or modify Windows trust stores.
 
@@ -90,7 +90,8 @@ The installer and updater verify the ZIP digest, release manifest, application m
     ├─ dsh.cmd                      CLI entry: web mode, `dsh update`, `dsh desktop`, `dsh trust`
     ├─ pnpm.cmd                     Embedded package-manager entry used by plugin management
     ├─ start-web.cmd                Browser mode entry using the embedded Electron/Node runtime
-    ├─ start-desktop.cmd            Desktop mode entry
+    ├─ DeepSeek Harness Launcher.exe  No-console desktop launcher and update-recovery bootstrap
+    ├─ start-desktop.cmd            Console diagnostics and recovery fallback
     ├─ update.ps1                   Portable updater
     ├─ setup-shortcuts.ps1          Shortcut and user PATH setup
     ├─ release-manifest.json        Distribution/shell/kernel version manifest
@@ -116,7 +117,7 @@ Linux AppImage and deb packages contain the native Electron runtime and desktop 
 
 ## Launch and update
 
-- Windows `start-desktop.cmd` (or `启动桌面版.bat`) launches the bundled Electron desktop shell. Linux uses the AppImage/deb desktop entry or the unpacked `start-desktop.sh`; macOS launches the app from **Applications**.
+- Windows shortcuts and portable users launch `DeepSeek Harness Launcher.exe`, which keeps update recovery available without opening a command window. `start-desktop.cmd` remains the console diagnostics fallback. Linux uses the AppImage/deb desktop entry or the unpacked `start-desktop.sh`; macOS launches the app from **Applications**.
 - Windows `start-web.cmd` (or `启动网页版.bat`) and Linux `start-web.sh` start the Web surface through the embedded Electron/Node runtime; no system Node.js installation is required.
 - Windows `dsh.cmd` provides the same web entry plus the embedded plugin-management CLI and distribution subcommands: `dsh update`, `dsh desktop`, `dsh trust`.
 - The desktop tray menu provides **Check for Updates**, **Release Notes**, and **About**.

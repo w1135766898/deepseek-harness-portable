@@ -151,7 +151,9 @@ function Test-PortableLayout {
         'pnpm.cmd',
         'uninstall.cmd',
         'uninstall.ps1',
+        'DeepSeek Harness Launcher.exe',
         'runtime\DeepSeek Harness.exe',
+        'runtime\DeepSeek Harness Launcher.exe',
         'runtime\resources\app\package.json',
         'runtime\resources\app\lib\packaged-bin.js',
         'runtime\resources\app\lib\marketplace-bootstrap.js',
@@ -398,7 +400,7 @@ function Create-Shortcuts {
     Write-Host '[5/6] Creating shortcuts and PATH entry...' -ForegroundColor Yellow
     $wshShell = New-Object -ComObject WScript.Shell
     $targetExe = Join-Path $InstallDir 'runtime\DeepSeek Harness.exe'
-    $desktopLauncher = Join-Path $InstallDir 'start-desktop.cmd'
+    $desktopLauncher = Join-Path $InstallDir 'DeepSeek Harness Launcher.exe'
     $workDir = $InstallDir
     if (-not (Test-Path -LiteralPath $targetExe)) {
         $targetExe = Join-Path $InstallDir 'DeepSeek Harness.exe'
