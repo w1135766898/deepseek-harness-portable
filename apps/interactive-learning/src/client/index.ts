@@ -9,8 +9,10 @@ import { LearningToolView } from './LearningToolView.tsx'
 import { en, zh } from './locales.ts'
 
 export { ActivityRendererRegistry, activityRendererRegistry } from './ActivityRenderer.tsx'
+export { subscribeLearningUiLifecycle, type LearningUiLifecycleEvent } from './lifecycle.ts'
 
 const NS = 'interactive-learning'
+export const LEARNING_TOOL_VIEW_KEYS = ['learning_activity', 'learning_question', 'learning_reveal'] as const
 
 export const name = 'interactive-learning-client'
 export const inject = ['slots', 'locale']
@@ -25,9 +27,11 @@ export function apply(ctx: ClientContext): void {
     locale: NS,
   }, LearningComposer))
 
-  ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
-    name: 'tool.call.toolview',
-    key: 'learning_activity',
-    locale: NS,
-  }, LearningToolView))
+  for (const key of LEARNING_TOOL_VIEW_KEYS) {
+    ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
+      name: 'tool.call.toolview',
+      key,
+      locale: NS,
+    }, LearningToolView))
+  }
 }

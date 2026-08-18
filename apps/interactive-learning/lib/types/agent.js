@@ -1,109 +1,213 @@
 import { defineTool } from '@deepseek-ai/dsh-tools';
-import { ACTIVITY_PROTOCOL, RESPONSE_PROTOCOL, parseLearningActivity, } from "./protocol.js";
+import { ACTIVITY_PROTOCOL_V2, RESPONSE_PROTOCOL_V2, parseLearningActivityV2, } from "./protocol.js";
 export const name = 'interactive-learning-agent';
 export const inject = ['tools', 'systemPrompt', 'learningActivities'];
-const description = [
-    'Present one focused, interactive teaching activity and wait for the learner response.',
-    'Use parameter_explorer for bounded quantitative relationships, process_stepper for predict-then-reveal sequences,',
-    'or structure_compare for aligned structural differences. Do not use it for facts or notation that one short explanation resolves,',
-    'or for user-owned choices such as learning direction, depth, or pace; use ask_user_question for those choices.',
-].join(' ');
+function closeParameterRoot(tool) {
+    return { ...tool, parameters: { ...tool.parameters, additionalProperties: false } };
+}
+export class LearningGateError extends Error {
+    code = 'MULTIPLE_LEARNING_GATES_IN_STEP';
+    constructor() {
+        super('A model step may execute only one Learning gate');
+        this.name = 'LearningGateError';
+    }
+}
+const claimedGateByAgent = new WeakMap();
+function openStepKey(agent) {
+    const closed = new Set();
+    const events = agent.session.events;
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+        const event = events[index];
+        if (event.type !== 'step/start' && event.type !== 'step/end')
+            continue;
+        const key = `${String(event.data.turn)}:${String(event.data.step)}`;
+        if (event.type === 'step/end')
+            closed.add(key);
+        else if (!closed.has(key))
+            return key;
+    }
+    return undefined;
+}
+/** Claim the current durable model step, if one exists, for one Learning gate. */
+export function assertLearningGateAvailable(agent) {
+    if (agent === undefined)
+        return;
+    const key = openStepKey(agent);
+    if (key === undefined)
+        return;
+    if (claimedGateByAgent.get(agent) === key)
+        throw new LearningGateError();
+    claimedGateByAgent.set(agent, key);
+}
+const progress = { type: 'object', additionalProperties: false, properties: {
+        current: { type: 'integer', description: '1-based progress position; must be 1 or greater.', required: true },
+        total: { type: 'integer', description: 'Optional total round count; must be 1 or greater.' },
+    } };
+const focus = { type: 'object', additionalProperties: false, required: true, properties: {
+        title: { type: 'string', required: true }, progress,
+    } };
+const frame = { type: 'object', additionalProperties: false, required: true, properties: {
+        id: { type: 'string', description: 'Lowercase identifier starting with a letter; use only a-z, 0-9, _ or -.', required: true },
+        title: { type: 'string', required: true }, content: { type: 'string' },
+    } };
+const parameter = { type: 'object', additionalProperties: false, properties: {
+        id: { type: 'string', description: 'Lowercase identifier starting with a letter.', required: true }, label: { type: 'string', required: true },
+        min: { type: 'number', required: true }, max: { type: 'number', required: true },
+        step: { type: 'number', required: true }, initial: { type: 'number', required: true },
+    } };
+const expressionLeaf = { oneOf: [
+        { type: 'object', additionalProperties: false, properties: {
+                op: { type: 'string', const: 'constant', required: true }, value: { type: 'number', required: true },
+            } },
+        { type: 'object', additionalProperties: false, properties: {
+                op: { type: 'string', const: 'variable', required: true }, name: { type: 'string', required: true },
+            } },
+    ] };
+// Keep the model surface shallow and closed; the runtime parser remains the
+// authority for the richer bounded expression AST used by legacy replay.
+const expression = { oneOf: [
+        ...expressionLeaf.oneOf,
+        { type: 'object', additionalProperties: false, properties: {
+                op: { type: 'string', enum: ['neg', 'abs', 'sqrt', 'sin', 'cos', 'exp', 'log'], required: true },
+                value: { ...expressionLeaf, required: true },
+            } },
+        { type: 'object', additionalProperties: false, properties: {
+                op: { type: 'string', enum: ['add', 'sub', 'mul', 'div', 'pow'], required: true },
+                left: { ...expressionLeaf, required: true }, right: { ...expressionLeaf, required: true },
+            } },
+    ] };
+const curve = { type: 'object', additionalProperties: false, properties: {
+        id: { type: 'string', description: 'Lowercase identifier starting with a letter.', required: true }, label: { type: 'string', required: true },
+        expression: { ...expression, required: true },
+    } };
+const xAxis = { type: 'object', additionalProperties: false, required: true, properties: {
+        label: { type: 'string' }, min: { type: 'number', required: true }, max: { type: 'number', required: true }, samples: { type: 'integer' },
+    } };
+const structureItem = { type: 'object', additionalProperties: false, properties: {
+        id: { type: 'string', description: 'Lowercase identifier starting with a letter.', required: true }, label: { type: 'string', required: true }, detail: { type: 'string' },
+    } };
+const structureSide = { type: 'object', additionalProperties: false, required: true, properties: {
+        title: { type: 'string', required: true }, items: { type: 'array', items: structureItem, required: true },
+    } };
+const alignment = { type: 'object', additionalProperties: false, properties: {
+        id: { type: 'string', description: 'Lowercase identifier starting with a letter.', required: true }, leftId: { type: 'string' }, rightId: { type: 'string' }, prompt: { type: 'string' },
+    } };
+function optionalSchema(schema) {
+    const { required: _required, ...optional } = schema;
+    return optional;
+}
+const questionVisual = { type: 'object', additionalProperties: false, properties: {
+        kind: { type: 'string', enum: ['process', 'parameter', 'structure'], description: 'process requires frame; parameter requires parameters, xAxis and curves; structure requires left, right and alignments.', required: true },
+        frame: optionalSchema(frame),
+        parameters: { type: 'array', items: parameter }, xAxis: optionalSchema(xAxis),
+        curves: { type: 'array', items: curve },
+        left: optionalSchema(structureSide), right: optionalSchema(structureSide),
+        alignments: { type: 'array', items: alignment },
+    } };
+const revealVisual = { type: 'object', additionalProperties: false, properties: {
+        kind: { type: 'string', enum: ['process', 'parameter', 'structure'], description: 'process requires before and after; parameter requires parameters, xAxis and curves; structure requires left, right and alignments.', required: true },
+        before: optionalSchema(frame), after: optionalSchema(frame),
+        parameters: { type: 'array', items: parameter }, xAxis: optionalSchema(xAxis),
+        curves: { type: 'array', items: curve }, emphasis: { type: 'string' },
+        left: optionalSchema(structureSide), right: optionalSchema(structureSide),
+        alignments: { type: 'array', items: alignment },
+        emphasisAlignmentIds: { type: 'array', items: { type: 'string' } },
+    } };
+const responseBase = {
+    protocol: { type: 'string', const: RESPONSE_PROTOCOL_V2, required: true },
+    activityId: { type: 'string', required: true }, lessonToken: { type: 'string', required: true },
+    roundToken: { type: 'string', required: true }, seq: { type: 'integer', required: true },
+    receiptId: { type: 'string', required: true }, interactionState: { type: 'json' },
+};
 export function apply(ctx) {
     const services = ctx;
-    services.tools.register(defineTool({
-        name: 'learning_activity',
-        description,
+    services.tools.register(closeParameterRoot(defineTool({
+        name: 'learning_question',
+        description: 'Present exactly one current learning question and wait for the learner response. This call cannot contain an answer, reveal, or future round.',
         parameters: {
-            protocol: {
-                type: 'string',
-                const: ACTIVITY_PROTOCOL,
-                required: true,
-                description: `Protocol literal ${ACTIVITY_PROTOCOL}.`,
-            },
-            kind: {
-                type: 'string',
-                enum: ['parameter_explorer', 'process_stepper', 'structure_compare'],
-                required: true,
-                description: 'The single renderer whose interaction best exposes the target relationship.',
-            },
-            title: { type: 'string', required: true, description: 'Short learner-facing activity title.' },
-            objective: { type: 'string', required: true, description: 'The one understanding this activity should establish.' },
-            prompt: { type: 'string', required: true, description: 'The focused question the learner should answer through the activity.' },
-            scaffold: { type: 'string', description: 'Optional minimal hint; do not reveal the full answer.' },
-            payload: {
-                type: 'object',
-                additionalProperties: true,
-                required: true,
-                description: [
-                    'Renderer payload. parameter_explorer: {parameters:[{id,label,min,max,step,initial}],xAxis:{label?,min,max,samples?},curves:[{id,label,expression}],question?};',
-                    'process_stepper: {steps:[{id,title,content,checkpoint?:{question,options?}}],question?};',
-                    'structure_compare: {left:{title,items:[{id,label,detail?}]},right:{...},alignments:[{id,leftId?,rightId?,prompt?}],question?}.',
-                    'Expressions are closed AST nodes: constant/value, variable/name, binary add|sub|mul|div|pow with left/right, or unary neg|abs|sqrt|sin|cos|exp|log with value.',
-                ].join(' '),
-            },
-            fallbackMarkdown: {
-                type: 'string',
-                required: true,
-                description: 'A complete non-interactive teaching fallback that still asks for a learner response.',
-            },
+            protocol: { type: 'string', const: ACTIVITY_PROTOCOL_V2, required: true },
+            phase: { type: 'string', const: 'question', required: true },
+            lessonToken: { type: 'string', description: 'Omit for the first round; otherwise use the Host-issued lesson token.' },
+            seq: { type: 'integer', required: true }, focus,
+            prompt: { type: 'string', required: true }, scaffold: { type: 'string' },
+            input: { type: 'object', additionalProperties: false, required: true, properties: {
+                    kind: { type: 'string', enum: ['single_choice', 'short_text', 'number'], required: true },
+                    options: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
+                                id: { type: 'string', description: 'Lowercase identifier starting with a letter, for example a, b, or option_1.', required: true }, label: { type: 'string', required: true },
+                            } } },
+                    placeholder: { type: 'string' }, maxLength: { type: 'integer' },
+                    min: { type: 'number' }, max: { type: 'number' }, step: { type: 'number' },
+                } },
+            visual: questionVisual, fallbackMarkdown: { type: 'string', required: true },
         },
-        output: {
-            schema: {
-                type: 'object',
-                additionalProperties: false,
-                properties: {
-                    protocol: { type: 'string', const: RESPONSE_PROTOCOL, required: true },
-                    activityId: { type: 'string', required: true },
-                    action: { type: 'string', enum: ['submit', 'skip', 'cancel'], required: true },
-                    answer: { type: 'json' },
-                    interactionState: { type: 'json' },
-                },
-            },
-            render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
-        },
+        output: { schema: { type: 'object', additionalProperties: false, properties: {
+                    ...responseBase, phase: { type: 'string', const: 'question', required: true },
+                    action: { type: 'string', enum: ['submit', 'skip', 'cancel'], required: true }, answer: { type: 'json' },
+                } }, render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }] },
         isConcurrencySafe: () => false,
         async execute(args, exec) {
-            const activity = parseLearningActivity(args);
-            return services.learningActivities.present({
-                activity,
-                ...(exec.agent === undefined ? {} : { agent: exec.agent }),
-                signal: exec.signal,
+            const activity = parseLearningActivityV2(args);
+            if (activity.phase !== 'question')
+                throw new TypeError('learning_question requires the question phase');
+            assertLearningGateAvailable(exec.agent);
+            return services.learningActivities.presentQuestion({
+                activity, callId: String(exec.callId), ...(exec.agent === undefined ? {} : { agent: exec.agent }), signal: exec.signal,
             });
         },
-        presentCall(args) {
-            return { card: 'generic', title: args.title, kind: 'read' };
+        presentCall: args => ({ card: 'generic', title: args.focus.title, kind: 'read' }),
+    })));
+    services.tools.register(closeParameterRoot(defineTool({
+        name: 'learning_reveal',
+        description: 'Evaluate the learner response, reveal only that same round, and wait for animation completion plus explicit continue.',
+        parameters: {
+            protocol: { type: 'string', const: ACTIVITY_PROTOCOL_V2, required: true },
+            phase: { type: 'string', const: 'reveal', required: true },
+            lessonToken: { type: 'string', required: true }, roundToken: { type: 'string', required: true },
+            seq: { type: 'integer', required: true }, focus,
+            feedback: { type: 'object', additionalProperties: false, required: true, properties: {
+                    verdict: { type: 'string', enum: ['correct', 'partial', 'misconception', 'neutral'] },
+                    learnerEcho: { type: 'string' }, explanation: { type: 'string', required: true }, answer: { type: 'string' },
+                } },
+            visual: revealVisual,
+            animation: { type: 'object', additionalProperties: false, required: true, properties: {
+                    kind: { type: 'string', enum: ['draw', 'morph', 'highlight', 'step_complete'], required: true },
+                    preferredDurationMs: { type: 'integer' }, reducedMotion: { type: 'string', const: 'commit-final-state', required: true },
+                } },
+            advance: { type: 'object', additionalProperties: false, required: true, properties: {
+                    mode: { type: 'string', const: 'user-after-animation', required: true }, label: { type: 'string' },
+                } },
+            fallbackMarkdown: { type: 'string', required: true },
         },
-    }));
+        output: { schema: { type: 'object', additionalProperties: false, properties: {
+                    ...responseBase, phase: { type: 'string', const: 'reveal', required: true },
+                    action: { type: 'string', enum: ['continue', 'skip', 'cancel'], required: true },
+                    animation: { type: 'object', additionalProperties: false, required: true, properties: {
+                            completed: { type: 'boolean', required: true }, skipped: { type: 'boolean' },
+                            reducedMotion: { type: 'boolean' }, error: { type: 'string' },
+                        } },
+                } }, render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }] },
+        isConcurrencySafe: () => false,
+        async execute(args, exec) {
+            const activity = parseLearningActivityV2(args);
+            if (activity.phase !== 'reveal')
+                throw new TypeError('learning_reveal requires the reveal phase');
+            assertLearningGateAvailable(exec.agent);
+            return services.learningActivities.presentReveal({
+                activity, callId: String(exec.callId), ...(exec.agent === undefined ? {} : { agent: exec.agent }), signal: exec.signal,
+            });
+        },
+        presentCall: args => ({ card: 'generic', title: args.focus.title, kind: 'read' }),
+    })));
     services.systemPrompt.section({
-        name: 'learning:policy',
-        order: 20,
+        name: 'learning:policy', order: 20,
         text: [
-            'The user selected Learning mode. Treat requests to teach, explain, practise, derive, or understand as learning requests even when the subject is coding, writing, or calculation. Distinguish “teach me to do this” from “do this for me”; if they only want task completion, answer briefly and mention Standard or Code mode without turning it into a refusal.',
-            'Sound like a natural conversation in the user’s language and register. Do not announce a lesson plan, diagnosis, learning objective, teaching technique, or mode transition. Avoid canned praise and translation-like headings. If the request is already clear, give a useful foothold immediately; ask one short diagnostic question only when its answer would materially change what you explain next.',
-            'Treat learning direction, depth, and pace as user-owned choices. When one of those choices materially changes the next explanation, use ask_user_question with one native single-select question, two or three brief mutually exclusive options, and multi_select false. Never encode these preferences as learning_activity. When a reasonable default is available, infer it and continue instead of asking merely to display a control.',
-            'Choose the least elaborate useful move: a direct explanation, one guiding question, a neighboring worked example, one interactive activity, or a brief check for transfer. A question is optional, not a turn template. Never withhold a needed explanation merely to remain Socratic.',
-            'Adapt to the learner’s response. Refer to the specific evidence in their answer, repair only the remaining misconception, and ask for transfer only when useful. If they ask to speed up or switch to direct explanation, do so immediately. End the teaching segment explicitly once they can explain or apply the idea; do not continue questioning mechanically.',
-            'Load the interactive-teaching skill when the request needs a multi-turn lesson, when choosing among teaching moves is non-obvious, or when you need detailed activity payload contracts and the evaluation rubric.',
+            'The user selected Learning mode. Diagnose only the missing gap, then choose the smallest useful move: direct explanation, guided discovery, a parallel worked example, one interactive round, or a reflective pause. Adapt to learner evidence, give a foothold when they are stuck, and end explicitly after demonstrated understanding.',
+            'Use ask_user_question only for a user-owned choice about direction, depth, or pace that materially changes the lesson. Ask exactly one single-select question with two or three broad mutually exclusive options. Infer a reasonable default instead of opening a choice merely to display controls; teaching evidence belongs in learning_question.',
+            'An interactive round has one hard gate per model step. Ask exactly one current question with learning_question. After its result, evaluate that response with learning_reveal. Wait for the reveal result before constructing the next question. A short bridge sentence may precede a gate, but no second question may appear outside it.',
+            'Question content is current-round only and contains no answer or future title. Reveal content is same-round only and contains no next question. Fallbacks follow the same phase boundary. These are protocol boundaries, not a reason to force an activity when concise teaching is better.',
+            'If focus.progress is present, current is 1-based (never 0) and total is at least current.',
+            'Load the interactive-teaching skill when a multi-turn lesson needs teaching judgment beyond these standing rules.',
         ].join('\n\n'),
-    });
-    services.systemPrompt.section({
-        name: 'tool:learning_choice',
-        order: 140,
-        text: [
-            'In Learning mode, use ask_user_question only for a learner-owned choice that materially changes the next explanation, such as direction, depth, or pace.',
-            'Ask exactly one question with exactly two or three broad, mutually exclusive options and multi_select false. Combine fine-grained topics into broader choices and defer further narrowing to the conversation; never present a long catalogue.',
-            'Let the native question UI carry the options. Do not reproduce them as learning_activity, checkboxes, a custom card, or a second prose list. If a sensible default exists, continue without calling the tool.',
-        ].join(' '),
-    });
-    services.systemPrompt.section({
-        name: 'tool:learning_activity',
-        order: 150,
-        text: [
-            'Use learning_activity only when manipulating a parameter, revealing a process state-by-state, or aligning structural differences materially improves understanding.',
-            'Keep one activity to one teaching goal. Introduce it with one ordinary conversational sentence in the same assistant turn, then let its light inline placeholder and activity carry the interaction; do not announce a tool or repeat its title, objective, and prompt in prose. Ask for a prediction or decision before revealing the key relationship, then wait for the tool result.',
-            'Continue in that conversation from the compact returned result: address the learner’s actual parameter choice, prediction, selection, or explanation instead of repeating the preceding explanation.',
-            'If the action is skip or cancel, or the rich client is unavailable, parsing fails, or the interaction times out, use fallbackMarkdown as the concise text-equivalent lesson and continue. Never generate HTML, JavaScript, React, network code, or executable widget content.',
-        ].join(' '),
     });
 }
 //# sourceMappingURL=agent.js.map

@@ -229,6 +229,70 @@ function shiftedValue(parameter: Parameter, current: number, direction: -1 | 1):
   return Number(clamped.toPrecision(12))
 }
 
+/** V2 current-frame parameter visual. It deliberately owns no teaching prompt or answer. */
+export function ParameterRoundVisual({
+  payload, disabled, t,
+}: {
+  payload: Pick<ParameterExplorerPayloadV1, 'parameters' | 'xAxis' | 'curves'>
+  disabled: boolean
+  t: ActivityRendererProps['t']
+}) {
+  const chartId = useId()
+  const [values, setValues] = useState<Record<string, number>>(() => Object.fromEntries(
+    payload.parameters.map(parameter => [parameter.id, parameter.initial]),
+  ))
+  const fullPayload: ParameterExplorerPayloadV1 = payload
+  const stableDomain = useMemo(() => stableYDomain(fullPayload), [fullPayload])
+  const yDomain = useMemo(() => yDomainForState(fullPayload, values, stableDomain), [fullPayload, stableDomain, values])
+  const geometry = useMemo(() => chartGeometry(640), [])
+  const paths = useMemo(() => pathsFor(fullPayload, values, yDomain, geometry), [fullPayload, geometry, values, yDomain])
+  const description = t('chartDescription', {
+    parameters: payload.parameters.map(parameter => `${parameter.label} ${formatNumber(values[parameter.id] ?? parameter.initial)}`).join('; '),
+    xAxis: `${payload.xAxis.label ?? 'x'} ${formatNumber(payload.xAxis.min)}–${formatNumber(payload.xAxis.max)}`,
+    yAxis: `y ${formatNumber(yDomain.min)}–${formatNumber(yDomain.max)}`,
+    curves: payload.curves.map(curve => curve.label).join('; '),
+  })
+  return (
+    <div className={css.explorer}>
+      <div className={css.controls}>
+        {payload.parameters.map(parameter => {
+          const value = values[parameter.id] ?? parameter.initial
+          const inputId = `${chartId}-${parameter.id}`
+          return (
+            <div className={css.rangeField} key={parameter.id}>
+              <div className={css.rangeHeader}>
+                <label htmlFor={inputId}>{parameter.label}</label>
+                <output htmlFor={inputId} aria-live="polite">{formatNumber(value)}</output>
+              </div>
+              <input
+                id={inputId}
+                className={css.rangeInput}
+                style={rangeStyle(parameter, value)}
+                type="range"
+                min={parameter.min}
+                max={parameter.max}
+                step={parameter.step}
+                value={value}
+                disabled={disabled}
+                onChange={event => setValues(current => ({ ...current, [parameter.id]: Number(event.target.value) }))}
+              />
+            </div>
+          )
+        })}
+      </div>
+      <div className={css.chartRegion}>
+        <ul className={css.legend}>{payload.curves.map((curve, index) => <li key={curve.id} data-curve={index}>{curve.label}</li>)}</ul>
+        <svg className={css.chart} viewBox={`0 0 ${geometry.width} ${geometry.height}`} role="img" aria-labelledby={`${chartId}-title ${chartId}-description`}>
+          <title id={`${chartId}-title`}>{t('chartLabel')}</title>
+          <desc id={`${chartId}-description`}>{description}</desc>
+          <rect className={css.plotFrame} x={geometry.left} y={geometry.top} width={geometry.plotWidth} height={geometry.plotHeight} rx="6" />
+          {paths.map((path, index) => <path className={css.curve} data-curve={index} key={payload.curves[index]?.id} d={path} />)}
+        </svg>
+      </div>
+    </div>
+  )
+}
+
 export function ParameterExplorer({ activity, busy, onSubmit, t }: ActivityRendererProps<ParameterActivity>) {
   const payload = activity.payload
   const chartId = useId()

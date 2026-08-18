@@ -3,6 +3,9 @@
 export const ACTIVITY_PROTOCOL = 'dsh-learning/activity@1' as const
 export const RESPONSE_PROTOCOL = 'dsh-learning/response@1' as const
 export const TRANSPORT_PROTOCOL = 'dsh-learning/transport@1' as const
+export const ACTIVITY_PROTOCOL_V2 = 'dsh-learning/activity@2' as const
+export const RESPONSE_PROTOCOL_V2 = 'dsh-learning/response@2' as const
+export const TRANSPORT_PROTOCOL_V2 = 'dsh-learning/wait@2' as const
 export const LEARNING_ACTIVITY_KINDS = [
   'parameter_explorer',
   'process_stepper',
@@ -114,6 +117,52 @@ export interface LearningActivityEnvelopeV1 {
 }
 
 export type LearningActivityEnvelopeInputV1 = Omit<LearningActivityEnvelopeV1, 'transport'>
+
+export interface LearningFocusV2 { title: string; progress?: { current: number; total?: number } }
+export type LearningInputV2 =
+  | { kind: 'single_choice'; options: Array<{ id: string; label: string }> }
+  | { kind: 'short_text'; placeholder?: string; maxLength?: number }
+  | { kind: 'number'; min?: number; max?: number; step?: number }
+export interface LearningFrameV2 { id: string; title: string; content?: string }
+export type LearningQuestionVisualV2 =
+  | { kind: 'process'; frame: LearningFrameV2 }
+  | { kind: 'parameter'; parameters: ParameterDefinitionV1[]; xAxis: ParameterExplorerPayloadV1['xAxis']; curves: ParameterCurveV1[] }
+  | { kind: 'structure'; left: StructureComparePayloadV1['left']; right: StructureComparePayloadV1['right']; alignments: StructureAlignmentV1[] }
+export type LearningRevealVisualV2 =
+  | { kind: 'process'; before: LearningFrameV2; after: LearningFrameV2 }
+  | { kind: 'parameter'; parameters: ParameterDefinitionV1[]; xAxis: ParameterExplorerPayloadV1['xAxis']; curves: ParameterCurveV1[]; emphasis?: string }
+  | { kind: 'structure'; left: StructureComparePayloadV1['left']; right: StructureComparePayloadV1['right']; alignments: StructureAlignmentV1[]; emphasisAlignmentIds?: string[] }
+export interface LearningQuestionV2 {
+  protocol: typeof ACTIVITY_PROTOCOL_V2; phase: 'question'; lessonToken?: string; seq: number
+  focus: LearningFocusV2; prompt: string; scaffold?: string; input: LearningInputV2
+  visual?: LearningQuestionVisualV2; fallbackMarkdown: string
+}
+export interface LearningRevealV2 {
+  protocol: typeof ACTIVITY_PROTOCOL_V2; phase: 'reveal'; lessonToken: string; roundToken: string; seq: number
+  focus: LearningFocusV2
+  feedback: { verdict?: 'correct' | 'partial' | 'misconception' | 'neutral'; learnerEcho?: string; explanation: string; answer?: string }
+  visual?: LearningRevealVisualV2
+  animation: { kind: 'draw' | 'morph' | 'highlight' | 'step_complete'; preferredDurationMs?: number; reducedMotion: 'commit-final-state' }
+  advance: { mode: 'user-after-animation'; label?: string }; fallbackMarkdown: string
+}
+export type LearningActivityV2 = LearningQuestionV2 | LearningRevealV2
+interface LearningResponseBaseV2 {
+  protocol: typeof RESPONSE_PROTOCOL_V2; activityId: string; lessonToken: string; roundToken: string
+  seq: number; receiptId: string; interactionState?: LearningJson
+}
+export interface LearningQuestionResponseV2 extends LearningResponseBaseV2 {
+  phase: 'question'; action: 'submit' | 'skip' | 'cancel'; answer?: LearningJson
+}
+export interface LearningRevealResponseV2 extends LearningResponseBaseV2 {
+  phase: 'reveal'; action: 'continue' | 'skip' | 'cancel'
+  animation: { completed: boolean; skipped?: boolean; reducedMotion?: boolean; error?: string }
+}
+export type LearningResponseV2 = LearningQuestionResponseV2 | LearningRevealResponseV2
+export interface LearningWaitEnvelopeV2 {
+  transport: typeof TRANSPORT_PROTOCOL_V2; waitId: string; activityId: string; callId?: string
+  lessonToken: string; roundToken: string; seq: number; phase: 'question' | 'reveal'; activity: LearningActivityV2
+}
+export type LearningWaitEnvelopeInputV2 = Omit<LearningWaitEnvelopeV2, 'transport'>
 
 /** A stable, actionable protocol rejection surfaced to the tool call. */
 export class LearningProtocolError extends Error {
@@ -470,4 +519,242 @@ export function parseLearningResponse(value: unknown, expectedActivityId?: strin
   if (value.interactionState !== undefined) validateJson(value.interactionState, 'response.interactionState', issues)
   if (issues.length > 0) throw new LearningProtocolError(issues)
   return value as unknown as LearningResponseV1
+}
+
+function integer(value: unknown, path: string, issues: string[], min = 0): value is number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < min) {
+    issues.push(`${path} must be an integer >= ${String(min)}`)
+    return false
+  }
+  return true
+}
+
+function token(value: unknown, path: string, issues: string[]): value is string {
+  if (typeof value !== 'string' || value.length < 1 || value.length > 128 || !/^[A-Za-z0-9_-]+$/.test(value)) {
+    issues.push(`${path} must be an opaque token of 1 to 128 URL-safe characters`)
+    return false
+  }
+  return true
+}
+
+function validateFocusV2(value: unknown, path: string, issues: string[]): void {
+  if (!record(value)) {
+    issues.push(`${path} must be an object`)
+    return
+  }
+  onlyKeys(value, ['title', 'progress'], path, issues)
+  text(value.title, `${path}.title`, issues, 200)
+  if (value.progress !== undefined) {
+    if (!record(value.progress)) issues.push(`${path}.progress must be an object`)
+    else {
+      onlyKeys(value.progress, ['current', 'total'], `${path}.progress`, issues)
+      const currentOk = integer(value.progress.current, `${path}.progress.current`, issues, 1)
+      const totalOk = value.progress.total === undefined
+        ? false
+        : integer(value.progress.total, `${path}.progress.total`, issues, 1)
+      if (currentOk && totalOk && (value.progress.current as number) > (value.progress.total as number)) {
+        issues.push(`${path}.progress.current must not exceed total`)
+      }
+    }
+  }
+}
+
+function validateInputV2(value: unknown, issues: string[]): void {
+  const path = 'activity.input'
+  if (!record(value)) {
+    issues.push(`${path} must be an object`)
+    return
+  }
+  if (value.kind === 'single_choice') {
+    onlyKeys(value, ['kind', 'options'], path, issues)
+    if (!Array.isArray(value.options) || value.options.length < 2 || value.options.length > 8) {
+      issues.push(`${path}.options must contain 2 to 8 options`)
+      return
+    }
+    const options = value.options.filter(record)
+    if (options.length !== value.options.length) issues.push(`${path}.options entries must be objects`)
+    uniqueIds(options, `${path}.options`, issues)
+    for (const [index, option] of options.entries()) {
+      const optionPath = `${path}.options[${String(index)}]`
+      onlyKeys(option, ['id', 'label'], optionPath, issues)
+      id(option.id, `${optionPath}.id`, issues)
+      text(option.label, `${optionPath}.label`, issues, 500)
+    }
+  } else if (value.kind === 'short_text') {
+    onlyKeys(value, ['kind', 'placeholder', 'maxLength'], path, issues)
+    if (value.placeholder !== undefined) text(value.placeholder, `${path}.placeholder`, issues, 500)
+    if (value.maxLength !== undefined
+      && (!integer(value.maxLength, `${path}.maxLength`, issues, 1) || (value.maxLength as number) > 8_000)) {
+      issues.push(`${path}.maxLength must not exceed 8000`)
+    }
+  } else if (value.kind === 'number') {
+    onlyKeys(value, ['kind', 'min', 'max', 'step'], path, issues)
+    const minOk = value.min === undefined ? false : finite(value.min, `${path}.min`, issues)
+    const maxOk = value.max === undefined ? false : finite(value.max, `${path}.max`, issues)
+    const stepOk = value.step === undefined ? false : finite(value.step, `${path}.step`, issues)
+    if (minOk && maxOk && (value.min as number) >= (value.max as number)) issues.push(`${path}.min must be less than max`)
+    if (stepOk && (value.step as number) <= 0) issues.push(`${path}.step must be positive`)
+  } else {
+    issues.push(`${path}.kind is unknown`)
+  }
+}
+
+function validateFrameV2(value: unknown, path: string, issues: string[]): void {
+  if (!record(value)) {
+    issues.push(`${path} must be an object`)
+    return
+  }
+  onlyKeys(value, ['id', 'title', 'content'], path, issues)
+  id(value.id, `${path}.id`, issues)
+  text(value.title, `${path}.title`, issues, 200)
+  if (value.content !== undefined) text(value.content, `${path}.content`, issues, 4_000)
+}
+
+function validateParameterVisualV2(value: RecordValue, path: string, issues: string[], reveal: boolean): void {
+  onlyKeys(value, reveal
+    ? ['kind', 'parameters', 'xAxis', 'curves', 'emphasis']
+    : ['kind', 'parameters', 'xAxis', 'curves'], path, issues)
+  validateParameterExplorer({ parameters: value.parameters, xAxis: value.xAxis, curves: value.curves }, issues)
+  if (reveal && value.emphasis !== undefined) text(value.emphasis, `${path}.emphasis`, issues, 2_000)
+}
+
+function validateStructureVisualV2(value: RecordValue, path: string, issues: string[], reveal: boolean): void {
+  onlyKeys(value, reveal
+    ? ['kind', 'left', 'right', 'alignments', 'emphasisAlignmentIds']
+    : ['kind', 'left', 'right', 'alignments'], path, issues)
+  validateStructureCompare({ left: value.left, right: value.right, alignments: value.alignments }, issues)
+  if (reveal && value.emphasisAlignmentIds !== undefined) {
+    if (!Array.isArray(value.emphasisAlignmentIds)
+      || !value.emphasisAlignmentIds.every(item => typeof item === 'string')) {
+      issues.push(`${path}.emphasisAlignmentIds must be an array of ids`)
+    }
+  }
+}
+
+function validateVisualV2(value: unknown, phase: 'question' | 'reveal', issues: string[]): void {
+  const path = 'activity.visual'
+  if (!record(value)) {
+    issues.push(`${path} must be an object`)
+    return
+  }
+  if (value.kind === 'process') {
+    if (phase === 'question') {
+      onlyKeys(value, ['kind', 'frame'], path, issues)
+      validateFrameV2(value.frame, `${path}.frame`, issues)
+    } else {
+      onlyKeys(value, ['kind', 'before', 'after'], path, issues)
+      validateFrameV2(value.before, `${path}.before`, issues)
+      validateFrameV2(value.after, `${path}.after`, issues)
+    }
+  } else if (value.kind === 'parameter') {
+    validateParameterVisualV2(value, path, issues, phase === 'reveal')
+  } else if (value.kind === 'structure') {
+    validateStructureVisualV2(value, path, issues, phase === 'reveal')
+  } else {
+    issues.push(`${path}.kind is unknown`)
+  }
+}
+
+/** Strict live protocol. V1 is intentionally parsed separately for legacy replay only. */
+export function parseLearningActivityV2(value: unknown): LearningActivityV2 {
+  const issues: string[] = []
+  const bytes = jsonBytes(value)
+  if (bytes === undefined) issues.push('activity must be serializable JSON')
+  else if (bytes > MAX_ACTIVITY_BYTES) issues.push(`activity exceeds ${String(MAX_ACTIVITY_BYTES)} bytes`)
+  if (!record(value)) throw new LearningProtocolError([...issues, 'activity must be an object'])
+  if (value.protocol !== ACTIVITY_PROTOCOL_V2) issues.push(`activity.protocol must be ${ACTIVITY_PROTOCOL_V2}`)
+  if (value.phase === 'question') {
+    onlyKeys(value, ['protocol', 'phase', 'lessonToken', 'seq', 'focus', 'prompt', 'scaffold', 'input', 'visual', 'fallbackMarkdown'], 'activity', issues)
+    if (value.lessonToken !== undefined) token(value.lessonToken, 'activity.lessonToken', issues)
+    integer(value.seq, 'activity.seq', issues)
+    validateFocusV2(value.focus, 'activity.focus', issues)
+    text(value.prompt, 'activity.prompt', issues, 2_000)
+    if (value.scaffold !== undefined) text(value.scaffold, 'activity.scaffold', issues, 4_000)
+    validateInputV2(value.input, issues)
+    if (value.visual !== undefined) validateVisualV2(value.visual, 'question', issues)
+    text(value.fallbackMarkdown, 'activity.fallbackMarkdown', issues, 16_000)
+  } else if (value.phase === 'reveal') {
+    onlyKeys(value, ['protocol', 'phase', 'lessonToken', 'roundToken', 'seq', 'focus', 'feedback', 'visual', 'animation', 'advance', 'fallbackMarkdown'], 'activity', issues)
+    token(value.lessonToken, 'activity.lessonToken', issues)
+    token(value.roundToken, 'activity.roundToken', issues)
+    integer(value.seq, 'activity.seq', issues)
+    validateFocusV2(value.focus, 'activity.focus', issues)
+    if (!record(value.feedback)) issues.push('activity.feedback must be an object')
+    else {
+      onlyKeys(value.feedback, ['verdict', 'learnerEcho', 'explanation', 'answer'], 'activity.feedback', issues)
+      if (value.feedback.verdict !== undefined
+        && !['correct', 'partial', 'misconception', 'neutral'].includes(value.feedback.verdict as string)) {
+        issues.push('activity.feedback.verdict is unknown')
+      }
+      if (value.feedback.learnerEcho !== undefined) text(value.feedback.learnerEcho, 'activity.feedback.learnerEcho', issues, 2_000)
+      text(value.feedback.explanation, 'activity.feedback.explanation', issues, 8_000)
+      if (value.feedback.answer !== undefined) text(value.feedback.answer, 'activity.feedback.answer', issues, 4_000)
+    }
+    if (value.visual !== undefined) validateVisualV2(value.visual, 'reveal', issues)
+    if (!record(value.animation)) issues.push('activity.animation must be an object')
+    else {
+      onlyKeys(value.animation, ['kind', 'preferredDurationMs', 'reducedMotion'], 'activity.animation', issues)
+      if (!['draw', 'morph', 'highlight', 'step_complete'].includes(value.animation.kind as string)) issues.push('activity.animation.kind is unknown')
+      if (value.animation.preferredDurationMs !== undefined
+        && (!integer(value.animation.preferredDurationMs, 'activity.animation.preferredDurationMs', issues, 0)
+          || (value.animation.preferredDurationMs as number) > 10_000)) {
+        issues.push('activity.animation.preferredDurationMs must not exceed 10000')
+      }
+      if (value.animation.reducedMotion !== 'commit-final-state') issues.push('activity.animation.reducedMotion must be commit-final-state')
+    }
+    if (!record(value.advance)) issues.push('activity.advance must be an object')
+    else {
+      onlyKeys(value.advance, ['mode', 'label'], 'activity.advance', issues)
+      if (value.advance.mode !== 'user-after-animation') issues.push('activity.advance.mode must be user-after-animation')
+      if (value.advance.label !== undefined) text(value.advance.label, 'activity.advance.label', issues, 120)
+    }
+    text(value.fallbackMarkdown, 'activity.fallbackMarkdown', issues, 16_000)
+  } else {
+    issues.push('activity.phase must be question or reveal')
+  }
+  if (issues.length > 0) throw new LearningProtocolError(issues)
+  return value as unknown as LearningActivityV2
+}
+
+export type ExpectedLearningResponseV2 = Partial<Pick<LearningResponseV2,
+  'activityId' | 'phase' | 'lessonToken' | 'roundToken' | 'seq'>>
+
+/** Validate a phase-bound Client receipt before the Broker changes lesson state. */
+export function parseLearningResponseV2(value: unknown, expected: ExpectedLearningResponseV2 = {}): LearningResponseV2 {
+  const issues: string[] = []
+  const bytes = jsonBytes(value)
+  if (bytes === undefined) issues.push('response must be serializable JSON')
+  else if (bytes > MAX_RESPONSE_BYTES) issues.push(`response exceeds ${String(MAX_RESPONSE_BYTES)} bytes`)
+  if (!record(value)) throw new LearningProtocolError([...issues, 'response must be an object'])
+  if (value.phase === 'question') {
+    onlyKeys(value, ['protocol', 'phase', 'activityId', 'lessonToken', 'roundToken', 'seq', 'action', 'answer', 'receiptId', 'interactionState'], 'response', issues)
+    if (!['submit', 'skip', 'cancel'].includes(value.action as string)) issues.push('response.action is unknown')
+    if (value.answer !== undefined) validateJson(value.answer, 'response.answer', issues)
+  } else if (value.phase === 'reveal') {
+    onlyKeys(value, ['protocol', 'phase', 'activityId', 'lessonToken', 'roundToken', 'seq', 'action', 'animation', 'receiptId', 'interactionState'], 'response', issues)
+    if (!['continue', 'skip', 'cancel'].includes(value.action as string)) issues.push('response.action is unknown')
+    if (!record(value.animation)) issues.push('response.animation must be an object')
+    else {
+      onlyKeys(value.animation, ['completed', 'skipped', 'reducedMotion', 'error'], 'response.animation', issues)
+      if (typeof value.animation.completed !== 'boolean') issues.push('response.animation.completed must be boolean')
+      if (value.animation.skipped !== undefined && typeof value.animation.skipped !== 'boolean') issues.push('response.animation.skipped must be boolean')
+      if (value.animation.reducedMotion !== undefined && typeof value.animation.reducedMotion !== 'boolean') issues.push('response.animation.reducedMotion must be boolean')
+      if (value.animation.error !== undefined && typeof value.animation.error !== 'string') issues.push('response.animation.error must be a string')
+      if (value.action === 'continue' && value.animation.completed !== true) issues.push('response.animation.completed must be true before continue')
+    }
+  } else {
+    issues.push('response.phase must be question or reveal')
+  }
+  if (value.protocol !== RESPONSE_PROTOCOL_V2) issues.push(`response.protocol must be ${RESPONSE_PROTOCOL_V2}`)
+  token(value.activityId, 'response.activityId', issues)
+  token(value.lessonToken, 'response.lessonToken', issues)
+  token(value.roundToken, 'response.roundToken', issues)
+  integer(value.seq, 'response.seq', issues)
+  token(value.receiptId, 'response.receiptId', issues)
+  if (value.interactionState !== undefined) validateJson(value.interactionState, 'response.interactionState', issues)
+  for (const [key, expectedValue] of Object.entries(expected)) {
+    if (expectedValue !== undefined && value[key] !== expectedValue) issues.push(`response.${key} does not match the pending activity`)
+  }
+  if (issues.length > 0) throw new LearningProtocolError(issues)
+  return value as unknown as LearningResponseV2
 }

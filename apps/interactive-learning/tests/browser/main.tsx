@@ -4,11 +4,12 @@ import type { ComponentType } from 'react'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import { LearningComposer, selectLearningActivity } from '../../src/client/LearningComposer.tsx'
 import { LearningToolView } from '../../src/client/LearningToolView.tsx'
+import { RoundActivity } from '../../src/client/RoundActivity.tsx'
 import { en } from '../../src/client/locales.ts'
 import { RESPONSE_PROTOCOL, type LearningActivityV1, type LearningResponseV1 } from '../../src/protocol.ts'
 import { encodeLearningQuestionId } from '../../src/transport.ts'
 import { offlineContinuation } from '../../src/eval.ts'
-import { compareActivity, parameterActivity, processActivity } from '../fixtures.ts'
+import { compareActivity, parameterActivity, processActivity, questionRound, revealRound } from '../fixtures.ts'
 import './page.css'
 
 const STORAGE_KEY = 'dsh-learning-browser-acceptance@1'
@@ -88,6 +89,9 @@ function BrowserAcceptance() {
   const [pending, setPending] = useState(() => storedRun() === undefined)
   const [forkPendingClaimed, setForkPendingClaimed] = useState<boolean | undefined>()
   const [learningRequests] = useState(0)
+  const [roundMode, setRoundMode] = useState<'question' | 'reveal' | null>(null)
+  const [roundResult, setRoundResult] = useState('')
+  const [roundRun, setRoundRun] = useState(0)
   const activity = useMemo(() => activities[kind](), [kind, activityId])
 
   const matched = useMemo(() => ({
@@ -133,6 +137,7 @@ function BrowserAcceptance() {
     setRun(undefined)
     setPending(true)
     setForkPendingClaimed(undefined)
+    setRoundMode(null)
   }
 
   const forkPending = (): void => {
@@ -174,6 +179,8 @@ function BrowserAcceptance() {
         <button type="button" onClick={() => start('parameter_explorer')}>Start parameter explorer</button>
         <button type="button" onClick={() => start('process_stepper')}>Start process stepper</button>
         <button type="button" onClick={() => start('structure_compare')}>Start structure compare</button>
+        <button type="button" onClick={() => { setRoundMode('question'); setRoundResult(''); setRoundRun(value => value + 1) }}>Start V2 question</button>
+        <button type="button" onClick={() => { setRoundMode('reveal'); setRoundResult(''); setRoundRun(value => value + 1) }}>Start V2 reveal</button>
         <button type="button" disabled={!pending} onClick={forkPending}>Fork pending session</button>
       </nav>
 
@@ -186,7 +193,20 @@ function BrowserAcceptance() {
         )}
       </section>
 
-      {mode === 'standard' ? (
+      {roundMode !== null ? (
+        <section className="completed-flow" data-testid={`v2-${roundMode}`}>
+          <RoundActivity
+            key={roundMode}
+            activity={roundMode === 'question' ? questionRound() : revealRound()}
+            storageKey={`browser:${roundMode}:${roundRun}`}
+            onSubmitAnswer={roundMode === 'question' ? async answer => { setRoundResult(`Question submitted: ${String(answer)}`) } : undefined}
+            onContinue={roundMode === 'reveal' ? async () => { setRoundResult('Reveal completed') } : undefined}
+            onCancel={async () => { setRoundResult('Round cancelled') }}
+            t={t}
+          />
+          {roundResult === '' ? null : <p data-testid="v2-result">{roundResult}</p>}
+        </section>
+      ) : mode === 'standard' ? (
         <section className="standard-clean" data-testid="standard-clean">
           Standard owns no Learning composer, tool, prompt, or network request.
         </section>

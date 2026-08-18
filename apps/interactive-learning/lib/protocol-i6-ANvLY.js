@@ -3,6 +3,9 @@
 const ACTIVITY_PROTOCOL = "dsh-learning/activity@1";
 const RESPONSE_PROTOCOL = "dsh-learning/response@1";
 const TRANSPORT_PROTOCOL = "dsh-learning/transport@1";
+const ACTIVITY_PROTOCOL_V2 = "dsh-learning/activity@2";
+const RESPONSE_PROTOCOL_V2 = "dsh-learning/response@2";
+const TRANSPORT_PROTOCOL_V2 = "dsh-learning/wait@2";
 const LEARNING_ACTIVITY_KINDS = [
 	"parameter_explorer",
 	"process_stepper",
@@ -414,5 +417,321 @@ function parseLearningResponse(value, expectedActivityId) {
 	if (issues.length > 0) throw new LearningProtocolError(issues);
 	return value;
 }
+function integer(value, path, issues, min = 0) {
+	if (typeof value !== "number" || !Number.isInteger(value) || value < min) {
+		issues.push(`${path} must be an integer >= ${String(min)}`);
+		return false;
+	}
+	return true;
+}
+function token(value, path, issues) {
+	if (typeof value !== "string" || value.length < 1 || value.length > 128 || !/^[A-Za-z0-9_-]+$/.test(value)) {
+		issues.push(`${path} must be an opaque token of 1 to 128 URL-safe characters`);
+		return false;
+	}
+	return true;
+}
+function validateFocusV2(value, path, issues) {
+	if (!record(value)) {
+		issues.push(`${path} must be an object`);
+		return;
+	}
+	onlyKeys(value, ["title", "progress"], path, issues);
+	text(value.title, `${path}.title`, issues, 200);
+	if (value.progress !== void 0) {
+		if (!record(value.progress)) issues.push(`${path}.progress must be an object`);
+		else {
+			onlyKeys(value.progress, ["current", "total"], `${path}.progress`, issues);
+			const currentOk = integer(value.progress.current, `${path}.progress.current`, issues, 1);
+			const totalOk = value.progress.total === void 0 ? false : integer(value.progress.total, `${path}.progress.total`, issues, 1);
+			if (currentOk && totalOk && value.progress.current > value.progress.total) issues.push(`${path}.progress.current must not exceed total`);
+		}
+	}
+}
+function validateInputV2(value, issues) {
+	const path = "activity.input";
+	if (!record(value)) {
+		issues.push(`${path} must be an object`);
+		return;
+	}
+	if (value.kind === "single_choice") {
+		onlyKeys(value, ["kind", "options"], path, issues);
+		if (!Array.isArray(value.options) || value.options.length < 2 || value.options.length > 8) {
+			issues.push(`${path}.options must contain 2 to 8 options`);
+			return;
+		}
+		const options = value.options.filter(record);
+		if (options.length !== value.options.length) issues.push(`${path}.options entries must be objects`);
+		uniqueIds(options, `${path}.options`, issues);
+		for (const [index, option] of options.entries()) {
+			const optionPath = `${path}.options[${String(index)}]`;
+			onlyKeys(option, ["id", "label"], optionPath, issues);
+			id(option.id, `${optionPath}.id`, issues);
+			text(option.label, `${optionPath}.label`, issues, 500);
+		}
+	} else if (value.kind === "short_text") {
+		onlyKeys(value, [
+			"kind",
+			"placeholder",
+			"maxLength"
+		], path, issues);
+		if (value.placeholder !== void 0) text(value.placeholder, `${path}.placeholder`, issues, 500);
+		if (value.maxLength !== void 0 && (!integer(value.maxLength, `${path}.maxLength`, issues, 1) || value.maxLength > 8e3)) issues.push(`${path}.maxLength must not exceed 8000`);
+	} else if (value.kind === "number") {
+		onlyKeys(value, [
+			"kind",
+			"min",
+			"max",
+			"step"
+		], path, issues);
+		const minOk = value.min === void 0 ? false : finite(value.min, `${path}.min`, issues);
+		const maxOk = value.max === void 0 ? false : finite(value.max, `${path}.max`, issues);
+		const stepOk = value.step === void 0 ? false : finite(value.step, `${path}.step`, issues);
+		if (minOk && maxOk && value.min >= value.max) issues.push(`${path}.min must be less than max`);
+		if (stepOk && value.step <= 0) issues.push(`${path}.step must be positive`);
+	} else issues.push(`${path}.kind is unknown`);
+}
+function validateFrameV2(value, path, issues) {
+	if (!record(value)) {
+		issues.push(`${path} must be an object`);
+		return;
+	}
+	onlyKeys(value, [
+		"id",
+		"title",
+		"content"
+	], path, issues);
+	id(value.id, `${path}.id`, issues);
+	text(value.title, `${path}.title`, issues, 200);
+	if (value.content !== void 0) text(value.content, `${path}.content`, issues, 4e3);
+}
+function validateParameterVisualV2(value, path, issues, reveal) {
+	onlyKeys(value, reveal ? [
+		"kind",
+		"parameters",
+		"xAxis",
+		"curves",
+		"emphasis"
+	] : [
+		"kind",
+		"parameters",
+		"xAxis",
+		"curves"
+	], path, issues);
+	validateParameterExplorer({
+		parameters: value.parameters,
+		xAxis: value.xAxis,
+		curves: value.curves
+	}, issues);
+	if (reveal && value.emphasis !== void 0) text(value.emphasis, `${path}.emphasis`, issues, 2e3);
+}
+function validateStructureVisualV2(value, path, issues, reveal) {
+	onlyKeys(value, reveal ? [
+		"kind",
+		"left",
+		"right",
+		"alignments",
+		"emphasisAlignmentIds"
+	] : [
+		"kind",
+		"left",
+		"right",
+		"alignments"
+	], path, issues);
+	validateStructureCompare({
+		left: value.left,
+		right: value.right,
+		alignments: value.alignments
+	}, issues);
+	if (reveal && value.emphasisAlignmentIds !== void 0) {
+		if (!Array.isArray(value.emphasisAlignmentIds) || !value.emphasisAlignmentIds.every((item) => typeof item === "string")) issues.push(`${path}.emphasisAlignmentIds must be an array of ids`);
+	}
+}
+function validateVisualV2(value, phase, issues) {
+	const path = "activity.visual";
+	if (!record(value)) {
+		issues.push(`${path} must be an object`);
+		return;
+	}
+	if (value.kind === "process") {
+		if (phase === "question") {
+			onlyKeys(value, ["kind", "frame"], path, issues);
+			validateFrameV2(value.frame, `${path}.frame`, issues);
+		} else {
+			onlyKeys(value, [
+				"kind",
+				"before",
+				"after"
+			], path, issues);
+			validateFrameV2(value.before, `${path}.before`, issues);
+			validateFrameV2(value.after, `${path}.after`, issues);
+		}
+	} else if (value.kind === "parameter") validateParameterVisualV2(value, path, issues, phase === "reveal");
+	else if (value.kind === "structure") validateStructureVisualV2(value, path, issues, phase === "reveal");
+	else issues.push(`${path}.kind is unknown`);
+}
+/** Strict live protocol. V1 is intentionally parsed separately for legacy replay only. */
+function parseLearningActivityV2(value) {
+	const issues = [];
+	const bytes = jsonBytes(value);
+	if (bytes === void 0) issues.push("activity must be serializable JSON");
+	else if (bytes > 65536) issues.push(`activity exceeds ${String(MAX_ACTIVITY_BYTES)} bytes`);
+	if (!record(value)) throw new LearningProtocolError([...issues, "activity must be an object"]);
+	if (value.protocol !== "dsh-learning/activity@2") issues.push(`activity.protocol must be ${ACTIVITY_PROTOCOL_V2}`);
+	if (value.phase === "question") {
+		onlyKeys(value, [
+			"protocol",
+			"phase",
+			"lessonToken",
+			"seq",
+			"focus",
+			"prompt",
+			"scaffold",
+			"input",
+			"visual",
+			"fallbackMarkdown"
+		], "activity", issues);
+		if (value.lessonToken !== void 0) token(value.lessonToken, "activity.lessonToken", issues);
+		integer(value.seq, "activity.seq", issues);
+		validateFocusV2(value.focus, "activity.focus", issues);
+		text(value.prompt, "activity.prompt", issues, 2e3);
+		if (value.scaffold !== void 0) text(value.scaffold, "activity.scaffold", issues, 4e3);
+		validateInputV2(value.input, issues);
+		if (value.visual !== void 0) validateVisualV2(value.visual, "question", issues);
+		text(value.fallbackMarkdown, "activity.fallbackMarkdown", issues, 16e3);
+	} else if (value.phase === "reveal") {
+		onlyKeys(value, [
+			"protocol",
+			"phase",
+			"lessonToken",
+			"roundToken",
+			"seq",
+			"focus",
+			"feedback",
+			"visual",
+			"animation",
+			"advance",
+			"fallbackMarkdown"
+		], "activity", issues);
+		token(value.lessonToken, "activity.lessonToken", issues);
+		token(value.roundToken, "activity.roundToken", issues);
+		integer(value.seq, "activity.seq", issues);
+		validateFocusV2(value.focus, "activity.focus", issues);
+		if (!record(value.feedback)) issues.push("activity.feedback must be an object");
+		else {
+			onlyKeys(value.feedback, [
+				"verdict",
+				"learnerEcho",
+				"explanation",
+				"answer"
+			], "activity.feedback", issues);
+			if (value.feedback.verdict !== void 0 && ![
+				"correct",
+				"partial",
+				"misconception",
+				"neutral"
+			].includes(value.feedback.verdict)) issues.push("activity.feedback.verdict is unknown");
+			if (value.feedback.learnerEcho !== void 0) text(value.feedback.learnerEcho, "activity.feedback.learnerEcho", issues, 2e3);
+			text(value.feedback.explanation, "activity.feedback.explanation", issues, 8e3);
+			if (value.feedback.answer !== void 0) text(value.feedback.answer, "activity.feedback.answer", issues, 4e3);
+		}
+		if (value.visual !== void 0) validateVisualV2(value.visual, "reveal", issues);
+		if (!record(value.animation)) issues.push("activity.animation must be an object");
+		else {
+			onlyKeys(value.animation, [
+				"kind",
+				"preferredDurationMs",
+				"reducedMotion"
+			], "activity.animation", issues);
+			if (![
+				"draw",
+				"morph",
+				"highlight",
+				"step_complete"
+			].includes(value.animation.kind)) issues.push("activity.animation.kind is unknown");
+			if (value.animation.preferredDurationMs !== void 0 && (!integer(value.animation.preferredDurationMs, "activity.animation.preferredDurationMs", issues, 0) || value.animation.preferredDurationMs > 1e4)) issues.push("activity.animation.preferredDurationMs must not exceed 10000");
+			if (value.animation.reducedMotion !== "commit-final-state") issues.push("activity.animation.reducedMotion must be commit-final-state");
+		}
+		if (!record(value.advance)) issues.push("activity.advance must be an object");
+		else {
+			onlyKeys(value.advance, ["mode", "label"], "activity.advance", issues);
+			if (value.advance.mode !== "user-after-animation") issues.push("activity.advance.mode must be user-after-animation");
+			if (value.advance.label !== void 0) text(value.advance.label, "activity.advance.label", issues, 120);
+		}
+		text(value.fallbackMarkdown, "activity.fallbackMarkdown", issues, 16e3);
+	} else issues.push("activity.phase must be question or reveal");
+	if (issues.length > 0) throw new LearningProtocolError(issues);
+	return value;
+}
+/** Validate a phase-bound Client receipt before the Broker changes lesson state. */
+function parseLearningResponseV2(value, expected = {}) {
+	const issues = [];
+	const bytes = jsonBytes(value);
+	if (bytes === void 0) issues.push("response must be serializable JSON");
+	else if (bytes > 32768) issues.push(`response exceeds ${String(MAX_RESPONSE_BYTES)} bytes`);
+	if (!record(value)) throw new LearningProtocolError([...issues, "response must be an object"]);
+	if (value.phase === "question") {
+		onlyKeys(value, [
+			"protocol",
+			"phase",
+			"activityId",
+			"lessonToken",
+			"roundToken",
+			"seq",
+			"action",
+			"answer",
+			"receiptId",
+			"interactionState"
+		], "response", issues);
+		if (![
+			"submit",
+			"skip",
+			"cancel"
+		].includes(value.action)) issues.push("response.action is unknown");
+		if (value.answer !== void 0) validateJson(value.answer, "response.answer", issues);
+	} else if (value.phase === "reveal") {
+		onlyKeys(value, [
+			"protocol",
+			"phase",
+			"activityId",
+			"lessonToken",
+			"roundToken",
+			"seq",
+			"action",
+			"animation",
+			"receiptId",
+			"interactionState"
+		], "response", issues);
+		if (![
+			"continue",
+			"skip",
+			"cancel"
+		].includes(value.action)) issues.push("response.action is unknown");
+		if (!record(value.animation)) issues.push("response.animation must be an object");
+		else {
+			onlyKeys(value.animation, [
+				"completed",
+				"skipped",
+				"reducedMotion",
+				"error"
+			], "response.animation", issues);
+			if (typeof value.animation.completed !== "boolean") issues.push("response.animation.completed must be boolean");
+			if (value.animation.skipped !== void 0 && typeof value.animation.skipped !== "boolean") issues.push("response.animation.skipped must be boolean");
+			if (value.animation.reducedMotion !== void 0 && typeof value.animation.reducedMotion !== "boolean") issues.push("response.animation.reducedMotion must be boolean");
+			if (value.animation.error !== void 0 && typeof value.animation.error !== "string") issues.push("response.animation.error must be a string");
+			if (value.action === "continue" && value.animation.completed !== true) issues.push("response.animation.completed must be true before continue");
+		}
+	} else issues.push("response.phase must be question or reveal");
+	if (value.protocol !== "dsh-learning/response@2") issues.push(`response.protocol must be ${RESPONSE_PROTOCOL_V2}`);
+	token(value.activityId, "response.activityId", issues);
+	token(value.lessonToken, "response.lessonToken", issues);
+	token(value.roundToken, "response.roundToken", issues);
+	integer(value.seq, "response.seq", issues);
+	token(value.receiptId, "response.receiptId", issues);
+	if (value.interactionState !== void 0) validateJson(value.interactionState, "response.interactionState", issues);
+	for (const [key, expectedValue] of Object.entries(expected)) if (expectedValue !== void 0 && value[key] !== expectedValue) issues.push(`response.${key} does not match the pending activity`);
+	if (issues.length > 0) throw new LearningProtocolError(issues);
+	return value;
+}
 //#endregion
-export { MAX_MATH_DEPTH as a, RESPONSE_PROTOCOL as c, parseLearningResponse as d, MAX_ACTIVITY_BYTES as i, TRANSPORT_PROTOCOL as l, LEARNING_ACTIVITY_KINDS as n, MAX_MATH_NODES as o, LearningProtocolError as r, MAX_RESPONSE_BYTES as s, ACTIVITY_PROTOCOL as t, parseLearningActivity as u };
+export { MAX_ACTIVITY_BYTES as a, MAX_RESPONSE_BYTES as c, TRANSPORT_PROTOCOL as d, TRANSPORT_PROTOCOL_V2 as f, parseLearningResponseV2 as g, parseLearningResponse as h, LearningProtocolError as i, RESPONSE_PROTOCOL as l, parseLearningActivityV2 as m, ACTIVITY_PROTOCOL_V2 as n, MAX_MATH_DEPTH as o, parseLearningActivity as p, LEARNING_ACTIVITY_KINDS as r, MAX_MATH_NODES as s, ACTIVITY_PROTOCOL as t, RESPONSE_PROTOCOL_V2 as u };

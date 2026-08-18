@@ -784,6 +784,35 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
+.round { display: flex; min-width: 0; flex-direction: column; gap: 14px; color: var(--dsw-alias-label-primary); }
+.roundHeader { display: flex; flex-direction: column; gap: 3px; }
+.roundHeader span { color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 20px; }
+.roundHeader h2, .roundProcess h3, .roundStructure h3, .roundFeedback p { margin: 0; }
+.roundHeader h2 { font-size: 17px; font-weight: 500; line-height: 26px; }
+.roundProcess { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; border-left: 2px solid var(--dsw-alias-state-business-primary); padding: 10px 0 10px 12px; }
+.roundNode { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--dsw-alias-state-business-primary); border-radius: 50%; color: var(--dsw-alias-state-business-primary); font-size: 12px; }
+.roundProcess[data-final] .roundNode { background: var(--dsw-alias-state-business-primary); color: var(--dsw-alias-label-primary-inverted); }
+.roundParameter, .roundParameterValues, .roundCurveList { display: flex; flex-wrap: wrap; gap: 8px; }
+.roundParameter { flex-direction: column; }
+.roundParameterValues span, .roundCurveList span { border: 1px solid var(--dsw-alias-border-l2); border-radius: 999px; padding: 4px 9px; color: var(--dsw-alias-label-secondary); font-size: 12px; line-height: 20px; }
+.roundStructure { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+.roundStructure h3 { font-size: 13px; font-weight: 500; }
+.roundAlignment { grid-column: 1 / 3; display: grid; grid-template-columns: 20px 1fr 1fr; gap: 8px; border-top: 1px solid var(--dsw-alias-border-l2); padding: 8px 0; color: var(--dsw-alias-label-secondary); font-size: 13px; cursor: pointer; }
+.roundAlignment input { margin-top: 3px; accent-color: var(--dsw-alias-state-business-primary); }
+.roundAlignment small { grid-column: 2 / 4; color: var(--dsw-alias-label-tertiary); }
+.roundAlignment[data-selected] { color: var(--dsw-alias-state-business-primary); }
+.roundFeedback { display: grid; gap: 8px; color: var(--dsw-alias-label-secondary); }
+.completedRound { min-width: 0; }
+.revealTransition { animation: revealCurrentFrame 700ms ease both; }
+.round[data-round-state="completed"] .revealTransition,
+.round[data-round-state="ready_to_continue"] .revealTransition,
+.round[data-round-state="ack_submitting"] .revealTransition { animation: none; }
+
+@keyframes revealCurrentFrame {
+  from { opacity: 0.45; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 0.35; transform: scale(0.8); }
   50% { opacity: 1; transform: scale(1); }
@@ -845,7 +874,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .runningDot,
-  .skeletonLine {
+  .skeletonLine,
+  .revealTransition {
     animation: none;
   }
 }

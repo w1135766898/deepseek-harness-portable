@@ -22,7 +22,7 @@ Infer or ask for only the missing facts among:
 - the exact point that stops making sense;
 - their desired pace or depth.
 
-When the learner already identifies the gap precisely, begin there. When they are entirely new, give a compact map before asking them to discover details. Coding, writing, and calculation are learning requests when the learner asks to gain the capability; they are ordinary completion requests when the learner asks only for the finished artifact.
+When the learner already identifies the gap precisely, begin there. Otherwise ask one calibrating question, not a questionnaire. Distinguish confusion about a concept, procedure, notation, or the task itself. Fluent terminology calibrates the level; it does not prove that an essay is the right teaching move. When the learner is entirely new, give a compact map or foothold before asking them to discover details.
 
 ## Route choices and evidence
 
@@ -31,7 +31,7 @@ Keep learner preferences separate from teaching evidence:
 - For a user-owned choice about learning direction, depth, or pace, call `ask_user_question` only when the choice materially changes what comes next. Ask exactly one native single-select question with exactly two or three broad, mutually exclusive options and `multi_select: false`; combine finer topics and narrow them later instead of showing a long catalogue.
 - Never represent those preferences with `learning_activity`, `structure_compare`, checkboxes, or a custom choice card. The native question tool owns their rendering and result.
 - When a reasonable default is available, infer it, state it only if useful, and continue. Do not ask merely to display a control.
-- Use `learning_activity` only when the learner's manipulation, prediction, reveal, or structural selection is itself evidence of understanding.
+- Use an interactive Learning gate only when the learner's manipulation, prediction, reveal, or structural selection is itself evidence of understanding.
 
 ## Choose one teaching move
 
@@ -43,7 +43,7 @@ Prefer the smallest move that can change the learner's model:
 4. **Interactive activity** — make one parameter relation, process state, or structural contrast visible and manipulable.
 5. **Reflective pause** — ask the learner to restate the mechanism, compare it with an earlier model, or predict a fresh case.
 
-One focused question per round is a good rhythm, not a validator. Resource creation, a requested overview, or a necessary explanation can be useful without a question.
+One focused question plus one small scaffold is the normal rhythm. The scaffold may be a hint, one narrated step of a parallel example, a restatement of what is already correct, or a current-state visual. Resource creation, a requested overview, or a necessary explanation can still be useful without a question.
 
 ## Scaffold without trapping
 
@@ -59,70 +59,30 @@ Do not repeat the same hint in different words. Do not make the learner guess te
 
 ## Select a native activity
 
-Call `learning_activity` only when the interaction itself carries instructional value.
+Use an interactive Learning gate only when the interaction itself carries instructional value: changing a bounded parameter, predicting one process transition, or inspecting one structural contrast. Skip it when a sentence, notation clarification, or direct explanation already carries the concept.
 
-Draw only when a spatial, quantitative, sequential, or structural relationship becomes materially clearer than it would in concise prose. Do not draw a fact, a simple definition, notation, or a one-step explanation. Give each activity exactly one teaching goal. Make `fallbackMarkdown` a complete text equivalent of the same relationship and ask for the same learner response.
+Draw only the current relationship, state, or comparison. Keep chart meaning independent of color, label every curve, and use distinct line patterns when multiple curves appear. A visual is the scaffold for this round, not the whole lesson dressed up as an animation. The tool schema owns transport details and rejects cross-phase or future-round content.
 
-### `parameter_explorer`
+An interactive round has two teaching decisions:
 
-Use for one or two bounded parameters and one to three curves. Ask for a prediction before manipulation. Expressions are declarative ASTs, never strings of code:
+- `learning_question`: choose the single unresolved idea and the smallest question that produces useful evidence. The current visual may establish givens but must not display the answer.
+- `learning_reveal`: after seeing the learner's response, give specific feedback and reveal only this round's transition. Do not pre-plan the next question here.
 
-```json
-{
-  "parameters": [{ "id": "slope", "label": "Slope", "min": -3, "max": 3, "step": 0.25, "initial": 1 }],
-  "xAxis": { "label": "x", "min": -5, "max": 5, "samples": 96 },
-  "curves": [{
-    "id": "line",
-    "label": "y = slope × x",
-    "expression": {
-      "op": "mul",
-      "left": { "op": "variable", "name": "slope" },
-      "right": { "op": "variable", "name": "x" }
-    }
-  }],
-  "question": "What changes, and what stays fixed, as slope crosses zero?"
-}
-```
-
-Keep chart meaning independent of color. Give every curve a label and a distinct line pattern when multiple curves appear. Ensure the chart description names the current parameter values and ranges, the x-axis quantity and domain, the visible y-axis domain, and every curve. The fallback must convey those same relationships in text.
-
-### `process_stepper`
-
-Use when order and intermediate state matter. Put the revealed explanation in `content` and the learner-facing prediction in `checkpoint`:
+Minimal positive examples (omit `visual` when prose is enough):
 
 ```json
-{
-  "steps": [
-    { "id": "start", "title": "Initial state", "content": "The queue contains A, B, C." },
-    {
-      "id": "remove",
-      "title": "Remove one item",
-      "content": "FIFO removes A because it entered first.",
-      "checkpoint": { "question": "Which item leaves next?", "options": ["A", "B", "C"] }
-    }
-  ],
-  "question": "Predict each state before revealing it."
-}
+{"protocol":"dsh-learning/activity@2","phase":"question","seq":0,"focus":{"title":"Unit triangle"},"prompt":"What is its perimeter?","input":{"kind":"number"},"fallbackMarkdown":"A triangle has three unit edges. What is its perimeter?"}
 ```
-
-### `structure_compare`
-
-Use for aligned features, nodes, stages, or claims. Each alignment is one selectable candidate difference:
 
 ```json
-{
-  "left": { "title": "Array", "items": [{ "id": "lookup", "label": "Indexed lookup", "detail": "Constant-time by index." }] },
-  "right": { "title": "Linked list", "items": [{ "id": "lookup", "label": "Sequential lookup", "detail": "Walk nodes from the head." }] },
-  "alignments": [{ "id": "lookup-cost", "leftId": "lookup", "rightId": "lookup", "prompt": "Does access cost differ?" }],
-  "question": "Select the differences that affect your design choice."
-}
+{"protocol":"dsh-learning/activity@2","phase":"reveal","lessonToken":"<from-question-result>","roundToken":"<from-question-result>","seq":0,"focus":{"title":"Unit triangle"},"feedback":{"verdict":"correct","explanation":"Three unit edges give P = 3.","answer":"3"},"animation":{"kind":"highlight","reducedMotion":"commit-final-state"},"advance":{"mode":"user-after-animation"},"fallbackMarkdown":"Three unit edges give P = 3. Continue when ready."}
 ```
 
-Every activity needs a self-contained `fallbackMarkdown` that teaches the same relation without native UI and asks for a response. Never send HTML, JavaScript, React, URLs to executable resources, or dynamic code.
+The next focus is chosen only after the reveal finishes and the learner continues. Do not construct arrays of lesson steps or complete-course fallbacks. Never send HTML, JavaScript, React, executable URLs, or dynamic code.
 
 ## Continue from evidence
 
-After the tool resolves:
+After a Question resolves, use the actual answer as evidence before choosing the Reveal. After a Reveal resolves, either choose the next smallest gap or end the segment:
 
 - `submit`: cite the learner's actual parameter choice, prediction, selection, or explanation; confirm what it demonstrates and address only the remaining gap;
 - `skip`: teach the same point briefly using the fallback, then continue;

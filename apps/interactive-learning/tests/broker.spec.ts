@@ -1,88 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
 import UserQuestionService, {
-  UserQuestionError,
   type AskUserQuestionRequest,
 } from '@deepseek-ai/dsh-user-questions'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import { CallId } from '@deepseek-ai/dsh-llm'
 import { LearningActivityBroker } from '../src/broker.ts'
 import * as learningAgent from '../src/agent.ts'
-import { RESPONSE_PROTOCOL } from '../src/protocol.ts'
-import { decodeLearningQuestionId } from '../src/transport.ts'
+import {
+  ACTIVITY_PROTOCOL_V2,
+  RESPONSE_PROTOCOL_V2,
+  LearningProtocolError,
+  type LearningQuestionV2,
+  type LearningRevealV2,
+} from '../src/protocol.ts'
+import { decodeLearningWaitDetail, decodeLearningWaitQuestionId } from '../src/transport.ts'
 import { parameterActivity } from './fixtures.ts'
-
-interface MockLlmServer {
-  baseURL: string
-  requests: readonly { body: unknown }[]
-  close(): Promise<void>
-}
-
-type StartMockLlmServer = (options: {
-  host?: string
-  port?: number
-  apiKey?: string
-  sequence: readonly string[]
-  successText?: string
-  toolName?: string
-  toolArguments?: string
-}) => Promise<MockLlmServer>
-
-async function mockLlmServer(): Promise<StartMockLlmServer> {
-  const moduleUrl = pathToFileURL(resolve(
-    import.meta.dirname,
-    '../../../vendor/deepseek-harness/packages/test-support/llm-mock-server/lib/index.js',
-  )).href
-  const module = await import(/* @vite-ignore */ moduleUrl) as { startMockLlmServer: StartMockLlmServer }
-  return module.startMockLlmServer
-}
-
-async function completion(baseURL: string, body: unknown): Promise<{
-  text: string
-  toolCall?: { id: string; name: string; arguments: string }
-}> {
-  const response = await fetch(`${baseURL}/v1/chat/completions`, {
-    method: 'POST',
-    headers: {
-      authorization: 'Bearer learning-e2e-key',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
-  if (!response.ok) throw new Error(`mock completion failed: ${String(response.status)}`)
-  let text = ''
-  let toolCall: { id: string; name: string; arguments: string } | undefined
-  for (const line of (await response.text()).split(/\r?\n/)) {
-    if (!line.startsWith('data: ')) continue
-    const data = line.slice('data: '.length)
-    if (data === '[DONE]') continue
-    const event = JSON.parse(data) as {
-      choices?: Array<{
-        delta?: {
-          content?: string
-          tool_calls?: Array<{
-            id?: string
-            function?: { name?: string; arguments?: string }
-          }>
-        }
-      }>
-    }
-    const delta = event.choices?.[0]?.delta
-    text += delta?.content ?? ''
-    const chunk = delta?.tool_calls?.[0]
-    if (chunk !== undefined) {
-      toolCall ??= { id: '', name: '', arguments: '' }
-      toolCall.id ||= chunk.id ?? ''
-      toolCall.name ||= chunk.function?.name ?? ''
-      toolCall.arguments += chunk.function?.arguments ?? ''
-    }
-  }
-  return { text, ...(toolCall === undefined ? {} : { toolCall }) }
-}
 
 function stubAgent(id: string): Agent {
   const agentId = id as Agent['id']
@@ -103,159 +37,11 @@ async function setup(richClient: boolean) {
 }
 
 describe('LearningActivityBroker', () => {
-  it('falls back immediately when the Client capability is absent', async () => {
-    const ctx = await setup(false)
-    const result = await ctx.learningActivities.present({ activity: parameterActivity() })
-    expect(result).toMatchObject({
-      action: 'skip',
-      interactionState: {
-        reason: 'client-capability-unavailable',
-        fallbackMarkdown: parameterActivity().fallbackMarkdown,
-      },
-    })
-
-    const malformedCtx = await setup(true)
-    const agent = stubAgent('malformed-client')
-    malformedCtx.agents.enter(agent, undefined)
-    malformedCtx.userQuestions.registerProvider({
-      ask: async request => ({
-        answers: [{
-          id: request.questions[0]?.id ?? '',
-          selected: [],
-          custom: JSON.stringify({ protocol: RESPONSE_PROTOCOL, action: 'submit' }),
-        }],
-      }),
-    })
-    await expect(malformedCtx.learningActivities.present({ activity: parameterActivity(), agent })).resolves.toMatchObject({
-      action: 'skip',
-      interactionState: {
-        reason: 'client-response-invalid',
-        fallbackMarkdown: parameterActivity().fallbackMarkdown,
-      },
-    })
-  })
-
-  it('generates the trusted activity id and returns a structured Client response', async () => {
+  it('keeps V1 on the static legacy replay path without registering a wait', async () => {
     const ctx = await setup(true)
-    const agent = stubAgent('root')
-    ctx.agents.enter(agent, undefined)
-    const seen: AskUserQuestionRequest[] = []
-    ctx.userQuestions.registerProvider({
-      async ask(request) {
-        seen.push(request)
-        const envelope = decodeLearningQuestionId(request.questions[0]?.id)
-        if (envelope === undefined) throw new Error('missing learning envelope')
-        return {
-          answers: [{
-            id: request.questions[0]?.id ?? '',
-            selected: [],
-            custom: JSON.stringify({
-              protocol: RESPONSE_PROTOCOL,
-              activityId: envelope.activityId,
-              action: 'submit',
-              answer: { explanation: 'The line changes direction.' },
-            }),
-          }],
-        }
-      },
-    })
-
-    const result = await ctx.learningActivities.present({ activity: parameterActivity(), agent })
-    const envelope = decodeLearningQuestionId(seen[0]?.questions[0]?.id)
-    expect(envelope?.activityId).toMatch(/^[0-9a-f-]{36}$/)
-    expect(seen[0]?.questions[0]?.detail).toBe(parameterActivity().fallbackMarkdown)
-    expect(seen[0]?.questions[0]?.header).toBeUndefined()
-    expect(result).toMatchObject({ activityId: envelope?.activityId, action: 'submit' })
-  })
-
-  it('turns user cancellation into a canonical cancel response', async () => {
-    const ctx = await setup(true)
-    const agent = stubAgent('root')
-    ctx.agents.enter(agent, undefined)
-    ctx.userQuestions.registerProvider({
-      ask: () => Promise.reject(new UserQuestionError('cancelled', 'ASK_CANCELLED')),
-    })
-    await expect(ctx.learningActivities.present({ activity: parameterActivity(), agent }))
-      .resolves.toMatchObject({ action: 'cancel', interactionState: { reason: 'user-cancelled' } })
-  })
-
-  it('bounds an incompatible or unresponsive Client and clears the pending lease', async () => {
-    const ctx = await setup(true)
-    const agent = stubAgent('root-timeout')
-    ctx.agents.enter(agent, undefined)
-    ctx.userQuestions.registerProvider({
-      ask: request => new Promise((_resolve, reject) => {
-        request.signal?.addEventListener('abort', () => {
-          reject(new UserQuestionError('aborted', 'ASK_ABORTED'))
-        }, { once: true })
-      }),
-    })
-
-    await expect(ctx.learningActivities.present({ activity: parameterActivity(), agent, timeoutMs: 15 }))
-      .resolves.toMatchObject({ action: 'skip', interactionState: { reason: 'client-response-timeout' } })
+    await expect(ctx.learningActivities.present({ activity: parameterActivity(), agent: stubAgent('legacy') }))
+      .resolves.toMatchObject({ action: 'skip', interactionState: { reason: 'legacy-replay-only' } })
     expect(ctx.learningActivities.pendingCount).toBe(0)
-  })
-
-  it('keeps a disconnected wait recoverable until the same Client responds', async () => {
-    const ctx = await setup(true)
-    const agent = stubAgent('root-reconnect')
-    ctx.agents.enter(agent, undefined)
-    ctx.userQuestions.registerProvider({
-      ask: request => new Promise(resolveAnswer => {
-        const envelope = decodeLearningQuestionId(request.questions[0]?.id)
-        if (envelope === undefined) throw new Error('missing learning envelope')
-        setTimeout(() => resolveAnswer({ answers: [{
-          id: request.questions[0]?.id ?? '',
-          selected: [],
-          custom: JSON.stringify({
-            protocol: RESPONSE_PROTOCOL,
-            activityId: envelope.activityId,
-            action: 'submit',
-            answer: { explanation: 'reconnected answer' },
-          }),
-        }] }), 10)
-      }),
-    })
-
-    const pending = ctx.learningActivities.present({ activity: parameterActivity(), agent, timeoutMs: 1_000 })
-    expect(ctx.learningActivities.pendingCount).toBe(1)
-    await expect(pending).resolves.toMatchObject({ action: 'submit', answer: { explanation: 'reconnected answer' } })
-    expect(ctx.learningActivities.pendingCount).toBe(0)
-  })
-
-  it('cancels and clears the wait when the owning session aborts', async () => {
-    const ctx = await setup(true)
-    const agent = stubAgent('root-abort')
-    ctx.agents.enter(agent, undefined)
-    ctx.userQuestions.registerProvider({
-      ask: request => new Promise((_resolve, reject) => request.signal?.addEventListener('abort', () => {
-        reject(new UserQuestionError('aborted', 'ASK_ABORTED'))
-      }, { once: true })),
-    })
-    const owner = new AbortController()
-    const pending = ctx.learningActivities.present({
-      activity: parameterActivity(), agent, signal: owner.signal, timeoutMs: 1_000,
-    })
-    owner.abort()
-    await expect(pending).resolves.toMatchObject({ action: 'cancel', interactionState: { reason: 'session-aborted' } })
-    expect(ctx.learningActivities.pendingCount).toBe(0)
-  })
-
-  it('aborts every pending wait when the Host plugin is disposed', async () => {
-    const ctx = await setup(true)
-    const broker = ctx.learningActivities
-    const agent = stubAgent('root-dispose')
-    ctx.agents.enter(agent, undefined)
-    ctx.userQuestions.registerProvider({
-      ask: request => new Promise((_resolve, reject) => request.signal?.addEventListener('abort', () => {
-        reject(new UserQuestionError('aborted', 'ASK_ABORTED'))
-      }, { once: true })),
-    })
-    const pending = broker.present({ activity: parameterActivity(), agent, timeoutMs: 1_000 })
-    expect(broker.pendingCount).toBe(1)
-    await ctx.fiber.dispose()
-    await expect(pending).resolves.toMatchObject({ action: 'cancel', interactionState: { reason: 'plugin-disposed' } })
-    expect(broker.pendingCount).toBe(0)
   })
 
   it('registers no global tool or prompt from the Host entry', async () => {
@@ -271,7 +57,7 @@ describe('LearningActivityBroker', () => {
     expect(await ctx.systemPrompt.assemble()).toEqual(promptBefore)
   })
 
-  it('adds exactly one model tool through the Agent entry', async () => {
+  it('adds exactly the two V2 gate tools through the Agent entry', async () => {
     const ctx = new Context()
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(UserQuestionService)
@@ -279,160 +65,109 @@ describe('LearningActivityBroker', () => {
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(LearningActivityBroker)
     await ctx.plugin(learningAgent)
-    expect(ctx.tools.schemas().map(tool => tool.name)).toEqual(['learning_activity'])
+    const schemas = ctx.tools.schemas()
+    expect(schemas.map(tool => tool.name)).toEqual(['learning_question', 'learning_reveal'])
+    expect(JSON.stringify(schemas)).not.toContain('"additionalProperties":true')
+    const question = schemas[0]?.parameters as { additionalProperties?: unknown; properties?: Record<string, unknown> }
+    const reveal = schemas[1]?.parameters as { additionalProperties?: unknown; properties?: Record<string, unknown> }
+    expect(question.additionalProperties).toBe(false)
+    expect(reveal.additionalProperties).toBe(false)
+    expect(question.properties).not.toHaveProperty('answer')
+    expect(question.properties).not.toHaveProperty('steps')
+    expect(question.properties).not.toHaveProperty('reveal')
+    expect(reveal.properties).not.toHaveProperty('input')
+    expect(reveal.properties).not.toHaveProperty('nextQuestion')
+    expect(reveal.properties).not.toHaveProperty('steps')
   })
 
-  it('carries one model tool call through the Host wait and returns the canonical learner response', async () => {
+})
+function questionGate(seq = 0, lessonToken?: string): LearningQuestionV2 {
+  return {
+    protocol: ACTIVITY_PROTOCOL_V2, phase: 'question', seq,
+    ...(lessonToken === undefined ? {} : { lessonToken }),
+    focus: { title: `Round ${String(seq + 1)}` }, prompt: 'Which item leaves?',
+    input: { kind: 'short_text', maxLength: 50 }, fallbackMarkdown: 'Which item leaves?',
+  }
+}
+
+function revealGate(question: { lessonToken: string; roundToken: string; seq: number }): LearningRevealV2 {
+  return {
+    protocol: ACTIVITY_PROTOCOL_V2, phase: 'reveal',
+    lessonToken: question.lessonToken, roundToken: question.roundToken, seq: question.seq,
+    focus: { title: `Round ${String(question.seq + 1)}` },
+    feedback: { explanation: 'FIFO removes the oldest item.', answer: 'A' },
+    animation: { kind: 'step_complete', reducedMotion: 'commit-final-state' },
+    advance: { mode: 'user-after-animation' }, fallbackMarkdown: 'A leaves first.',
+  }
+}
+
+describe('LearningActivityBroker v2 coordinator', () => {
+  it('uses two opaque durable waits and does not resolve Reveal before continue', async () => {
     const ctx = await setup(true)
-    await ctx.plugin(ToolRuntime)
-    await ctx.plugin(SystemPrompt)
-    await ctx.plugin(learningAgent)
-    const agent = stubAgent('root')
+    const agent = stubAgent('v2-sequence')
     ctx.agents.enter(agent, undefined)
-    let activityId = ''
+    const requests: AskUserQuestionRequest[] = []
+    let releaseReveal: (() => void) | undefined
+    const revealReady = new Promise<void>(resolve => { releaseReveal = resolve })
+    const events: unknown[] = []
+    ctx.learningActivities.observe(event => events.push(event))
     ctx.userQuestions.registerProvider({
       async ask(request) {
-        const envelope = decodeLearningQuestionId(request.questions[0]?.id)
-        if (envelope === undefined) throw new Error('missing learning envelope')
-        activityId = envelope.activityId
-        return {
-          answers: [{
-            id: request.questions[0]?.id ?? '',
-            selected: [],
-            custom: JSON.stringify({
-              protocol: RESPONSE_PROTOCOL,
-              activityId,
-              action: 'submit',
-              answer: { parameters: { slope: -2 }, explanation: 'The direction flips.' },
-              interactionState: { parameters: { slope: -2 } },
-            }),
-          }],
-        }
+        requests.push(request)
+        const envelope = decodeLearningWaitDetail(request.questions[0]?.detail)
+        if (envelope === undefined) throw new Error('missing v2 wait projection')
+        expect(decodeLearningWaitQuestionId(request.questions[0]?.id)).toBe(envelope.waitId)
+        expect(request.questions[0]?.id).not.toContain(envelope.activity.fallbackMarkdown)
+        if (envelope.phase === 'question') return { answers: [{
+          id: request.questions[0]?.id ?? '', selected: [], custom: JSON.stringify({
+            protocol: RESPONSE_PROTOCOL_V2, phase: 'question', activityId: envelope.activityId,
+            lessonToken: envelope.lessonToken, roundToken: envelope.roundToken, seq: envelope.seq,
+            action: 'submit', answer: { text: 'A', secretEvidence: 'must-not-be-observed' }, receiptId: 'receipt_question',
+          }),
+        }] }
+        await revealReady
+        return { answers: [{
+          id: request.questions[0]?.id ?? '', selected: [], custom: JSON.stringify({
+            protocol: RESPONSE_PROTOCOL_V2, phase: 'reveal', activityId: envelope.activityId,
+            lessonToken: envelope.lessonToken, roundToken: envelope.roundToken, seq: envelope.seq,
+            action: 'continue', animation: { completed: true }, receiptId: 'receipt_reveal',
+          }),
+        }] }
       },
     })
 
-    const result = await ctx.tools.execute({
-      callId: CallId('learning-call-1'),
-      name: 'learning_activity',
-      arguments: parameterActivity(),
-      agent,
-      signal: new AbortController().signal,
-    })
+    const question = await ctx.learningActivities.presentQuestion({ activity: questionGate(), agent, callId: 'call_question' })
+    expect(question).toMatchObject({ phase: 'question', action: 'submit', seq: 0 })
+    await expect(ctx.learningActivities.presentQuestion({ activity: questionGate(), agent, callId: 'call_question' }))
+      .resolves.toEqual(question)
+    expect(requests).toHaveLength(1)
+    const reveal = ctx.learningActivities.presentReveal({ activity: revealGate(question), agent, callId: 'call_reveal' })
+    await Promise.resolve()
+    expect(ctx.learningActivities.pendingCount).toBe(1)
+    let settled = false
+    void reveal.then(() => { settled = true })
+    await Promise.resolve()
+    expect(settled).toBe(false)
+    releaseReveal?.()
+    await expect(reveal).resolves.toMatchObject({ phase: 'reveal', action: 'continue', animation: { completed: true } })
+    expect(requests).toHaveLength(2)
+    expect(JSON.stringify(events)).not.toContain('must-not-be-observed')
+    const eventNames = events.map(event => (event as { name: string }).name)
+    expect(eventNames).toContain('learning.call.args_completed')
+    expect(eventNames).toContain('learning.model.next_step_started')
+    expect(eventNames.indexOf('learning.wait.resolved')).toBeLessThan(eventNames.indexOf('learning.model.next_step_started'))
 
-    expect(result.isError).toBe(false)
-    expect(result.value).toEqual({
-      protocol: RESPONSE_PROTOCOL,
-      activityId,
-      action: 'submit',
-      answer: { parameters: { slope: -2 }, explanation: 'The direction flips.' },
-      interactionState: { parameters: { slope: -2 } },
-    })
-    expect(result.content).toEqual([{ type: 'text', text: JSON.stringify(result.value) }])
+    await expect(ctx.learningActivities.presentQuestion({
+      activity: questionGate(2, question.lessonToken), agent,
+    })).rejects.toBeInstanceOf(LearningProtocolError)
   })
 
-  it('returns cancellation through the same model-visible tool result contract', async () => {
+  it('rejects a Reveal that does not match an answered Question token', async () => {
     const ctx = await setup(true)
-    await ctx.plugin(ToolRuntime)
-    await ctx.plugin(SystemPrompt)
-    await ctx.plugin(learningAgent)
-    const agent = stubAgent('root')
+    const agent = stubAgent('v2-stale')
     ctx.agents.enter(agent, undefined)
-    ctx.userQuestions.registerProvider({
-      ask: () => Promise.reject(new UserQuestionError('cancelled', 'ASK_CANCELLED')),
-    })
-
-    const result = await ctx.tools.execute({
-      callId: CallId('learning-call-cancelled'),
-      name: 'learning_activity',
-      arguments: parameterActivity(),
-      agent,
-      signal: new AbortController().signal,
-    })
-
-    expect(result).toMatchObject({
-      isError: false,
-      value: { protocol: RESPONSE_PROTOCOL, action: 'cancel' },
-    })
-    expect(JSON.parse((result.content[0] as { text: string }).text)).toEqual(result.value)
-  })
-
-  it('round-trips a mock model tool call, learner submission, and model continuation', async () => {
-    const startMockLlmServer = await mockLlmServer()
-    const activity = parameterActivity()
-    const continuation = 'The negative slope now descends from left to right; apply that observation to y = -3x.'
-    const server = await startMockLlmServer({
-      host: '127.0.0.1',
-      port: 0,
-      apiKey: 'learning-e2e-key',
-      sequence: ['tool_call_success', 'success'],
-      successText: continuation,
-      toolName: 'learning_activity',
-      toolArguments: JSON.stringify(activity),
-    })
-    try {
-      const first = await completion(server.baseURL, {
-        model: 'deepseek-v4-flash',
-        stream: true,
-        messages: [{ role: 'user', content: 'Help me understand how the sign of slope changes a line.' }],
-        tools: [{ type: 'function', function: { name: 'learning_activity', parameters: { type: 'object' } } }],
-      })
-      expect(first.toolCall).toMatchObject({ id: 'mock-call-1', name: 'learning_activity' })
-      expect(JSON.parse(first.toolCall?.arguments ?? '')).toEqual(activity)
-
-      const ctx = await setup(true)
-      await ctx.plugin(ToolRuntime)
-      await ctx.plugin(SystemPrompt)
-      await ctx.plugin(learningAgent)
-      const agent = stubAgent('root')
-      ctx.agents.enter(agent, undefined)
-      ctx.userQuestions.registerProvider({
-        async ask(request) {
-          const envelope = decodeLearningQuestionId(request.questions[0]?.id)
-          if (envelope === undefined) throw new Error('missing learning envelope')
-          return {
-            answers: [{
-              id: request.questions[0]?.id ?? '',
-              selected: [],
-              custom: JSON.stringify({
-                protocol: RESPONSE_PROTOCOL,
-                activityId: envelope.activityId,
-                action: 'submit',
-                answer: { parameters: { slope: -2 }, explanation: 'It descends instead of rising.' },
-              }),
-            }],
-          }
-        },
-      })
-      const toolResult = await ctx.tools.execute({
-        callId: CallId(first.toolCall?.id ?? ''),
-        name: first.toolCall?.name ?? '',
-        arguments: JSON.parse(first.toolCall?.arguments ?? ''),
-        agent,
-        signal: new AbortController().signal,
-      })
-      expect(toolResult.isError).toBe(false)
-
-      const second = await completion(server.baseURL, {
-        model: 'deepseek-v4-flash',
-        stream: true,
-        messages: [
-          { role: 'user', content: 'Help me understand how the sign of slope changes a line.' },
-          {
-            role: 'assistant',
-            content: null,
-            tool_calls: [{
-              id: first.toolCall?.id,
-              type: 'function',
-              function: { name: first.toolCall?.name, arguments: first.toolCall?.arguments },
-            }],
-          },
-          { role: 'tool', tool_call_id: first.toolCall?.id, content: (toolResult.content[0] as { text: string }).text },
-        ],
-      })
-      expect(second.text).toBe(continuation)
-      expect(JSON.stringify(server.requests[1]?.body)).toContain('It descends instead of rising.')
-    } finally {
-      await server.close()
-    }
+    await expect(ctx.learningActivities.presentReveal({
+      activity: revealGate({ lessonToken: 'unknown', roundToken: 'stale', seq: 0 }), agent,
+    })).rejects.toThrow(/not active/)
   })
 })

@@ -178,6 +178,27 @@ function shiftedValue(parameter, current, direction) {
     const clamped = Math.min(parameter.max, Math.max(parameter.min, shifted));
     return Number(clamped.toPrecision(12));
 }
+/** V2 current-frame parameter visual. It deliberately owns no teaching prompt or answer. */
+export function ParameterRoundVisual({ payload, disabled, t, }) {
+    const chartId = useId();
+    const [values, setValues] = useState(() => Object.fromEntries(payload.parameters.map(parameter => [parameter.id, parameter.initial])));
+    const fullPayload = payload;
+    const stableDomain = useMemo(() => stableYDomain(fullPayload), [fullPayload]);
+    const yDomain = useMemo(() => yDomainForState(fullPayload, values, stableDomain), [fullPayload, stableDomain, values]);
+    const geometry = useMemo(() => chartGeometry(640), []);
+    const paths = useMemo(() => pathsFor(fullPayload, values, yDomain, geometry), [fullPayload, geometry, values, yDomain]);
+    const description = t('chartDescription', {
+        parameters: payload.parameters.map(parameter => `${parameter.label} ${formatNumber(values[parameter.id] ?? parameter.initial)}`).join('; '),
+        xAxis: `${payload.xAxis.label ?? 'x'} ${formatNumber(payload.xAxis.min)}–${formatNumber(payload.xAxis.max)}`,
+        yAxis: `y ${formatNumber(yDomain.min)}–${formatNumber(yDomain.max)}`,
+        curves: payload.curves.map(curve => curve.label).join('; '),
+    });
+    return (_jsxs("div", { className: css.explorer, children: [_jsx("div", { className: css.controls, children: payload.parameters.map(parameter => {
+                    const value = values[parameter.id] ?? parameter.initial;
+                    const inputId = `${chartId}-${parameter.id}`;
+                    return (_jsxs("div", { className: css.rangeField, children: [_jsxs("div", { className: css.rangeHeader, children: [_jsx("label", { htmlFor: inputId, children: parameter.label }), _jsx("output", { htmlFor: inputId, "aria-live": "polite", children: formatNumber(value) })] }), _jsx("input", { id: inputId, className: css.rangeInput, style: rangeStyle(parameter, value), type: "range", min: parameter.min, max: parameter.max, step: parameter.step, value: value, disabled: disabled, onChange: event => setValues(current => ({ ...current, [parameter.id]: Number(event.target.value) })) })] }, parameter.id));
+                }) }), _jsxs("div", { className: css.chartRegion, children: [_jsx("ul", { className: css.legend, children: payload.curves.map((curve, index) => _jsx("li", { "data-curve": index, children: curve.label }, curve.id)) }), _jsxs("svg", { className: css.chart, viewBox: `0 0 ${geometry.width} ${geometry.height}`, role: "img", "aria-labelledby": `${chartId}-title ${chartId}-description`, children: [_jsx("title", { id: `${chartId}-title`, children: t('chartLabel') }), _jsx("desc", { id: `${chartId}-description`, children: description }), _jsx("rect", { className: css.plotFrame, x: geometry.left, y: geometry.top, width: geometry.plotWidth, height: geometry.plotHeight, rx: "6" }), paths.map((path, index) => _jsx("path", { className: css.curve, "data-curve": index, d: path }, payload.curves[index]?.id))] })] })] }));
+}
 export function ParameterExplorer({ activity, busy, onSubmit, t }) {
     const payload = activity.payload;
     const chartId = useId();

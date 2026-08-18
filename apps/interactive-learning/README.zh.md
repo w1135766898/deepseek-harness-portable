@@ -8,11 +8,11 @@ Standard、Code、Minimal 或 Cordis 增加模型工具或 standing prompt。
 
 - 包根入口是 Host capability，只注册不面向模型的 `learningActivities`
   协调服务。
-- `./agent` 只由 Learning preset 挂载，注册唯一的
-  `learning_activity` 工具和精简教学策略。
+- `./agent` 只由 Learning preset 挂载，注册两个窄工具
+  `learning_question`、`learning_reveal` 和精简教学策略。
 - Learning preset 还挂载 rc.7 原生 `ask_user_question`，只承接方向、深度、
-  节奏等用户自主选择；有合理默认时不弹问题，教学证据仍由
-  `learning_activity` 承接。
+  节奏等用户自主选择；有合理默认时不弹问题，教学证据由 Question/Reveal
+  gate 承接。
 - `./client` 注册 Learning 专属 composer、已完成工具视图和可扩展的活动
   renderer registry。
 - `./protocol` 定义版本化、声明式的 Activity/Response 协议。
@@ -20,40 +20,38 @@ Standard、Code、Minimal 或 Cordis 增加模型工具或 standing prompt。
   产品外壳。
 
 Client 即使全局加载，也只会接管同时满足以下条件的 pending wait：包含
-Host 生成的 `dsh-learning/transport@1` envelope，并且 `sessionId` 与当前
-会话完全相同。因此普通问题和非 Learning preset 不会被接管，fork 也不会
-使父会话的 pending activity 复活。
+Host 生成的 `dsh-learning/wait@2` envelope，并且 session、稳定 `callId`、
+activity、phase 和 seq 与当前调用完全相同。因此普通问题和非 Learning preset
+不会被接管，fork 也不会使父会话的 pending activity 复活。
 
 ## rc.7 交互闭环
 
-1. Agent 调用带 `dsh-learning/activity@1` 的 `learning_activity`。
-2. Host 严格校验 schema、生成可信 `activityId`，并创建 durable question
-   wait；不可见的 question id 携带版本化 envelope，detail 只保留可读的
-   Markdown fallback，因此通用问答 UI 不会显示机器载荷。
-3. Client 在对话流里的 `learning_activity` 行渲染原生活动，把
-   `dsh-learning/response@1` 提交回同一个 wait。活动直接沿用 Assistant
-   消息的内容宽度和正文节奏，不使用 ToolRow 或卡片外框；composer takeover
-   为空，只负责阻止通用 question UI 重复渲染同一个 pending activity。
-4. broker 解除原工具调用，canonical result 随正常会话日志保存和回放；模型
-   必须依据用户实际提交的证据续讲。
+1. Agent 以 `learning_question` 只发送一个当前 frame，Host 严格校验、签发
+   lesson/round token，并创建一次 durable wait。
+2. 学习者回答解除 Question；模型看到真实回答后，才为同一 token/seq 构造
+   `learning_reveal`。
+3. Reveal 在动画期间保持 pending。动画完成前“继续”不可用；reduced motion
+   直接提交最终 frame，但仍必须等待用户继续。
+4. 用户继续后保存 canonical `response@2` 并解除 Reveal。只有此后模型才可
+   生成下一 Question，因此未来标题、问题和答案不会预装到 Client。
 
 活动开始时没有在线 Client 会立即安全降级。活动显示后的临时断线可在 kernel
 wait 中恢复；默认五分钟超时、session abort 或插件卸载都会生成 canonical
 `skip`/`cancel` 结果，不会永久阻塞模型。重复 response 由 wait 的单次完成语义
 拒绝。
 
-## Activity Protocol v1
+## Activity Protocol v2
 
-MVP 提供三个固定组件：
+当前 frame 支持三种视觉：
 
-- `parameter_explorer`：1～2 个有界参数、1～3 条曲线。教学 Skill 先在普通对话中
-  邀请用户预测，再让内联控件直接承接验证。
-- `process_stepper`：2～12 个步骤，可在 checkpoint 执行“先预测，再揭示”。
-- `structure_compare`：对齐两个结构的项目，选择关键差异并解释。
+- `parameter`：1～2 个有界参数、1～3 条曲线。
+- `process`：Question 只有一个当前 frame，Reveal 只有同轮 before/after。
+- `structure`：一个当前结构对比。
 
-协议拒绝未知版本、未知字段、过大 payload、非法引用、非有限数值及过深 JSON
-或表达式。曲线只接受有限白名单数学 AST；不接受任意 HTML、JavaScript、
-React、动态 import、网络脚本或 `eval`。
+Question schema 不含答案、揭示或未来步骤字段；Reveal schema 不含下一问题或
+新 input。两者都拒绝未知字段、非法引用、非有限数值及过大/过深数据。曲线只
+接受有限白名单数学 AST。`activity@1` 仅用于旧会话回放，不再暴露为实时模型
+工具。
 
 ## 外部安装与启用
 
@@ -98,8 +96,9 @@ node apps/interactive-learning/lib/eval-cli.js
 node apps/interactive-learning/tests/package-lifecycle.mjs <package.tgz>
 ```
 
-离线教学门禁覆盖：简单事实不过度使用 visual；参数关系、过程状态、结构差异
-分别选择正确组件；续讲引用 response 证据；达到迁移标准后结束教学段。它是
+离线教学门禁覆盖：visual 克制、续讲引用 response 证据、达到迁移标准后结束；
+同时检查每个模型 step 只有一个 gate、Question/Reveal 时间顺序，以及配置的
+答案/未来轮次标记没有提前泄漏。它是
 可复现的规则与 fixture 门禁，不冒充真实模型质量评分。远程模型评分仍是需要
 外部授权的独立门禁，本地测试不会读取或使用真实用户凭证。
 
@@ -113,7 +112,10 @@ standing prompt。
 
 实现基于 pinned kernel `0.1.0-rc.7`，不依赖尚未发布的 upstream API。当前
 keyed tool renderer、question PendingWait、稳定 session/call
-identity 和 canonical tool result replay 足以支持 MVP；Host、`./agent`、
+identity 和 canonical tool result replay 支持双门控流程。rc.7 的
+`ToolRunContext` 已直接暴露 `callId/rootCallId`；`tools/pre-execute`、
+`tools/execute`、`tools/post-execute`、`tools/result` 与 `agent/pre-step`
+可作为观测点，无需引入私有 telemetry API。Host、`./agent`、
 `./client`、协议、preset 和 Skill 均由同一可安装包提供。
 
 按方案继续延期的内容包括：跨会话掌握度、间隔复习、知识图谱、Obsidian/LMS

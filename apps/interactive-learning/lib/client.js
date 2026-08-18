@@ -12,6 +12,9 @@ window.__ModuleLoader__.load({
 		const ACTIVITY_PROTOCOL = "dsh-learning/activity@1";
 		const RESPONSE_PROTOCOL = "dsh-learning/response@1";
 		const TRANSPORT_PROTOCOL = "dsh-learning/transport@1";
+		const ACTIVITY_PROTOCOL_V2 = "dsh-learning/activity@2";
+		const RESPONSE_PROTOCOL_V2 = "dsh-learning/response@2";
+		const TRANSPORT_PROTOCOL_V2 = "dsh-learning/wait@2";
 		const LEARNING_ACTIVITY_KINDS = [
 			"parameter_explorer",
 			"process_stepper",
@@ -421,11 +424,329 @@ window.__ModuleLoader__.load({
 			if (issues.length > 0) throw new LearningProtocolError(issues);
 			return value;
 		}
+		function integer(value, path, issues, min = 0) {
+			if (typeof value !== "number" || !Number.isInteger(value) || value < min) {
+				issues.push(`${path} must be an integer >= ${String(min)}`);
+				return false;
+			}
+			return true;
+		}
+		function token(value, path, issues) {
+			if (typeof value !== "string" || value.length < 1 || value.length > 128 || !/^[A-Za-z0-9_-]+$/.test(value)) {
+				issues.push(`${path} must be an opaque token of 1 to 128 URL-safe characters`);
+				return false;
+			}
+			return true;
+		}
+		function validateFocusV2(value, path, issues) {
+			if (!record(value)) {
+				issues.push(`${path} must be an object`);
+				return;
+			}
+			onlyKeys(value, ["title", "progress"], path, issues);
+			text(value.title, `${path}.title`, issues, 200);
+			if (value.progress !== void 0) {
+				if (!record(value.progress)) issues.push(`${path}.progress must be an object`);
+				else {
+					onlyKeys(value.progress, ["current", "total"], `${path}.progress`, issues);
+					const currentOk = integer(value.progress.current, `${path}.progress.current`, issues, 1);
+					const totalOk = value.progress.total === void 0 ? false : integer(value.progress.total, `${path}.progress.total`, issues, 1);
+					if (currentOk && totalOk && value.progress.current > value.progress.total) issues.push(`${path}.progress.current must not exceed total`);
+				}
+			}
+		}
+		function validateInputV2(value, issues) {
+			const path = "activity.input";
+			if (!record(value)) {
+				issues.push(`${path} must be an object`);
+				return;
+			}
+			if (value.kind === "single_choice") {
+				onlyKeys(value, ["kind", "options"], path, issues);
+				if (!Array.isArray(value.options) || value.options.length < 2 || value.options.length > 8) {
+					issues.push(`${path}.options must contain 2 to 8 options`);
+					return;
+				}
+				const options = value.options.filter(record);
+				if (options.length !== value.options.length) issues.push(`${path}.options entries must be objects`);
+				uniqueIds(options, `${path}.options`, issues);
+				for (const [index, option] of options.entries()) {
+					const optionPath = `${path}.options[${String(index)}]`;
+					onlyKeys(option, ["id", "label"], optionPath, issues);
+					id(option.id, `${optionPath}.id`, issues);
+					text(option.label, `${optionPath}.label`, issues, 500);
+				}
+			} else if (value.kind === "short_text") {
+				onlyKeys(value, [
+					"kind",
+					"placeholder",
+					"maxLength"
+				], path, issues);
+				if (value.placeholder !== void 0) text(value.placeholder, `${path}.placeholder`, issues, 500);
+				if (value.maxLength !== void 0 && (!integer(value.maxLength, `${path}.maxLength`, issues, 1) || value.maxLength > 8e3)) issues.push(`${path}.maxLength must not exceed 8000`);
+			} else if (value.kind === "number") {
+				onlyKeys(value, [
+					"kind",
+					"min",
+					"max",
+					"step"
+				], path, issues);
+				const minOk = value.min === void 0 ? false : finite(value.min, `${path}.min`, issues);
+				const maxOk = value.max === void 0 ? false : finite(value.max, `${path}.max`, issues);
+				const stepOk = value.step === void 0 ? false : finite(value.step, `${path}.step`, issues);
+				if (minOk && maxOk && value.min >= value.max) issues.push(`${path}.min must be less than max`);
+				if (stepOk && value.step <= 0) issues.push(`${path}.step must be positive`);
+			} else issues.push(`${path}.kind is unknown`);
+		}
+		function validateFrameV2(value, path, issues) {
+			if (!record(value)) {
+				issues.push(`${path} must be an object`);
+				return;
+			}
+			onlyKeys(value, [
+				"id",
+				"title",
+				"content"
+			], path, issues);
+			id(value.id, `${path}.id`, issues);
+			text(value.title, `${path}.title`, issues, 200);
+			if (value.content !== void 0) text(value.content, `${path}.content`, issues, 4e3);
+		}
+		function validateParameterVisualV2(value, path, issues, reveal) {
+			onlyKeys(value, reveal ? [
+				"kind",
+				"parameters",
+				"xAxis",
+				"curves",
+				"emphasis"
+			] : [
+				"kind",
+				"parameters",
+				"xAxis",
+				"curves"
+			], path, issues);
+			validateParameterExplorer({
+				parameters: value.parameters,
+				xAxis: value.xAxis,
+				curves: value.curves
+			}, issues);
+			if (reveal && value.emphasis !== void 0) text(value.emphasis, `${path}.emphasis`, issues, 2e3);
+		}
+		function validateStructureVisualV2(value, path, issues, reveal) {
+			onlyKeys(value, reveal ? [
+				"kind",
+				"left",
+				"right",
+				"alignments",
+				"emphasisAlignmentIds"
+			] : [
+				"kind",
+				"left",
+				"right",
+				"alignments"
+			], path, issues);
+			validateStructureCompare({
+				left: value.left,
+				right: value.right,
+				alignments: value.alignments
+			}, issues);
+			if (reveal && value.emphasisAlignmentIds !== void 0) {
+				if (!Array.isArray(value.emphasisAlignmentIds) || !value.emphasisAlignmentIds.every((item) => typeof item === "string")) issues.push(`${path}.emphasisAlignmentIds must be an array of ids`);
+			}
+		}
+		function validateVisualV2(value, phase, issues) {
+			const path = "activity.visual";
+			if (!record(value)) {
+				issues.push(`${path} must be an object`);
+				return;
+			}
+			if (value.kind === "process") {
+				if (phase === "question") {
+					onlyKeys(value, ["kind", "frame"], path, issues);
+					validateFrameV2(value.frame, `${path}.frame`, issues);
+				} else {
+					onlyKeys(value, [
+						"kind",
+						"before",
+						"after"
+					], path, issues);
+					validateFrameV2(value.before, `${path}.before`, issues);
+					validateFrameV2(value.after, `${path}.after`, issues);
+				}
+			} else if (value.kind === "parameter") validateParameterVisualV2(value, path, issues, phase === "reveal");
+			else if (value.kind === "structure") validateStructureVisualV2(value, path, issues, phase === "reveal");
+			else issues.push(`${path}.kind is unknown`);
+		}
+		/** Strict live protocol. V1 is intentionally parsed separately for legacy replay only. */
+		function parseLearningActivityV2(value) {
+			const issues = [];
+			const bytes = jsonBytes(value);
+			if (bytes === void 0) issues.push("activity must be serializable JSON");
+			else if (bytes > 65536) issues.push(`activity exceeds ${String(MAX_ACTIVITY_BYTES)} bytes`);
+			if (!record(value)) throw new LearningProtocolError([...issues, "activity must be an object"]);
+			if (value.protocol !== "dsh-learning/activity@2") issues.push(`activity.protocol must be ${ACTIVITY_PROTOCOL_V2}`);
+			if (value.phase === "question") {
+				onlyKeys(value, [
+					"protocol",
+					"phase",
+					"lessonToken",
+					"seq",
+					"focus",
+					"prompt",
+					"scaffold",
+					"input",
+					"visual",
+					"fallbackMarkdown"
+				], "activity", issues);
+				if (value.lessonToken !== void 0) token(value.lessonToken, "activity.lessonToken", issues);
+				integer(value.seq, "activity.seq", issues);
+				validateFocusV2(value.focus, "activity.focus", issues);
+				text(value.prompt, "activity.prompt", issues, 2e3);
+				if (value.scaffold !== void 0) text(value.scaffold, "activity.scaffold", issues, 4e3);
+				validateInputV2(value.input, issues);
+				if (value.visual !== void 0) validateVisualV2(value.visual, "question", issues);
+				text(value.fallbackMarkdown, "activity.fallbackMarkdown", issues, 16e3);
+			} else if (value.phase === "reveal") {
+				onlyKeys(value, [
+					"protocol",
+					"phase",
+					"lessonToken",
+					"roundToken",
+					"seq",
+					"focus",
+					"feedback",
+					"visual",
+					"animation",
+					"advance",
+					"fallbackMarkdown"
+				], "activity", issues);
+				token(value.lessonToken, "activity.lessonToken", issues);
+				token(value.roundToken, "activity.roundToken", issues);
+				integer(value.seq, "activity.seq", issues);
+				validateFocusV2(value.focus, "activity.focus", issues);
+				if (!record(value.feedback)) issues.push("activity.feedback must be an object");
+				else {
+					onlyKeys(value.feedback, [
+						"verdict",
+						"learnerEcho",
+						"explanation",
+						"answer"
+					], "activity.feedback", issues);
+					if (value.feedback.verdict !== void 0 && ![
+						"correct",
+						"partial",
+						"misconception",
+						"neutral"
+					].includes(value.feedback.verdict)) issues.push("activity.feedback.verdict is unknown");
+					if (value.feedback.learnerEcho !== void 0) text(value.feedback.learnerEcho, "activity.feedback.learnerEcho", issues, 2e3);
+					text(value.feedback.explanation, "activity.feedback.explanation", issues, 8e3);
+					if (value.feedback.answer !== void 0) text(value.feedback.answer, "activity.feedback.answer", issues, 4e3);
+				}
+				if (value.visual !== void 0) validateVisualV2(value.visual, "reveal", issues);
+				if (!record(value.animation)) issues.push("activity.animation must be an object");
+				else {
+					onlyKeys(value.animation, [
+						"kind",
+						"preferredDurationMs",
+						"reducedMotion"
+					], "activity.animation", issues);
+					if (![
+						"draw",
+						"morph",
+						"highlight",
+						"step_complete"
+					].includes(value.animation.kind)) issues.push("activity.animation.kind is unknown");
+					if (value.animation.preferredDurationMs !== void 0 && (!integer(value.animation.preferredDurationMs, "activity.animation.preferredDurationMs", issues, 0) || value.animation.preferredDurationMs > 1e4)) issues.push("activity.animation.preferredDurationMs must not exceed 10000");
+					if (value.animation.reducedMotion !== "commit-final-state") issues.push("activity.animation.reducedMotion must be commit-final-state");
+				}
+				if (!record(value.advance)) issues.push("activity.advance must be an object");
+				else {
+					onlyKeys(value.advance, ["mode", "label"], "activity.advance", issues);
+					if (value.advance.mode !== "user-after-animation") issues.push("activity.advance.mode must be user-after-animation");
+					if (value.advance.label !== void 0) text(value.advance.label, "activity.advance.label", issues, 120);
+				}
+				text(value.fallbackMarkdown, "activity.fallbackMarkdown", issues, 16e3);
+			} else issues.push("activity.phase must be question or reveal");
+			if (issues.length > 0) throw new LearningProtocolError(issues);
+			return value;
+		}
+		/** Validate a phase-bound Client receipt before the Broker changes lesson state. */
+		function parseLearningResponseV2(value, expected = {}) {
+			const issues = [];
+			const bytes = jsonBytes(value);
+			if (bytes === void 0) issues.push("response must be serializable JSON");
+			else if (bytes > 32768) issues.push(`response exceeds ${String(MAX_RESPONSE_BYTES)} bytes`);
+			if (!record(value)) throw new LearningProtocolError([...issues, "response must be an object"]);
+			if (value.phase === "question") {
+				onlyKeys(value, [
+					"protocol",
+					"phase",
+					"activityId",
+					"lessonToken",
+					"roundToken",
+					"seq",
+					"action",
+					"answer",
+					"receiptId",
+					"interactionState"
+				], "response", issues);
+				if (![
+					"submit",
+					"skip",
+					"cancel"
+				].includes(value.action)) issues.push("response.action is unknown");
+				if (value.answer !== void 0) validateJson(value.answer, "response.answer", issues);
+			} else if (value.phase === "reveal") {
+				onlyKeys(value, [
+					"protocol",
+					"phase",
+					"activityId",
+					"lessonToken",
+					"roundToken",
+					"seq",
+					"action",
+					"animation",
+					"receiptId",
+					"interactionState"
+				], "response", issues);
+				if (![
+					"continue",
+					"skip",
+					"cancel"
+				].includes(value.action)) issues.push("response.action is unknown");
+				if (!record(value.animation)) issues.push("response.animation must be an object");
+				else {
+					onlyKeys(value.animation, [
+						"completed",
+						"skipped",
+						"reducedMotion",
+						"error"
+					], "response.animation", issues);
+					if (typeof value.animation.completed !== "boolean") issues.push("response.animation.completed must be boolean");
+					if (value.animation.skipped !== void 0 && typeof value.animation.skipped !== "boolean") issues.push("response.animation.skipped must be boolean");
+					if (value.animation.reducedMotion !== void 0 && typeof value.animation.reducedMotion !== "boolean") issues.push("response.animation.reducedMotion must be boolean");
+					if (value.animation.error !== void 0 && typeof value.animation.error !== "string") issues.push("response.animation.error must be a string");
+					if (value.action === "continue" && value.animation.completed !== true) issues.push("response.animation.completed must be true before continue");
+				}
+			} else issues.push("response.phase must be question or reveal");
+			if (value.protocol !== "dsh-learning/response@2") issues.push(`response.protocol must be ${RESPONSE_PROTOCOL_V2}`);
+			token(value.activityId, "response.activityId", issues);
+			token(value.lessonToken, "response.lessonToken", issues);
+			token(value.roundToken, "response.roundToken", issues);
+			integer(value.seq, "response.seq", issues);
+			token(value.receiptId, "response.receiptId", issues);
+			if (value.interactionState !== void 0) validateJson(value.interactionState, "response.interactionState", issues);
+			for (const [key, expectedValue] of Object.entries(expected)) if (expectedValue !== void 0 && value[key] !== expectedValue) issues.push(`response.${key} does not match the pending activity`);
+			if (issues.length > 0) throw new LearningProtocolError(issues);
+			return value;
+		}
 		//#endregion
 		//#region src/transport.ts
 		const MARKER_PREFIX = "<!--dsh-learning/transport@1:";
 		const MARKER_SUFFIX = "-->";
 		const QUESTION_ID_PREFIX = "dsh-learning/transport@1:";
+		const WAIT_MARKER_PREFIX = "<!--dsh-learning/wait@2:";
+		const WAIT_QUESTION_ID_PREFIX = "dsh-learning/wait@2:";
 		const BASE64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 		function decodeBase64Url(value) {
 			if (!/^[A-Za-z0-9_-]+$/.test(value) || value.length % 4 === 1) return void 0;
@@ -474,9 +795,47 @@ window.__ModuleLoader__.load({
 			if (end < 0) return void 0;
 			return decodeEnvelope(detail.slice(29, end));
 		}
+		/** V2 ids contain only an opaque reference, never the phase payload. */
+		function learningWaitQuestionId(waitId) {
+			if (!/^[A-Za-z0-9_-]{1,128}$/.test(waitId)) throw new Error("waitId must be a URL-safe opaque token");
+			return `${WAIT_QUESTION_ID_PREFIX}${waitId}`;
+		}
+		function decodeLearningWaitQuestionId(value) {
+			if (typeof value !== "string" || !value.startsWith(WAIT_QUESTION_ID_PREFIX)) return void 0;
+			const waitId = value.slice(20);
+			return /^[A-Za-z0-9_-]{1,128}$/.test(waitId) ? waitId : void 0;
+		}
+		function decodeLearningWaitDetail(detail) {
+			if (typeof detail !== "string" || !detail.startsWith(WAIT_MARKER_PREFIX)) return void 0;
+			const end = detail.indexOf(MARKER_SUFFIX, 24);
+			if (end < 0) return void 0;
+			const json = decodeBase64Url(detail.slice(24, end));
+			if (json === void 0) return void 0;
+			try {
+				const parsed = JSON.parse(json);
+				if (parsed.transport !== "dsh-learning/wait@2" || typeof parsed.waitId !== "string" || decodeLearningWaitQuestionId(learningWaitQuestionId(parsed.waitId)) === void 0 || typeof parsed.activityId !== "string" || parsed.activityId === "" || parsed.callId !== void 0 && (typeof parsed.callId !== "string" || parsed.callId === "") || typeof parsed.lessonToken !== "string" || parsed.lessonToken === "" || typeof parsed.roundToken !== "string" || parsed.roundToken === "" || typeof parsed.seq !== "number" || !Number.isInteger(parsed.seq) || parsed.seq < 0 || parsed.phase !== "question" && parsed.phase !== "reveal") return void 0;
+				const activity = parseLearningActivityV2(parsed.activity);
+				if (activity.phase !== parsed.phase || activity.seq !== parsed.seq) return void 0;
+				if (activity.phase === "reveal" && (activity.lessonToken !== parsed.lessonToken || activity.roundToken !== parsed.roundToken)) return void 0;
+				if (activity.phase === "question" && activity.lessonToken !== void 0 && activity.lessonToken !== parsed.lessonToken) return void 0;
+				return {
+					transport: TRANSPORT_PROTOCOL_V2,
+					waitId: parsed.waitId,
+					activityId: parsed.activityId,
+					...parsed.callId === void 0 ? {} : { callId: parsed.callId },
+					lessonToken: parsed.lessonToken,
+					roundToken: parsed.roundToken,
+					seq: parsed.seq,
+					phase: parsed.phase,
+					activity
+				};
+			} catch {
+				return;
+			}
+		}
 		//#endregion
 		//#region \0dsh-css:C:\Users\Ryan\Desktop\deepseek-harness-portable\apps\interactive-learning\src\client\LearningActivity.module.css.mjs
-		const css = "._7ar4Xq_inlineActivity{min-width:0;color:var(--dsw-alias-label-primary);flex-direction:column;gap:16px;font-size:16px;line-height:28px;display:flex}._7ar4Xq_scaffold{color:var(--dsw-alias-label-secondary);align-self:flex-start;font-size:13px;line-height:22px}._7ar4Xq_scaffold summary{cursor:pointer}._7ar4Xq_activityActions{align-items:center;gap:12px;margin-top:-6px;font-size:12px;line-height:20px;display:flex}._7ar4Xq_error{color:var(--dsw-alias-label-error);margin:0;font-size:13px;line-height:22px}._7ar4Xq_activityContent,._7ar4Xq_controls,._7ar4Xq_answerField,._7ar4Xq_stepFocus,._7ar4Xq_prediction{flex-direction:column;display:flex}._7ar4Xq_activityContent{gap:16px}._7ar4Xq_prompt{color:var(--dsw-alias-label-primary);margin:0;font-size:16px;font-weight:400;line-height:28px}._7ar4Xq_explorer{flex-direction:column;gap:16px;min-width:0;display:flex}._7ar4Xq_controls{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:14px 24px;display:grid}._7ar4Xq_rangeField{min-width:0;color:var(--dsw-alias-label-secondary);font-size:13px}._7ar4Xq_rangeHeader{justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px;display:flex}._7ar4Xq_rangeHeader label{color:var(--dsw-alias-label-primary);font-weight:500}._7ar4Xq_rangeHeader output{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;font-size:14px;font-weight:650}._7ar4Xq_rangeControl{grid-template-rows:30px 16px;grid-template-columns:28px minmax(0,1fr) 28px;align-items:center;column-gap:9px;display:grid}._7ar4Xq_stepButton{appearance:none;border:1px solid var(--dsw-alias-border-l3);width:28px;height:28px;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer;background:0 0;border-radius:7px;padding:0;font-size:17px;line-height:26px}._7ar4Xq_stepButton:hover:not(:disabled){border-color:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-state-business-primary)}._7ar4Xq_stepButton:disabled{cursor:default;opacity:.35}._7ar4Xq_rangeInput{appearance:none;background:linear-gradient(to right, var(--dsw-alias-border-l4) 0 var(--range-low), var(--dsw-alias-state-business-primary) var(--range-low) var(--range-high), var(--dsw-alias-border-l4) var(--range-high) 100%);cursor:pointer;border-radius:999px;width:100%;height:4px}._7ar4Xq_rangeInput:disabled{cursor:default;opacity:.55}._7ar4Xq_rangeInput::-webkit-slider-runnable-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_rangeInput::-webkit-slider-thumb{appearance:none;border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:16px;height:16px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%;margin-top:-6px}._7ar4Xq_rangeInput::-moz-range-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_rangeInput::-moz-range-thumb{border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:10px;height:10px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%}._7ar4Xq_rangeInput:focus-visible,._7ar4Xq_compareRow input:focus-visible,._7ar4Xq_option input:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:4px}._7ar4Xq_rangeEnds{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;grid-column:2;justify-content:space-between;font-size:11px;line-height:16px;display:flex;position:relative}._7ar4Xq_rangeZero{position:absolute;transform:translate(-50%)}._7ar4Xq_chartRegion{min-width:0}._7ar4Xq_chart{width:100%;height:auto;display:block;overflow:visible}._7ar4Xq_plotFrame{fill:var(--dsw-alias-bg-layer-1);stroke:var(--dsw-alias-border-l3);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_gridLine{stroke:var(--dsw-alias-border-l1);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_zeroAxis{stroke:var(--dsw-alias-border-l4);stroke-width:1.25px}._7ar4Xq_tickLabel{fill:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;font-size:11px}._7ar4Xq_axisLabel{fill:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500}._7ar4Xq_curve{fill:none;stroke:var(--dsw-alias-state-business-primary);stroke-width:3px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}._7ar4Xq_curve[data-curve=\"1\"]{stroke:var(--dsw-alias-state-success-primary);stroke-dasharray:9 5}._7ar4Xq_curve[data-curve=\"2\"]{stroke:var(--dsw-alias-state-warn-primary);stroke-dasharray:2 6}._7ar4Xq_legend{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;gap:8px 14px;margin:0 0 5px 64px;padding:0;font-size:12px;list-style:none;display:flex}._7ar4Xq_legend li:before{content:\"\";border-top:3px solid var(--dsw-alias-state-business-primary);vertical-align:middle;width:18px;height:0;margin-right:5px;display:inline-block}._7ar4Xq_legend li[data-curve=\"1\"]:before{border-top-color:var(--dsw-alias-state-success-primary);border-top-style:dashed}._7ar4Xq_legend li[data-curve=\"2\"]:before{border-top-color:var(--dsw-alias-state-warn-primary);border-top-style:dotted}._7ar4Xq_answerField{color:var(--dsw-alias-label-secondary);gap:6px;font-size:13px}._7ar4Xq_answerField textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--dsw-alias-border-l2);min-height:52px;color:var(--dsw-alias-label-primary);font:inherit;background:0 0;border-radius:0;padding:5px 0;line-height:1.5}._7ar4Xq_answerField textarea:focus-visible,._7ar4Xq_prediction textarea:focus-visible,._7ar4Xq_inlineActivity button:focus-visible,._7ar4Xq_inlineStatus:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}._7ar4Xq_primaryRow,._7ar4Xq_navigation{gap:8px;display:flex}._7ar4Xq_primaryRow{justify-content:flex-start}._7ar4Xq_navigation{justify-content:space-between}._7ar4Xq_primaryButton,._7ar4Xq_ghostButton,._7ar4Xq_revealButton,._7ar4Xq_textButton{appearance:none;font:inherit;cursor:pointer;border-radius:8px;padding:4px 10px;font-size:13px;line-height:20px}._7ar4Xq_primaryButton,._7ar4Xq_revealButton{border:1px solid var(--dsw-alias-brand-primary);background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-on-primary,white)}._7ar4Xq_ghostButton{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}._7ar4Xq_textButton{color:var(--dsw-alias-brand-primary);background:0 0;border:0;border-radius:0;padding:2px 0}._7ar4Xq_primaryButton:disabled,._7ar4Xq_ghostButton:disabled,._7ar4Xq_revealButton:disabled,._7ar4Xq_textButton:disabled{cursor:default;opacity:.45}._7ar4Xq_stepMeta{color:var(--dsw-alias-label-tertiary);justify-content:space-between;align-items:center;font-size:12px;display:flex}._7ar4Xq_processMap{grid-template-columns:repeat(var(--process-step-count), minmax(0, 1fr));margin:0;padding:0;list-style:none;display:grid}._7ar4Xq_processStep{min-width:0;position:relative}._7ar4Xq_processStep:not(:last-child):after{z-index:0;background:var(--dsw-alias-border-l2);content:\"\";height:2px;position:absolute;top:13px;left:calc(50% + 16px);right:calc(16px - 50%)}._7ar4Xq_processStep[data-connector-complete]:after{background:var(--dsw-alias-state-business-primary)}._7ar4Xq_processStepButton{z-index:1;width:100%;min-width:0;color:var(--dsw-alias-label-tertiary);text-align:center;font:inherit;cursor:pointer;background:0 0;border:0;flex-direction:column;align-items:center;gap:6px;padding:0 4px;font-size:12px;line-height:18px;display:flex;position:relative}._7ar4Xq_processStepButton:disabled{cursor:default}._7ar4Xq_processNode{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l4);background:var(--dsw-alias-bg-layer-1);width:28px;height:28px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;border-radius:50%;place-items:center;font-size:12px;line-height:1;display:grid}._7ar4Xq_processTitle{-webkit-line-clamp:2;-webkit-box-orient:vertical;min-width:0;display:-webkit-box;overflow:hidden}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processNode{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-tertiary);color:var(--dsw-alias-state-business-primary)}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processTitle{color:var(--dsw-alias-label-primary);font-weight:500}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processNode{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-primary-inverted)}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processTitle{color:var(--dsw-alias-label-secondary)}._7ar4Xq_processMapVertical{grid-template-columns:1fr}._7ar4Xq_processMapVertical ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMapVertical ._7ar4Xq_processStepButton{text-align:left;flex-direction:row;align-items:flex-start;gap:10px;padding:4px 0 10px}._7ar4Xq_processMapVertical ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMapVertical ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_stepFocus{border-left:2px solid var(--dsw-alias-state-business-primary);gap:12px;padding-left:16px}._7ar4Xq_stepFocus h3,._7ar4Xq_prediction p{margin:0}._7ar4Xq_stepFocus h3{color:var(--dsw-alias-label-primary);font-size:16px;font-weight:500;line-height:24px}._7ar4Xq_stepFocus>._7ar4Xq_revealButton{align-self:flex-start}._7ar4Xq_prediction{border:0;gap:9px;margin:0;padding:0}._7ar4Xq_prediction legend{color:var(--dsw-alias-state-business-primary);margin-bottom:8px;font-size:12px;font-weight:500}._7ar4Xq_prediction textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--dsw-alias-border-l2);min-height:52px;color:var(--dsw-alias-label-primary);font:inherit;background:0 0;padding:5px 0}._7ar4Xq_predictionOptions{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:0 18px;display:grid}._7ar4Xq_option{border-bottom:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);cursor:pointer;align-items:flex-start;gap:8px;padding:7px 0;display:flex}._7ar4Xq_option[data-selected]{color:var(--dsw-alias-label-primary)}._7ar4Xq_option input{accent-color:var(--dsw-alias-state-business-primary);margin-top:3px}._7ar4Xq_revealed{color:var(--dsw-alias-label-secondary);line-height:1.6}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) minmax(16px,36px) 24px minmax(16px,36px) minmax(0,1fr);align-items:center;display:grid}._7ar4Xq_compareHeader{color:var(--dsw-alias-label-secondary);padding-bottom:4px;font-size:13px}._7ar4Xq_compareHeader strong{min-width:0;font-weight:500}._7ar4Xq_compareHeader strong[data-side=left]{text-align:right;grid-column:1}._7ar4Xq_compareHeader strong[data-side=right]{text-align:left;grid-column:5}._7ar4Xq_compareHeaderLink{color:var(--dsw-alias-label-tertiary);text-align:center;grid-column:3}._7ar4Xq_compareRows{min-width:0}._7ar4Xq_compareRow{cursor:pointer;background:0 0;min-width:0;padding:12px 0;position:relative}._7ar4Xq_compareRow+._7ar4Xq_compareRow{border-top:1px solid var(--dsw-alias-border-l2)}._7ar4Xq_compareLine{background:var(--dsw-alias-border-l3);height:1px}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareLine{background:var(--dsw-alias-state-business-primary);height:2px}._7ar4Xq_compareSelector{place-items:center;display:grid}._7ar4Xq_compareSelector input{width:16px;height:16px;accent-color:var(--dsw-alias-state-business-primary);margin:0}._7ar4Xq_compareItem{min-width:0;color:var(--dsw-alias-label-primary);padding:0 5px;font-size:13px;line-height:1.5}._7ar4Xq_compareItem[data-side=left]{text-align:right}._7ar4Xq_compareItem[data-side=right]{text-align:left}._7ar4Xq_compareItem strong{font-weight:500}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareItem strong{color:var(--dsw-alias-state-business-primary)}._7ar4Xq_compareItem p{color:var(--dsw-alias-label-tertiary);margin:4px 0 0}._7ar4Xq_emptyCell{color:var(--dsw-alias-label-tertiary);padding:0 5px}._7ar4Xq_emptyCell[data-side=left]{text-align:right}._7ar4Xq_emptyCell[data-side=right]{text-align:left}._7ar4Xq_rowPrompt{max-width:80%;color:var(--dsw-alias-label-tertiary);text-align:center;grid-column:1/6;justify-self:center;margin-top:6px;font-size:11px;line-height:17px}._7ar4Xq_inlineStatus{width:max-content;max-width:100%;color:var(--dsw-alias-label-tertiary);text-align:left;font:inherit;background:0 0;border:0;align-items:center;gap:8px;margin:0;padding:0;font-size:13px;line-height:22px;display:flex}._7ar4Xq_runningDot{background:var(--dsw-alias-brand-primary);border-radius:50%;flex:none;width:6px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_pulse}._7ar4Xq_skeletonLine{background:var(--dsw-alias-border-l2);border-radius:999px;width:64px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_skeletonPulse}._7ar4Xq_inlineResult{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;align-items:baseline;gap:7px;margin:0;font-size:13px;line-height:22px;display:flex}._7ar4Xq_inlineFallback{flex-direction:column;gap:4px;display:flex}._7ar4Xq_fallbackText{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:22px}._7ar4Xq_resultMark{color:var(--dsw-alias-label-success,var(--dsw-alias-brand-primary))}._7ar4Xq_resultEvidence{color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}._7ar4Xq_resultAnswer{color:var(--dsw-alias-label-tertiary)}@keyframes _7ar4Xq_pulse{0%,to{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}@keyframes _7ar4Xq_skeletonPulse{0%,to{opacity:.35}50%{opacity:.75}}@media (width<=560px){._7ar4Xq_processMap{grid-template-columns:1fr}._7ar4Xq_processMap ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMap ._7ar4Xq_processStepButton{text-align:left;flex-direction:row;align-items:flex-start;gap:10px;padding:4px 0 10px}._7ar4Xq_processMap ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMap ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) 12px 22px 12px minmax(0,1fr)}._7ar4Xq_rowPrompt{max-width:100%}}@media (width<=420px){._7ar4Xq_legend{margin-left:56px}._7ar4Xq_stepFocus{padding-left:12px}}@media (prefers-reduced-motion:reduce){._7ar4Xq_runningDot,._7ar4Xq_skeletonLine{animation:none}}";
+		const css = "._7ar4Xq_inlineActivity{min-width:0;color:var(--dsw-alias-label-primary);flex-direction:column;gap:16px;font-size:16px;line-height:28px;display:flex}._7ar4Xq_scaffold{color:var(--dsw-alias-label-secondary);align-self:flex-start;font-size:13px;line-height:22px}._7ar4Xq_scaffold summary{cursor:pointer}._7ar4Xq_activityActions{align-items:center;gap:12px;margin-top:-6px;font-size:12px;line-height:20px;display:flex}._7ar4Xq_error{color:var(--dsw-alias-label-error);margin:0;font-size:13px;line-height:22px}._7ar4Xq_activityContent,._7ar4Xq_controls,._7ar4Xq_answerField,._7ar4Xq_stepFocus,._7ar4Xq_prediction{flex-direction:column;display:flex}._7ar4Xq_activityContent{gap:16px}._7ar4Xq_prompt{color:var(--dsw-alias-label-primary);margin:0;font-size:16px;font-weight:400;line-height:28px}._7ar4Xq_explorer{flex-direction:column;gap:16px;min-width:0;display:flex}._7ar4Xq_controls{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:14px 24px;display:grid}._7ar4Xq_rangeField{min-width:0;color:var(--dsw-alias-label-secondary);font-size:13px}._7ar4Xq_rangeHeader{justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px;display:flex}._7ar4Xq_rangeHeader label{color:var(--dsw-alias-label-primary);font-weight:500}._7ar4Xq_rangeHeader output{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;font-size:14px;font-weight:650}._7ar4Xq_rangeControl{grid-template-rows:30px 16px;grid-template-columns:28px minmax(0,1fr) 28px;align-items:center;column-gap:9px;display:grid}._7ar4Xq_stepButton{appearance:none;border:1px solid var(--dsw-alias-border-l3);width:28px;height:28px;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer;background:0 0;border-radius:7px;padding:0;font-size:17px;line-height:26px}._7ar4Xq_stepButton:hover:not(:disabled){border-color:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-state-business-primary)}._7ar4Xq_stepButton:disabled{cursor:default;opacity:.35}._7ar4Xq_rangeInput{appearance:none;background:linear-gradient(to right, var(--dsw-alias-border-l4) 0 var(--range-low), var(--dsw-alias-state-business-primary) var(--range-low) var(--range-high), var(--dsw-alias-border-l4) var(--range-high) 100%);cursor:pointer;border-radius:999px;width:100%;height:4px}._7ar4Xq_rangeInput:disabled{cursor:default;opacity:.55}._7ar4Xq_rangeInput::-webkit-slider-runnable-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_rangeInput::-webkit-slider-thumb{appearance:none;border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:16px;height:16px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%;margin-top:-6px}._7ar4Xq_rangeInput::-moz-range-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_rangeInput::-moz-range-thumb{border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:10px;height:10px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%}._7ar4Xq_rangeInput:focus-visible,._7ar4Xq_compareRow input:focus-visible,._7ar4Xq_option input:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:4px}._7ar4Xq_rangeEnds{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;grid-column:2;justify-content:space-between;font-size:11px;line-height:16px;display:flex;position:relative}._7ar4Xq_rangeZero{position:absolute;transform:translate(-50%)}._7ar4Xq_chartRegion{min-width:0}._7ar4Xq_chart{width:100%;height:auto;display:block;overflow:visible}._7ar4Xq_plotFrame{fill:var(--dsw-alias-bg-layer-1);stroke:var(--dsw-alias-border-l3);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_gridLine{stroke:var(--dsw-alias-border-l1);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_zeroAxis{stroke:var(--dsw-alias-border-l4);stroke-width:1.25px}._7ar4Xq_tickLabel{fill:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;font-size:11px}._7ar4Xq_axisLabel{fill:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500}._7ar4Xq_curve{fill:none;stroke:var(--dsw-alias-state-business-primary);stroke-width:3px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}._7ar4Xq_curve[data-curve=\"1\"]{stroke:var(--dsw-alias-state-success-primary);stroke-dasharray:9 5}._7ar4Xq_curve[data-curve=\"2\"]{stroke:var(--dsw-alias-state-warn-primary);stroke-dasharray:2 6}._7ar4Xq_legend{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;gap:8px 14px;margin:0 0 5px 64px;padding:0;font-size:12px;list-style:none;display:flex}._7ar4Xq_legend li:before{content:\"\";border-top:3px solid var(--dsw-alias-state-business-primary);vertical-align:middle;width:18px;height:0;margin-right:5px;display:inline-block}._7ar4Xq_legend li[data-curve=\"1\"]:before{border-top-color:var(--dsw-alias-state-success-primary);border-top-style:dashed}._7ar4Xq_legend li[data-curve=\"2\"]:before{border-top-color:var(--dsw-alias-state-warn-primary);border-top-style:dotted}._7ar4Xq_answerField{color:var(--dsw-alias-label-secondary);gap:6px;font-size:13px}._7ar4Xq_answerField textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--dsw-alias-border-l2);min-height:52px;color:var(--dsw-alias-label-primary);font:inherit;background:0 0;border-radius:0;padding:5px 0;line-height:1.5}._7ar4Xq_answerField textarea:focus-visible,._7ar4Xq_prediction textarea:focus-visible,._7ar4Xq_inlineActivity button:focus-visible,._7ar4Xq_inlineStatus:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}._7ar4Xq_primaryRow,._7ar4Xq_navigation{gap:8px;display:flex}._7ar4Xq_primaryRow{justify-content:flex-start}._7ar4Xq_navigation{justify-content:space-between}._7ar4Xq_primaryButton,._7ar4Xq_ghostButton,._7ar4Xq_revealButton,._7ar4Xq_textButton{appearance:none;font:inherit;cursor:pointer;border-radius:8px;padding:4px 10px;font-size:13px;line-height:20px}._7ar4Xq_primaryButton,._7ar4Xq_revealButton{border:1px solid var(--dsw-alias-brand-primary);background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-on-primary,white)}._7ar4Xq_ghostButton{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}._7ar4Xq_textButton{color:var(--dsw-alias-brand-primary);background:0 0;border:0;border-radius:0;padding:2px 0}._7ar4Xq_primaryButton:disabled,._7ar4Xq_ghostButton:disabled,._7ar4Xq_revealButton:disabled,._7ar4Xq_textButton:disabled{cursor:default;opacity:.45}._7ar4Xq_stepMeta{color:var(--dsw-alias-label-tertiary);justify-content:space-between;align-items:center;font-size:12px;display:flex}._7ar4Xq_processMap{grid-template-columns:repeat(var(--process-step-count), minmax(0, 1fr));margin:0;padding:0;list-style:none;display:grid}._7ar4Xq_processStep{min-width:0;position:relative}._7ar4Xq_processStep:not(:last-child):after{z-index:0;background:var(--dsw-alias-border-l2);content:\"\";height:2px;position:absolute;top:13px;left:calc(50% + 16px);right:calc(16px - 50%)}._7ar4Xq_processStep[data-connector-complete]:after{background:var(--dsw-alias-state-business-primary)}._7ar4Xq_processStepButton{z-index:1;width:100%;min-width:0;color:var(--dsw-alias-label-tertiary);text-align:center;font:inherit;cursor:pointer;background:0 0;border:0;flex-direction:column;align-items:center;gap:6px;padding:0 4px;font-size:12px;line-height:18px;display:flex;position:relative}._7ar4Xq_processStepButton:disabled{cursor:default}._7ar4Xq_processNode{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l4);background:var(--dsw-alias-bg-layer-1);width:28px;height:28px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;border-radius:50%;place-items:center;font-size:12px;line-height:1;display:grid}._7ar4Xq_processTitle{-webkit-line-clamp:2;-webkit-box-orient:vertical;min-width:0;display:-webkit-box;overflow:hidden}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processNode{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-tertiary);color:var(--dsw-alias-state-business-primary)}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processTitle{color:var(--dsw-alias-label-primary);font-weight:500}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processNode{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-primary-inverted)}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processTitle{color:var(--dsw-alias-label-secondary)}._7ar4Xq_processMapVertical{grid-template-columns:1fr}._7ar4Xq_processMapVertical ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMapVertical ._7ar4Xq_processStepButton{text-align:left;flex-direction:row;align-items:flex-start;gap:10px;padding:4px 0 10px}._7ar4Xq_processMapVertical ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMapVertical ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_stepFocus{border-left:2px solid var(--dsw-alias-state-business-primary);gap:12px;padding-left:16px}._7ar4Xq_stepFocus h3,._7ar4Xq_prediction p{margin:0}._7ar4Xq_stepFocus h3{color:var(--dsw-alias-label-primary);font-size:16px;font-weight:500;line-height:24px}._7ar4Xq_stepFocus>._7ar4Xq_revealButton{align-self:flex-start}._7ar4Xq_prediction{border:0;gap:9px;margin:0;padding:0}._7ar4Xq_prediction legend{color:var(--dsw-alias-state-business-primary);margin-bottom:8px;font-size:12px;font-weight:500}._7ar4Xq_prediction textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--dsw-alias-border-l2);min-height:52px;color:var(--dsw-alias-label-primary);font:inherit;background:0 0;padding:5px 0}._7ar4Xq_predictionOptions{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:0 18px;display:grid}._7ar4Xq_option{border-bottom:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);cursor:pointer;align-items:flex-start;gap:8px;padding:7px 0;display:flex}._7ar4Xq_option[data-selected]{color:var(--dsw-alias-label-primary)}._7ar4Xq_option input{accent-color:var(--dsw-alias-state-business-primary);margin-top:3px}._7ar4Xq_revealed{color:var(--dsw-alias-label-secondary);line-height:1.6}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) minmax(16px,36px) 24px minmax(16px,36px) minmax(0,1fr);align-items:center;display:grid}._7ar4Xq_compareHeader{color:var(--dsw-alias-label-secondary);padding-bottom:4px;font-size:13px}._7ar4Xq_compareHeader strong{min-width:0;font-weight:500}._7ar4Xq_compareHeader strong[data-side=left]{text-align:right;grid-column:1}._7ar4Xq_compareHeader strong[data-side=right]{text-align:left;grid-column:5}._7ar4Xq_compareHeaderLink{color:var(--dsw-alias-label-tertiary);text-align:center;grid-column:3}._7ar4Xq_compareRows{min-width:0}._7ar4Xq_compareRow{cursor:pointer;background:0 0;min-width:0;padding:12px 0;position:relative}._7ar4Xq_compareRow+._7ar4Xq_compareRow{border-top:1px solid var(--dsw-alias-border-l2)}._7ar4Xq_compareLine{background:var(--dsw-alias-border-l3);height:1px}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareLine{background:var(--dsw-alias-state-business-primary);height:2px}._7ar4Xq_compareSelector{place-items:center;display:grid}._7ar4Xq_compareSelector input{width:16px;height:16px;accent-color:var(--dsw-alias-state-business-primary);margin:0}._7ar4Xq_compareItem{min-width:0;color:var(--dsw-alias-label-primary);padding:0 5px;font-size:13px;line-height:1.5}._7ar4Xq_compareItem[data-side=left]{text-align:right}._7ar4Xq_compareItem[data-side=right]{text-align:left}._7ar4Xq_compareItem strong{font-weight:500}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareItem strong{color:var(--dsw-alias-state-business-primary)}._7ar4Xq_compareItem p{color:var(--dsw-alias-label-tertiary);margin:4px 0 0}._7ar4Xq_emptyCell{color:var(--dsw-alias-label-tertiary);padding:0 5px}._7ar4Xq_emptyCell[data-side=left]{text-align:right}._7ar4Xq_emptyCell[data-side=right]{text-align:left}._7ar4Xq_rowPrompt{max-width:80%;color:var(--dsw-alias-label-tertiary);text-align:center;grid-column:1/6;justify-self:center;margin-top:6px;font-size:11px;line-height:17px}._7ar4Xq_inlineStatus{width:max-content;max-width:100%;color:var(--dsw-alias-label-tertiary);text-align:left;font:inherit;background:0 0;border:0;align-items:center;gap:8px;margin:0;padding:0;font-size:13px;line-height:22px;display:flex}._7ar4Xq_runningDot{background:var(--dsw-alias-brand-primary);border-radius:50%;flex:none;width:6px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_pulse}._7ar4Xq_skeletonLine{background:var(--dsw-alias-border-l2);border-radius:999px;width:64px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_skeletonPulse}._7ar4Xq_inlineResult{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;align-items:baseline;gap:7px;margin:0;font-size:13px;line-height:22px;display:flex}._7ar4Xq_inlineFallback{flex-direction:column;gap:4px;display:flex}._7ar4Xq_fallbackText{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:22px}._7ar4Xq_resultMark{color:var(--dsw-alias-label-success,var(--dsw-alias-brand-primary))}._7ar4Xq_resultEvidence{color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}._7ar4Xq_resultAnswer{color:var(--dsw-alias-label-tertiary)}._7ar4Xq_round{min-width:0;color:var(--dsw-alias-label-primary);flex-direction:column;gap:14px;display:flex}._7ar4Xq_roundHeader{flex-direction:column;gap:3px;display:flex}._7ar4Xq_roundHeader span{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px}._7ar4Xq_roundHeader h2,._7ar4Xq_roundProcess h3,._7ar4Xq_roundStructure h3,._7ar4Xq_roundFeedback p{margin:0}._7ar4Xq_roundHeader h2{font-size:17px;font-weight:500;line-height:26px}._7ar4Xq_roundProcess{border-left:2px solid var(--dsw-alias-state-business-primary);grid-template-columns:30px minmax(0,1fr);gap:10px;padding:10px 0 10px 12px;display:grid}._7ar4Xq_roundNode{border:1px solid var(--dsw-alias-state-business-primary);width:28px;height:28px;color:var(--dsw-alias-state-business-primary);border-radius:50%;place-items:center;font-size:12px;display:grid}._7ar4Xq_roundProcess[data-final] ._7ar4Xq_roundNode{background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-primary-inverted)}._7ar4Xq_roundParameter,._7ar4Xq_roundParameterValues,._7ar4Xq_roundCurveList{flex-wrap:wrap;gap:8px;display:flex}._7ar4Xq_roundParameter{flex-direction:column}._7ar4Xq_roundParameterValues span,._7ar4Xq_roundCurveList span{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:4px 9px;font-size:12px;line-height:20px}._7ar4Xq_roundStructure{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;display:grid}._7ar4Xq_roundStructure h3{font-size:13px;font-weight:500}._7ar4Xq_roundAlignment{border-top:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);cursor:pointer;grid-column:1/3;grid-template-columns:20px 1fr 1fr;gap:8px;padding:8px 0;font-size:13px;display:grid}._7ar4Xq_roundAlignment input{accent-color:var(--dsw-alias-state-business-primary);margin-top:3px}._7ar4Xq_roundAlignment small{color:var(--dsw-alias-label-tertiary);grid-column:2/4}._7ar4Xq_roundAlignment[data-selected]{color:var(--dsw-alias-state-business-primary)}._7ar4Xq_roundFeedback{color:var(--dsw-alias-label-secondary);gap:8px;display:grid}._7ar4Xq_completedRound{min-width:0}._7ar4Xq_revealTransition{animation:.7s both _7ar4Xq_revealCurrentFrame}._7ar4Xq_round[data-round-state=completed] ._7ar4Xq_revealTransition,._7ar4Xq_round[data-round-state=ready_to_continue] ._7ar4Xq_revealTransition,._7ar4Xq_round[data-round-state=ack_submitting] ._7ar4Xq_revealTransition{animation:none}@keyframes _7ar4Xq_revealCurrentFrame{0%{opacity:.45;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes _7ar4Xq_pulse{0%,to{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}@keyframes _7ar4Xq_skeletonPulse{0%,to{opacity:.35}50%{opacity:.75}}@media (width<=560px){._7ar4Xq_processMap{grid-template-columns:1fr}._7ar4Xq_processMap ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMap ._7ar4Xq_processStepButton{text-align:left;flex-direction:row;align-items:flex-start;gap:10px;padding:4px 0 10px}._7ar4Xq_processMap ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMap ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) 12px 22px 12px minmax(0,1fr)}._7ar4Xq_rowPrompt{max-width:100%}}@media (width<=420px){._7ar4Xq_legend{margin-left:56px}._7ar4Xq_stepFocus{padding-left:12px}}@media (prefers-reduced-motion:reduce){._7ar4Xq_runningDot,._7ar4Xq_skeletonLine,._7ar4Xq_revealTransition{animation:none}}";
 		const tagId = "@dsh-portable/interactive-learning/LearningActivity.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -486,69 +845,82 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var LearningActivity_module_css_default = {
-			"stepFocus": "_7ar4Xq_stepFocus",
-			"curve": "_7ar4Xq_curve",
-			"error": "_7ar4Xq_error",
-			"runningDot": "_7ar4Xq_runningDot",
-			"tickLabel": "_7ar4Xq_tickLabel",
 			"answerField": "_7ar4Xq_answerField",
-			"chart": "_7ar4Xq_chart",
-			"rangeZero": "_7ar4Xq_rangeZero",
-			"plotFrame": "_7ar4Xq_plotFrame",
-			"compareLine": "_7ar4Xq_compareLine",
-			"emptyCell": "_7ar4Xq_emptyCell",
+			"revealCurrentFrame": "_7ar4Xq_revealCurrentFrame",
 			"resultAnswer": "_7ar4Xq_resultAnswer",
-			"primaryButton": "_7ar4Xq_primaryButton",
+			"runningDot": "_7ar4Xq_runningDot",
 			"textButton": "_7ar4Xq_textButton",
-			"inlineFallback": "_7ar4Xq_inlineFallback",
-			"resultEvidence": "_7ar4Xq_resultEvidence",
-			"fallbackText": "_7ar4Xq_fallbackText",
-			"resultMark": "_7ar4Xq_resultMark",
-			"inlineResult": "_7ar4Xq_inlineResult",
-			"ghostButton": "_7ar4Xq_ghostButton",
-			"controls": "_7ar4Xq_controls",
 			"compareRows": "_7ar4Xq_compareRows",
-			"activityActions": "_7ar4Xq_activityActions",
-			"pulse": "_7ar4Xq_pulse",
-			"skeletonPulse": "_7ar4Xq_skeletonPulse",
-			"option": "_7ar4Xq_option",
-			"processNode": "_7ar4Xq_processNode",
-			"zeroAxis": "_7ar4Xq_zeroAxis",
-			"rangeControl": "_7ar4Xq_rangeControl",
-			"compareHeaderLink": "_7ar4Xq_compareHeaderLink",
-			"gridLine": "_7ar4Xq_gridLine",
-			"chartRegion": "_7ar4Xq_chartRegion",
-			"rangeEnds": "_7ar4Xq_rangeEnds",
-			"processMap": "_7ar4Xq_processMap",
-			"explorer": "_7ar4Xq_explorer",
-			"processStepButton": "_7ar4Xq_processStepButton",
-			"rowPrompt": "_7ar4Xq_rowPrompt",
-			"axisLabel": "_7ar4Xq_axisLabel",
-			"rangeHeader": "_7ar4Xq_rangeHeader",
-			"activityContent": "_7ar4Xq_activityContent",
 			"compareSelector": "_7ar4Xq_compareSelector",
+			"roundStructure": "_7ar4Xq_roundStructure",
+			"activityActions": "_7ar4Xq_activityActions",
+			"primaryButton": "_7ar4Xq_primaryButton",
+			"processMapVertical": "_7ar4Xq_processMapVertical",
+			"fallbackText": "_7ar4Xq_fallbackText",
 			"compareItem": "_7ar4Xq_compareItem",
-			"legend": "_7ar4Xq_legend",
 			"navigation": "_7ar4Xq_navigation",
-			"primaryRow": "_7ar4Xq_primaryRow",
-			"compareRow": "_7ar4Xq_compareRow",
-			"prediction": "_7ar4Xq_prediction",
-			"revealed": "_7ar4Xq_revealed",
-			"skeletonLine": "_7ar4Xq_skeletonLine",
+			"rangeHeader": "_7ar4Xq_rangeHeader",
+			"zeroAxis": "_7ar4Xq_zeroAxis",
+			"compareHeader": "_7ar4Xq_compareHeader",
+			"roundCurveList": "_7ar4Xq_roundCurveList",
+			"rangeInput": "_7ar4Xq_rangeInput",
+			"compareLine": "_7ar4Xq_compareLine",
+			"curve": "_7ar4Xq_curve",
 			"inlineStatus": "_7ar4Xq_inlineStatus",
-			"stepButton": "_7ar4Xq_stepButton",
+			"rangeControl": "_7ar4Xq_rangeControl",
+			"roundFeedback": "_7ar4Xq_roundFeedback",
+			"skeletonPulse": "_7ar4Xq_skeletonPulse",
+			"roundNode": "_7ar4Xq_roundNode",
+			"chart": "_7ar4Xq_chart",
+			"processNode": "_7ar4Xq_processNode",
+			"compareHeaderLink": "_7ar4Xq_compareHeaderLink",
+			"compareRow": "_7ar4Xq_compareRow",
+			"resultMark": "_7ar4Xq_resultMark",
 			"stepMeta": "_7ar4Xq_stepMeta",
-			"prompt": "_7ar4Xq_prompt",
-			"processTitle": "_7ar4Xq_processTitle",
+			"inlineResult": "_7ar4Xq_inlineResult",
+			"resultEvidence": "_7ar4Xq_resultEvidence",
+			"pulse": "_7ar4Xq_pulse",
+			"option": "_7ar4Xq_option",
+			"tickLabel": "_7ar4Xq_tickLabel",
+			"error": "_7ar4Xq_error",
+			"round": "_7ar4Xq_round",
+			"completedRound": "_7ar4Xq_completedRound",
 			"inlineActivity": "_7ar4Xq_inlineActivity",
-			"predictionOptions": "_7ar4Xq_predictionOptions",
+			"rowPrompt": "_7ar4Xq_rowPrompt",
+			"processStepButton": "_7ar4Xq_processStepButton",
+			"revealed": "_7ar4Xq_revealed",
+			"roundHeader": "_7ar4Xq_roundHeader",
+			"gridLine": "_7ar4Xq_gridLine",
+			"revealTransition": "_7ar4Xq_revealTransition",
+			"roundParameterValues": "_7ar4Xq_roundParameterValues",
+			"roundParameter": "_7ar4Xq_roundParameter",
+			"primaryRow": "_7ar4Xq_primaryRow",
+			"roundAlignment": "_7ar4Xq_roundAlignment",
+			"processStep": "_7ar4Xq_processStep",
+			"axisLabel": "_7ar4Xq_axisLabel",
 			"rangeField": "_7ar4Xq_rangeField",
+			"plotFrame": "_7ar4Xq_plotFrame",
+			"stepFocus": "_7ar4Xq_stepFocus",
+			"prediction": "_7ar4Xq_prediction",
+			"explorer": "_7ar4Xq_explorer",
+			"processTitle": "_7ar4Xq_processTitle",
+			"skeletonLine": "_7ar4Xq_skeletonLine",
+			"inlineFallback": "_7ar4Xq_inlineFallback",
+			"legend": "_7ar4Xq_legend",
+			"roundProcess": "_7ar4Xq_roundProcess",
+			"processMap": "_7ar4Xq_processMap",
+			"rangeEnds": "_7ar4Xq_rangeEnds",
+			"prompt": "_7ar4Xq_prompt",
+			"controls": "_7ar4Xq_controls",
 			"scaffold": "_7ar4Xq_scaffold",
 			"revealButton": "_7ar4Xq_revealButton",
-			"rangeInput": "_7ar4Xq_rangeInput",
-			"processStep": "_7ar4Xq_processStep",
-			"compareHeader": "_7ar4Xq_compareHeader",
-			"processMapVertical": "_7ar4Xq_processMapVertical"
+			"predictionOptions": "_7ar4Xq_predictionOptions",
+			"stepButton": "_7ar4Xq_stepButton",
+			"activityContent": "_7ar4Xq_activityContent",
+			"emptyCell": "_7ar4Xq_emptyCell",
+			"rangeZero": "_7ar4Xq_rangeZero",
+			"chartRegion": "_7ar4Xq_chartRegion",
+			"ghostButton": "_7ar4Xq_ghostButton"
 		};
 		//#endregion
 		//#region src/client/ActivityFrame.tsx
@@ -803,6 +1175,106 @@ window.__ModuleLoader__.load({
 			const shifted = current + parameter.step * direction;
 			const clamped = Math.min(parameter.max, Math.max(parameter.min, shifted));
 			return Number(clamped.toPrecision(12));
+		}
+		/** V2 current-frame parameter visual. It deliberately owns no teaching prompt or answer. */
+		function ParameterRoundVisual({ payload, disabled, t }) {
+			const chartId = (0, react.useId)();
+			const [values, setValues] = (0, react.useState)(() => Object.fromEntries(payload.parameters.map((parameter) => [parameter.id, parameter.initial])));
+			const fullPayload = payload;
+			const stableDomain = (0, react.useMemo)(() => stableYDomain(fullPayload), [fullPayload]);
+			const yDomain = (0, react.useMemo)(() => yDomainForState(fullPayload, values, stableDomain), [
+				fullPayload,
+				stableDomain,
+				values
+			]);
+			const geometry = (0, react.useMemo)(() => chartGeometry(640), []);
+			const paths = (0, react.useMemo)(() => pathsFor(fullPayload, values, yDomain, geometry), [
+				fullPayload,
+				geometry,
+				values,
+				yDomain
+			]);
+			const description = t("chartDescription", {
+				parameters: payload.parameters.map((parameter) => `${parameter.label} ${formatNumber(values[parameter.id] ?? parameter.initial)}`).join("; "),
+				xAxis: `${payload.xAxis.label ?? "x"} ${formatNumber(payload.xAxis.min)}–${formatNumber(payload.xAxis.max)}`,
+				yAxis: `y ${formatNumber(yDomain.min)}–${formatNumber(yDomain.max)}`,
+				curves: payload.curves.map((curve) => curve.label).join("; ")
+			});
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningActivity_module_css_default.explorer,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: LearningActivity_module_css_default.controls,
+					children: payload.parameters.map((parameter) => {
+						const value = values[parameter.id] ?? parameter.initial;
+						const inputId = `${chartId}-${parameter.id}`;
+						return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							className: LearningActivity_module_css_default.rangeField,
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: LearningActivity_module_css_default.rangeHeader,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
+									htmlFor: inputId,
+									children: parameter.label
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("output", {
+									htmlFor: inputId,
+									"aria-live": "polite",
+									children: formatNumber(value)
+								})]
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+								id: inputId,
+								className: LearningActivity_module_css_default.rangeInput,
+								style: rangeStyle(parameter, value),
+								type: "range",
+								min: parameter.min,
+								max: parameter.max,
+								step: parameter.step,
+								value,
+								disabled,
+								onChange: (event) => setValues((current) => ({
+									...current,
+									[parameter.id]: Number(event.target.value)
+								}))
+							})]
+						}, parameter.id);
+					})
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: LearningActivity_module_css_default.chartRegion,
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
+						className: LearningActivity_module_css_default.legend,
+						children: payload.curves.map((curve, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", {
+							"data-curve": index,
+							children: curve.label
+						}, curve.id))
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+						className: LearningActivity_module_css_default.chart,
+						viewBox: `0 0 ${geometry.width} ${geometry.height}`,
+						role: "img",
+						"aria-labelledby": `${chartId}-title ${chartId}-description`,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("title", {
+								id: `${chartId}-title`,
+								children: t("chartLabel")
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("desc", {
+								id: `${chartId}-description`,
+								children: description
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+								className: LearningActivity_module_css_default.plotFrame,
+								x: geometry.left,
+								y: geometry.top,
+								width: geometry.plotWidth,
+								height: geometry.plotHeight,
+								rx: "6"
+							}),
+							paths.map((path, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+								className: LearningActivity_module_css_default.curve,
+								"data-curve": index,
+								d: path
+							}, payload.curves[index]?.id))
+						]
+					})]
+				})]
+			});
 		}
 		function ParameterExplorer({ activity, busy, onSubmit, t }) {
 			const payload = activity.payload;
@@ -1388,11 +1860,437 @@ window.__ModuleLoader__.load({
 			return Renderer === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Renderer, { ...props });
 		}
 		//#endregion
+		//#region src/client/roundState.ts
+		function initialRoundState(phase, completed = false) {
+			if (completed) return {
+				status: "completed",
+				error: null
+			};
+			return {
+				status: phase === "question" ? "awaiting_input" : "animating",
+				error: null
+			};
+		}
+		/**
+		* The round lifecycle is deliberately explicit. UI animation events may move a
+		* reveal to `ready_to_continue`, but only the Host response acknowledgement can
+		* mark it completed.
+		*/
+		function roundReducer(state, event) {
+			switch (event.type) {
+				case "SUBMIT_ANSWER": return state.status === "awaiting_input" ? {
+					status: "submitting_answer",
+					error: null
+				} : state;
+				case "ANSWER_ACCEPTED": return state.status === "submitting_answer" ? {
+					status: "answer_accepted",
+					error: null
+				} : state;
+				case "WAIT_FOR_REVEAL": return state.status === "answer_accepted" ? {
+					status: "awaiting_model_reveal",
+					error: null
+				} : state;
+				case "START_REVEAL": return state.status === "awaiting_model_reveal" ? {
+					status: "animating",
+					error: null
+				} : state;
+				case "ANIMATION_FINISHED": return state.status === "animating" ? {
+					status: "ready_to_continue",
+					error: null
+				} : state;
+				case "SUBMIT_CONTINUE": return state.status === "ready_to_continue" ? {
+					status: "ack_submitting",
+					error: null
+				} : state;
+				case "ACK_ACCEPTED": return state.status === "ack_submitting" ? {
+					status: "completed",
+					error: null
+				} : state;
+				case "SUBMISSION_FAILED":
+					if (state.status === "submitting_answer") return {
+						status: "awaiting_input",
+						error: event.message
+					};
+					if (state.status === "ack_submitting") return {
+						status: "ready_to_continue",
+						error: event.message
+					};
+					return state;
+			}
+		}
+		//#endregion
+		//#region src/client/lifecycle.ts
+		const listeners = /* @__PURE__ */ new Set();
+		const emittedCallEvents = /* @__PURE__ */ new Set();
+		function subscribeLearningUiLifecycle(listener) {
+			listeners.add(listener);
+			return () => listeners.delete(listener);
+		}
+		function emitLearningUiLifecycle(event) {
+			const projected = {
+				...event,
+				at: Date.now()
+			};
+			for (const listener of listeners) listener(projected);
+		}
+		function emitLearningCallLifecycle(name, projection) {
+			if (projection.callId === void 0) return;
+			const key = `${name}:${projection.callId}`;
+			if (emittedCallEvents.has(key)) return;
+			emittedCallEvents.add(key);
+			emitLearningUiLifecycle({
+				name,
+				...projection
+			});
+		}
+		//#endregion
+		//#region src/client/RoundActivity.tsx
+		function readStoredRound(storageKey) {
+			if (storageKey === void 0 || typeof sessionStorage === "undefined") return {};
+			try {
+				return JSON.parse(sessionStorage.getItem(`dsh-learning/round@2:${storageKey}`) ?? "{}");
+			} catch {
+				return {};
+			}
+		}
+		function writeStoredRound(storageKey, update) {
+			if (storageKey === void 0 || typeof sessionStorage === "undefined") return;
+			const key = `dsh-learning/round@2:${storageKey}`;
+			sessionStorage.setItem(key, JSON.stringify({
+				...readStoredRound(storageKey),
+				...update
+			}));
+		}
+		function ProcessVisual({ activity, final }) {
+			if (activity.visual?.kind !== "process") return null;
+			const frame = activity.phase === "question" ? activity.visual.frame : final ? activity.visual.after : activity.visual.before;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+				className: LearningActivity_module_css_default.roundProcess,
+				"data-final": final || void 0,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+					className: LearningActivity_module_css_default.roundNode,
+					children: activity.seq + 1
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: frame.title }), frame.content === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: frame.content })] })]
+			});
+		}
+		function ParameterVisual({ activity, t }) {
+			if (activity.visual?.kind !== "parameter") return null;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ParameterRoundVisual, {
+				payload: activity.visual,
+				disabled: activity.phase === "reveal",
+				t
+			});
+		}
+		function StructureVisual({ activity }) {
+			if (activity.visual?.kind !== "structure") return null;
+			const [selected, setSelected] = (0, react.useState)(() => /* @__PURE__ */ new Set());
+			const left = new Map(activity.visual.left.items.map((item) => [item.id, item]));
+			const right = new Map(activity.visual.right.items.map((item) => [item.id, item]));
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+				className: LearningActivity_module_css_default.roundStructure,
+				"aria-label": `${activity.visual.left.title} / ${activity.visual.right.title}`,
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: activity.visual.left.title }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", { children: activity.visual.right.title }),
+					activity.visual.alignments.map((alignment) => {
+						const leftItem = alignment.leftId === void 0 ? void 0 : left.get(alignment.leftId);
+						const rightItem = alignment.rightId === void 0 ? void 0 : right.get(alignment.rightId);
+						const label = alignment.prompt ?? `${leftItem?.label ?? "—"} / ${rightItem?.label ?? "—"}`;
+						return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+							className: LearningActivity_module_css_default.roundAlignment,
+							"data-selected": selected.has(alignment.id) || void 0,
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+									type: "checkbox",
+									checked: selected.has(alignment.id),
+									disabled: activity.phase === "reveal",
+									onChange: () => setSelected((current) => {
+										const next = new Set(current);
+										if (next.has(alignment.id)) next.delete(alignment.id);
+										else next.add(alignment.id);
+										return next;
+									})
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: leftItem?.label ?? "—" }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: rightItem?.label ?? "—" }),
+								alignment.prompt === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", { children: label })
+							]
+						}, alignment.id);
+					})
+				]
+			});
+		}
+		function CurrentVisual({ activity, final, t }) {
+			if (activity.visual === void 0) return null;
+			if (activity.visual.kind === "process") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ProcessVisual, {
+				activity,
+				final
+			});
+			if (activity.visual.kind === "parameter") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ParameterVisual, {
+				activity,
+				t
+			});
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StructureVisual, { activity });
+		}
+		function QuestionInput({ activity, disabled, answer, setAnswer }) {
+			if (activity.input.kind === "single_choice") return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("fieldset", {
+				className: LearningActivity_module_css_default.prediction,
+				disabled,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("legend", { children: activity.prompt }), activity.input.options.map((option) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+					className: LearningActivity_module_css_default.option,
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+						type: "radio",
+						name: `learning-round-${activity.seq}`,
+						value: option.id,
+						checked: answer === option.id,
+						onChange: () => setAnswer(option.id)
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: option.label })]
+				}, option.id))]
+			});
+			if (activity.input.kind === "number") return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+				className: LearningActivity_module_css_default.answerField,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: activity.prompt }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+					type: "number",
+					value: answer,
+					min: activity.input.min,
+					max: activity.input.max,
+					step: activity.input.step,
+					disabled,
+					onChange: (event) => setAnswer(event.target.value)
+				})]
+			});
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+				className: LearningActivity_module_css_default.answerField,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: activity.prompt }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
+					value: answer,
+					placeholder: activity.input.placeholder,
+					maxLength: activity.input.maxLength,
+					disabled,
+					onChange: (event) => setAnswer(event.target.value)
+				})]
+			});
+		}
+		function RoundActivity({ activity, completed = false, initialAnswer, storageKey, t, onSubmitAnswer, onContinue, onCancel }) {
+			const stored = (0, react.useRef)(readStoredRound(storageKey)).current;
+			const [state, dispatch] = (0, react.useReducer)(roundReducer, void 0, () => {
+				if (completed || stored.completed === true) return initialRoundState(activity.phase, true);
+				if (activity.phase === "reveal" && stored.animationComplete === true) return {
+					status: "ready_to_continue",
+					error: null
+				};
+				return initialRoundState(activity.phase);
+			});
+			const [answer, setAnswer] = (0, react.useState)(() => stored.draft ?? (typeof initialAnswer === "string" || typeof initialAnswer === "number" ? String(initialAnswer) : ""));
+			const ackStarted = (0, react.useRef)(false);
+			const cancelStarted = (0, react.useRef)(false);
+			const lifecycleStarted = (0, react.useRef)(false);
+			const revealElement = (0, react.useRef)(null);
+			const reducedMotion = typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+			(0, react.useEffect)(() => {
+				emitLearningUiLifecycle({
+					name: "learning.ui.presented",
+					phase: activity.phase,
+					seq: activity.seq,
+					storageKey
+				});
+			}, [
+				activity.phase,
+				activity.seq,
+				storageKey
+			]);
+			(0, react.useEffect)(() => {
+				if (activity.phase === "reveal" && state.status === "animating" && !lifecycleStarted.current) {
+					lifecycleStarted.current = true;
+					emitLearningUiLifecycle({
+						name: "learning.animation.started",
+						phase: activity.phase,
+						seq: activity.seq,
+						storageKey
+					});
+				}
+			}, [
+				activity.phase,
+				activity.seq,
+				state.status,
+				storageKey
+			]);
+			(0, react.useEffect)(() => {
+				if (activity.phase === "reveal" && state.status === "animating" && reducedMotion) {
+					emitLearningUiLifecycle({
+						name: "learning.animation.finished",
+						phase: activity.phase,
+						seq: activity.seq,
+						storageKey
+					});
+					writeStoredRound(storageKey, { animationComplete: true });
+					dispatch({ type: "ANIMATION_FINISHED" });
+				}
+			}, [
+				activity.phase,
+				activity.seq,
+				reducedMotion,
+				state.status,
+				storageKey
+			]);
+			(0, react.useEffect)(() => {
+				if (activity.phase === "question" && state.status === "awaiting_input") writeStoredRound(storageKey, { draft: answer });
+			}, [
+				activity.phase,
+				answer,
+				state.status,
+				storageKey
+			]);
+			(0, react.useEffect)(() => {
+				if (activity.phase === "reveal" && state.status === "ready_to_continue") writeStoredRound(storageKey, { animationComplete: true });
+				if (state.status === "completed") writeStoredRound(storageKey, { completed: true });
+			}, [
+				activity.phase,
+				state.status,
+				storageKey
+			]);
+			const finishAnimation = () => {
+				if (state.status === "animating") {
+					emitLearningUiLifecycle({
+						name: "learning.animation.finished",
+						phase: activity.phase,
+						seq: activity.seq,
+						storageKey
+					});
+					writeStoredRound(storageKey, { animationComplete: true });
+					dispatch({ type: "ANIMATION_FINISHED" });
+				}
+			};
+			(0, react.useEffect)(() => {
+				const element = revealElement.current;
+				if (element === null || activity.phase !== "reveal" || state.status !== "animating") return;
+				element.addEventListener("animationend", finishAnimation);
+				return () => element.removeEventListener("animationend", finishAnimation);
+			}, [
+				activity.phase,
+				state.status,
+				storageKey
+			]);
+			const submitAnswer = () => {
+				if (activity.phase !== "question" || onSubmitAnswer === void 0 || answer.trim() === "") return;
+				dispatch({ type: "SUBMIT_ANSWER" });
+				const value = activity.input.kind === "number" ? Number(answer) : answer;
+				onSubmitAnswer(value, { answer: value }).then(() => {
+					dispatch({ type: "ANSWER_ACCEPTED" });
+					dispatch({ type: "WAIT_FOR_REVEAL" });
+				}).catch((cause) => dispatch({
+					type: "SUBMISSION_FAILED",
+					message: cause instanceof Error ? cause.message : String(cause)
+				}));
+			};
+			const submitContinue = () => {
+				if (activity.phase !== "reveal" || onContinue === void 0 || state.status !== "ready_to_continue" || ackStarted.current) return;
+				ackStarted.current = true;
+				dispatch({ type: "SUBMIT_CONTINUE" });
+				onContinue({
+					completed: true,
+					reducedMotion: reducedMotion || void 0
+				}).then(() => {
+					dispatch({ type: "ACK_ACCEPTED" });
+					emitLearningUiLifecycle({
+						name: "learning.continue.accepted",
+						phase: activity.phase,
+						seq: activity.seq,
+						storageKey
+					});
+				}).catch((cause) => dispatch({
+					type: "SUBMISSION_FAILED",
+					message: cause instanceof Error ? cause.message : String(cause)
+				})).finally(() => {
+					ackStarted.current = false;
+				});
+			};
+			const final = activity.phase === "reveal" && state.status !== "animating";
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+				className: LearningActivity_module_css_default.round,
+				"data-round-state": state.status,
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+						className: LearningActivity_module_css_default.roundHeader,
+						children: [activity.focus.progress === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("roundProgress", {
+							current: activity.focus.progress.current,
+							total: activity.focus.progress.total ?? "?"
+						}) }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", { children: activity.focus.title })]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						ref: revealElement,
+						className: activity.phase === "reveal" ? LearningActivity_module_css_default.revealTransition : void 0,
+						"data-reveal-transition": activity.phase === "reveal" || void 0,
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CurrentVisual, {
+							activity,
+							final,
+							t
+						})
+					}),
+					activity.phase === "question" ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(QuestionInput, {
+							activity,
+							disabled: state.status !== "awaiting_input",
+							answer,
+							setAnswer
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							className: LearningActivity_module_css_default.primaryButton,
+							type: "button",
+							disabled: state.status !== "awaiting_input" || answer.trim() === "",
+							onClick: submitAnswer,
+							children: state.status === "submitting_answer" ? t("submitting") : t("submitAnswer")
+						}),
+						state.status === "awaiting_model_reveal" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+							role: "status",
+							children: t("awaitingReveal")
+						}) : null
+					] }) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+						className: LearningActivity_module_css_default.roundFeedback,
+						"data-verdict": activity.feedback.verdict,
+						children: [
+							activity.feedback.learnerEcho === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: activity.feedback.learnerEcho }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: activity.feedback.explanation }),
+							activity.feedback.answer === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: activity.feedback.answer })
+						]
+					}), state.status === "completed" ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+						className: LearningActivity_module_css_default.primaryButton,
+						type: "button",
+						disabled: state.status !== "ready_to_continue",
+						onClick: submitContinue,
+						children: activity.advance.label ?? t("continue")
+					})] }),
+					state.error === null ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningActivity_module_css_default.error,
+						role: "alert",
+						children: state.error
+					}),
+					state.status === "completed" || onCancel === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+						className: LearningActivity_module_css_default.textButton,
+						type: "button",
+						disabled: cancelStarted.current || state.status === "submitting_answer" || state.status === "ack_submitting",
+						onClick: () => {
+							if (cancelStarted.current) return;
+							cancelStarted.current = true;
+							onCancel().catch((cause) => dispatch({
+								type: "SUBMISSION_FAILED",
+								message: cause instanceof Error ? cause.message : String(cause)
+							})).finally(() => {
+								cancelStarted.current = false;
+							});
+						},
+						children: t("cancel")
+					})
+				]
+			});
+		}
+		//#endregion
 		//#region src/client/LearningComposer.tsx
 		function envelopeOf(wait) {
 			if (wait.payload.questions.length !== 1) return void 0;
 			const question = wait.payload.questions[0];
 			if (question === void 0) return void 0;
+			const v2 = decodeLearningWaitDetail(question.detail);
+			if (v2 !== void 0 && decodeLearningWaitQuestionId(question.id) === v2.waitId) return v2;
 			return decodeLearningQuestionId(question.id) ?? decodeLearningDetail(question.detail);
 		}
 		/** Pure composer-chain selector: only package-owned question envelopes are claimed. */
@@ -1414,27 +2312,87 @@ window.__ModuleLoader__.load({
 			const [busy, setBusy] = (0, react.useState)(false);
 			const [error, setError] = (0, react.useState)(null);
 			if (envelope === void 0) return null;
-			const respond = (response) => {
+			const send = async (response) => {
 				const question = matched.payload.questions[0];
 				if (question === void 0) return;
 				setBusy(true);
 				setError(null);
-				matched.respond({
-					ok: true,
-					value: {
-						sessionId: matched.sessionId,
-						answer: { answers: [{
-							id: question.id,
-							selected: [],
-							custom: JSON.stringify(response)
-						}] }
-					}
-				}).then((receipt) => {
-					if (!receipt.accepted) throw new Error(receipt.reason);
-				}).catch((cause) => {
+				try {
+					const accepted = await matched.respond({
+						ok: true,
+						value: {
+							sessionId: matched.sessionId,
+							answer: { answers: [{
+								id: question.id,
+								selected: [],
+								custom: JSON.stringify(response)
+							}] }
+						}
+					});
+					if (!accepted.accepted) throw new Error(accepted.reason);
+				} catch (cause) {
 					setBusy(false);
 					setError(t("error", { message: cause instanceof Error ? cause.message : String(cause) }));
+					throw cause;
+				}
+			};
+			if ("waitId" in envelope) {
+				const stableReceiptId = `receipt_${envelope.waitId}`;
+				const common = {
+					protocol: RESPONSE_PROTOCOL_V2,
+					activityId: envelope.activityId,
+					lessonToken: envelope.lessonToken,
+					roundToken: envelope.roundToken,
+					seq: envelope.seq
+				};
+				const storageKey = `${envelope.waitId}:${envelope.activityId}:${envelope.phase}:${envelope.seq}`;
+				const submitAnswer = async (answer, interactionState) => {
+					await send({
+						...common,
+						phase: "question",
+						action: "submit",
+						answer,
+						interactionState,
+						receiptId: stableReceiptId
+					});
+				};
+				const continueReveal = async (animation) => {
+					await send({
+						...common,
+						phase: "reveal",
+						action: "continue",
+						animation,
+						receiptId: stableReceiptId
+					});
+				};
+				const cancelRound = async () => {
+					await send(envelope.phase === "question" ? {
+						...common,
+						phase: "question",
+						action: "cancel",
+						receiptId: stableReceiptId
+					} : {
+						...common,
+						phase: "reveal",
+						action: "cancel",
+						animation: { completed: false },
+						receiptId: stableReceiptId
+					});
+				};
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RoundActivity, {
+					activity: envelope.activity,
+					storageKey,
+					onSubmitAnswer: envelope.phase === "question" ? submitAnswer : void 0,
+					onContinue: envelope.phase === "reveal" ? continueReveal : void 0,
+					onCancel: cancelRound,
+					t
 				});
+			}
+			const respond = (response) => {
+				if (matched.payload.questions[0] === void 0) return;
+				setBusy(true);
+				setError(null);
+				send(response).catch(() => {});
 			};
 			const submit = ({ answer, interactionState }) => respond({
 				protocol: RESPONSE_PROTOCOL,
@@ -1483,8 +2441,15 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client/LearningToolView.tsx
-		function pendingActivity(interactions, sessionId, activity) {
+		function pendingActivity(interactions, sessionId, activity, callId) {
 			if (activity === void 0) return void 0;
+			if (activity.protocol === "dsh-learning/activity@2") return interactions.find((interaction) => {
+				if (interaction.kind !== "question" || String(interaction.sessionId) !== sessionId) return false;
+				const envelope = envelopeOf(interaction);
+				if (envelope === void 0 || !("waitId" in envelope)) return false;
+				if (envelope.callId !== void 0 && envelope.callId !== callId) return false;
+				return envelope.phase === activity.phase && envelope.seq === activity.seq && envelope.activityId !== "" && envelope.waitId !== "";
+			});
 			const canonical = JSON.stringify(activity);
 			return interactions.find((interaction) => {
 				if (interaction.kind !== "question" || String(interaction.sessionId) !== sessionId) return false;
@@ -1496,7 +2461,8 @@ window.__ModuleLoader__.load({
 			const raw = "kind" in block ? block.call?.argsRaw : block.argsRaw;
 			if (raw === void 0 || raw === "") return void 0;
 			try {
-				return parseLearningActivity(JSON.parse(raw));
+				const parsed = JSON.parse(raw);
+				return parsed.protocol === "dsh-learning/activity@2" ? parseLearningActivityV2(parsed) : parseLearningActivity(parsed);
 			} catch {
 				return;
 			}
@@ -1506,7 +2472,8 @@ window.__ModuleLoader__.load({
 			const text = block.content.filter((item) => item.type === "text").map((item) => item.text).join("");
 			if (text === "") return void 0;
 			try {
-				return parseLearningResponse(JSON.parse(text));
+				const parsed = JSON.parse(text);
+				return parsed.protocol === "dsh-learning/response@2" ? parseLearningResponseV2(parsed) : parseLearningResponse(parsed);
 			} catch {
 				return;
 			}
@@ -1546,12 +2513,84 @@ window.__ModuleLoader__.load({
 			const activity = activityOf(block);
 			const done = "kind" in block;
 			const response = responseOf(block);
-			const matched = pendingActivity(useSession((snapshot) => snapshot.pending), String(sessionId), activity);
-			if (activity === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-				className: LearningActivity_module_css_default.inlineStatus,
-				"data-state": done ? "done" : "running",
-				children: t("invalidActivity")
-			});
+			const interactions = useSession((snapshot) => snapshot.pending);
+			const callId = "kind" in block ? block.callId : block.callId;
+			const raw = "kind" in block ? block.call?.argsRaw : block.argsRaw;
+			(0, react.useEffect)(() => {
+				if (done || raw === void 0 || raw === "") return;
+				if (activity === void 0) emitLearningCallLifecycle("learning.call.stream_started", { callId });
+				else emitLearningCallLifecycle("learning.call.args_completed", {
+					callId,
+					phase: activity.protocol === "dsh-learning/activity@2" ? activity.phase : void 0,
+					seq: activity.protocol === "dsh-learning/activity@2" ? activity.seq : void 0
+				});
+			}, [
+				activity,
+				callId,
+				done,
+				raw
+			]);
+			const matched = pendingActivity(interactions, String(sessionId), activity, callId);
+			if (activity === void 0) {
+				if (!done) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+					className: LearningActivity_module_css_default.inlineStatus,
+					"data-state": "running",
+					role: "status",
+					"aria-live": "polite",
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: LearningActivity_module_css_default.runningDot,
+							"aria-hidden": "true"
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("waiting") }),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: LearningActivity_module_css_default.skeletonLine,
+							"aria-hidden": "true"
+						})
+					]
+				});
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+					className: LearningActivity_module_css_default.inlineStatus,
+					"data-state": done ? "done" : "running",
+					children: t("invalidActivity")
+				});
+			}
+			if (activity.protocol === "dsh-learning/activity@2") {
+				if (!done) {
+					if (matched !== void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningInteraction, {
+						matched,
+						t
+					});
+					return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+						className: LearningActivity_module_css_default.inlineStatus,
+						"data-state": "running",
+						role: "status",
+						"aria-live": "polite",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: LearningActivity_module_css_default.runningDot,
+								"aria-hidden": "true"
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("waiting") }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								className: LearningActivity_module_css_default.skeletonLine,
+								"aria-hidden": "true"
+							})
+						]
+					});
+				}
+				const v2Response = response?.protocol === "dsh-learning/response@2" ? response : void 0;
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					className: LearningActivity_module_css_default.completedRound,
+					"data-learning-result": v2Response?.action ?? "unknown",
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RoundActivity, {
+						activity,
+						completed: true,
+						initialAnswer: v2Response?.phase === "question" ? v2Response.answer : void 0,
+						t
+					})
+				});
+			}
 			if (!done) {
 				if (matched !== void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningInteraction, {
 					matched,
@@ -1590,12 +2629,13 @@ window.__ModuleLoader__.load({
 					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: activity.fallbackMarkdown })
 				})]
 			});
-			const status = response?.action === "submit" ? t("completed") : response?.action === "skip" ? t("skipped") : response?.action === "cancel" ? t("cancelled") : t("invalidResult");
-			const evidence = evidenceOf(activity, response, t);
-			const explanation = explanationOf(response);
+			const legacyResponse = response.protocol === "dsh-learning/response@2" ? void 0 : response;
+			const status = legacyResponse?.action === "submit" ? t("completed") : legacyResponse?.action === "skip" ? t("skipped") : legacyResponse?.action === "cancel" ? t("cancelled") : t("invalidResult");
+			const evidence = evidenceOf(activity, legacyResponse, t);
+			const explanation = explanationOf(legacyResponse);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
 				className: LearningActivity_module_css_default.inlineResult,
-				"data-learning-result": response?.action ?? "unknown",
+				"data-learning-result": legacyResponse?.action ?? "unknown",
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 						className: LearningActivity_module_css_default.resultMark,
@@ -1650,7 +2690,11 @@ window.__ModuleLoader__.load({
 			chartLabel: "参数变化曲线",
 			chartDescription: "参数：{parameters}。横轴：{xAxis}。纵轴：{yAxis}。曲线：{curves}。",
 			invalidActivity: "该互动活动无法安全显示，已保留 Markdown 降级内容。",
-			error: "提交失败：{message}"
+			error: "提交失败：{message}",
+			submitAnswer: "提交回答",
+			awaitingReveal: "回答已提交，正在等待讲解…",
+			continue: "继续",
+			roundProgress: "第 {current} / {total} 轮"
 		};
 		const en = {
 			scaffold: "Hint",
@@ -1682,11 +2726,20 @@ window.__ModuleLoader__.load({
 			chartLabel: "Parameter relationship chart",
 			chartDescription: "Parameters: {parameters}. X axis: {xAxis}. Y axis: {yAxis}. Curves: {curves}.",
 			invalidActivity: "This activity could not be displayed safely. Its Markdown fallback is preserved.",
-			error: "Submission failed: {message}"
+			error: "Submission failed: {message}",
+			submitAnswer: "Submit answer",
+			awaitingReveal: "Answer submitted. Waiting for the reveal…",
+			continue: "Continue",
+			roundProgress: "Round {current} / {total}"
 		};
 		//#endregion
 		//#region src/client/index.ts
 		const NS = "interactive-learning";
+		const LEARNING_TOOL_VIEW_KEYS = [
+			"learning_activity",
+			"learning_question",
+			"learning_reveal"
+		];
 		const name = "interactive-learning-client";
 		const inject = ["slots", "locale"];
 		function apply(ctx) {
@@ -1700,18 +2753,20 @@ window.__ModuleLoader__.load({
 				priority: -100,
 				locale: NS
 			}, LearningComposer));
-			ctx.slots.inject("tool.call.toolview", () => ctx.slots.register({
+			for (const key of LEARNING_TOOL_VIEW_KEYS) ctx.slots.inject("tool.call.toolview", () => ctx.slots.register({
 				name: "tool.call.toolview",
-				key: "learning_activity",
+				key,
 				locale: NS
 			}, LearningToolView));
 		}
 		//#endregion
 		exports.ActivityRendererRegistry = ActivityRendererRegistry;
+		exports.LEARNING_TOOL_VIEW_KEYS = LEARNING_TOOL_VIEW_KEYS;
 		exports.activityRendererRegistry = activityRendererRegistry;
 		exports.apply = apply;
 		exports.inject = inject;
 		exports.name = name;
+		exports.subscribeLearningUiLifecycle = subscribeLearningUiLifecycle;
 		return module.exports;
 	}
 });

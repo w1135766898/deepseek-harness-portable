@@ -9,11 +9,11 @@ Cordis.
 
 - The package root is the Host capability. It registers only the
   `learningActivities` broker service.
-- `./agent` is mounted only by the Learning preset. It registers the single
-  `learning_activity` tool and the compact standing teaching policy.
+- `./agent` is mounted only by the Learning preset. It registers the two narrow
+  `learning_question` and `learning_reveal` tools plus the compact standing policy.
 - The Learning preset also mounts rc.7's native `ask_user_question` tool for
   user-owned choices about direction, depth, or pace. Reasonable defaults do
-  not open a question; teaching evidence stays in `learning_activity`.
+  not open a choice; teaching evidence stays in the Question/Reveal gates.
 - `./client` supplies the composer takeover, completed-call renderer, and the
   native activity registry.
 - `./protocol` is the versioned, declarative Activity/Response contract.
@@ -26,25 +26,23 @@ matching session id. An ordinary question, including one from another preset,
 is ignored. A fork therefore cannot revive an ancestor session's pending
 activity.
 
-## Pinned rc.7 transport
+## Pinned rc.7 gated transport
 
 The pinned kernel already exposes stable pending `ToolCallBlock.callId` values,
 keyed `tool.call.toolview` slots, and durable question `PendingWait` replay. The
 MVP reuses that question wait instead of patching the wire protocol:
 
-1. The Agent calls `learning_activity` with an `activity@1` value.
-2. The Host validates it, generates `activityId`, and starts a durable question
-   wait whose non-rendered question id carries a package-owned Base64URL
-   envelope while its visible detail contains only readable Markdown fallback.
-   The envelope declares
-   `dsh-learning/transport@1`; incompatible Clients ignore it.
-3. The keyed `learning_activity` row renders the native activity in the
-   Assistant turn's normal content width and submits a `response@1` JSON value
-   to the same wait. It uses prose-and-control flow rather than ToolRow or card
-   chrome; the composer takeover is intentionally empty and only prevents the
-   generic question UI from duplicating the pending activity.
-4. The broker resolves the original tool call, whose canonical result is saved
-   and replayed by the normal conversation log.
+1. The Agent calls `learning_question` with one `activity@2` current frame. The
+   Host validates it, issues lesson/round tokens, and opens one durable wait.
+2. The learner response resolves that Question call. Only then does the model
+   construct `learning_reveal` for the same token and sequence.
+3. Reveal remains pending while the keyed inline renderer animates. Continue is
+   disabled until animation completion (reduced motion commits the final frame),
+   and the wait resolves only after an explicit learner continue.
+4. Only after that canonical `response@2` is saved may the model produce the
+   next Question. New waits use opaque ids and correlate by session, stable
+   `ToolRunContext.callId`, activity, phase, and sequence rather than serialized
+   activity equality.
 
 If no live Client is connected when the call begins, the broker returns
 `action: "skip"` immediately with the fallback Markdown in
@@ -58,21 +56,19 @@ This transport is intentionally isolated behind `LearningActivityBroker` so it
 can later move to a first-class Learning `PendingWait`/Conversation Node without
 changing the model tool or activity renderers.
 
-## Protocol v1
+## Protocol v2
 
-The supported kinds are:
+Current-frame visuals support:
 
-- `parameter_explorer`: one or two bounded parameters and one to three curves;
-  the teaching skill asks for a prediction in ordinary dialogue before the inline controls appear;
-- `process_stepper`: two to twelve steps with optional predict-before-reveal
-  checkpoints;
-- `structure_compare`: two aligned structures whose significant differences
-  the learner selects and explains.
+- `parameter`: one or two bounded parameters and one to three curves;
+- `process`: exactly one current frame for Question, or one before/after pair for Reveal;
+- `structure`: one current aligned comparison.
 
-The protocol rejects unknown fields and versions, oversized payloads, invalid
-references, non-finite values, and excessive JSON or expression depth. Curves
-use a closed mathematical AST with bounded nodes and depth. No activity can
-contain executable HTML, JavaScript, dynamic imports, or network code.
+Question schemas contain no answer/reveal/future-step fields. Reveal schemas
+contain no next question or input control. Both reject unknown fields, invalid
+references, non-finite values, and oversized or excessively deep data. Curves
+use a closed mathematical AST. `activity@1` remains available only for legacy
+session replay; it is not exposed as a live model tool.
 
 ## Development
 
@@ -89,9 +85,9 @@ pnpm --filter @dsh-portable/interactive-learning run build
 node apps/interactive-learning/lib/eval-cli.js
 ```
 
-It covers fact questions that should not open a visual, all three activity
-selection classes, continuation from the submitted evidence, and ending the
-segment after demonstrated transfer. Scoring a live remote model remains an
+It covers visual restraint, continuation from evidence, stopping after transfer,
+one gate per model step, Question/Reveal temporal order, and configured answer
+or future-round leakage markers. Scoring a live remote model remains an
 explicit external authorization gate and is never run with user credentials by
 these tests.
 
@@ -150,7 +146,10 @@ Web layers and prove that Standard, Code, Minimal and Cordis retain byte-for-byt
 equivalent model-visible tool schemas and assembled standing prompts before and
 after the Host broker is mounted. The pinned keyed tool renderer, pending wait,
 cancellation/duplicate-response guard, stable session/call identity, and
-replayable canonical tool result path are sufficient for the MVP.
+replayable canonical tool result path support the two-gate flow. Tool execution
+already exposes stable `callId`/`rootCallId`; `tools/pre-execute`, `tools/execute`,
+`tools/post-execute`, `tools/result`, and `agent/pre-step` provide observation
+points without adding a private telemetry dependency.
 
 The real-browser fixture uses the production components and native DOM events.
 It verifies conversational prediction, range-key interaction, all three renderers,

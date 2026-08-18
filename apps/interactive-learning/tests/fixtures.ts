@@ -1,6 +1,9 @@
 import {
   ACTIVITY_PROTOCOL,
+  ACTIVITY_PROTOCOL_V2,
   type LearningActivityV1,
+  type LearningQuestionV2,
+  type LearningRevealV2,
 } from '../src/protocol.ts'
 
 export function parameterActivity(): LearningActivityV1 {
@@ -25,6 +28,29 @@ export function parameterActivity(): LearningActivityV1 {
       question: 'What changes, and what stays fixed?',
     },
     fallbackMarkdown: 'Compare `y = -x`, `y = 0`, and `y = x`. What changes as the coefficient crosses zero?',
+  }
+}
+
+export function questionRound(): LearningQuestionV2 {
+  return {
+    protocol: ACTIVITY_PROTOCOL_V2, phase: 'question', seq: 0,
+    focus: { title: 'Queue head', progress: { current: 1, total: 2 } },
+    prompt: 'Which item leaves first?',
+    input: { kind: 'single_choice', options: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }] },
+    visual: { kind: 'process', frame: { id: 'queue', title: 'A → B → C' } },
+    fallbackMarkdown: 'A queue currently contains A, B, C. Which item leaves first?',
+  }
+}
+
+export function revealRound(): LearningRevealV2 {
+  return {
+    protocol: ACTIVITY_PROTOCOL_V2, phase: 'reveal', lessonToken: 'lesson-1', roundToken: 'round-1', seq: 0,
+    focus: { title: 'Queue head', progress: { current: 1, total: 2 } },
+    feedback: { verdict: 'correct', learnerEcho: 'You chose A.', explanation: 'FIFO removes the earliest arrival.', answer: 'A' },
+    visual: { kind: 'process', before: { id: 'before', title: 'A → B → C' }, after: { id: 'after', title: 'B → C', content: 'A has left.' } },
+    animation: { kind: 'step_complete', preferredDurationMs: 700, reducedMotion: 'commit-final-state' },
+    advance: { mode: 'user-after-animation', label: 'Continue learning' },
+    fallbackMarkdown: 'A leaves first; the queue is now B, C.',
   }
 }
 

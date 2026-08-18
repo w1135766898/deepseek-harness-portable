@@ -29,6 +29,10 @@ export const zh = {
   chartDescription: '参数：{parameters}。横轴：{xAxis}。纵轴：{yAxis}。曲线：{curves}。',
   invalidActivity: '该互动活动无法安全显示，已保留 Markdown 降级内容。',
   error: '提交失败：{message}',
+  submitAnswer: '提交回答',
+  awaitingReveal: '回答已提交，正在等待讲解…',
+  continue: '继续',
+  roundProgress: '第 {current} / {total} 轮',
 }
 
 export const en: typeof zh = {
@@ -62,6 +66,10 @@ export const en: typeof zh = {
   chartDescription: 'Parameters: {parameters}. X axis: {xAxis}. Y axis: {yAxis}. Curves: {curves}.',
   invalidActivity: 'This activity could not be displayed safely. Its Markdown fallback is preserved.',
   error: 'Submission failed: {message}',
+  submitAnswer: 'Submit answer',
+  awaitingReveal: 'Answer submitted. Waiting for the reveal…',
+  continue: 'Continue',
+  roundProgress: 'Round {current} / {total}',
 }
 
 export type LearningLocaleKey = keyof typeof zh

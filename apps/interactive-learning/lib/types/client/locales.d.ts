@@ -29,6 +29,10 @@ export declare const zh: {
     chartDescription: string;
     invalidActivity: string;
     error: string;
+    submitAnswer: string;
+    awaitingReveal: string;
+    continue: string;
+    roundProgress: string;
 };
 export declare const en: typeof zh;
 export type LearningLocaleKey = keyof typeof zh;
