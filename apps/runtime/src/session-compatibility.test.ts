@@ -17,12 +17,14 @@ import {
 
 const fixturePath = fileURLToPath(new URL('../test-fixtures/session-mode-resolution-unmarked.jsonl', import.meta.url))
 const fixtureId = SessionId('session-portable-mode-resolution-v0')
-const fixtureCwd = 'C:\\Users\\Ryan\\Downloads'
+const fixtureStoredCwd = 'C:\\Users\\Ryan\\Downloads'
+const fixtureCwd = join(tmpdir(), 'dsh-portable-session-fixture-cwd')
 
 async function writeFixture(root: string, id: SessionId, eventType: string): Promise<void> {
   const source = (await readFile(fixturePath, 'utf8'))
     .replaceAll(String(fixtureId), String(id))
     .replaceAll(PORTABLE_MODE_RESOLUTION_EVENT_TYPE, eventType)
+    .replaceAll(JSON.stringify(fixtureStoredCwd), JSON.stringify(fixtureCwd))
   const target = logPath(root, fixtureCwd, id, 'none')
   await mkdir(dirname(target), { recursive: true })
   await writeFile(target, source)
