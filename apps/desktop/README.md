@@ -66,8 +66,8 @@ Publishing is a separate copy-only step. It re-hashes the exact files named by `
 
 ## Release identity
 
-- Release: DeepSeek Harness Desktop v1.3.2
-- Distribution: 1.3.2
+- Release: DeepSeek Harness Desktop v1.3.3
+- Distribution: 1.3.3
 - Desktop shell: 0.1.0-shell.2
 - Kernel: read from the packaged @deepseek-ai/dsh-web-app manifest
 

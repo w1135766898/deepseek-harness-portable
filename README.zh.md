@@ -62,8 +62,8 @@ DeepSeek Harness Desktop 是 [DeepSeek Harness](https://github.com/deepseek-ai/d
 
 | 项目 | 版本 |
 | --- | --- |
-| 发布 | DeepSeek Harness Desktop **v1.3.2**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.3.2)) |
-| 分发版本 | 1.3.2 |
+| 发布 | DeepSeek Harness Desktop **v1.3.3**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.3.3)) |
+| 分发版本 | 1.3.3 |
 | 桌面外壳 | 0.1.0-shell.2 |
 | 内核 | 0.1.0-rc.7 |
 
