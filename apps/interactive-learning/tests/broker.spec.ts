@@ -220,6 +220,34 @@ describe('non-blocking Learning Agent v4.1', () => {
     expect(visualV4Catalog.derivativePlot.protocol).toBe(VISUAL_PROTOCOL_V4)
   })
 
+  it('reports whether the learner can actually see the visual and only then claims the move', async () => {
+    for (const richClient of [true, false]) {
+      const ctx = await setupBroker(richClient)
+      await ctx.plugin(ToolRuntime)
+      await ctx.plugin(SystemPrompt)
+      await ctx.plugin(learningAgent)
+      const agent = stubAgent(`visual-availability-${String(richClient)}`)
+      const disposeAgent = ctx.agents.register(agent)
+
+      const result = await ctx.tools.execute({
+        signal: testToolSignal,
+        callId: CallId(`availability-${String(richClient)}`),
+        name: 'learning_visual',
+        arguments: visualV4Catalog.derivativePlot,
+        agent,
+      })
+
+      expect(result.isError).toBe(false)
+      expect(JSON.parse(result.content.map(item => item.type === 'text' ? item.text : '').join(''))).toEqual({
+        protocol: VISUAL_RESULT_PROTOCOL_V4,
+        status: richClient ? 'ready' : 'unavailable',
+      })
+      // An unrendered visual is not a teaching move that happened.
+      expect(ctx.learningActivities.learnerState(agent).lastMove).toBe(richClient ? 'visual' : 'none')
+      disposeAgent()
+    }
+  })
+
   it('rejects distinct checkpoint calls in one logged model step but permits an idempotent call replay', async () => {
     const ctx = await setupBroker(false)
     await ctx.plugin(ToolRuntime)
@@ -417,7 +445,14 @@ describe('session-scoped learner-state Host wiring', () => {
       agent,
     })
     expect(visual.isError).toBe(false)
-    expect(ctx.learningActivities.learnerState(agent).lastMove).toBe('visual')
+    // This composition has no Learning Client, so the checkpoint above degraded
+    // to skipped and the visual likewise rendered nothing. Claiming the move
+    // would write a false observation into the pedagogical state.
+    expect(JSON.parse(visual.content.map(item => item.type === 'text' ? item.text : '').join(''))).toEqual({
+      protocol: VISUAL_RESULT_PROTOCOL_V4,
+      status: 'unavailable',
+    })
+    expect(ctx.learningActivities.learnerState(agent).lastMove).toBe('checkpoint')
 
     const reset = await ctx.tools.execute({
       signal: testToolSignal,

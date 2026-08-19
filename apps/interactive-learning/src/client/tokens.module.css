@@ -1,0 +1,152 @@
+/**
+ * Interactive Learning design tokens.
+ *
+ * One scale for every learning surface. Both stylesheets are compiled as
+ * separate CSS Modules into separate <style> tags, so shared values cannot be
+ * shared through class composition. They are shared here instead: the tokens
+ * are declared on the unhashed `[data-learning-scope]` attribute selector and
+ * inherit into every descendant, whichever module styled it.
+ *
+ * Every learning root element carries `data-learning-scope`. Values are layered
+ * on the Host's `--dsw-alias-*` aliases so the plugin still follows the app
+ * theme; the `--lx-` prefix keeps the plugin's own scale collision-free.
+ */
+
+[data-learning-scope] {
+  /* Type ramp. Seven steps replace the thirteen ad-hoc sizes the surfaces grew
+     independently. 10px is the floor and is reserved for numeric chart
+     furniture; anything a learner reads as prose starts at 12px. */
+  --lx-text-micro: 10px;
+  --lx-leading-micro: 15px;
+  --lx-text-2xs: 11px;
+  --lx-leading-2xs: 16px;
+  --lx-text-xs: 12px;
+  --lx-leading-xs: 18px;
+  --lx-text-sm: 13px;
+  --lx-leading-sm: 20px;
+  --lx-text-base: 14px;
+  --lx-leading-base: 22px;
+  --lx-text-md: 15px;
+  --lx-leading-md: 24px;
+  --lx-text-lg: 17px;
+  --lx-leading-lg: 26px;
+  --lx-text-xl: clamp(17px, 4cqi, 21px);
+  --lx-leading-xl: 1.55;
+  --lx-text-formula: clamp(15px, 3cqi, 19px);
+  --lx-leading-formula: 26px;
+
+  --lx-weight-regular: 400;
+  --lx-weight-medium: 550;
+  --lx-weight-strong: 650;
+  --lx-tracking-eyebrow: 0.08em;
+  --lx-font-mono: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
+
+  /* Spacing scale. One ramp for every gap and padding on every surface. */
+  --lx-space-3xs: 2px;
+  --lx-space-2xs: 4px;
+  --lx-space-xs: 6px;
+  --lx-space-sm: 8px;
+  --lx-space-md: 10px;
+  --lx-space-lg: 12px;
+  --lx-space-xl: 16px;
+  --lx-space-2xl: 20px;
+  --lx-space-3xl: 24px;
+
+  /* Radii. Six steps replace thirteen near-duplicate values. */
+  --lx-radius-xs: 6px;
+  --lx-radius-sm: 8px;
+  --lx-radius-md: 10px;
+  --lx-radius-lg: 12px;
+  --lx-radius-xl: 16px;
+  --lx-radius-pill: 999px;
+  --lx-radius-circle: 50%;
+
+  /* Surfaces and lines, resolved from the Host theme. */
+  --lx-surface-base: var(--dsw-alias-bg-layer-1, Canvas);
+  --lx-surface-card: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 96%, transparent);
+  --lx-surface-raised: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 84%, transparent);
+  --lx-surface-sunken: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 70%, transparent);
+  --lx-surface-accent: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 30%, transparent);
+  --lx-border-subtle: var(--dsw-alias-border-l1, color-mix(in srgb, var(--lx-label-primary) 10%, transparent));
+  --lx-border-default: var(--dsw-alias-border-l2, color-mix(in srgb, var(--lx-label-primary) 16%, transparent));
+  --lx-border-strong: var(--dsw-alias-border-l3, color-mix(in srgb, var(--lx-label-primary) 24%, transparent));
+  --lx-border-strongest: var(--dsw-alias-border-l4, color-mix(in srgb, var(--lx-label-primary) 34%, transparent));
+
+  --lx-label-primary: var(--dsw-alias-label-primary, CanvasText);
+  --lx-label-secondary: var(--dsw-alias-label-secondary, color-mix(in srgb, var(--lx-label-primary) 72%, transparent));
+  --lx-label-tertiary: var(--dsw-alias-label-tertiary, color-mix(in srgb, var(--lx-label-primary) 52%, transparent));
+  --lx-label-on-accent: var(--dsw-alias-label-on-primary, white);
+  --lx-accent: var(--dsw-alias-state-business-primary, var(--dsw-alias-brand-primary, #2f73ea));
+  --lx-accent-soft: var(--dsw-alias-state-business-tertiary, color-mix(in srgb, var(--lx-accent) 12%, transparent));
+  --lx-success: var(--dsw-alias-state-success-primary, #2f9e5f);
+  --lx-warn: var(--dsw-alias-state-warn-primary, #d1741f);
+  --lx-danger: var(--dsw-alias-state-error-primary, #df4f4f);
+  --lx-label-error: var(--dsw-alias-label-error, var(--lx-danger));
+  --lx-label-inverted: var(--dsw-alias-label-primary-inverted, var(--lx-surface-base));
+
+  /* One card recipe. Every learning surface that presents itself as a card —
+     the visual shell, the checkpoint gate, the recall card — reads these, so
+     they cannot drift into different borders, radii, padding or elevation. */
+  --lx-card-border: 1px solid var(--lx-border-default);
+  --lx-card-radius: var(--lx-radius-xl);
+  --lx-card-padding: clamp(16px, 3cqi, 24px);
+  --lx-card-background:
+    linear-gradient(135deg, color-mix(in srgb, var(--lx-accent-soft) 34%, transparent), transparent 42%),
+    var(--lx-surface-card);
+
+  /* Elevation. */
+  --lx-shadow-sm: 0 4px 14px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
+  --lx-shadow-md: 0 10px 26px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
+  --lx-shadow-lg: 0 12px 32px color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent);
+
+  /* One focus treatment for every focusable element in the plugin. */
+  --lx-focus-color: var(--lx-accent);
+  --lx-focus-width: 2px;
+  --lx-focus-offset: 3px;
+
+  /* Control metrics shared by every button, chip and toggle. */
+  --lx-control-height-sm: 28px;
+  --lx-control-height-md: 32px;
+  --lx-control-padding-sm: var(--lx-space-2xs) var(--lx-space-md);
+  --lx-control-padding-md: var(--lx-space-xs) var(--lx-space-lg);
+  --lx-control-disabled-opacity: 0.4;
+
+  /* Motion. */
+  --lx-motion-fast: 140ms;
+  --lx-motion-base: 180ms;
+  --lx-easing: ease;
+
+  /* Semantic tones. Declared once so the eight renderers, the legacy replay
+     surfaces and the checkpoint all resolve `--visual-tone` identically. */
+  --lx-tone-blue: var(--lx-accent);
+  --lx-tone-green: var(--lx-success);
+  --lx-tone-red: var(--lx-danger);
+  --lx-tone-orange: var(--lx-warn);
+  --lx-tone-purple: color-mix(in srgb, var(--lx-accent) 58%, var(--lx-danger));
+  --lx-tone-gray: var(--dsw-alias-label-tertiary);
+  --visual-tone: var(--lx-tone-blue);
+}
+
+/* Tone resolution, shared by every learning surface. */
+[data-learning-scope] [data-tone="blue"] { --visual-tone: var(--lx-tone-blue); }
+[data-learning-scope] [data-tone="green"] { --visual-tone: var(--lx-tone-green); }
+[data-learning-scope] [data-tone="red"] { --visual-tone: var(--lx-tone-red); }
+[data-learning-scope] [data-tone="orange"] { --visual-tone: var(--lx-tone-orange); }
+[data-learning-scope] [data-tone="purple"] { --visual-tone: var(--lx-tone-purple); }
+[data-learning-scope] [data-tone="gray"] { --visual-tone: var(--lx-tone-gray); }
+
+/* One focus ring for the whole plugin, so no surface can invent its own. */
+[data-learning-scope] :focus-visible {
+  outline: var(--lx-focus-width) solid var(--lx-focus-color);
+  outline-offset: var(--lx-focus-offset);
+}
+
+/* Zeroing the duration tokens covers every transition in the plugin. Keyframe
+   animations cannot read a duration token the same way, so the surfaces that
+   run one disable it explicitly alongside this. */
+@media (prefers-reduced-motion: reduce) {
+  [data-learning-scope] {
+    --lx-motion-fast: 0ms;
+    --lx-motion-base: 0ms;
+  }
+}

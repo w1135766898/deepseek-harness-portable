@@ -363,6 +363,62 @@ function offlineContinuation(explanation) {
 */
 const TEACHING_TRAJECTORY_CASES = [
 	{
+		id: "plan-yields-to-demonstrated-transfer",
+		rationale: "A recorded route is not a completion contract: demonstrated transfer ends the segment while steps remain.",
+		evidenceEligibleTurns: [
+			1,
+			2,
+			3
+		],
+		stopTurn: 4,
+		stopsWithPlanRemaining: 2
+	},
+	{
+		id: "unavailable-visual-continues-in-prose",
+		rationale: "A composition with no renderer reports unavailable; the lesson must continue in prose without naming a figure the learner cannot see.",
+		expectedDecisionAt: { 1: "scaffold" },
+		evidenceEligibleTurns: [
+			2,
+			3,
+			4
+		],
+		stopTurn: 4
+	},
+	{
+		id: "notation-gap-decodes-symbols",
+		rationale: "A learner blocked by symbols needs the notation decoded, not a conceptual overview of an idea they already hold.",
+		expectedDecisionAt: { 0: "scaffold" },
+		gapRoutingAt: {
+			0: "notation",
+			2: "notation"
+		},
+		evidenceEligibleTurns: [
+			1,
+			2,
+			3,
+			4
+		],
+		visualForbiddenTurns: [0],
+		stopTurn: 4
+	},
+	{
+		id: "task-model-gap-restates-the-question",
+		rationale: "A learner who cannot tell what the question asks for needs the task restated before any method or notation.",
+		expectedDecisionAt: { 0: "scaffold" },
+		gapRoutingAt: {
+			0: "task-model",
+			3: "task-model"
+		},
+		evidenceEligibleTurns: [
+			1,
+			2,
+			3,
+			4
+		],
+		visualForbiddenTurns: [0],
+		stopTurn: 4
+	},
+	{
 		id: "broad-topic-direct-explanation",
 		rationale: "A broad topic explicitly requesting a direct overview should start with useful exposition, not compulsory diagnosis.",
 		expectedDecisionAt: { 0: "direct" },
@@ -492,6 +548,7 @@ function gradeTeachingTrajectory(scenario, candidate) {
 	trajectoryCheck(checks, "one-focused-question-per-turn", turns.every((turn) => turn.focusQuestionCount <= 1), "every assistant turn has at most one focused question");
 	trajectoryCheck(checks, "question-has-scaffold", turns.every((turn) => turn.focusQuestionCount === 0 || turn.hasScaffold), "every focused question includes a useful scaffold");
 	trajectoryCheck(checks, "one-rich-tool-per-turn", turns.every((turn) => (turn.richTools?.length ?? 0) <= 1), "a turn contains at most one rich learning tool");
+	trajectoryCheck(checks, "no-reference-to-an-unrendered-visual", turns.every((turn) => turn.visualStatus !== "unavailable" || turn.referencesFigure !== true), "a visual reported unavailable is carried in prose instead of being referred to as an on-screen figure");
 	trajectoryCheck(checks, "no-generic-praise", turns.every((turn) => turn.genericPraise !== true), "feedback is specific rather than generic praise");
 	trajectoryCheck(checks, "no-configured-leakage", turns.every((turn) => turn.leakedAnswer !== true), "no answer or future-step marker is exposed early");
 	trajectoryCheck(checks, "checkpoint-results-restore-safe-conversation", turns.every((turn) => turn.checkpointResult === void 0 || turn.checkpointResult.composerRestored && !turn.checkpointResult.extraGateCreated && !turn.checkpointResult.leakedAnswer && !turn.checkpointResult.leakedFutureContent), "checkpoint completion restores ordinary conversation with no extra gate or leaked answer/future content");
@@ -528,6 +585,16 @@ function gradeTeachingTrajectory(scenario, candidate) {
 		const turn = Number(turnText);
 		const actual = turns[turn]?.sourceAnchors ?? [];
 		trajectoryCheck(checks, `source-anchors-at-${turn}`, actual.length === required.length && required.every((anchor) => actual.includes(anchor)), `turn ${turn} must cite only the observed source anchors: ${required.join(", ")}`);
+	}
+	if (scenario.stopsWithPlanRemaining !== void 0 && scenario.stopTurn !== void 0) {
+		const stop = turns[scenario.stopTurn];
+		trajectoryCheck(checks, "transfer-outranks-an-unfinished-plan", (stop?.planRemaining ?? 0) >= scenario.stopsWithPlanRemaining && stop?.endedSegment === true, `the segment must end on demonstrated transfer with at least ${String(scenario.stopsWithPlanRemaining)} plan steps still outstanding`);
+	}
+	for (const [turnText, gap] of Object.entries(scenario.gapRoutingAt ?? {})) {
+		const turn = Number(turnText);
+		const observed = turns[turn]?.observedGap;
+		const addressed = turns[turn]?.addressedGap;
+		trajectoryCheck(checks, `addresses-observed-gap-at-${turn}`, observed === gap && addressed === gap, `turn ${turn} must answer the ${gap} failure the learner displays, not a different one`);
 	}
 	for (const turn of scenario.visualForbiddenTurns ?? []) trajectoryCheck(checks, `no-decorative-visual-at-${turn}`, !(turns[turn]?.richTools ?? []).includes("learning_visual"), `turn ${turn} must remain direct prose without a decorative visual`);
 	return {
@@ -566,6 +633,194 @@ function turn(learner, assistant, decision, changes = {}) {
 }
 /** Reference traces exercise the deterministic grader and CLI without credentials. */
 const OFFLINE_TRAJECTORY_CANDIDATES = [
+	{
+		caseId: "plan-yields-to-demonstrated-transfer",
+		turns: [
+			turn("I have the lecture notes and want to get to the chain rule. Where do we start?", "The notes gate it in four moves: the limit definition, composing two functions, the rule itself, then applying it. We start at the limit definition because everything after it reuses that form.", "scaffold", {
+				planRemaining: 4,
+				supportLevel: 1,
+				progressSignal: "progressing",
+				hintFingerprint: "name-the-route"
+			}),
+			turn("The limit definition is the difference quotient as h goes to zero.", "That is the form the rest reuses. Now compose: if g feeds into f, what does the difference quotient of f(g(x)) have inside it that the simple case did not?", "scaffold", {
+				planRemaining: 3,
+				focusQuestionCount: 1,
+				hasScaffold: true,
+				supportLevel: 1,
+				progressSignal: "progressing",
+				usedLearnerEvidence: ["difference quotient as h goes to zero"],
+				hintFingerprint: "compose-inside-the-quotient"
+			}),
+			turn("It has g(x + h) - g(x) sitting inside f, so there is an inner change as well as an outer one.", "Exactly, and naming both changes is the whole content of the rule: the outer rate multiplied by the inner rate.", "scaffold", {
+				planRemaining: 2,
+				supportLevel: 0,
+				progressSignal: "progressing",
+				mastery: "emerging",
+				usedLearnerEvidence: ["an inner change as well as an outer one"],
+				hintFingerprint: "outer-times-inner"
+			}),
+			turn("So d/dx sin(x^2) is cos(x^2) times 2x, and the same shape would handle exp(3x) as 3exp(3x).", "Both are right, and you applied the rule to a fresh pair of functions without being walked through it.", "transfer", {
+				planRemaining: 2,
+				mastery: "transfer",
+				usedLearnerEvidence: ["cos(x^2) times 2x", "3exp(3x)"]
+			}),
+			turn("That is what I needed.", "You reached the objective through composition, so the two remaining notes sections are optional review rather than something still owed.", "complete", {
+				planRemaining: 2,
+				mastery: "transfer",
+				endedSegment: true
+			}),
+			turn("Good.", "The rule to carry is outer rate times inner rate, whatever the pair of functions.", "complete", {
+				planRemaining: 2,
+				mastery: "transfer",
+				endedSegment: true
+			})
+		]
+	},
+	{
+		caseId: "unavailable-visual-continues-in-prose",
+		turns: [
+			turn("Can you show me how the sigmoid flattens as the input grows?", "I will describe the shape directly. Near zero the curve rises fastest, and as the input grows in either direction the output presses toward 1 or 0 and the slope collapses.", "direct", {
+				richTools: ["learning_visual"],
+				visualStatus: "unavailable",
+				referencesFigure: false,
+				supportLevel: 1
+			}),
+			turn("Why does the slope collapse rather than just get small?", "Because the derivative is s(x) * (1 - s(x)): once s(x) is close to 1, the second factor is close to 0, so the product is driven to zero from both sides. What does that product do at s(x) = 0.5?", "scaffold", {
+				focusQuestionCount: 1,
+				hasScaffold: true,
+				supportLevel: 2,
+				progressSignal: "progressing",
+				hintFingerprint: "derivative-as-product"
+			}),
+			turn("It is 0.25, the largest it gets.", "Exactly, and that is why 0.25 is the ceiling on the sigmoid gradient rather than an arbitrary constant.", "scaffold", {
+				supportLevel: 1,
+				progressSignal: "progressing",
+				mastery: "emerging",
+				usedLearnerEvidence: ["0.25, the largest it gets"],
+				hintFingerprint: "ceiling-on-the-gradient"
+			}),
+			turn("So stacking many sigmoid layers multiplies numbers below 0.25 together.", "That is the vanishing-gradient argument, and you assembled it from the derivative rather than from a picture.", "scaffold", {
+				supportLevel: 0,
+				progressSignal: "progressing",
+				mastery: "emerging",
+				usedLearnerEvidence: ["multiplies numbers below 0.25 together"],
+				hintFingerprint: "stacking-multiplies"
+			}),
+			turn("Then tanh would have the same problem, just with a bigger ceiling.", "Correct, and transferring the argument to another saturating activation is the point rather than the sigmoid itself.", "transfer", {
+				mastery: "transfer",
+				endedSegment: true,
+				usedLearnerEvidence: ["tanh would have the same problem"]
+			}),
+			turn("That makes sense.", "The reusable idea is that saturation caps the gradient, and depth multiplies those caps together.", "complete", {
+				mastery: "transfer",
+				endedSegment: true
+			})
+		]
+	},
+	{
+		caseId: "notation-gap-decodes-symbols",
+		turns: [
+			turn("I know what an average is, but I freeze whenever I see (1/n) * SUM_{i=1}^{n} x_i.", "The idea you already have is the whole content here; only the shorthand is new. SUM says add these up, i = 1 to n is the counting range, and x_i is the i-th value in your list. What does the (1/n) outside the sum do?", "scaffold", {
+				observedGap: "notation",
+				addressedGap: "notation",
+				focusQuestionCount: 1,
+				hasScaffold: true,
+				supportLevel: 2,
+				progressSignal: "progressing",
+				hintFingerprint: "decode-sigma-parts"
+			}),
+			turn("It divides by how many there are. But I still lose track of what i is doing.", "Dividing by n is exactly right. The i is only a counter: it takes 1, then 2, up to n, and each time x_i names the next value. It never appears in the answer.", "scaffold", {
+				observedGap: "notation",
+				addressedGap: "notation",
+				supportLevel: 2,
+				progressSignal: "progressing",
+				usedLearnerEvidence: ["divides by how many there are"],
+				hintFingerprint: "index-is-a-counter"
+			}),
+			turn("So for x = [4, 6, 8] it is (1/3) * (4 + 6 + 8).", "Correct, and you carried the counting range across without help. Here is a slightly harder one: SUM_{i=1}^{n} w_i * x_i. Which part of that is no longer a plain average?", "scaffold", {
+				observedGap: "notation",
+				addressedGap: "notation",
+				focusQuestionCount: 1,
+				hasScaffold: true,
+				supportLevel: 1,
+				progressSignal: "progressing",
+				mastery: "emerging",
+				usedLearnerEvidence: ["(1/3) * (4 + 6 + 8)"],
+				hintFingerprint: "introduce-weights"
+			}),
+			turn("The w_i. Each value gets its own multiplier, and there is no 1/n out front.", "Both observations hold. The missing 1/n is why a weighted sum is an average only when the weights themselves add to 1.", "scaffold", {
+				observedGap: "notation",
+				addressedGap: "notation",
+				supportLevel: 1,
+				progressSignal: "progressing",
+				mastery: "emerging",
+				usedLearnerEvidence: ["there is no 1/n out front"],
+				hintFingerprint: "weights-sum-to-one"
+			}),
+			turn("Then PROD_{i=1}^{n} x_i must be the same structure with multiplication instead of addition.", "That is the transfer: you read an unfamiliar operator by its range and its indexed term, which is the general skill rather than a fact about sums.", "transfer", {
+				observedGap: "notation",
+				addressedGap: "notation",
+				mastery: "transfer",
+				endedSegment: true,
+				usedLearnerEvidence: ["PROD is the same structure with multiplication"]
+			}),
+			turn("That clears it up.", "The reusable move is to read the range first, then the indexed term, then whatever sits outside the operator.", "complete", {
+				mastery: "transfer",
+				endedSegment: true
+			})
+		]
+	},
+	{
+		caseId: "task-model-gap-restates-the-question",
+		turns: [
+			turn("The exercise says to show that f is continuous at 0. I do not even know what I am supposed to hand in.", "That is a fair place to be stuck: the sentence names a goal but never names a deliverable. What you owe is an argument that values of f get arbitrarily close to f(0) whenever the input is close enough to 0. What would count as the finish line for that argument?", "scaffold", {
+				observedGap: "task-model",
+				addressedGap: "task-model",
+				focusQuestionCount: 1,
+				hasScaffold: true,
+				supportLevel: 2,
+				progressSignal: "progressing",
+				hintFingerprint: "name-the-deliverable"
+			}),
+			turn("Showing the two are equal at 0?", "Close, but equality at the point alone is a weaker claim; that is only f(0) existing. The claim is about behaviour approaching 0, so the finish line is a statement about all inputs near 0, not one input.", "scaffold", {
+				observedGap: "task-model",
+				addressedGap: "task-model",
+				supportLevel: 3,
+				progressSignal: "progressing",
+				usedLearnerEvidence: ["the two are equal at 0"],
+				hintFingerprint: "point-versus-neighbourhood"
+			}),
+			turn("So I have to say something about every input within some distance of 0.", "Exactly that. Now the method has somewhere to live: epsilon states how close the outputs must be, and delta is the input distance you get to choose.", "scaffold", {
+				observedGap: "task-model",
+				addressedGap: "notation",
+				supportLevel: 2,
+				progressSignal: "progressing",
+				mastery: "emerging",
+				usedLearnerEvidence: ["every input within some distance of 0"],
+				hintFingerprint: "introduce-epsilon-delta"
+			}),
+			turn("Then my job is to produce a delta for any epsilon someone hands me.", "That is the shape of the deliverable, and you reached it before writing a single inequality.", "scaffold", {
+				observedGap: "task-model",
+				addressedGap: "task-model",
+				supportLevel: 1,
+				progressSignal: "progressing",
+				mastery: "emerging",
+				usedLearnerEvidence: ["produce a delta for any epsilon"],
+				hintFingerprint: "deliverable-is-a-construction"
+			}),
+			turn("So asking me to show that a sequence converges is also asking me to construct an N for any tolerance.", "Yes, and reading an instruction for the object it demands is the move that carries across, not the epsilon-delta template itself.", "transfer", {
+				observedGap: "task-model",
+				addressedGap: "task-model",
+				mastery: "transfer",
+				endedSegment: true,
+				usedLearnerEvidence: ["construct an N for any tolerance"]
+			}),
+			turn("Good, that is what I was missing.", "When an exercise states a goal, name the object it wants before choosing a method.", "complete", {
+				mastery: "transfer",
+				endedSegment: true
+			})
+		]
+	},
 	{
 		caseId: "broad-topic-direct-explanation",
 		turns: [

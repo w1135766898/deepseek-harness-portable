@@ -14,6 +14,7 @@ import {
   CHECKPOINT_RESULT_PROTOCOL,
   LEARNING_CHECKPOINT_EVIDENCE_KINDS,
   LEARNING_CHECKPOINT_KINDS,
+  LEARNING_VISUAL_STATUSES,
   VISUAL_PROTOCOL_V4,
   VISUAL_RESULT_PROTOCOL_V4,
   MAX_VISUAL_MATH_DEPTH,
@@ -528,6 +529,26 @@ const learnerStateEvent = { oneOf: [
     observation: { ...learnerObservation, required: true },
   } },
   { type: 'object', additionalProperties: false, properties: {
+    type: { type: 'string', const: 'plan_observed', required: true },
+    objective: { type: 'string', required: true, description: 'What the learner is working toward in this session.' },
+    steps: {
+      type: 'array',
+      required: true,
+      description: 'The 1 to 6 ordered moves this route needs; not a syllabus and not a completion checklist.',
+      items: { type: 'object', additionalProperties: false, properties: {
+        id: { type: 'string', required: true },
+        label: { type: 'string', required: true },
+      } },
+    },
+    activeStepId: { type: 'string', description: 'The step being worked on now; defaults to the first.' },
+    observation: { ...learnerObservation, required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    type: { type: 'string', const: 'plan_step_evidenced', required: true },
+    stepId: { type: 'string', required: true },
+    observation: { ...learnerObservation, required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
     type: { type: 'string', const: 'gap_observed', required: true },
     gap: {
       type: 'string',
@@ -639,6 +660,7 @@ export function apply(ctx: Context): void {
       'Do not call this tool merely because Learning mode is active. A request to recall a formula, definition, or short fact normally needs direct prose, not a chart.',
       'Never substitute a plot for a requested structure diagram. A fully connected neural layer is node_link with layered groups and all connections, not a sigmoid curve.',
       'The call completes immediately: after it returns, continue naturally with the interpretation and at most one ordinary conversational question.',
+      'The result reports whether the learner can actually see it. On status ready, refer to the visual normally. On status unavailable this composition rendered nothing, so carry the same explanation in prose and never mention a figure, chart, or diagram the learner cannot see.',
       'Optional sequence frames highlight ids already declared by the chosen content; they create local step-through exploration without taking over learner input.',
       'Plot curves use a closed recursive math AST. Metrics must depend only on declared parameters.',
       'Hard limits: the complete call must stay within 64 KiB; every id is 1 to 32 lowercase-safe characters; keep labels to 120 characters, ordinary detail text to 1000, LaTeX expressions to 500, recall prompts to 1000 and answers to 2000. Array limits are stated on each field and are mandatory.',
@@ -670,23 +692,22 @@ export function apply(ctx: Context): void {
     output: {
       schema: { type: 'object', additionalProperties: false, properties: {
         protocol: { type: 'string', const: VISUAL_RESULT_PROTOCOL_V4, required: true },
-        status: { type: 'string', const: 'ready', required: true },
+        status: { type: 'string', enum: LEARNING_VISUAL_STATUSES, required: true },
       } },
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
     isConcurrencySafe: () => true,
     async execute(args, exec) {
       parseLearningVisualV4(args)
-      services.learningActivities.recordVisual(exec.agent, String(exec.callId))
       return {
         protocol: VISUAL_RESULT_PROTOCOL_V4,
-        status: 'ready',
+        status: services.learningActivities.recordVisual(exec.agent, String(exec.callId)),
       } satisfies LearningVisualResultV4
     },
     presentCall: args => ({
       card: 'generic',
       title: typeof args.title === 'string' ? args.title : 'Interactive visual',
-      kind: 'read',
+      kind: 'other',
     }),
   })))
 
@@ -696,6 +717,7 @@ export function apply(ctx: Context): void {
       'Internal, immediate, non-rich session-state update from concrete observable evidence in the current learner message, learner action, or supplied source.',
       'Call only when the observation substantively changes the next teaching move; never call mechanically every turn and never infer a hidden trait, personality, emotion, or learning style.',
       'Use update for one new observation, correct only after an explicit user correction, and reset only at a real session-local learning-boundary reset.',
+      'plan_observed records the route only when a multi-step goal genuinely needs one; plan_step_evidenced advances a step only from evidence the learner produced. A plan is never a checklist to march through, never announced every turn, and never a reason to continue after demonstrated transfer.',
       'The Host reads the current revision synchronously and applies compare-and-swap protection; do not invent or guess revision metadata.',
       'Assistant visual and checkpoint moves are recorded automatically; do not duplicate them here. This tool performs no user wait and must not replace ordinary conversation.',
     ].join(' '),

@@ -1,5 +1,5 @@
-import { a as LEARNER_STATE_SESSION_EVENT_TYPE, c as foldLearnerStateSession, d as reduceLearnerState, f as registerLearningSessionEventType, h as serializeLearnerStateSnapshot, i as LEARNER_STATE_PROTOCOL, l as hydrateLearnerStateSnapshot, m as resetLearnerState, n as DEFAULT_TRANSCRIPT_TOKEN_BUDGET, o as createInitialLearnerState, p as renderLearnerStateTranscript, r as LEARNER_STATE_EVENT_PROTOCOL, s as createLearnerStateSnapshotEvent, t as registerInteractiveLearningSessionCompatibility, u as parseLearnerStateSnapshotEvent } from "./bootstrap-BiT0bfyq.js";
-import { A as parseLearningCheckpointV1, D as parseLearningActivity, M as parseLearningResponseV2, O as parseLearningActivityV2, a as CHECKPOINT_TRANSPORT_PROTOCOL, i as CHECKPOINT_RESULT_PROTOCOL, k as parseLearningCheckpointResultV1, p as MAX_ACTIVITY_BYTES, u as LearningProtocolError, v as RESPONSE_PROTOCOL, x as TRANSPORT_PROTOCOL_V2, y as RESPONSE_PROTOCOL_V2 } from "./protocol-BBlGCutI.js";
+import { a as LEARNER_STATE_SESSION_EVENT_TYPE, c as foldLearnerStateSession, d as reduceLearnerState, f as registerLearningSessionEventType, h as serializeLearnerStateSnapshot, i as LEARNER_STATE_PROTOCOL, l as hydrateLearnerStateSnapshot, m as resetLearnerState, n as DEFAULT_TRANSCRIPT_TOKEN_BUDGET, o as createInitialLearnerState, p as renderLearnerStateTranscript, r as LEARNER_STATE_EVENT_PROTOCOL, s as createLearnerStateSnapshotEvent, t as registerInteractiveLearningSessionCompatibility, u as parseLearnerStateSnapshotEvent } from "./bootstrap-DqP8ZWUI.js";
+import { A as parseLearningCheckpointResultV1, N as parseLearningResponseV2, O as parseLearningActivity, S as TRANSPORT_PROTOCOL_V2, a as CHECKPOINT_TRANSPORT_PROTOCOL, b as RESPONSE_PROTOCOL_V2, d as LearningProtocolError, i as CHECKPOINT_RESULT_PROTOCOL, j as parseLearningCheckpointV1, k as parseLearningActivityV2, m as MAX_ACTIVITY_BYTES, y as RESPONSE_PROTOCOL } from "./protocol-D-KGSMae.js";
 import { createHash, randomUUID } from "node:crypto";
 import { Service } from "@deepseek-ai/cordis";
 import { UserQuestionError } from "@deepseek-ai/dsh-user-questions";
@@ -329,10 +329,19 @@ var LearningActivityBroker = class extends Service {
 			this.ctx.logger.warn(`learning state observation was not recorded: ${String(cause)}`);
 		}
 	}
-	/** Record the concrete assistant move without adding another user wait. */
+	/**
+	* Record the concrete assistant move without adding another user wait.
+	*
+	* A composition with no Learning Client renders nothing, so the move never
+	* happened: claiming it would both mislead the next teaching step and write
+	* a false observation into the session's pedagogical state.
+	*
+	* @returns whether the learner can actually see this visual.
+	*/
 	recordVisual(agent, callId) {
-		if (agent === void 0) return;
 		const stableCallId = boundedIdentity(callId, "callId");
+		if (!this.hasRichClient()) return "unavailable";
+		if (agent === void 0) return "ready";
 		this.recordAutomaticEvents(agent, [{
 			type: "assistant_move_observed",
 			move: "visual",
@@ -342,6 +351,7 @@ var LearningActivityBroker = class extends Service {
 				summary: "The assistant rendered one non-blocking semantic visual."
 			}
 		}]);
+		return "ready";
 	}
 	recordCheckpointOutcome(request, result, fence) {
 		const agent = request.agent;

@@ -70,6 +70,7 @@ window.__ModuleLoader__.load({
 			"log",
 			"sigmoid"
 		];
+		const LEARNING_VISUAL_STATUSES = ["ready", "unavailable"];
 		/** A stable, actionable protocol rejection surfaced to the tool call. */
 		var LearningProtocolError = class extends Error {
 			issues;
@@ -1899,7 +1900,7 @@ window.__ModuleLoader__.load({
 			if (!record(value)) throw new LearningProtocolError(["visual result must be an object"]);
 			onlyKeys(value, ["protocol", "status"], "visualResult", issues);
 			if (value.protocol !== "dsh-learning/visual-result@4") issues.push(`visualResult.protocol must be ${VISUAL_RESULT_PROTOCOL_V4}`);
-			if (value.status !== "ready") issues.push("visualResult.status must be ready");
+			if (!LEARNING_VISUAL_STATUSES.includes(value.status)) issues.push(`visualResult.status must be one of ${LEARNING_VISUAL_STATUSES.join(", ")}`);
 			if (issues.length > 0) throw new LearningProtocolError(issues);
 			return value;
 		}
@@ -2059,8 +2060,130 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:src/client/LearningActivity.module.css.mjs
-		const css$1 = "._7ar4Xq_inlineActivity{min-width:0;color:var(--dsw-alias-label-primary);flex-direction:column;gap:16px;font-size:16px;line-height:28px;display:flex}._7ar4Xq_scaffold{color:var(--dsw-alias-label-secondary);align-self:flex-start;font-size:13px;line-height:22px}._7ar4Xq_scaffold summary{cursor:pointer}._7ar4Xq_activityActions{align-items:center;gap:12px;margin-top:-6px;font-size:12px;line-height:20px;display:flex}._7ar4Xq_error{color:var(--dsw-alias-label-error);margin:0;font-size:13px;line-height:22px}._7ar4Xq_activityContent,._7ar4Xq_controls,._7ar4Xq_answerField,._7ar4Xq_stepFocus,._7ar4Xq_prediction{flex-direction:column;display:flex}._7ar4Xq_activityContent{gap:16px}._7ar4Xq_prompt{color:var(--dsw-alias-label-primary);margin:0;font-size:16px;font-weight:400;line-height:28px}._7ar4Xq_explorer{flex-direction:column;gap:16px;min-width:0;display:flex}._7ar4Xq_controls{grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:14px 24px;display:grid}._7ar4Xq_rangeField{min-width:0;color:var(--dsw-alias-label-secondary);font-size:13px}._7ar4Xq_rangeHeader{justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px;display:flex}._7ar4Xq_rangeHeader label{color:var(--dsw-alias-label-primary);font-weight:500}._7ar4Xq_rangeHeader output{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;font-size:14px;font-weight:650}._7ar4Xq_rangeControl{grid-template-rows:30px 16px;grid-template-columns:28px minmax(0,1fr) 28px;align-items:center;column-gap:9px;display:grid}._7ar4Xq_stepButton{appearance:none;border:1px solid var(--dsw-alias-border-l3);width:28px;height:28px;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer;background:0 0;border-radius:7px;padding:0;font-size:17px;line-height:26px}._7ar4Xq_stepButton:hover:not(:disabled){border-color:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-state-business-primary)}._7ar4Xq_stepButton:disabled{cursor:default;opacity:.35}._7ar4Xq_rangeInput{appearance:none;background:linear-gradient(to right, var(--dsw-alias-border-l4) 0 var(--range-low), var(--dsw-alias-state-business-primary) var(--range-low) var(--range-high), var(--dsw-alias-border-l4) var(--range-high) 100%);cursor:pointer;border-radius:999px;width:100%;height:4px}._7ar4Xq_rangeInput:disabled{cursor:default;opacity:.55}._7ar4Xq_rangeInput::-webkit-slider-runnable-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_rangeInput::-webkit-slider-thumb{appearance:none;border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:16px;height:16px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%;margin-top:-6px}._7ar4Xq_rangeInput::-moz-range-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_rangeInput::-moz-range-thumb{border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:10px;height:10px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%}._7ar4Xq_rangeInput:focus-visible,._7ar4Xq_compareRow input:focus-visible,._7ar4Xq_option input:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:4px}._7ar4Xq_rangeEnds{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;grid-column:2;justify-content:space-between;font-size:11px;line-height:16px;display:flex;position:relative}._7ar4Xq_rangeZero{position:absolute;transform:translate(-50%)}._7ar4Xq_chartRegion{min-width:0}._7ar4Xq_chart{width:100%;height:auto;display:block;overflow:visible}._7ar4Xq_plotFrame{fill:var(--dsw-alias-bg-layer-1);stroke:var(--dsw-alias-border-l3);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_gridLine{stroke:var(--dsw-alias-border-l1);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_zeroAxis{stroke:var(--dsw-alias-border-l4);stroke-width:1.25px}._7ar4Xq_tickLabel{fill:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;font-size:11px}._7ar4Xq_axisLabel{fill:var(--dsw-alias-label-secondary);font-size:12px;font-weight:500}._7ar4Xq_curve{fill:none;stroke:var(--dsw-alias-state-business-primary);stroke-width:3px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}._7ar4Xq_curve[data-curve=\"1\"]{stroke:var(--dsw-alias-state-success-primary);stroke-dasharray:9 5}._7ar4Xq_curve[data-curve=\"2\"]{stroke:var(--dsw-alias-state-warn-primary);stroke-dasharray:2 6}._7ar4Xq_legend{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;gap:8px 14px;margin:0 0 5px 64px;padding:0;font-size:12px;list-style:none;display:flex}._7ar4Xq_legend li:before{content:\"\";border-top:3px solid var(--dsw-alias-state-business-primary);vertical-align:middle;width:18px;height:0;margin-right:5px;display:inline-block}._7ar4Xq_legend li[data-curve=\"1\"]:before{border-top-color:var(--dsw-alias-state-success-primary);border-top-style:dashed}._7ar4Xq_legend li[data-curve=\"2\"]:before{border-top-color:var(--dsw-alias-state-warn-primary);border-top-style:dotted}._7ar4Xq_answerField{color:var(--dsw-alias-label-secondary);gap:6px;font-size:13px}._7ar4Xq_answerField textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--dsw-alias-border-l2);min-height:52px;color:var(--dsw-alias-label-primary);font:inherit;background:0 0;border-radius:0;padding:5px 0;line-height:1.5}._7ar4Xq_answerField textarea:focus-visible,._7ar4Xq_prediction textarea:focus-visible,._7ar4Xq_inlineActivity button:focus-visible,._7ar4Xq_inlineStatus:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}._7ar4Xq_primaryRow,._7ar4Xq_navigation{gap:8px;display:flex}._7ar4Xq_primaryRow{justify-content:flex-start}._7ar4Xq_navigation{justify-content:space-between}._7ar4Xq_primaryButton,._7ar4Xq_ghostButton,._7ar4Xq_revealButton,._7ar4Xq_textButton{appearance:none;font:inherit;cursor:pointer;border-radius:8px;padding:4px 10px;font-size:13px;line-height:20px}._7ar4Xq_primaryButton,._7ar4Xq_revealButton{border:1px solid var(--dsw-alias-brand-primary);background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-on-primary,white)}._7ar4Xq_ghostButton{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}._7ar4Xq_textButton{color:var(--dsw-alias-brand-primary);background:0 0;border:0;border-radius:0;padding:2px 0}._7ar4Xq_primaryButton:disabled,._7ar4Xq_ghostButton:disabled,._7ar4Xq_revealButton:disabled,._7ar4Xq_textButton:disabled{cursor:default;opacity:.45}._7ar4Xq_stepMeta{color:var(--dsw-alias-label-tertiary);justify-content:space-between;align-items:center;font-size:12px;display:flex}._7ar4Xq_processMap{grid-template-columns:repeat(var(--process-step-count), minmax(0, 1fr));margin:0;padding:0;list-style:none;display:grid}._7ar4Xq_processStep{min-width:0;position:relative}._7ar4Xq_processStep:not(:last-child):after{z-index:0;background:var(--dsw-alias-border-l2);content:\"\";height:2px;position:absolute;top:13px;left:calc(50% + 16px);right:calc(16px - 50%)}._7ar4Xq_processStep[data-connector-complete]:after{background:var(--dsw-alias-state-business-primary)}._7ar4Xq_processStepButton{z-index:1;width:100%;min-width:0;color:var(--dsw-alias-label-tertiary);text-align:center;font:inherit;cursor:pointer;background:0 0;border:0;flex-direction:column;align-items:center;gap:6px;padding:0 4px;font-size:12px;line-height:18px;display:flex;position:relative}._7ar4Xq_processStepButton:disabled{cursor:default}._7ar4Xq_processNode{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l4);background:var(--dsw-alias-bg-layer-1);width:28px;height:28px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;border-radius:50%;place-items:center;font-size:12px;line-height:1;display:grid}._7ar4Xq_processTitle{-webkit-line-clamp:2;-webkit-box-orient:vertical;min-width:0;display:-webkit-box;overflow:hidden}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processNode{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-tertiary);color:var(--dsw-alias-state-business-primary)}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processTitle{color:var(--dsw-alias-label-primary);font-weight:500}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processNode{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-primary-inverted)}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processTitle{color:var(--dsw-alias-label-secondary)}._7ar4Xq_processMapVertical{grid-template-columns:1fr}._7ar4Xq_processMapVertical ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMapVertical ._7ar4Xq_processStepButton{text-align:left;flex-direction:row;align-items:flex-start;gap:10px;padding:4px 0 10px}._7ar4Xq_processMapVertical ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMapVertical ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_stepFocus{border-left:2px solid var(--dsw-alias-state-business-primary);gap:12px;padding-left:16px}._7ar4Xq_stepFocus h3,._7ar4Xq_prediction p{margin:0}._7ar4Xq_stepFocus h3{color:var(--dsw-alias-label-primary);font-size:16px;font-weight:500;line-height:24px}._7ar4Xq_stepFocus>._7ar4Xq_revealButton{align-self:flex-start}._7ar4Xq_prediction{border:0;gap:9px;margin:0;padding:0}._7ar4Xq_prediction legend{color:var(--dsw-alias-state-business-primary);margin-bottom:8px;font-size:12px;font-weight:500}._7ar4Xq_prediction textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--dsw-alias-border-l2);min-height:52px;color:var(--dsw-alias-label-primary);font:inherit;background:0 0;padding:5px 0}._7ar4Xq_predictionOptions{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:0 18px;display:grid}._7ar4Xq_option{border-bottom:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);cursor:pointer;align-items:flex-start;gap:8px;padding:7px 0;display:flex}._7ar4Xq_option[data-selected]{color:var(--dsw-alias-label-primary)}._7ar4Xq_option input{accent-color:var(--dsw-alias-state-business-primary);margin-top:3px}._7ar4Xq_revealed{color:var(--dsw-alias-label-secondary);line-height:1.6}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) minmax(16px,36px) 24px minmax(16px,36px) minmax(0,1fr);align-items:center;display:grid}._7ar4Xq_compareHeader{color:var(--dsw-alias-label-secondary);padding-bottom:4px;font-size:13px}._7ar4Xq_compareHeader strong{min-width:0;font-weight:500}._7ar4Xq_compareHeader strong[data-side=left]{text-align:right;grid-column:1}._7ar4Xq_compareHeader strong[data-side=right]{text-align:left;grid-column:5}._7ar4Xq_compareHeaderLink{color:var(--dsw-alias-label-tertiary);text-align:center;grid-column:3}._7ar4Xq_compareRows{min-width:0}._7ar4Xq_compareRow{cursor:pointer;background:0 0;min-width:0;padding:12px 0;position:relative}._7ar4Xq_compareRow+._7ar4Xq_compareRow{border-top:1px solid var(--dsw-alias-border-l2)}._7ar4Xq_compareLine{background:var(--dsw-alias-border-l3);height:1px}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareLine{background:var(--dsw-alias-state-business-primary);height:2px}._7ar4Xq_compareSelector{place-items:center;display:grid}._7ar4Xq_compareSelector input{width:16px;height:16px;accent-color:var(--dsw-alias-state-business-primary);margin:0}._7ar4Xq_compareItem{min-width:0;color:var(--dsw-alias-label-primary);padding:0 5px;font-size:13px;line-height:1.5}._7ar4Xq_compareItem[data-side=left]{text-align:right}._7ar4Xq_compareItem[data-side=right]{text-align:left}._7ar4Xq_compareItem strong{font-weight:500}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareItem strong{color:var(--dsw-alias-state-business-primary)}._7ar4Xq_compareItem p{color:var(--dsw-alias-label-tertiary);margin:4px 0 0}._7ar4Xq_emptyCell{color:var(--dsw-alias-label-tertiary);padding:0 5px}._7ar4Xq_emptyCell[data-side=left]{text-align:right}._7ar4Xq_emptyCell[data-side=right]{text-align:left}._7ar4Xq_rowPrompt{max-width:80%;color:var(--dsw-alias-label-tertiary);text-align:center;grid-column:1/6;justify-self:center;margin-top:6px;font-size:11px;line-height:17px}._7ar4Xq_inlineStatus{width:max-content;max-width:100%;color:var(--dsw-alias-label-tertiary);text-align:left;font:inherit;background:0 0;border:0;align-items:center;gap:8px;margin:0;padding:0;font-size:13px;line-height:22px;display:flex}._7ar4Xq_runningDot{background:var(--dsw-alias-brand-primary);border-radius:50%;flex:none;width:6px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_pulse}._7ar4Xq_skeletonLine{background:var(--dsw-alias-border-l2);border-radius:999px;width:64px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_skeletonPulse}._7ar4Xq_inlineResult{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;align-items:baseline;gap:7px;margin:0;font-size:13px;line-height:22px;display:flex}._7ar4Xq_inlineFallback{flex-direction:column;gap:4px;display:flex}._7ar4Xq_fallbackText{color:var(--dsw-alias-label-secondary);font-size:13px;line-height:22px}._7ar4Xq_resultMark{color:var(--dsw-alias-label-success,var(--dsw-alias-brand-primary))}._7ar4Xq_errorMark{color:var(--dsw-alias-label-error)}._7ar4Xq_resultEvidence{color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}._7ar4Xq_resultAnswer{color:var(--dsw-alias-label-tertiary)}._7ar4Xq_legacyReveal{color:var(--dsw-alias-label-secondary);gap:4px;font-size:14px;line-height:24px;display:grid}._7ar4Xq_legacyReveal strong{color:var(--dsw-alias-label-primary);font-weight:550}._7ar4Xq_srOnly{clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}._7ar4Xq_checkpoint{border-left:2px solid var(--dsw-alias-brand-primary);min-width:0;color:var(--dsw-alias-label-primary);flex-direction:column;gap:12px;margin:4px 0 10px;padding:4px 0 4px 14px;display:flex}._7ar4Xq_checkpointHeader,._7ar4Xq_checkpointForm,._7ar4Xq_checkpointField{flex-direction:column;min-width:0;display:flex}._7ar4Xq_checkpointHeader{gap:3px}._7ar4Xq_checkpointForm{gap:9px}._7ar4Xq_checkpointField{color:var(--dsw-alias-label-secondary);gap:5px;font-size:13px}._7ar4Xq_checkpointEyebrow{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px}._7ar4Xq_checkpointHeader h2{margin:0;font-size:17px;font-weight:500;line-height:26px}._7ar4Xq_checkpointHeader p{color:var(--dsw-alias-label-secondary);margin:0;font-size:13px;line-height:22px}._7ar4Xq_checkpointInput{box-sizing:border-box;resize:vertical;border:1px solid var(--dsw-alias-border-l2);width:100%;min-height:36px;color:var(--dsw-alias-label-primary);font:inherit;background:0 0;border-radius:8px;padding:7px 9px;line-height:1.5}._7ar4Xq_checkpointInput:focus-visible,._7ar4Xq_checkpointOption input:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}._7ar4Xq_checkpointCode{font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace)}._7ar4Xq_checkpointChoices{border:0;gap:6px;margin:0;padding:0;display:grid}._7ar4Xq_checkpointChoices legend{color:var(--dsw-alias-label-secondary);margin-bottom:3px;padding:0;font-size:13px}._7ar4Xq_checkpointOption{color:var(--dsw-alias-label-primary);cursor:pointer;align-items:flex-start;gap:8px;font-size:14px;line-height:22px;display:flex}._7ar4Xq_checkpointOption input{accent-color:var(--dsw-alias-brand-primary);margin:4px 0 0}._7ar4Xq_checkpointActions{flex-wrap:wrap;align-items:center;gap:8px;display:flex}._7ar4Xq_checkpointHint{color:var(--dsw-alias-label-tertiary);margin:0;font-size:11px;line-height:18px}._7ar4Xq_learningVisual{min-width:0;color:var(--dsw-alias-label-primary);flex-direction:column;gap:14px;margin:4px 0 10px;display:flex}._7ar4Xq_visualDescription,._7ar4Xq_visualTextFallback{color:var(--dsw-alias-label-secondary);margin:0;font-size:13px;line-height:22px}._7ar4Xq_visualControls{grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:12px 28px;display:grid}._7ar4Xq_visualRange{cursor:pointer;grid-template-rows:auto 18px 14px;gap:2px;min-width:0;display:grid}._7ar4Xq_visualRangeHeader{min-width:0;color:var(--dsw-alias-label-secondary);justify-content:space-between;align-items:baseline;gap:12px;font-size:12px;line-height:20px;display:flex}._7ar4Xq_visualRangeHeader output{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;font-size:13px;font-weight:600}._7ar4Xq_visualRange input{appearance:none;background:linear-gradient(to right, var(--dsw-alias-state-business-primary) 0 var(--visual-range-progress), var(--dsw-alias-border-l2) var(--visual-range-progress) 100%);cursor:pointer;border-radius:999px;align-self:center;width:100%;height:4px}._7ar4Xq_visualRange input::-webkit-slider-runnable-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_visualRange input::-webkit-slider-thumb{appearance:none;border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:16px;height:16px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%;margin-top:-6px}._7ar4Xq_visualRange input::-moz-range-track{background:0 0;border-radius:999px;height:4px}._7ar4Xq_visualRange input::-moz-range-thumb{border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:10px;height:10px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%}._7ar4Xq_visualRange input:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:5px}._7ar4Xq_visualRangeEnds{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;justify-content:space-between;font-size:10px;line-height:14px;display:flex}._7ar4Xq_visualMetrics{color:var(--dsw-alias-label-tertiary);flex-wrap:wrap;gap:8px 20px;font-size:12px;line-height:20px;display:flex}._7ar4Xq_visualMetrics>span{align-items:baseline;gap:7px;display:inline-flex}._7ar4Xq_visualMetrics output{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;font-weight:550}._7ar4Xq_visualChartRegion{min-width:0}._7ar4Xq_visualLegend{color:var(--dsw-alias-label-secondary);flex-wrap:wrap;gap:7px 16px;margin:3px 0 0 64px;padding:0;font-size:11px;line-height:18px;list-style:none;display:flex}._7ar4Xq_visualLegend li{--visual-tone:var(--dsw-alias-state-business-primary);align-items:center;gap:6px;display:inline-flex}._7ar4Xq_visualLegend li>span{border-top:2.5px solid var(--visual-tone);width:18px;height:0;display:inline-block}._7ar4Xq_visualLegend li[data-series-type=points]>span{background:var(--visual-tone);border:0;border-radius:50%;width:8px;height:8px}._7ar4Xq_visualLegend li[data-stroke=dashed]>span{border-top-style:dashed}._7ar4Xq_visualLegend li[data-stroke=dotted]>span{border-top-style:dotted}._7ar4Xq_visualChart{width:100%;height:auto;display:block;overflow:visible}._7ar4Xq_visualPlot{fill:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 92%, transparent);stroke:var(--dsw-alias-border-l2);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_visualGrid{stroke:var(--dsw-alias-border-l1);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_visualTick{fill:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;font-size:10px}._7ar4Xq_visualAxisLabel{fill:var(--dsw-alias-label-secondary);font-size:11px}._7ar4Xq_visualCurve{--visual-tone:var(--dsw-alias-state-business-primary);fill:none;stroke:var(--visual-tone);stroke-width:2.5px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}._7ar4Xq_visualCurve[data-stroke=dashed]{stroke-dasharray:8 5}._7ar4Xq_visualCurve[data-stroke=dotted]{stroke-dasharray:2 5}._7ar4Xq_visualPoint{--visual-tone:var(--dsw-alias-state-business-primary);fill:var(--visual-tone);stroke:var(--dsw-alias-bg-layer-1);stroke-width:1.5px;vector-effect:non-scaling-stroke}._7ar4Xq_visualLegend [data-tone=blue],._7ar4Xq_visualCurve[data-tone=blue],._7ar4Xq_visualPoint[data-tone=blue]{--visual-tone:var(--dsw-alias-state-business-primary)}._7ar4Xq_visualLegend [data-tone=green],._7ar4Xq_visualCurve[data-tone=green],._7ar4Xq_visualPoint[data-tone=green]{--visual-tone:var(--dsw-alias-state-success-primary)}._7ar4Xq_visualLegend [data-tone=red],._7ar4Xq_visualCurve[data-tone=red],._7ar4Xq_visualPoint[data-tone=red]{--visual-tone:var(--dsw-alias-state-error-primary,#df4f4f)}._7ar4Xq_visualLegend [data-tone=orange],._7ar4Xq_visualCurve[data-tone=orange],._7ar4Xq_visualPoint[data-tone=orange]{--visual-tone:var(--dsw-alias-state-warn-primary)}._7ar4Xq_visualLegend [data-tone=purple],._7ar4Xq_visualCurve[data-tone=purple],._7ar4Xq_visualPoint[data-tone=purple]{--visual-tone:#8b6fd6}._7ar4Xq_visualLegend [data-tone=gray],._7ar4Xq_visualCurve[data-tone=gray],._7ar4Xq_visualPoint[data-tone=gray]{--visual-tone:var(--dsw-alias-label-tertiary)}._7ar4Xq_round{min-width:0;color:var(--dsw-alias-label-primary);flex-direction:column;gap:14px;display:flex}._7ar4Xq_roundHeader{flex-direction:column;gap:3px;display:flex}._7ar4Xq_roundHeader span{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:20px}._7ar4Xq_roundHeader h2,._7ar4Xq_roundProcess h3,._7ar4Xq_roundStructure h3,._7ar4Xq_roundFeedback p{margin:0}._7ar4Xq_roundHeader h2{font-size:17px;font-weight:500;line-height:26px}._7ar4Xq_roundProcess{border-left:2px solid var(--dsw-alias-state-business-primary);grid-template-columns:30px minmax(0,1fr);gap:10px;padding:10px 0 10px 12px;display:grid}._7ar4Xq_roundNode{border:1px solid var(--dsw-alias-state-business-primary);width:28px;height:28px;color:var(--dsw-alias-state-business-primary);border-radius:50%;place-items:center;font-size:12px;display:grid}._7ar4Xq_roundProcess[data-final] ._7ar4Xq_roundNode{background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-primary-inverted)}._7ar4Xq_roundParameter,._7ar4Xq_roundParameterValues,._7ar4Xq_roundCurveList{flex-wrap:wrap;gap:8px;display:flex}._7ar4Xq_roundParameter{flex-direction:column}._7ar4Xq_roundParameterValues span,._7ar4Xq_roundCurveList span{border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);border-radius:999px;padding:4px 9px;font-size:12px;line-height:20px}._7ar4Xq_roundStructure{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;display:grid}._7ar4Xq_roundStructure h3{font-size:13px;font-weight:500}._7ar4Xq_roundAlignment{border-top:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);cursor:pointer;grid-column:1/3;grid-template-columns:20px 1fr 1fr;gap:8px;padding:8px 0;font-size:13px;display:grid}._7ar4Xq_roundAlignment input{accent-color:var(--dsw-alias-state-business-primary);margin-top:3px}._7ar4Xq_roundAlignment small{color:var(--dsw-alias-label-tertiary);grid-column:2/4}._7ar4Xq_roundAlignment[data-selected]{color:var(--dsw-alias-state-business-primary)}._7ar4Xq_roundFeedback{color:var(--dsw-alias-label-secondary);gap:8px;display:grid}._7ar4Xq_completedRound{min-width:0}._7ar4Xq_revealTransition{animation:.7s both _7ar4Xq_revealCurrentFrame}._7ar4Xq_round[data-round-state=completed] ._7ar4Xq_revealTransition,._7ar4Xq_round[data-round-state=ready_to_continue] ._7ar4Xq_revealTransition,._7ar4Xq_round[data-round-state=ack_submitting] ._7ar4Xq_revealTransition{animation:none}@keyframes _7ar4Xq_revealCurrentFrame{0%{opacity:.45;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes _7ar4Xq_pulse{0%,to{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}@keyframes _7ar4Xq_skeletonPulse{0%,to{opacity:.35}50%{opacity:.75}}@media (width<=560px){._7ar4Xq_processMap{grid-template-columns:1fr}._7ar4Xq_processMap ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMap ._7ar4Xq_processStepButton{text-align:left;flex-direction:row;align-items:flex-start;gap:10px;padding:4px 0 10px}._7ar4Xq_processMap ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMap ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) 12px 22px 12px minmax(0,1fr)}._7ar4Xq_rowPrompt{max-width:100%}}@media (width<=420px){._7ar4Xq_legend{margin-left:56px}._7ar4Xq_visualLegend{margin-left:54px}._7ar4Xq_stepFocus{padding-left:12px}}@media (prefers-reduced-motion:reduce){._7ar4Xq_runningDot,._7ar4Xq_skeletonLine,._7ar4Xq_revealTransition{animation:none}}";
-		const tagId$1 = "@dsh-portable/interactive-learning/LearningActivity.module.css";
+		const css$2 = "._7ar4Xq_inlineActivity{gap:var(--lx-space-xl);min-width:0;color:var(--lx-label-primary);font-size:var(--lx-text-md);flex-direction:column;line-height:28px;display:flex}._7ar4Xq_scaffold{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);align-self:flex-start}._7ar4Xq_scaffold summary{cursor:pointer}._7ar4Xq_activityActions{align-items:center;gap:var(--lx-space-lg);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm);margin-top:-6px;display:flex}._7ar4Xq_error{color:var(--lx-label-error);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);margin:0}._7ar4Xq_activityContent,._7ar4Xq_controls,._7ar4Xq_answerField,._7ar4Xq_stepFocus,._7ar4Xq_prediction{flex-direction:column;display:flex}._7ar4Xq_activityContent{gap:var(--lx-space-xl)}._7ar4Xq_prompt{color:var(--lx-label-primary);font-size:var(--lx-text-md);margin:0;font-weight:400;line-height:28px}._7ar4Xq_explorer{gap:var(--lx-space-xl);flex-direction:column;min-width:0;display:flex}._7ar4Xq_controls{gap:var(--lx-space-lg) var(--lx-space-3xl);grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));display:grid}._7ar4Xq_rangeField{min-width:0;color:var(--lx-label-secondary);font-size:var(--lx-text-sm)}._7ar4Xq_rangeHeader{justify-content:space-between;align-items:baseline;gap:var(--lx-space-lg);margin-bottom:6px;display:flex}._7ar4Xq_rangeHeader label{color:var(--lx-label-primary);font-weight:500}._7ar4Xq_rangeHeader output{color:var(--lx-accent);font-size:var(--lx-text-base);font-variant-numeric:tabular-nums;font-weight:650}._7ar4Xq_rangeControl{grid-template-rows:30px 16px;grid-template-columns:28px minmax(0,1fr) 28px;align-items:center;column-gap:9px;display:grid}._7ar4Xq_stepButton{appearance:none;border:1px solid var(--lx-border-strong);border-radius:var(--lx-radius-xs);width:28px;height:28px;color:var(--lx-label-secondary);font:inherit;font-size:var(--lx-text-lg);line-height:var(--lx-leading-lg);cursor:pointer;background:0 0;padding:0}._7ar4Xq_stepButton:hover:not(:disabled){border-color:var(--lx-accent);color:var(--lx-accent)}._7ar4Xq_stepButton:disabled{cursor:default;opacity:.35}._7ar4Xq_rangeInput{appearance:none;border-radius:var(--lx-radius-pill);background:linear-gradient(to right, var(--lx-border-strongest) 0 var(--range-low), var(--lx-accent) var(--range-low) var(--range-high), var(--lx-border-strongest) var(--range-high) 100%);cursor:pointer;width:100%;height:4px}._7ar4Xq_rangeInput:disabled{cursor:default;opacity:.55}._7ar4Xq_rangeInput::-webkit-slider-runnable-track{border-radius:var(--lx-radius-pill);background:0 0;height:4px}._7ar4Xq_rangeInput::-webkit-slider-thumb{appearance:none;border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:16px;height:16px;box-shadow:0 0 0 1px var(--lx-accent);margin-top:-6px}._7ar4Xq_rangeInput::-moz-range-track{border-radius:var(--lx-radius-pill);background:0 0;height:4px}._7ar4Xq_rangeInput::-moz-range-thumb{border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:10px;height:10px;box-shadow:0 0 0 1px var(--lx-accent)}._7ar4Xq_rangeEnds{color:var(--lx-label-tertiary);font-size:var(--lx-text-2xs);font-variant-numeric:tabular-nums;line-height:var(--lx-leading-2xs);grid-column:2;justify-content:space-between;display:flex;position:relative}._7ar4Xq_rangeZero{position:absolute;transform:translate(-50%)}._7ar4Xq_chartRegion{min-width:0}._7ar4Xq_chart{width:100%;height:auto;display:block;overflow:visible}._7ar4Xq_plotFrame{fill:var(--lx-surface-base);stroke:var(--lx-border-strong);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_gridLine{stroke:var(--lx-border-subtle);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_zeroAxis{stroke:var(--lx-border-strongest);stroke-width:1.25px}._7ar4Xq_tickLabel{fill:var(--lx-label-tertiary);font-size:var(--lx-text-2xs);font-variant-numeric:tabular-nums}._7ar4Xq_axisLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-xs);font-weight:500}._7ar4Xq_curve{fill:none;stroke:var(--lx-accent);stroke-width:3px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}._7ar4Xq_curve[data-curve=\"1\"]{stroke:var(--lx-success);stroke-dasharray:9 5}._7ar4Xq_curve[data-curve=\"2\"]{stroke:var(--lx-warn);stroke-dasharray:2 6}._7ar4Xq_legend{gap:var(--lx-space-sm) var(--lx-space-lg);color:var(--lx-label-secondary);font-size:var(--lx-text-xs);flex-wrap:wrap;margin:0 0 5px 64px;padding:0;list-style:none;display:flex}._7ar4Xq_legend li:before{content:\"\";border-top:3px solid var(--lx-accent);vertical-align:middle;width:18px;height:0;margin-right:5px;display:inline-block}._7ar4Xq_legend li[data-curve=\"1\"]:before{border-top-color:var(--lx-success);border-top-style:dashed}._7ar4Xq_legend li[data-curve=\"2\"]:before{border-top-color:var(--lx-warn);border-top-style:dotted}._7ar4Xq_answerField{gap:var(--lx-space-xs);color:var(--lx-label-secondary);font-size:var(--lx-text-sm)}._7ar4Xq_answerField textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--lx-border-default);min-height:52px;padding:var(--lx-space-xs) 0;color:var(--lx-label-primary);font:inherit;background:0 0;border-radius:0;line-height:1.5}._7ar4Xq_primaryRow,._7ar4Xq_navigation{gap:var(--lx-space-sm);display:flex}._7ar4Xq_primaryRow{justify-content:flex-start}._7ar4Xq_navigation{justify-content:space-between}._7ar4Xq_primaryButton,._7ar4Xq_ghostButton,._7ar4Xq_revealButton,._7ar4Xq_textButton{min-height:var(--lx-control-height-md);appearance:none;border-radius:var(--lx-radius-sm);padding:var(--lx-control-padding-md);font:inherit;font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);cursor:pointer;transition:background var(--lx-motion-fast) var(--lx-easing), border-color var(--lx-motion-fast) var(--lx-easing), color var(--lx-motion-fast) var(--lx-easing);justify-content:center;align-items:center;display:inline-flex}._7ar4Xq_primaryButton:hover:not(:disabled),._7ar4Xq_revealButton:hover:not(:disabled){background:color-mix(in srgb, var(--lx-accent) 88%, var(--lx-label-primary))}._7ar4Xq_ghostButton:hover:not(:disabled),._7ar4Xq_textButton:hover:not(:disabled){border-color:var(--lx-accent);color:var(--lx-accent)}._7ar4Xq_primaryButton,._7ar4Xq_revealButton{border:1px solid var(--lx-accent);background:var(--lx-accent);color:var(--lx-label-on-accent,white)}._7ar4Xq_ghostButton{border:1px solid var(--lx-border-default);color:var(--lx-label-secondary);background:0 0}._7ar4Xq_textButton{color:var(--lx-label-tertiary);background:0 0;border:1px solid #0000}._7ar4Xq_primaryButton:disabled,._7ar4Xq_ghostButton:disabled,._7ar4Xq_revealButton:disabled,._7ar4Xq_textButton:disabled{cursor:default;opacity:var(--lx-control-disabled-opacity)}._7ar4Xq_stepMeta{color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);justify-content:space-between;align-items:center;display:flex}._7ar4Xq_processMap{grid-template-columns:repeat(var(--process-step-count), minmax(0, 1fr));margin:0;padding:0;list-style:none;display:grid}._7ar4Xq_processStep{min-width:0;position:relative}._7ar4Xq_processStep:not(:last-child):after{z-index:0;background:var(--lx-border-default);content:\"\";height:2px;position:absolute;top:13px;left:calc(50% + 16px);right:calc(16px - 50%)}._7ar4Xq_processStep[data-connector-complete]:after{background:var(--lx-accent)}._7ar4Xq_processStepButton{z-index:1;align-items:center;gap:var(--lx-space-xs);width:100%;min-width:0;padding:0 var(--lx-space-2xs);color:var(--lx-label-tertiary);text-align:center;font:inherit;font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);cursor:pointer;background:0 0;border:0;flex-direction:column;display:flex;position:relative}._7ar4Xq_processStepButton:disabled{cursor:default}._7ar4Xq_processNode{box-sizing:border-box;border:1px solid var(--lx-border-strongest);border-radius:var(--lx-radius-circle);background:var(--lx-surface-base);width:28px;height:28px;color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);font-variant-numeric:tabular-nums;place-items:center;line-height:1;display:grid}._7ar4Xq_processTitle{-webkit-line-clamp:2;-webkit-box-orient:vertical;min-width:0;display:-webkit-box;overflow:hidden}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processNode{border-color:var(--lx-accent);background:var(--lx-accent-soft);color:var(--lx-accent)}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processTitle{color:var(--lx-label-primary);font-weight:500}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processNode{border-color:var(--lx-accent);background:var(--lx-accent);color:var(--lx-label-inverted)}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processTitle{color:var(--lx-label-secondary)}._7ar4Xq_processMapVertical{grid-template-columns:1fr}._7ar4Xq_processMapVertical ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMapVertical ._7ar4Xq_processStepButton{align-items:flex-start;gap:var(--lx-space-md);padding:var(--lx-space-2xs) 0 var(--lx-space-md);text-align:left;flex-direction:row}._7ar4Xq_processMapVertical ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMapVertical ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_stepFocus{gap:var(--lx-space-lg);border-left:2px solid var(--lx-accent);padding-left:16px}._7ar4Xq_stepFocus h3,._7ar4Xq_prediction p{margin:0}._7ar4Xq_stepFocus h3{color:var(--lx-label-primary);font-size:var(--lx-text-md);font-weight:500;line-height:var(--lx-leading-md)}._7ar4Xq_stepFocus>._7ar4Xq_revealButton{align-self:flex-start}._7ar4Xq_prediction{gap:var(--lx-space-md);border:0;margin:0;padding:0}._7ar4Xq_prediction legend{color:var(--lx-accent);font-size:var(--lx-text-xs);margin-bottom:8px;font-weight:500}._7ar4Xq_prediction textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--lx-border-default);min-height:52px;padding:var(--lx-space-xs) 0;color:var(--lx-label-primary);font:inherit;background:0 0}._7ar4Xq_predictionOptions{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:0 18px;display:grid}._7ar4Xq_option{gap:var(--lx-space-sm);border-bottom:1px solid var(--lx-border-subtle);padding:var(--lx-space-sm) 0;color:var(--lx-label-secondary);cursor:pointer;align-items:flex-start;display:flex}._7ar4Xq_option[data-selected]{color:var(--lx-label-primary)}._7ar4Xq_option input{accent-color:var(--lx-accent);margin-top:3px}._7ar4Xq_revealed{color:var(--lx-label-secondary);line-height:1.6}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) minmax(16px,36px) 24px minmax(16px,36px) minmax(0,1fr);align-items:center;display:grid}._7ar4Xq_compareHeader{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);padding-bottom:4px}._7ar4Xq_compareHeader strong{min-width:0;font-weight:500}._7ar4Xq_compareHeader strong[data-side=left]{text-align:right;grid-column:1}._7ar4Xq_compareHeader strong[data-side=right]{text-align:left;grid-column:5}._7ar4Xq_compareHeaderLink{color:var(--lx-label-tertiary);text-align:center;grid-column:3}._7ar4Xq_compareRows{min-width:0}._7ar4Xq_compareRow{min-width:0;padding:var(--lx-space-lg) 0;cursor:pointer;background:0 0;position:relative}._7ar4Xq_compareRow+._7ar4Xq_compareRow{border-top:1px solid var(--lx-border-default)}._7ar4Xq_compareLine{background:var(--lx-border-strong);height:1px}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareLine{background:var(--lx-accent);height:2px}._7ar4Xq_compareSelector{place-items:center;display:grid}._7ar4Xq_compareSelector input{width:16px;height:16px;accent-color:var(--lx-accent);margin:0}._7ar4Xq_compareItem{min-width:0;padding:0 var(--lx-space-xs);color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:1.5}._7ar4Xq_compareItem[data-side=left]{text-align:right}._7ar4Xq_compareItem[data-side=right]{text-align:left}._7ar4Xq_compareItem strong{font-weight:500}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareItem strong{color:var(--lx-accent)}._7ar4Xq_compareItem p{color:var(--lx-label-tertiary);margin:4px 0 0}._7ar4Xq_emptyCell{padding:0 var(--lx-space-xs);color:var(--lx-label-tertiary)}._7ar4Xq_emptyCell[data-side=left]{text-align:right}._7ar4Xq_emptyCell[data-side=right]{text-align:left}._7ar4Xq_rowPrompt{max-width:80%;color:var(--lx-label-tertiary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-2xs);text-align:center;grid-column:1/6;justify-self:center;margin-top:6px}._7ar4Xq_inlineStatus{align-items:center;gap:var(--lx-space-sm);width:max-content;max-width:100%;color:var(--lx-label-tertiary);text-align:left;font:inherit;font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);background:0 0;border:0;margin:0;padding:0;display:flex}._7ar4Xq_runningDot{border-radius:var(--lx-radius-circle);background:var(--lx-accent);flex:none;width:6px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_pulse}._7ar4Xq_skeletonLine{border-radius:var(--lx-radius-pill);background:var(--lx-border-default);width:64px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_skeletonPulse}._7ar4Xq_inlineResult{align-items:baseline;gap:var(--lx-space-sm);color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);flex-wrap:wrap;margin:0;display:flex}._7ar4Xq_inlineFallback{gap:var(--lx-space-xs);border-left:2px solid var(--lx-danger);border-radius:0 var(--lx-radius-sm) var(--lx-radius-sm) 0;padding:var(--lx-space-md) var(--lx-space-lg);background:color-mix(in srgb, var(--lx-danger) 6%, transparent);flex-direction:column;display:flex}._7ar4Xq_fallbackReason{color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);overflow-wrap:anywhere;margin:0}._7ar4Xq_fallbackText{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base)}._7ar4Xq_resultMark{color:var(--lx-success)}._7ar4Xq_errorMark{color:var(--lx-label-error)}._7ar4Xq_resultEvidence{color:var(--lx-label-secondary);font-variant-numeric:tabular-nums}._7ar4Xq_resultAnswer{color:var(--lx-label-tertiary)}._7ar4Xq_legacyReveal{gap:var(--lx-space-2xs);color:var(--lx-label-secondary);font-size:var(--lx-text-base);line-height:var(--lx-leading-md);display:grid}._7ar4Xq_legacyReveal strong{color:var(--lx-label-primary);font-weight:550}._7ar4Xq_srOnly{clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}._7ar4Xq_checkpoint{gap:var(--lx-space-lg);min-width:0;margin:var(--lx-space-sm) 0 var(--lx-space-xl);border:var(--lx-card-border);border-radius:var(--lx-card-radius);padding:var(--lx-card-padding);background:var(--lx-card-background);color:var(--lx-label-primary);box-shadow:var(--lx-shadow-lg);flex-direction:column;display:flex;container:_7ar4Xq_learning-checkpoint/inline-size}._7ar4Xq_checkpointHeader,._7ar4Xq_checkpointForm,._7ar4Xq_checkpointField{flex-direction:column;min-width:0;display:flex}._7ar4Xq_checkpointHeader{gap:var(--lx-space-xs)}._7ar4Xq_checkpointForm{gap:var(--lx-space-md)}._7ar4Xq_checkpointField{gap:var(--lx-space-xs);color:var(--lx-label-secondary);font-size:var(--lx-text-sm)}._7ar4Xq_checkpointEyebrow{border-radius:var(--lx-radius-pill);width:max-content;padding:var(--lx-space-3xs) var(--lx-space-sm);background:var(--lx-accent-soft);color:var(--lx-accent);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong);letter-spacing:var(--lx-tracking-eyebrow);line-height:var(--lx-leading-xs)}._7ar4Xq_checkpointHeader h2{font-size:var(--lx-text-lg);font-weight:var(--lx-weight-strong);line-height:var(--lx-leading-lg);margin:0}._7ar4Xq_checkpointHeader p{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);margin:0}._7ar4Xq_checkpointInput{box-sizing:border-box;resize:vertical;border:1px solid var(--lx-border-default);border-radius:var(--lx-radius-sm);width:100%;min-height:36px;padding:var(--lx-space-sm) var(--lx-space-md);color:var(--lx-label-primary);font:inherit;background:0 0;line-height:1.5}._7ar4Xq_checkpointCode{font-family:var(--lx-font-mono)}._7ar4Xq_checkpointChoices{gap:var(--lx-space-xs);border:0;margin:0;padding:0;display:grid}._7ar4Xq_checkpointChoices legend{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);margin-bottom:3px;padding:0}._7ar4Xq_checkpointOption{align-items:flex-start;gap:var(--lx-space-sm);color:var(--lx-label-primary);font-size:var(--lx-text-base);line-height:var(--lx-leading-base);cursor:pointer;display:flex}._7ar4Xq_checkpointOption input{accent-color:var(--lx-accent);margin:4px 0 0}._7ar4Xq_checkpointActions{align-items:center;gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}@container _7ar4Xq_learning-checkpoint (width<=340px){._7ar4Xq_checkpointActions>button{flex:auto}._7ar4Xq_checkpointActions>._7ar4Xq_textButton{flex-basis:100%}}._7ar4Xq_checkpointHint{color:var(--lx-label-tertiary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);margin:0}._7ar4Xq_learningVisual{gap:var(--lx-space-lg);min-width:0;color:var(--lx-label-primary);flex-direction:column;margin:4px 0 10px;display:flex}._7ar4Xq_visualDescription,._7ar4Xq_visualTextFallback{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);margin:0}._7ar4Xq_visualControls{gap:var(--lx-space-lg) 28px;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));display:grid}._7ar4Xq_visualRange{gap:var(--lx-space-3xs);cursor:pointer;grid-template-rows:auto 18px 14px;min-width:0;display:grid}._7ar4Xq_visualRangeHeader{justify-content:space-between;align-items:baseline;gap:var(--lx-space-lg);min-width:0;color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm);display:flex}._7ar4Xq_visualRangeHeader output{color:var(--lx-accent);font-size:var(--lx-text-sm);font-variant-numeric:tabular-nums;font-weight:600}._7ar4Xq_visualRange input{appearance:none;border-radius:var(--lx-radius-pill);background:linear-gradient(to right, var(--lx-accent) 0 var(--visual-range-progress), var(--lx-border-default) var(--visual-range-progress) 100%);cursor:pointer;align-self:center;width:100%;height:4px}._7ar4Xq_visualRange input::-webkit-slider-runnable-track{border-radius:var(--lx-radius-pill);background:0 0;height:4px}._7ar4Xq_visualRange input::-webkit-slider-thumb{appearance:none;border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:16px;height:16px;box-shadow:0 0 0 1px var(--lx-accent);margin-top:-6px}._7ar4Xq_visualRange input::-moz-range-track{border-radius:var(--lx-radius-pill);background:0 0;height:4px}._7ar4Xq_visualRange input::-moz-range-thumb{border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:10px;height:10px;box-shadow:0 0 0 1px var(--lx-accent)}._7ar4Xq_visualRangeEnds{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums;line-height:var(--lx-leading-micro);justify-content:space-between;display:flex}._7ar4Xq_visualMetrics{gap:var(--lx-space-sm) var(--lx-space-2xl);color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm);flex-wrap:wrap;display:flex}._7ar4Xq_visualMetrics>span{align-items:baseline;gap:var(--lx-space-sm);display:inline-flex}._7ar4Xq_visualMetrics output{color:var(--lx-accent);font-variant-numeric:tabular-nums;font-weight:550}._7ar4Xq_visualChartRegion{min-width:0}._7ar4Xq_visualLegend{gap:var(--lx-space-sm) var(--lx-space-xl);color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);flex-wrap:wrap;margin:3px 0 0 64px;padding:0;list-style:none;display:flex}._7ar4Xq_visualLegend li{--visual-tone:var(--lx-accent);align-items:center;gap:var(--lx-space-xs);display:inline-flex}._7ar4Xq_visualLegend li>span{border-top:2.5px solid var(--visual-tone);width:18px;height:0;display:inline-block}._7ar4Xq_visualLegend li[data-series-type=points]>span{border-radius:var(--lx-radius-circle);background:var(--visual-tone);border:0;width:8px;height:8px}._7ar4Xq_visualLegend li[data-stroke=dashed]>span{border-top-style:dashed}._7ar4Xq_visualLegend li[data-stroke=dotted]>span{border-top-style:dotted}._7ar4Xq_visualChart{width:100%;height:auto;display:block;overflow:visible}._7ar4Xq_visualPlot{fill:var(--lx-surface-card);stroke:var(--lx-border-default);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_visualGrid{stroke:var(--lx-border-subtle);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_visualTick{fill:var(--lx-label-tertiary);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums}._7ar4Xq_visualAxisLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-2xs)}._7ar4Xq_visualCurve{--visual-tone:var(--lx-accent);fill:none;stroke:var(--visual-tone);stroke-width:2.5px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}._7ar4Xq_visualCurve[data-stroke=dashed]{stroke-dasharray:8 5}._7ar4Xq_visualCurve[data-stroke=dotted]{stroke-dasharray:2 5}._7ar4Xq_visualPoint{--visual-tone:var(--lx-accent);fill:var(--visual-tone);stroke:var(--lx-surface-base);stroke-width:1.5px;vector-effect:non-scaling-stroke}._7ar4Xq_round{gap:var(--lx-space-lg);min-width:0;color:var(--lx-label-primary);flex-direction:column;display:flex}._7ar4Xq_roundHeader{gap:var(--lx-space-2xs);flex-direction:column;display:flex}._7ar4Xq_roundHeader span{color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm)}._7ar4Xq_roundHeader h2,._7ar4Xq_roundProcess h3,._7ar4Xq_roundStructure h3,._7ar4Xq_roundFeedback p{margin:0}._7ar4Xq_roundHeader h2{font-size:var(--lx-text-lg);font-weight:500;line-height:var(--lx-leading-lg)}._7ar4Xq_roundProcess{gap:var(--lx-space-md);border-left:2px solid var(--lx-accent);padding:var(--lx-space-md) 0 var(--lx-space-md) var(--lx-space-lg);grid-template-columns:30px minmax(0,1fr);display:grid}._7ar4Xq_roundNode{border:1px solid var(--lx-accent);border-radius:var(--lx-radius-circle);width:28px;height:28px;color:var(--lx-accent);font-size:var(--lx-text-xs);place-items:center;display:grid}._7ar4Xq_roundProcess[data-final] ._7ar4Xq_roundNode{background:var(--lx-accent);color:var(--lx-label-inverted)}._7ar4Xq_roundParameter,._7ar4Xq_roundParameterValues,._7ar4Xq_roundCurveList{gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}._7ar4Xq_roundParameter{flex-direction:column}._7ar4Xq_roundParameterValues span,._7ar4Xq_roundCurveList span{border:1px solid var(--lx-border-default);border-radius:var(--lx-radius-pill);padding:var(--lx-space-2xs) var(--lx-space-md);color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm)}._7ar4Xq_roundStructure{gap:var(--lx-space-sm) var(--lx-space-lg);grid-template-columns:repeat(2,minmax(0,1fr));display:grid}._7ar4Xq_roundStructure h3{font-size:var(--lx-text-sm);font-weight:500}._7ar4Xq_roundAlignment{gap:var(--lx-space-sm);border-top:1px solid var(--lx-border-default);padding:var(--lx-space-sm) 0;color:var(--lx-label-secondary);font-size:var(--lx-text-sm);cursor:pointer;grid-column:1/3;grid-template-columns:20px 1fr 1fr;display:grid}._7ar4Xq_roundAlignment input{accent-color:var(--lx-accent);margin-top:3px}._7ar4Xq_roundAlignment small{color:var(--lx-label-tertiary);grid-column:2/4}._7ar4Xq_roundAlignment[data-selected]{color:var(--lx-accent)}._7ar4Xq_roundFeedback{gap:var(--lx-space-sm);color:var(--lx-label-secondary);display:grid}._7ar4Xq_completedRound{min-width:0}._7ar4Xq_revealTransition{animation:.7s both _7ar4Xq_revealCurrentFrame}._7ar4Xq_round[data-round-state=completed] ._7ar4Xq_revealTransition,._7ar4Xq_round[data-round-state=ready_to_continue] ._7ar4Xq_revealTransition,._7ar4Xq_round[data-round-state=ack_submitting] ._7ar4Xq_revealTransition{animation:none}@keyframes _7ar4Xq_revealCurrentFrame{0%{opacity:.45;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes _7ar4Xq_pulse{0%,to{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}@keyframes _7ar4Xq_skeletonPulse{0%,to{opacity:.35}50%{opacity:.75}}@media (width<=560px){._7ar4Xq_processMap{grid-template-columns:1fr}._7ar4Xq_processMap ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMap ._7ar4Xq_processStepButton{align-items:flex-start;gap:var(--lx-space-md);padding:var(--lx-space-2xs) 0 var(--lx-space-md);text-align:left;flex-direction:row}._7ar4Xq_processMap ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMap ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) 12px 22px 12px minmax(0,1fr)}._7ar4Xq_rowPrompt{max-width:100%}}@media (width<=420px){._7ar4Xq_legend{margin-left:56px}._7ar4Xq_visualLegend{margin-left:54px}._7ar4Xq_stepFocus{padding-left:12px}}@media (prefers-reduced-motion:reduce){._7ar4Xq_runningDot,._7ar4Xq_skeletonLine,._7ar4Xq_revealTransition{animation:none}}";
+		const tagId$2 = "@dsh-portable/interactive-learning/LearningActivity.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$2) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@dsh-portable/interactive-learning";
+			tag.dataset.pluginCss = tagId$2;
+			tag.textContent = css$2;
+			document.head.appendChild(tag);
+		}
+		var LearningActivity_module_css_default = {
+			"activityActions": "_7ar4Xq_activityActions",
+			"activityContent": "_7ar4Xq_activityContent",
+			"answerField": "_7ar4Xq_answerField",
+			"axisLabel": "_7ar4Xq_axisLabel",
+			"chart": "_7ar4Xq_chart",
+			"chartRegion": "_7ar4Xq_chartRegion",
+			"checkpoint": "_7ar4Xq_checkpoint",
+			"checkpointActions": "_7ar4Xq_checkpointActions",
+			"checkpointChoices": "_7ar4Xq_checkpointChoices",
+			"checkpointCode": "_7ar4Xq_checkpointCode",
+			"checkpointEyebrow": "_7ar4Xq_checkpointEyebrow",
+			"checkpointField": "_7ar4Xq_checkpointField",
+			"checkpointForm": "_7ar4Xq_checkpointForm",
+			"checkpointHeader": "_7ar4Xq_checkpointHeader",
+			"checkpointHint": "_7ar4Xq_checkpointHint",
+			"checkpointInput": "_7ar4Xq_checkpointInput",
+			"checkpointOption": "_7ar4Xq_checkpointOption",
+			"compareHeader": "_7ar4Xq_compareHeader",
+			"compareHeaderLink": "_7ar4Xq_compareHeaderLink",
+			"compareItem": "_7ar4Xq_compareItem",
+			"compareLine": "_7ar4Xq_compareLine",
+			"compareRow": "_7ar4Xq_compareRow",
+			"compareRows": "_7ar4Xq_compareRows",
+			"compareSelector": "_7ar4Xq_compareSelector",
+			"completedRound": "_7ar4Xq_completedRound",
+			"controls": "_7ar4Xq_controls",
+			"curve": "_7ar4Xq_curve",
+			"emptyCell": "_7ar4Xq_emptyCell",
+			"error": "_7ar4Xq_error",
+			"errorMark": "_7ar4Xq_errorMark",
+			"explorer": "_7ar4Xq_explorer",
+			"fallbackReason": "_7ar4Xq_fallbackReason",
+			"fallbackText": "_7ar4Xq_fallbackText",
+			"ghostButton": "_7ar4Xq_ghostButton",
+			"gridLine": "_7ar4Xq_gridLine",
+			"inlineActivity": "_7ar4Xq_inlineActivity",
+			"inlineFallback": "_7ar4Xq_inlineFallback",
+			"inlineResult": "_7ar4Xq_inlineResult",
+			"inlineStatus": "_7ar4Xq_inlineStatus",
+			"learning-checkpoint": "_7ar4Xq_learning-checkpoint",
+			"learningVisual": "_7ar4Xq_learningVisual",
+			"legacyReveal": "_7ar4Xq_legacyReveal",
+			"legend": "_7ar4Xq_legend",
+			"navigation": "_7ar4Xq_navigation",
+			"option": "_7ar4Xq_option",
+			"plotFrame": "_7ar4Xq_plotFrame",
+			"prediction": "_7ar4Xq_prediction",
+			"predictionOptions": "_7ar4Xq_predictionOptions",
+			"primaryButton": "_7ar4Xq_primaryButton",
+			"primaryRow": "_7ar4Xq_primaryRow",
+			"processMap": "_7ar4Xq_processMap",
+			"processMapVertical": "_7ar4Xq_processMapVertical",
+			"processNode": "_7ar4Xq_processNode",
+			"processStep": "_7ar4Xq_processStep",
+			"processStepButton": "_7ar4Xq_processStepButton",
+			"processTitle": "_7ar4Xq_processTitle",
+			"prompt": "_7ar4Xq_prompt",
+			"pulse": "_7ar4Xq_pulse",
+			"rangeControl": "_7ar4Xq_rangeControl",
+			"rangeEnds": "_7ar4Xq_rangeEnds",
+			"rangeField": "_7ar4Xq_rangeField",
+			"rangeHeader": "_7ar4Xq_rangeHeader",
+			"rangeInput": "_7ar4Xq_rangeInput",
+			"rangeZero": "_7ar4Xq_rangeZero",
+			"resultAnswer": "_7ar4Xq_resultAnswer",
+			"resultEvidence": "_7ar4Xq_resultEvidence",
+			"resultMark": "_7ar4Xq_resultMark",
+			"revealButton": "_7ar4Xq_revealButton",
+			"revealCurrentFrame": "_7ar4Xq_revealCurrentFrame",
+			"revealTransition": "_7ar4Xq_revealTransition",
+			"revealed": "_7ar4Xq_revealed",
+			"round": "_7ar4Xq_round",
+			"roundAlignment": "_7ar4Xq_roundAlignment",
+			"roundCurveList": "_7ar4Xq_roundCurveList",
+			"roundFeedback": "_7ar4Xq_roundFeedback",
+			"roundHeader": "_7ar4Xq_roundHeader",
+			"roundNode": "_7ar4Xq_roundNode",
+			"roundParameter": "_7ar4Xq_roundParameter",
+			"roundParameterValues": "_7ar4Xq_roundParameterValues",
+			"roundProcess": "_7ar4Xq_roundProcess",
+			"roundStructure": "_7ar4Xq_roundStructure",
+			"rowPrompt": "_7ar4Xq_rowPrompt",
+			"runningDot": "_7ar4Xq_runningDot",
+			"scaffold": "_7ar4Xq_scaffold",
+			"skeletonLine": "_7ar4Xq_skeletonLine",
+			"skeletonPulse": "_7ar4Xq_skeletonPulse",
+			"srOnly": "_7ar4Xq_srOnly",
+			"stepButton": "_7ar4Xq_stepButton",
+			"stepFocus": "_7ar4Xq_stepFocus",
+			"stepMeta": "_7ar4Xq_stepMeta",
+			"textButton": "_7ar4Xq_textButton",
+			"tickLabel": "_7ar4Xq_tickLabel",
+			"visualAxisLabel": "_7ar4Xq_visualAxisLabel",
+			"visualChart": "_7ar4Xq_visualChart",
+			"visualChartRegion": "_7ar4Xq_visualChartRegion",
+			"visualControls": "_7ar4Xq_visualControls",
+			"visualCurve": "_7ar4Xq_visualCurve",
+			"visualDescription": "_7ar4Xq_visualDescription",
+			"visualGrid": "_7ar4Xq_visualGrid",
+			"visualLegend": "_7ar4Xq_visualLegend",
+			"visualMetrics": "_7ar4Xq_visualMetrics",
+			"visualPlot": "_7ar4Xq_visualPlot",
+			"visualPoint": "_7ar4Xq_visualPoint",
+			"visualRange": "_7ar4Xq_visualRange",
+			"visualRangeEnds": "_7ar4Xq_visualRangeEnds",
+			"visualRangeHeader": "_7ar4Xq_visualRangeHeader",
+			"visualTextFallback": "_7ar4Xq_visualTextFallback",
+			"visualTick": "_7ar4Xq_visualTick",
+			"zeroAxis": "_7ar4Xq_zeroAxis"
+		};
+		//#endregion
+		//#region \0dsh-css:src/client/tokens.module.css.mjs
+		const css$1 = "[data-learning-scope]{--lx-text-micro:10px;--lx-leading-micro:15px;--lx-text-2xs:11px;--lx-leading-2xs:16px;--lx-text-xs:12px;--lx-leading-xs:18px;--lx-text-sm:13px;--lx-leading-sm:20px;--lx-text-base:14px;--lx-leading-base:22px;--lx-text-md:15px;--lx-leading-md:24px;--lx-text-lg:17px;--lx-leading-lg:26px;--lx-text-xl:clamp(17px, 4cqi, 21px);--lx-leading-xl:1.55;--lx-text-formula:clamp(15px, 3cqi, 19px);--lx-leading-formula:26px;--lx-weight-regular:400;--lx-weight-medium:550;--lx-weight-strong:650;--lx-tracking-eyebrow:.08em;--lx-font-mono:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);--lx-space-3xs:2px;--lx-space-2xs:4px;--lx-space-xs:6px;--lx-space-sm:8px;--lx-space-md:10px;--lx-space-lg:12px;--lx-space-xl:16px;--lx-space-2xl:20px;--lx-space-3xl:24px;--lx-radius-xs:6px;--lx-radius-sm:8px;--lx-radius-md:10px;--lx-radius-lg:12px;--lx-radius-xl:16px;--lx-radius-pill:999px;--lx-radius-circle:50%;--lx-surface-base:var(--dsw-alias-bg-layer-1,Canvas);--lx-surface-card:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 96%, transparent);--lx-surface-raised:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 84%, transparent);--lx-surface-sunken:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 70%, transparent);--lx-surface-accent:color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 30%, transparent);--lx-border-subtle:var(--dsw-alias-border-l1,color-mix(in srgb, var(--lx-label-primary) 10%, transparent));--lx-border-default:var(--dsw-alias-border-l2,color-mix(in srgb, var(--lx-label-primary) 16%, transparent));--lx-border-strong:var(--dsw-alias-border-l3,color-mix(in srgb, var(--lx-label-primary) 24%, transparent));--lx-border-strongest:var(--dsw-alias-border-l4,color-mix(in srgb, var(--lx-label-primary) 34%, transparent));--lx-label-primary:var(--dsw-alias-label-primary,CanvasText);--lx-label-secondary:var(--dsw-alias-label-secondary,color-mix(in srgb, var(--lx-label-primary) 72%, transparent));--lx-label-tertiary:var(--dsw-alias-label-tertiary,color-mix(in srgb, var(--lx-label-primary) 52%, transparent));--lx-label-on-accent:var(--dsw-alias-label-on-primary,white);--lx-accent:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary,#2f73ea));--lx-accent-soft:var(--dsw-alias-state-business-tertiary,color-mix(in srgb, var(--lx-accent) 12%, transparent));--lx-success:var(--dsw-alias-state-success-primary,#2f9e5f);--lx-warn:var(--dsw-alias-state-warn-primary,#d1741f);--lx-danger:var(--dsw-alias-state-error-primary,#df4f4f);--lx-label-error:var(--dsw-alias-label-error,var(--lx-danger));--lx-label-inverted:var(--dsw-alias-label-primary-inverted,var(--lx-surface-base));--lx-card-border:1px solid var(--lx-border-default);--lx-card-radius:var(--lx-radius-xl);--lx-card-padding:clamp(16px, 3cqi, 24px);--lx-card-background:linear-gradient(135deg, color-mix(in srgb, var(--lx-accent-soft) 34%, transparent), transparent 42%), var(--lx-surface-card);--lx-shadow-sm:0 4px 14px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);--lx-shadow-md:0 10px 26px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);--lx-shadow-lg:0 12px 32px color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent);--lx-focus-color:var(--lx-accent);--lx-focus-width:2px;--lx-focus-offset:3px;--lx-control-height-sm:28px;--lx-control-height-md:32px;--lx-control-padding-sm:var(--lx-space-2xs) var(--lx-space-md);--lx-control-padding-md:var(--lx-space-xs) var(--lx-space-lg);--lx-control-disabled-opacity:.4;--lx-motion-fast:.14s;--lx-motion-base:.18s;--lx-easing:ease;--lx-tone-blue:var(--lx-accent);--lx-tone-green:var(--lx-success);--lx-tone-red:var(--lx-danger);--lx-tone-orange:var(--lx-warn);--lx-tone-purple:color-mix(in srgb, var(--lx-accent) 58%, var(--lx-danger));--lx-tone-gray:var(--dsw-alias-label-tertiary);--visual-tone:var(--lx-tone-blue)}[data-learning-scope] [data-tone=blue]{--visual-tone:var(--lx-tone-blue)}[data-learning-scope] [data-tone=green]{--visual-tone:var(--lx-tone-green)}[data-learning-scope] [data-tone=red]{--visual-tone:var(--lx-tone-red)}[data-learning-scope] [data-tone=orange]{--visual-tone:var(--lx-tone-orange)}[data-learning-scope] [data-tone=purple]{--visual-tone:var(--lx-tone-purple)}[data-learning-scope] [data-tone=gray]{--visual-tone:var(--lx-tone-gray)}[data-learning-scope] :focus-visible{outline:var(--lx-focus-width) solid var(--lx-focus-color);outline-offset:var(--lx-focus-offset)}@media (prefers-reduced-motion:reduce){[data-learning-scope]{--lx-motion-fast:0s;--lx-motion-base:0s}}";
+		const tagId$1 = "@dsh-portable/interactive-learning/tokens.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$1) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@dsh-portable/interactive-learning";
@@ -2068,120 +2191,15 @@ window.__ModuleLoader__.load({
 			tag.textContent = css$1;
 			document.head.appendChild(tag);
 		}
-		var LearningActivity_module_css_default = {
-			"visualDescription": "_7ar4Xq_visualDescription",
-			"visualRangeEnds": "_7ar4Xq_visualRangeEnds",
-			"round": "_7ar4Xq_round",
-			"activityContent": "_7ar4Xq_activityContent",
-			"error": "_7ar4Xq_error",
-			"visualCurve": "_7ar4Xq_visualCurve",
-			"roundStructure": "_7ar4Xq_roundStructure",
-			"inlineActivity": "_7ar4Xq_inlineActivity",
-			"revealButton": "_7ar4Xq_revealButton",
-			"activityActions": "_7ar4Xq_activityActions",
-			"legacyReveal": "_7ar4Xq_legacyReveal",
-			"roundCurveList": "_7ar4Xq_roundCurveList",
-			"processNode": "_7ar4Xq_processNode",
-			"prompt": "_7ar4Xq_prompt",
-			"compareRow": "_7ar4Xq_compareRow",
-			"rangeZero": "_7ar4Xq_rangeZero",
-			"processTitle": "_7ar4Xq_processTitle",
-			"rangeField": "_7ar4Xq_rangeField",
-			"skeletonPulse": "_7ar4Xq_skeletonPulse",
-			"prediction": "_7ar4Xq_prediction",
-			"zeroAxis": "_7ar4Xq_zeroAxis",
-			"resultMark": "_7ar4Xq_resultMark",
-			"roundFeedback": "_7ar4Xq_roundFeedback",
-			"option": "_7ar4Xq_option",
-			"checkpointChoices": "_7ar4Xq_checkpointChoices",
-			"visualRange": "_7ar4Xq_visualRange",
-			"processStepButton": "_7ar4Xq_processStepButton",
-			"compareItem": "_7ar4Xq_compareItem",
-			"emptyCell": "_7ar4Xq_emptyCell",
-			"visualAxisLabel": "_7ar4Xq_visualAxisLabel",
-			"tickLabel": "_7ar4Xq_tickLabel",
-			"roundAlignment": "_7ar4Xq_roundAlignment",
-			"completedRound": "_7ar4Xq_completedRound",
-			"stepMeta": "_7ar4Xq_stepMeta",
-			"processMapVertical": "_7ar4Xq_processMapVertical",
-			"compareHeader": "_7ar4Xq_compareHeader",
-			"resultEvidence": "_7ar4Xq_resultEvidence",
-			"visualPoint": "_7ar4Xq_visualPoint",
-			"pulse": "_7ar4Xq_pulse",
-			"roundHeader": "_7ar4Xq_roundHeader",
-			"compareRows": "_7ar4Xq_compareRows",
-			"srOnly": "_7ar4Xq_srOnly",
-			"checkpointField": "_7ar4Xq_checkpointField",
-			"roundParameter": "_7ar4Xq_roundParameter",
-			"checkpoint": "_7ar4Xq_checkpoint",
-			"explorer": "_7ar4Xq_explorer",
-			"checkpointActions": "_7ar4Xq_checkpointActions",
-			"processMap": "_7ar4Xq_processMap",
-			"visualChart": "_7ar4Xq_visualChart",
-			"roundParameterValues": "_7ar4Xq_roundParameterValues",
-			"revealCurrentFrame": "_7ar4Xq_revealCurrentFrame",
-			"revealTransition": "_7ar4Xq_revealTransition",
-			"inlineStatus": "_7ar4Xq_inlineStatus",
-			"roundNode": "_7ar4Xq_roundNode",
-			"visualGrid": "_7ar4Xq_visualGrid",
-			"compareHeaderLink": "_7ar4Xq_compareHeaderLink",
-			"inlineFallback": "_7ar4Xq_inlineFallback",
-			"learningVisual": "_7ar4Xq_learningVisual",
-			"resultAnswer": "_7ar4Xq_resultAnswer",
-			"curve": "_7ar4Xq_curve",
-			"checkpointForm": "_7ar4Xq_checkpointForm",
-			"checkpointEyebrow": "_7ar4Xq_checkpointEyebrow",
-			"visualPlot": "_7ar4Xq_visualPlot",
-			"axisLabel": "_7ar4Xq_axisLabel",
-			"primaryRow": "_7ar4Xq_primaryRow",
-			"predictionOptions": "_7ar4Xq_predictionOptions",
-			"stepFocus": "_7ar4Xq_stepFocus",
-			"runningDot": "_7ar4Xq_runningDot",
-			"skeletonLine": "_7ar4Xq_skeletonLine",
-			"inlineResult": "_7ar4Xq_inlineResult",
-			"primaryButton": "_7ar4Xq_primaryButton",
-			"processStep": "_7ar4Xq_processStep",
-			"compareSelector": "_7ar4Xq_compareSelector",
-			"rowPrompt": "_7ar4Xq_rowPrompt",
-			"errorMark": "_7ar4Xq_errorMark",
-			"checkpointInput": "_7ar4Xq_checkpointInput",
-			"visualRangeHeader": "_7ar4Xq_visualRangeHeader",
-			"visualTextFallback": "_7ar4Xq_visualTextFallback",
-			"scaffold": "_7ar4Xq_scaffold",
-			"compareLine": "_7ar4Xq_compareLine",
-			"checkpointHeader": "_7ar4Xq_checkpointHeader",
-			"chart": "_7ar4Xq_chart",
-			"checkpointCode": "_7ar4Xq_checkpointCode",
-			"rangeEnds": "_7ar4Xq_rangeEnds",
-			"visualControls": "_7ar4Xq_visualControls",
-			"checkpointHint": "_7ar4Xq_checkpointHint",
-			"controls": "_7ar4Xq_controls",
-			"answerField": "_7ar4Xq_answerField",
-			"visualMetrics": "_7ar4Xq_visualMetrics",
-			"visualLegend": "_7ar4Xq_visualLegend",
-			"checkpointOption": "_7ar4Xq_checkpointOption",
-			"plotFrame": "_7ar4Xq_plotFrame",
-			"rangeControl": "_7ar4Xq_rangeControl",
-			"ghostButton": "_7ar4Xq_ghostButton",
-			"textButton": "_7ar4Xq_textButton",
-			"gridLine": "_7ar4Xq_gridLine",
-			"visualChartRegion": "_7ar4Xq_visualChartRegion",
-			"fallbackText": "_7ar4Xq_fallbackText",
-			"revealed": "_7ar4Xq_revealed",
-			"visualTick": "_7ar4Xq_visualTick",
-			"stepButton": "_7ar4Xq_stepButton",
-			"chartRegion": "_7ar4Xq_chartRegion",
-			"roundProcess": "_7ar4Xq_roundProcess",
-			"navigation": "_7ar4Xq_navigation",
-			"legend": "_7ar4Xq_legend",
-			"rangeInput": "_7ar4Xq_rangeInput",
-			"rangeHeader": "_7ar4Xq_rangeHeader"
-		};
+		//#endregion
+		//#region src/client/tokens.ts
+		const learningScope = { "data-learning-scope": "" };
 		//#endregion
 		//#region src/client/ActivityFrame.tsx
 		function ActivityFrame({ activityId, activity, busy, error, children, onSkip, onCancel, t }) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 				className: LearningActivity_module_css_default.inlineActivity,
+				...learningScope,
 				"aria-label": activity.title,
 				"data-learning-activity": activity.kind,
 				"data-learning-activity-id": activityId,
@@ -3182,6 +3200,12 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region src/client/lifecycle.ts
 		const listeners = /* @__PURE__ */ new Set();
+		/**
+		* Per-call dedup keys, bounded so a long session cannot grow this module-level
+		* set without limit. Insertion order is eviction order: the oldest calls in a
+		* conversation are also the ones that can no longer emit a first event.
+		*/
+		const MAX_TRACKED_CALLS = 512;
 		const emittedCallEvents = /* @__PURE__ */ new Set();
 		function subscribeLearningUiLifecycle(listener) {
 			listeners.add(listener);
@@ -3199,6 +3223,11 @@ window.__ModuleLoader__.load({
 			const key = `${name}:${projection.callId}`;
 			if (emittedCallEvents.has(key)) return;
 			emittedCallEvents.add(key);
+			while (emittedCallEvents.size > MAX_TRACKED_CALLS) {
+				const oldest = emittedCallEvents.values().next().value;
+				if (oldest === void 0) break;
+				emittedCallEvents.delete(oldest);
+			}
 			emitLearningUiLifecycle({
 				name,
 				...projection
@@ -3468,6 +3497,7 @@ window.__ModuleLoader__.load({
 			const final = activity.phase === "reveal" && state.status !== "animating";
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 				className: LearningActivity_module_css_default.round,
+				...learningScope,
 				"data-round-state": state.status,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
@@ -3547,6 +3577,21 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region src/client/LearningCheckpoint.tsx
 		const STORAGE_PREFIX = "dsh-learning/checkpoint@1:";
+		/**
+		* The header names the thinking the learner is being asked for.
+		*
+		* The payload already carries which cognitive move this checkpoint wants, and
+		* showing it tells the learner how to engage. A generic "checkpoint" label
+		* would instead narrate the teaching machinery, which the standing policy
+		* rules out for ordinary turns.
+		*/
+		const EVIDENCE_LABEL_KEYS = {
+			attempt: "checkpointEvidenceAttempt",
+			prediction: "checkpointEvidencePrediction",
+			explanation: "checkpointEvidenceExplanation",
+			contrast: "checkpointEvidenceContrast",
+			transfer: "checkpointEvidenceTransfer"
+		};
 		function readDraft(storageKey) {
 			try {
 				return sessionStorage.getItem(`${STORAGE_PREFIX}${storageKey}`) ?? "";
@@ -3603,6 +3648,7 @@ window.__ModuleLoader__.load({
 			const describedBy = [checkpoint.context === void 0 ? void 0 : contextId, isTextCheckpoint ? hintId : void 0].filter((value) => value !== void 0).join(" ");
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 				className: LearningActivity_module_css_default.checkpoint,
+				...learningScope,
 				"data-learning-checkpoint": checkpoint.kind,
 				"aria-labelledby": headingId,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
@@ -3610,7 +3656,8 @@ window.__ModuleLoader__.load({
 					children: [
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: LearningActivity_module_css_default.checkpointEyebrow,
-							children: t("checkpointEyebrow")
+							"data-learning-evidence": checkpoint.expectedEvidence,
+							children: t(EVIDENCE_LABEL_KEYS[checkpoint.expectedEvidence] ?? "checkpointEyebrow")
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
 							id: headingId,
@@ -4074,6 +4121,7 @@ window.__ModuleLoader__.load({
 			].filter(Boolean).join(". ");
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 				className: LearningActivity_module_css_default.learningVisual,
+				...learningScope,
 				"data-learning-visual": "parameter_chart",
 				"aria-labelledby": `${chartId}-title`,
 				children: [
@@ -4247,7 +4295,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:src/client/LearningVisualV4.module.css.mjs
-		const css = ".WHgWIW_visualShell{--visual-tone:var(--dsw-alias-state-business-primary);border:1px solid var(--dsw-alias-border-l2);background:linear-gradient(135deg, color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 34%, transparent), transparent 42%), color-mix(in srgb, var(--dsw-alias-bg-layer-1) 96%, transparent);min-width:0;color:var(--dsw-alias-label-primary);box-shadow:0 12px 32px color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent);border-radius:16px;flex-direction:column;gap:16px;margin:8px 0 16px;padding:clamp(16px,3cqi,24px);display:flex;container:WHgWIW_learning-visual-v4/inline-size}.WHgWIW_visualHeader{grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:3px 10px;min-width:0;display:grid}.WHgWIW_visualEyebrow{background:var(--dsw-alias-state-business-tertiary);color:var(--dsw-alias-state-business-primary);letter-spacing:.08em;border-radius:999px;grid-column:1;padding:2px 8px;font-size:10px;font-weight:650;line-height:18px}.WHgWIW_visualHeader h3{grid-column:2;margin:0;font-size:17px;font-weight:650;line-height:26px}.WHgWIW_visualHeader p{color:var(--dsw-alias-label-secondary);grid-column:1/-1;margin:4px 0 0;font-size:13px;line-height:22px}.WHgWIW_srOnly{clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}.WHgWIW_errorFallback{border-left:3px solid var(--dsw-alias-state-error-primary);background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 7%, transparent);color:var(--dsw-alias-label-secondary);gap:4px;padding:10px 12px;font-size:13px;line-height:22px;display:grid}.WHgWIW_errorFallback strong{color:var(--dsw-alias-label-error)}.WHgWIW_errorFallback pre{white-space:pre-wrap;max-height:240px;font:inherit;margin:6px 0 0;overflow:auto}.WHgWIW_sequence{border:1px solid color-mix(in srgb, var(--dsw-alias-state-business-primary) 22%, var(--dsw-alias-border-l2));background:color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 45%, transparent);border-radius:12px;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-width:0;padding:10px 12px;display:grid}.WHgWIW_sequenceText{grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:1px 9px;min-width:0;display:grid}.WHgWIW_sequenceText>span{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;font-size:11px;font-weight:650}.WHgWIW_sequenceText strong{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:20px;overflow:hidden}.WHgWIW_sequenceText p{color:var(--dsw-alias-label-secondary);grid-column:1/-1;margin:2px 0 0;font-size:12px;line-height:19px}.WHgWIW_sequenceActions{gap:6px;display:flex}.WHgWIW_sequenceActions button,.WHgWIW_seriesToggles button,.WHgWIW_detailPanel button,.WHgWIW_relationTable button,.WHgWIW_setZone button,.WHgWIW_intersections button{appearance:none;border:1px solid var(--dsw-alias-border-l2);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 84%, transparent);color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer}.WHgWIW_sequenceActions button{border-radius:8px;align-items:center;gap:5px;min-height:30px;padding:3px 9px;font-size:11px;line-height:18px;display:inline-flex}.WHgWIW_sequenceActions button:hover:not(:disabled),.WHgWIW_seriesToggles button:hover,.WHgWIW_relationTable button:hover,.WHgWIW_setZone button:hover,.WHgWIW_intersections button:hover{border-color:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-state-business-primary)}.WHgWIW_sequenceActions button:disabled{cursor:default;opacity:.38}.WHgWIW_sequenceActions button:focus-visible,.WHgWIW_seriesToggles button:focus-visible,.WHgWIW_parameter input:focus-visible,.WHgWIW_plotSvg:focus-visible,.WHgWIW_nodeGroup:focus-visible,.WHgWIW_edgeGroup:focus-visible,.WHgWIW_sceneElement:focus-visible,.WHgWIW_relationTable button:focus-visible,.WHgWIW_setZone button:focus-visible,.WHgWIW_intersections button:focus-visible,.WHgWIW_detailPanel button:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:3px}.WHgWIW_plotRenderer,.WHgWIW_nodeLinkRenderer,.WHgWIW_sceneRenderer,.WHgWIW_relationRenderer{flex-direction:column;gap:12px;min-width:0;display:flex}.WHgWIW_parameterGrid{grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:12px 24px;display:grid}.WHgWIW_parameter{cursor:pointer;grid-template-rows:auto 20px 14px;gap:2px;min-width:0;display:grid}.WHgWIW_parameterHeader{min-width:0;color:var(--dsw-alias-label-secondary);justify-content:space-between;align-items:baseline;gap:12px;font-size:12px;line-height:20px;display:flex}.WHgWIW_parameterHeader output{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;font-size:13px;font-weight:650}.WHgWIW_parameter input{appearance:none;background:linear-gradient(to right, var(--dsw-alias-state-business-primary) 0 var(--range-progress), var(--dsw-alias-border-l2) var(--range-progress) 100%);cursor:pointer;border-radius:999px;align-self:center;width:100%;height:4px}.WHgWIW_parameter input::-webkit-slider-runnable-track{background:0 0;height:4px}.WHgWIW_parameter input::-moz-range-track{background:0 0;height:4px}.WHgWIW_parameter input::-webkit-slider-thumb{appearance:none;border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:17px;height:17px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%;margin-top:-6.5px}.WHgWIW_parameter input::-moz-range-thumb{border:3px solid var(--dsw-alias-bg-layer-1);background:var(--dsw-alias-state-business-primary);width:11px;height:11px;box-shadow:0 0 0 1px var(--dsw-alias-state-business-primary);border-radius:50%}.WHgWIW_parameterEnds{color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;justify-content:space-between;font-size:10px;line-height:14px;display:flex}.WHgWIW_metrics{grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:0;display:grid}.WHgWIW_metrics>div{border:1px solid var(--dsw-alias-border-l1);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 72%, transparent);border-radius:9px;gap:1px;min-width:0;padding:7px 10px;display:grid}.WHgWIW_metrics dt{color:var(--dsw-alias-label-tertiary);text-overflow:ellipsis;white-space:nowrap;font-size:10px;line-height:16px;overflow:hidden}.WHgWIW_metrics dd{color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;margin:0;font-size:15px;font-weight:650;line-height:22px}.WHgWIW_chartViewport,.WHgWIW_graphViewport,.WHgWIW_sceneViewport,.WHgWIW_tableViewport{overscroll-behavior-inline:contain;border:1px solid var(--dsw-alias-border-l1);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 70%, transparent);scrollbar-width:thin;border-radius:12px;min-width:0;position:relative;overflow-x:auto}.WHgWIW_plotSvg,.WHgWIW_graphSvg,.WHgWIW_sceneSvg{touch-action:pan-y;max-width:none;display:block;overflow:visible}.WHgWIW_plotFrame{fill:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 90%, transparent);stroke:var(--dsw-alias-border-l2);stroke-width:1px;vector-effect:non-scaling-stroke}.WHgWIW_gridLine{stroke:var(--dsw-alias-border-l1);stroke-width:1px;vector-effect:non-scaling-stroke}.WHgWIW_zeroAxis{stroke:var(--dsw-alias-border-l4);stroke-width:1.4px;vector-effect:non-scaling-stroke}.WHgWIW_tickLabel{fill:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;font-size:10px}.WHgWIW_axisLabel{fill:var(--dsw-alias-label-secondary);font-size:11px;font-weight:550}.WHgWIW_seriesLine{fill:none;stroke:var(--visual-tone);stroke-width:2.7px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}[data-stroke=dashed] .WHgWIW_edgeVisible,[data-stroke=dashed] .WHgWIW_sceneLine,.WHgWIW_seriesLine[data-stroke=dashed]{stroke-dasharray:9 6}[data-stroke=dotted] .WHgWIW_edgeVisible,[data-stroke=dotted] .WHgWIW_sceneLine,.WHgWIW_seriesLine[data-stroke=dotted]{stroke-dasharray:2 6}.WHgWIW_seriesPoint,.WHgWIW_probePoint{fill:var(--visual-tone);stroke:var(--dsw-alias-bg-layer-1);stroke-width:1.5px;vector-effect:non-scaling-stroke}.WHgWIW_seriesBar{fill:color-mix(in srgb, var(--visual-tone) 70%, transparent);stroke:var(--visual-tone);stroke-width:1px;vector-effect:non-scaling-stroke}.WHgWIW_probeLine{stroke:var(--dsw-alias-label-secondary);stroke-width:1px;stroke-dasharray:3 4;pointer-events:none;vector-effect:non-scaling-stroke}.WHgWIW_probeCard{bottom:9px;left:clamp(86px, var(--probe-x), calc(100% - 148px));z-index:2;border:1px solid var(--dsw-alias-border-l3);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 94%, transparent);width:max-content;max-width:210px;box-shadow:0 6px 18px color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);color:var(--dsw-alias-label-secondary);pointer-events:none;border-radius:8px;gap:1px;margin-top:-66px;margin-bottom:9px;padding:5px 8px;font-size:10px;line-height:15px;display:grid;position:sticky}.WHgWIW_probeCard strong{color:var(--dsw-alias-label-primary)}.WHgWIW_probeCard span:before{background:var(--visual-tone);content:\"\";border-radius:50%;width:6px;height:6px;margin-right:5px;display:inline-block}.WHgWIW_seriesToggles{flex-wrap:wrap;gap:7px;display:flex}.WHgWIW_seriesToggles button{border-radius:999px;align-items:center;gap:6px;padding:3px 9px;font-size:11px;line-height:18px;display:inline-flex}.WHgWIW_seriesToggles button[aria-pressed=false]{opacity:.46;text-decoration:line-through}.WHgWIW_seriesToggles button>span{border-top:2.5px solid var(--visual-tone);width:18px;height:0;display:inline-block}.WHgWIW_seriesToggles button[data-series-type=points]>span{background:var(--visual-tone);border:0;border-radius:50%;width:8px;height:8px}.WHgWIW_seriesToggles button[data-series-type=bars]>span{background:color-mix(in srgb, var(--visual-tone) 72%, transparent);border:0;border-radius:1px;width:9px;height:10px}.WHgWIW_seriesToggles button[data-stroke=dashed]>span{border-top-style:dashed}.WHgWIW_seriesToggles button[data-stroke=dotted]>span{border-top-style:dotted}.WHgWIW_interactionHint{color:var(--dsw-alias-label-tertiary);margin:-2px 0 0;font-size:10px;line-height:17px}.WHgWIW_layerLabel{fill:var(--dsw-alias-label-tertiary);letter-spacing:.04em;font-size:10px;font-weight:550}.WHgWIW_edgeGroup,.WHgWIW_nodeGroup,.WHgWIW_sceneElement{cursor:pointer}.WHgWIW_edgeVisible{fill:none;stroke:var(--visual-tone);stroke-opacity:.48;stroke-width:1.5px;vector-effect:non-scaling-stroke}.WHgWIW_edgeHit,.WHgWIW_sceneHit{fill:none;stroke:#0000;stroke-width:13px;pointer-events:stroke;vector-effect:non-scaling-stroke}.WHgWIW_edgeGroup:hover .WHgWIW_edgeVisible,.WHgWIW_edgeGroup:focus-visible .WHgWIW_edgeVisible,.WHgWIW_edgeGroup[data-selected] .WHgWIW_edgeVisible{stroke-opacity:1;stroke-width:3px}.WHgWIW_edgeLabel{fill:var(--dsw-alias-label-secondary);stroke:var(--dsw-alias-bg-layer-1);stroke-width:3px;paint-order:stroke;pointer-events:none;font-size:9px;transition:opacity .14s}.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeLabel{opacity:0}.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup:hover .WHgWIW_edgeLabel,.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup:focus-visible .WHgWIW_edgeLabel,.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup[data-selected] .WHgWIW_edgeLabel,.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup[data-edge-focused] .WHgWIW_edgeLabel{opacity:1}.WHgWIW_nodeGroup circle{fill:color-mix(in srgb, var(--visual-tone) 14%, var(--dsw-alias-bg-layer-1));stroke:var(--visual-tone);stroke-width:2px;vector-effect:non-scaling-stroke}.WHgWIW_nodeGroup text{fill:var(--dsw-alias-label-primary);pointer-events:none;font-size:10px;font-weight:650}.WHgWIW_nodeGroup:hover circle,.WHgWIW_nodeGroup:focus-visible circle,.WHgWIW_nodeGroup[data-selected] circle{fill:color-mix(in srgb, var(--visual-tone) 25%, var(--dsw-alias-bg-layer-1));stroke-width:3px}.WHgWIW_arrowMarker path{fill:var(--visual-tone)}.WHgWIW_detailPanel{border-left:3px solid var(--visual-tone);background:color-mix(in srgb, var(--visual-tone) 7%, transparent);border-radius:0 9px 9px 0;grid-template-columns:auto minmax(0,1fr) 28px;align-items:baseline;gap:1px 8px;padding:8px 9px 8px 11px;display:grid;position:relative}.WHgWIW_detailPanel>span{color:var(--visual-tone);font-size:10px;font-weight:650;line-height:18px}.WHgWIW_detailPanel>strong{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:20px;overflow:hidden}.WHgWIW_detailPanel>p{color:var(--dsw-alias-label-secondary);grid-column:1/3;margin:2px 0 0;font-size:12px;line-height:19px}.WHgWIW_detailPanel>button{border-radius:7px;grid-area:1/3/3;width:26px;height:26px;padding:0;font-size:17px;line-height:24px}.WHgWIW_sceneLine{stroke:var(--visual-tone);stroke-width:2.5px;vector-effect:non-scaling-stroke}.WHgWIW_scenePoint{fill:var(--visual-tone);stroke:var(--dsw-alias-bg-layer-1);stroke-width:2px;vector-effect:non-scaling-stroke}.WHgWIW_sceneShape{fill:color-mix(in srgb, var(--visual-tone) 13%, transparent);stroke:var(--visual-tone);stroke-width:2px;vector-effect:non-scaling-stroke}.WHgWIW_sceneElement:hover .WHgWIW_sceneShape,.WHgWIW_sceneElement:focus-visible .WHgWIW_sceneShape,.WHgWIW_sceneElement[data-selected] .WHgWIW_sceneShape{fill:color-mix(in srgb, var(--visual-tone) 24%, transparent);stroke-width:3px}.WHgWIW_sceneText,.WHgWIW_shapeLabel{fill:var(--dsw-alias-label-primary);stroke:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 88%, transparent);stroke-width:3px;paint-order:stroke;pointer-events:none;font-size:11px;font-weight:550}.WHgWIW_shapeLabel{fill:var(--visual-tone);font-size:10px}.WHgWIW_tableViewport{padding:4px}.WHgWIW_relationTable{border-spacing:0;border-collapse:separate;table-layout:fixed;width:100%;min-width:520px;color:var(--dsw-alias-label-secondary);font-size:12px;line-height:19px}.WHgWIW_relationTable th,.WHgWIW_relationTable td{border-right:1px solid var(--dsw-alias-border-l1);border-bottom:1px solid var(--dsw-alias-border-l1);text-align:center;overflow-wrap:anywhere;padding:9px 10px}.WHgWIW_relationTable tr>:last-child{border-right:0}.WHgWIW_relationTable tbody tr:last-child>*{border-bottom:0}.WHgWIW_relationTable thead th{background:color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 25%, transparent);color:var(--dsw-alias-label-primary);font-weight:650}.WHgWIW_relationTable thead th:first-child,.WHgWIW_relationTable tbody th{width:22%}.WHgWIW_relationTable tbody th{background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 78%, transparent);color:var(--dsw-alias-label-primary);text-align:left;font-weight:550}.WHgWIW_relationTable button{max-width:100%;color:inherit;line-height:inherit;overflow-wrap:anywhere;background:0 0;border-color:#0000;border-radius:6px;padding:2px 5px}.WHgWIW_relationTable td[data-tone]{color:var(--visual-tone);font-weight:550}.WHgWIW_matrixTable td{padding:6px}.WHgWIW_matrixCell{width:100%;min-height:38px;border-color:color-mix(in srgb, var(--visual-tone) 25%, var(--dsw-alias-border-l1))!important;background:color-mix(in srgb, var(--visual-tone) 9%, transparent)!important;color:var(--visual-tone)!important}.WHgWIW_emptyCell{color:var(--dsw-alias-label-tertiary);font-size:16px}.WHgWIW_setMap{gap:12px;display:grid}.WHgWIW_setZones{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:10px;display:grid}.WHgWIW_setZone{border:2px solid color-mix(in srgb, var(--visual-tone) 58%, transparent);background:color-mix(in srgb, var(--visual-tone) 7%, transparent);border-radius:36px 36px 14px 14px;min-width:0;padding:12px;position:relative;overflow:hidden}.WHgWIW_setZone h4,.WHgWIW_intersections h4{color:var(--dsw-alias-label-primary);align-items:center;gap:7px;margin:0 0 9px;font-size:12px;font-weight:650;line-height:19px;display:flex}.WHgWIW_setZone h4>span{background:var(--visual-tone);border-radius:50%;width:8px;height:8px}.WHgWIW_setZone>div{flex-wrap:wrap;align-content:flex-start;gap:6px;min-height:34px;display:flex}.WHgWIW_setZone button{border-color:color-mix(in srgb, var(--visual-tone) 24%, var(--dsw-alias-border-l1));background:color-mix(in srgb, var(--visual-tone) 10%, var(--dsw-alias-bg-layer-1));color:var(--dsw-alias-label-primary);border-radius:999px;padding:3px 8px;font-size:11px;line-height:18px}.WHgWIW_emptySet{color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:20px}.WHgWIW_intersections{border:1px dashed var(--dsw-alias-border-l4);background:repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--dsw-alias-border-l1) 30%, transparent) 8px 9px);border-radius:12px;padding:10px}.WHgWIW_intersections>div{grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));gap:7px;display:grid}.WHgWIW_intersections button{text-align:left;border-radius:8px;gap:1px;padding:6px 8px;display:grid}.WHgWIW_intersections strong{color:var(--dsw-alias-label-primary);font-size:11px;line-height:18px}.WHgWIW_intersections span{color:var(--dsw-alias-label-tertiary);font-size:9px;line-height:15px}.WHgWIW_timelineRenderer,.WHgWIW_formulaRenderer,.WHgWIW_studyRenderer,.WHgWIW_recallRenderer{flex-direction:column;gap:12px;min-width:0;display:flex}.WHgWIW_timelineViewport{overscroll-behavior-inline:contain;border:1px solid var(--dsw-alias-border-l1);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 70%, transparent);scrollbar-width:thin;border-radius:12px;min-width:0;overflow-x:auto}.WHgWIW_timelineCanvas{min-width:0;position:relative}.WHgWIW_timelineAxis{background:linear-gradient(to right, var(--dsw-alias-border-l3), var(--dsw-alias-state-business-primary), var(--dsw-alias-border-l3));border-radius:999px;height:3px;position:absolute;left:72px;right:72px}.WHgWIW_timelineAxis:after{border-top:5px solid #0000;border-bottom:5px solid #0000;border-left:8px solid var(--dsw-alias-border-l3);content:\"\";position:absolute;top:-4px;right:-2px}.WHgWIW_timelineEra,.WHgWIW_timelineEraChips button,.WHgWIW_timelineEvent,.WHgWIW_timelineVertical button{appearance:none;border:1px solid color-mix(in srgb, var(--visual-tone) 42%, var(--dsw-alias-border-l1));background:color-mix(in srgb, var(--visual-tone) 10%, var(--dsw-alias-bg-layer-1));color:var(--dsw-alias-label-primary);font:inherit;cursor:pointer}.WHgWIW_timelineEra{z-index:1;height:23px;color:var(--visual-tone);text-overflow:ellipsis;white-space:nowrap;border-radius:999px;padding:1px 9px;font-size:9px;font-weight:650;line-height:19px;position:absolute;overflow:hidden}.WHgWIW_timelineEvent{z-index:2;text-align:left;width:126px;min-height:50px;box-shadow:0 4px 14px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);border-radius:9px;gap:1px;padding:6px 8px;display:grid;position:absolute;transform:translate(-50%)}.WHgWIW_timelineEvent:before{border:2px solid var(--dsw-alias-bg-layer-1);background:var(--visual-tone);width:10px;height:10px;box-shadow:0 0 0 1px var(--visual-tone);content:\"\";border-radius:50%;position:absolute;left:calc(50% - 6px)}.WHgWIW_timelineEvent:after{background:var(--visual-tone);content:\"\";width:1px;height:20px;position:absolute;left:50%}.WHgWIW_timelineEvent[data-side=top]:before{bottom:-32px}.WHgWIW_timelineEvent[data-side=top]:after{bottom:-22px}.WHgWIW_timelineEvent[data-side=bottom]:before{top:-32px}.WHgWIW_timelineEvent[data-side=bottom]:after{top:-22px}.WHgWIW_timelineEvent>span{color:var(--visual-tone);font-variant-numeric:tabular-nums;font-size:9px;font-weight:650;line-height:15px}.WHgWIW_timelineEvent>strong{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:550;line-height:16px;overflow:hidden}.WHgWIW_timelineEra:hover,.WHgWIW_timelineEra:focus-visible,.WHgWIW_timelineEvent:hover,.WHgWIW_timelineEvent:focus-visible,.WHgWIW_timelineVertical button:hover,.WHgWIW_timelineVertical button:focus-visible,.WHgWIW_timelineEraChips button:hover,.WHgWIW_timelineEraChips button:focus-visible{border-color:var(--visual-tone);outline:2px solid color-mix(in srgb, var(--visual-tone) 30%, transparent);outline-offset:2px}.WHgWIW_timelineEraChips{flex-wrap:wrap;gap:7px;display:flex}.WHgWIW_timelineEraChips button{color:var(--visual-tone);text-align:left;border-radius:999px;gap:0;padding:3px 11px;display:inline-grid}.WHgWIW_timelineEraChips button strong{font-size:10px;font-weight:650;line-height:16px}.WHgWIW_timelineEraChips button span{color:var(--dsw-alias-label-tertiary);font-size:8px;line-height:13px}.WHgWIW_timelineVertical{gap:0;margin:0;padding:4px 0 4px 22px;list-style:none;display:grid}.WHgWIW_timelineVertical li{border-left:2px solid color-mix(in srgb, var(--visual-tone) 48%, var(--dsw-alias-border-l2));padding:0 0 12px 20px;position:relative}.WHgWIW_timelineVertical li:last-child{padding-bottom:0}.WHgWIW_timelineVertical li:before{border:2px solid var(--dsw-alias-bg-layer-1);background:var(--visual-tone);width:9px;height:9px;box-shadow:0 0 0 1px var(--visual-tone);content:\"\";border-radius:50%;position:absolute;top:16px;left:-7px}.WHgWIW_timelineVertical button{text-align:left;border-radius:10px;grid-template-columns:minmax(80px,auto) minmax(0,1fr);gap:2px 12px;width:min(100%,620px);padding:8px 10px;display:grid}.WHgWIW_timelineVertical button>span{color:var(--visual-tone);font-size:10px;font-weight:650}.WHgWIW_timelineVertical button>strong{color:var(--dsw-alias-label-primary);font-size:12px}.WHgWIW_timelineVertical button>small{color:var(--dsw-alias-label-secondary);grid-column:1/-1;font-size:10px;line-height:17px}.WHgWIW_formulaRenderer:focus-visible,.WHgWIW_recallRenderer:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:5px}.WHgWIW_formulaMeta{min-width:0;color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;justify-content:space-between;align-items:center;gap:12px;font-size:11px;font-weight:650;line-height:18px;display:flex}.WHgWIW_formulaMeta code{border:1px solid var(--dsw-alias-border-l1);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 75%, transparent);color:var(--dsw-alias-label-secondary);text-overflow:ellipsis;white-space:nowrap;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:400;overflow:hidden}.WHgWIW_formulaSteps{gap:0;margin:0;padding:0;list-style:none;display:grid}.WHgWIW_formulaSteps>li{min-width:0}.WHgWIW_formulaStepCard{border:1px solid color-mix(in srgb, var(--visual-tone) 30%, var(--dsw-alias-border-l1));background:color-mix(in srgb, var(--visual-tone) 6%, transparent);border-radius:11px;grid-template-columns:30px minmax(0,1fr);align-items:start;gap:10px;min-width:0;padding:10px;display:grid}.WHgWIW_formulaStepCard>span{background:color-mix(in srgb, var(--visual-tone) 16%, transparent);width:28px;height:28px;color:var(--visual-tone);border-radius:50%;place-items:center;font-size:11px;font-weight:700;display:grid}.WHgWIW_formulaStepCard>div{gap:4px;min-width:0;display:grid}.WHgWIW_formulaExpression{color:var(--dsw-alias-label-primary);scrollbar-width:thin;padding:7px 0 8px;font-size:clamp(14px,3cqi,18px);font-weight:550;line-height:26px;overflow:auto hidden}.WHgWIW_formulaExpression>div{min-width:max-content}.WHgWIW_formulaExpression .katex-display{text-align:left;margin:2px 0}.WHgWIW_formulaStepCard strong{color:var(--visual-tone);font-size:10px;line-height:16px}.WHgWIW_formulaStepCard p{color:var(--dsw-alias-label-secondary);margin:0;font-size:11px;line-height:18px}.WHgWIW_formulaRule{min-height:42px;color:var(--dsw-alias-label-secondary);grid-template-columns:30px auto minmax(0,1fr);align-items:center;gap:6px 10px;padding:2px 10px;font-size:10px;line-height:17px;display:grid}.WHgWIW_formulaRule>span:first-child{color:var(--visual-tone);text-align:center;font-size:17px}.WHgWIW_formulaRule strong{color:var(--visual-tone);letter-spacing:.04em;text-transform:uppercase;font-size:9px}.WHgWIW_formulaUnknown{color:var(--dsw-alias-label-tertiary);grid-template-columns:30px minmax(0,1fr);align-items:center;gap:10px;padding:1px 10px;display:grid}.WHgWIW_formulaUnknown>span{text-align:center}.WHgWIW_formulaUnknown code{border:1px dashed var(--dsw-alias-border-l2);border-radius:10px;place-items:center;min-height:38px;font-size:18px;display:grid}.WHgWIW_formulaConclusion{border-left:3px solid var(--dsw-alias-state-success-primary);background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 8%, transparent);border-radius:0 9px 9px 0;gap:2px;padding:8px 11px;display:grid}.WHgWIW_formulaConclusion span{color:var(--dsw-alias-state-success-primary);font-size:9px;font-weight:650}.WHgWIW_formulaConclusion strong{color:var(--dsw-alias-label-primary);font-size:13px;line-height:21px}.WHgWIW_formulaActions,.WHgWIW_recallNavigation,.WHgWIW_recallRating{flex-wrap:wrap;gap:7px;display:flex}.WHgWIW_formulaActions button,.WHgWIW_recallNavigation button,.WHgWIW_recallRating button,.WHgWIW_recallRevealButton,.WHgWIW_studySections button,.WHgWIW_studyConcepts button,.WHgWIW_studyDetail button{appearance:none;border:1px solid var(--dsw-alias-border-l2);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 80%, transparent);color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer;border-radius:8px;padding:5px 10px;font-size:11px;line-height:18px}.WHgWIW_formulaActions button:hover:not(:disabled),.WHgWIW_recallNavigation button:hover:not(:disabled),.WHgWIW_recallRating button:hover,.WHgWIW_recallRevealButton:hover,.WHgWIW_studySections button:hover,.WHgWIW_studyConcepts button:hover,.WHgWIW_studyDetail button:hover{border-color:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-state-business-primary)}.WHgWIW_formulaActions button:focus-visible,.WHgWIW_recallNavigation button:focus-visible,.WHgWIW_recallRating button:focus-visible,.WHgWIW_recallRevealButton:focus-visible,.WHgWIW_studySections button:focus-visible,.WHgWIW_studyConcepts button:focus-visible,.WHgWIW_studyDetail button:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:3px}.WHgWIW_formulaActions button:disabled,.WHgWIW_recallNavigation button:disabled{cursor:default;opacity:.38}.WHgWIW_formulaActions .WHgWIW_primaryAction,.WHgWIW_recallRevealButton{border-color:var(--dsw-alias-state-business-primary);background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-on-primary)}.WHgWIW_studySource{border-left:3px solid var(--dsw-alias-state-business-primary);background:color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 24%, transparent);grid-template-columns:auto minmax(0,1fr);align-items:baseline;gap:2px 9px;padding:7px 10px;display:grid}.WHgWIW_studySource>span{color:var(--dsw-alias-state-business-primary);font-size:9px;font-weight:650}.WHgWIW_studySource>strong{color:var(--dsw-alias-label-primary);font-size:13px;line-height:20px}.WHgWIW_studySource>p{color:var(--dsw-alias-label-secondary);grid-column:1/-1;margin:2px 0 0;font-size:11px;line-height:18px}.WHgWIW_studySource>p b{color:var(--dsw-alias-label-primary);margin-right:7px;font-weight:550}.WHgWIW_studyLayout{grid-template-columns:minmax(150px,.34fr) minmax(0,1fr);gap:12px;min-width:0;display:grid}.WHgWIW_studySections{flex-direction:column;gap:6px;min-width:0;display:flex}.WHgWIW_studySections button{text-align:left;grid-template-columns:24px minmax(0,1fr);gap:0 7px;min-width:0;padding:7px;display:grid}.WHgWIW_studySections button>span{background:var(--dsw-alias-border-l1);width:22px;height:22px;color:var(--dsw-alias-label-tertiary);border-radius:50%;grid-row:1/3;place-items:center;font-size:9px;display:grid}.WHgWIW_studySections button>strong{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:11px;overflow:hidden}.WHgWIW_studySections button>small{color:var(--dsw-alias-label-tertiary);text-overflow:ellipsis;white-space:nowrap;font-size:9px;overflow:hidden}.WHgWIW_studySections button[aria-selected=true]{border-color:var(--dsw-alias-state-business-primary);background:color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 38%, transparent)}.WHgWIW_studySections button[aria-selected=true]>span{background:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-on-primary)}.WHgWIW_studySectionPanel{border:1px solid var(--dsw-alias-border-l1);background:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 67%, transparent);border-radius:11px;flex-direction:column;gap:10px;min-width:0;padding:11px;display:flex}.WHgWIW_studySectionPanel>header{gap:5px;display:grid}.WHgWIW_studySectionPanel>header span{color:var(--dsw-alias-state-business-primary);font-size:9px;line-height:15px}.WHgWIW_studySectionPanel>header h4{color:var(--dsw-alias-label-primary);margin:0;font-size:14px;line-height:22px}.WHgWIW_studySectionPanel>header p{color:var(--dsw-alias-label-secondary);margin:0;font-size:11px;line-height:18px}.WHgWIW_studyConcepts{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:8px;display:grid}.WHgWIW_studyConcepts button{border-color:color-mix(in srgb, var(--visual-tone) 25%, var(--dsw-alias-border-l1));background:color-mix(in srgb, var(--visual-tone) 6%, transparent);text-align:left;gap:2px;min-width:0;display:grid}.WHgWIW_studyConcepts button>span{color:var(--visual-tone);font-size:9px;font-weight:650}.WHgWIW_studyConcepts button>strong{color:var(--dsw-alias-label-primary);font-size:12px;line-height:19px}.WHgWIW_studyConcepts button>small{color:var(--dsw-alias-label-tertiary);gap:1px;font-size:9px;line-height:15px;display:grid}.WHgWIW_studyConcepts button>small b{color:var(--dsw-alias-label-secondary);font-weight:550}.WHgWIW_studyConcepts button[data-selected]{border-color:var(--visual-tone);box-shadow:0 0 0 2px color-mix(in srgb, var(--visual-tone) 12%, transparent)}.WHgWIW_studyDetail{border-left:3px solid var(--dsw-alias-state-business-primary);background:color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 25%, transparent);border-radius:0 9px 9px 0;grid-template-columns:minmax(0,1fr) 28px;gap:5px 10px;padding:9px 9px 9px 11px;display:grid;position:relative}.WHgWIW_studyDetail>div{align-items:baseline;gap:8px;min-width:0;display:flex}.WHgWIW_studyDetail>div span{color:var(--dsw-alias-state-business-primary);flex:none;font-size:9px;font-weight:650}.WHgWIW_studyDetail>div strong{color:var(--dsw-alias-label-primary);text-overflow:ellipsis;white-space:nowrap;font-size:13px;overflow:hidden}.WHgWIW_studyDetail>p{color:var(--dsw-alias-label-secondary);grid-column:1;margin:0;font-size:11px;line-height:18px}.WHgWIW_studyDetail>dl{grid-column:1;gap:7px;margin:0;font-size:10px;line-height:17px;display:flex}.WHgWIW_studyDetail dt{color:var(--dsw-alias-label-tertiary)}.WHgWIW_studyDetail dd{color:var(--dsw-alias-label-secondary);margin:0}.WHgWIW_studyDetail>button{grid-area:1/2/4;width:27px;height:27px;padding:0;font-size:16px}.WHgWIW_recallToolbar{min-width:0;color:var(--dsw-alias-state-business-primary);font-variant-numeric:tabular-nums;justify-content:space-between;align-items:baseline;gap:12px;font-size:11px;font-weight:650;display:flex}.WHgWIW_recallToolbar output{color:var(--dsw-alias-label-tertiary);font-size:10px;font-weight:400}.WHgWIW_recallInstructions{color:var(--dsw-alias-label-secondary);margin:0;font-size:11px;line-height:18px}.WHgWIW_recallCard{border:1px solid var(--dsw-alias-border-l2);background:radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 48%, transparent), transparent 38%), color-mix(in srgb, var(--dsw-alias-bg-layer-1) 82%, transparent);min-height:230px;box-shadow:0 10px 26px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);border-radius:14px;align-content:start;gap:12px;padding:clamp(16px,4cqi,26px);display:grid}.WHgWIW_recallCardHeader{justify-content:space-between;align-items:center;gap:12px;display:flex}.WHgWIW_recallCardHeader>span{color:var(--dsw-alias-state-business-primary);letter-spacing:.08em;text-transform:uppercase;font-size:9px;font-weight:700}.WHgWIW_recallCardHeader>small{background:var(--dsw-alias-border-l1);color:var(--dsw-alias-label-tertiary);border-radius:999px;padding:2px 7px;font-size:9px}.WHgWIW_recallCardHeader>small[data-status=mastered]{background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 13%, transparent);color:var(--dsw-alias-state-success-primary)}.WHgWIW_recallCardHeader>small[data-status=review]{background:color-mix(in srgb, var(--dsw-alias-state-warn-primary) 13%, transparent);color:var(--dsw-alias-state-warn-primary)}.WHgWIW_recallCard>h4{color:var(--dsw-alias-label-primary);margin:0;font-size:clamp(16px,4cqi,21px);font-weight:600;line-height:1.55}.WHgWIW_recallTags{flex-wrap:wrap;gap:5px;margin:-3px 0 0;padding:0;list-style:none;display:flex}.WHgWIW_recallTags li{border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-tertiary);border-radius:999px;padding:1px 7px;font-size:9px;line-height:16px}.WHgWIW_recallReveal{border-left:3px solid var(--dsw-alias-state-warn-primary);background:color-mix(in srgb, var(--dsw-alias-state-warn-primary) 7%, transparent);gap:3px;padding:7px 10px;display:grid}.WHgWIW_recallReveal[data-kind=answer]{border-left-color:var(--dsw-alias-state-success-primary);background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 7%, transparent)}.WHgWIW_recallReveal>span{color:var(--dsw-alias-state-warn-primary);font-size:9px;font-weight:700}.WHgWIW_recallReveal[data-kind=answer]>span{color:var(--dsw-alias-state-success-primary)}.WHgWIW_recallReveal>p{color:var(--dsw-alias-label-primary);margin:0;font-size:12px;line-height:20px}.WHgWIW_recallRevealButton{justify-self:start;width:max-content;min-width:120px}.WHgWIW_recallRating{align-self:end}.WHgWIW_recallRating button[aria-pressed=true]{border-color:var(--dsw-alias-state-business-primary);background:color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 46%, transparent);color:var(--dsw-alias-state-business-primary)}.WHgWIW_recallNavigation button:last-child{margin-left:auto}.WHgWIW_visualShell [data-tone=blue]{--visual-tone:var(--dsw-alias-state-business-primary)}.WHgWIW_visualShell [data-tone=green]{--visual-tone:var(--dsw-alias-state-success-primary)}.WHgWIW_visualShell [data-tone=red]{--visual-tone:var(--dsw-alias-state-error-primary)}.WHgWIW_visualShell [data-tone=orange]{--visual-tone:var(--dsw-alias-state-warn-primary)}.WHgWIW_visualShell [data-tone=purple]{--visual-tone:color-mix(in srgb, var(--dsw-alias-state-business-primary) 58%, var(--dsw-alias-state-error-primary))}.WHgWIW_visualShell [data-tone=gray]{--visual-tone:var(--dsw-alias-label-tertiary)}.WHgWIW_visualShell [data-focus-state=dim]{opacity:.2;filter:saturate(.35);transition:opacity .18s,filter .18s}.WHgWIW_visualShell [data-focus-state=focus]{filter:drop-shadow(0 0 5px color-mix(in srgb, var(--visual-tone) 48%, transparent));transition:opacity .18s,filter .18s}@container WHgWIW_learning-visual-v4 (width<=560px){.WHgWIW_visualShell{border-radius:12px;gap:13px;padding:14px 12px}.WHgWIW_visualHeader{grid-template-columns:1fr}.WHgWIW_visualEyebrow{grid-column:1;width:max-content}.WHgWIW_visualHeader h3{grid-column:1;font-size:16px}.WHgWIW_sequence{grid-template-columns:1fr}.WHgWIW_sequenceActions{justify-content:stretch}.WHgWIW_sequenceActions button{flex:1;justify-content:center}.WHgWIW_sequenceActions button:last-child{flex:none}.WHgWIW_metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.WHgWIW_relationTable{min-width:500px}.WHgWIW_studyLayout{grid-template-columns:1fr}.WHgWIW_studySections{scrollbar-width:thin;flex-direction:row;padding-bottom:3px;overflow-x:auto}.WHgWIW_studySections button{min-width:156px}.WHgWIW_formulaActions button{flex:1}.WHgWIW_formulaActions button:nth-child(2){flex:2}.WHgWIW_recallNavigation button{flex:1}.WHgWIW_recallNavigation button:last-child{flex-basis:100%;margin-left:0}.WHgWIW_recallCard{min-height:210px}}@container WHgWIW_learning-visual-v4 (width<=360px){.WHgWIW_sequenceActions button span:not([aria-hidden]){display:none}.WHgWIW_metrics{grid-template-columns:1fr}.WHgWIW_detailPanel{grid-template-columns:1fr 28px}.WHgWIW_detailPanel>span,.WHgWIW_detailPanel>strong,.WHgWIW_detailPanel>p{grid-column:1}.WHgWIW_detailPanel>button{grid-column:2}.WHgWIW_formulaStepCard{grid-template-columns:24px minmax(0,1fr);padding:8px}.WHgWIW_formulaStepCard>span{width:23px;height:23px}.WHgWIW_formulaRule{grid-template-columns:24px minmax(0,1fr)}.WHgWIW_formulaRule strong,.WHgWIW_formulaRule>span:last-child{grid-column:2}.WHgWIW_recallToolbar{flex-direction:column;align-items:flex-start;gap:2px}}@media (prefers-reduced-motion:reduce){.WHgWIW_visualShell [data-focus-state=dim],.WHgWIW_visualShell [data-focus-state=focus],.WHgWIW_edgeLabel{transition:none}}";
+		const css = ".WHgWIW_visualShell{--visual-tone:var(--lx-accent);gap:var(--lx-space-xl);min-width:0;margin:var(--lx-space-sm) 0 var(--lx-space-xl);border:var(--lx-card-border);border-radius:var(--lx-card-radius);padding:var(--lx-card-padding);background:var(--lx-card-background);color:var(--lx-label-primary);box-shadow:var(--lx-shadow-lg);flex-direction:column;display:flex;container:WHgWIW_learning-visual-v4/inline-size}.WHgWIW_visualHeader{gap:var(--lx-space-2xs) var(--lx-space-md);grid-template-columns:auto minmax(0,1fr);align-items:baseline;min-width:0;display:grid}.WHgWIW_visualEyebrow{border-radius:var(--lx-radius-pill);padding:var(--lx-space-3xs) var(--lx-space-sm);background:var(--lx-accent-soft);color:var(--lx-accent);font-size:var(--lx-text-micro);letter-spacing:.08em;font-weight:650;line-height:var(--lx-leading-xs);grid-column:1}.WHgWIW_visualHeader h3{font-size:var(--lx-text-lg);font-weight:650;line-height:var(--lx-leading-lg);grid-column:2;margin:0}.WHgWIW_visualHeader p{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);grid-column:1/-1;margin:4px 0 0}.WHgWIW_srOnly{clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}.WHgWIW_errorFallback{gap:var(--lx-space-2xs);border-left:3px solid var(--lx-danger);padding:var(--lx-space-md) var(--lx-space-lg);background:color-mix(in srgb, var(--lx-danger) 7%, transparent);color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);display:grid}.WHgWIW_errorFallback strong{color:var(--lx-label-error)}.WHgWIW_errorFallback pre{white-space:pre-wrap;max-height:240px;font:inherit;margin:6px 0 0;overflow:auto}.WHgWIW_sequence{gap:var(--lx-space-lg);border:1px solid color-mix(in srgb, var(--lx-accent) 22%, var(--lx-border-default));border-radius:var(--lx-radius-lg);min-width:0;padding:var(--lx-space-md) var(--lx-space-lg);background:color-mix(in srgb, var(--lx-accent-soft) 45%, transparent);grid-template-columns:minmax(0,1fr) auto;align-items:center;display:grid}.WHgWIW_sequenceText{gap:var(--lx-space-3xs) var(--lx-space-md);grid-template-columns:auto minmax(0,1fr);align-items:baseline;min-width:0;display:grid}.WHgWIW_sequenceText>span{color:var(--lx-accent);font-size:var(--lx-text-2xs);font-variant-numeric:tabular-nums;font-weight:650}.WHgWIW_sequenceText strong{color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-sm);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.WHgWIW_sequenceText p{color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);grid-column:1/-1;margin:2px 0 0}.WHgWIW_sequenceActions{gap:var(--lx-space-xs);display:flex}.WHgWIW_sequenceActions button,.WHgWIW_seriesToggles button,.WHgWIW_detailPanel button,.WHgWIW_relationTable button,.WHgWIW_setZone button,.WHgWIW_intersections button,.WHgWIW_formulaActions button,.WHgWIW_recallNavigation button,.WHgWIW_recallRating button,.WHgWIW_recallRevealButton,.WHgWIW_studySections button,.WHgWIW_studyConcepts button,.WHgWIW_studyDetail button{appearance:none;border:1px solid var(--lx-border-default);border-radius:var(--lx-radius-sm);padding:var(--lx-control-padding-sm);background:var(--lx-surface-raised);color:var(--lx-label-secondary);font:inherit;font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);cursor:pointer}.WHgWIW_sequenceActions button{min-height:var(--lx-control-height-md);align-items:center;gap:var(--lx-space-xs);padding:var(--lx-control-padding-md);display:inline-flex}.WHgWIW_sequenceActions button:hover:not(:disabled),.WHgWIW_seriesToggles button:hover,.WHgWIW_relationTable button:hover,.WHgWIW_setZone button:hover,.WHgWIW_intersections button:hover,.WHgWIW_sequenceActions button:disabled,.WHgWIW_formulaActions button:disabled,.WHgWIW_recallNavigation button:disabled{cursor:default;opacity:var(--lx-control-disabled-opacity)}.WHgWIW_plotRenderer,.WHgWIW_nodeLinkRenderer,.WHgWIW_sceneRenderer,.WHgWIW_relationRenderer{gap:var(--lx-space-lg);flex-direction:column;min-width:0;display:flex}.WHgWIW_parameterGrid{gap:var(--lx-space-lg) var(--lx-space-3xl);grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));display:grid}.WHgWIW_parameter{grid-template-rows:auto 20px var(--lx-leading-micro);gap:var(--lx-space-3xs);cursor:pointer;min-width:0;display:grid}.WHgWIW_parameterHeader{justify-content:space-between;align-items:baseline;gap:var(--lx-space-lg);min-width:0;color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm);display:flex}.WHgWIW_parameterHeader output{color:var(--lx-accent);font-size:var(--lx-text-sm);font-variant-numeric:tabular-nums;font-weight:650}.WHgWIW_parameter input{appearance:none;border-radius:var(--lx-radius-pill);background:linear-gradient(to right, var(--lx-accent) 0 var(--range-progress), var(--lx-border-default) var(--range-progress) 100%);cursor:pointer;align-self:center;width:100%;height:4px}.WHgWIW_parameter input::-webkit-slider-runnable-track{background:0 0;height:4px}.WHgWIW_parameter input::-moz-range-track{background:0 0;height:4px}.WHgWIW_parameter input::-webkit-slider-thumb{appearance:none;border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:17px;height:17px;box-shadow:0 0 0 1px var(--lx-accent);margin-top:-6.5px}.WHgWIW_parameter input::-moz-range-thumb{border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:11px;height:11px;box-shadow:0 0 0 1px var(--lx-accent)}.WHgWIW_parameterEnds{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums;line-height:var(--lx-leading-micro);justify-content:space-between;display:flex}.WHgWIW_metrics{gap:var(--lx-space-sm);grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin:0;display:grid}.WHgWIW_metrics>div{gap:var(--lx-space-3xs);border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-sm);min-width:0;padding:var(--lx-space-sm) var(--lx-space-md);background:var(--lx-surface-sunken);display:grid}.WHgWIW_metrics dt{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-2xs);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.WHgWIW_metrics dd{color:var(--lx-accent);font-size:var(--lx-text-md);font-variant-numeric:tabular-nums;font-weight:650;line-height:var(--lx-leading-base);margin:0}.WHgWIW_chartViewport,.WHgWIW_graphViewport,.WHgWIW_sceneViewport,.WHgWIW_tableViewport{overscroll-behavior-inline:contain;border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-lg);background:var(--lx-surface-sunken);scrollbar-width:thin;min-width:0;position:relative;overflow-x:auto}.WHgWIW_plotSvg,.WHgWIW_graphSvg,.WHgWIW_sceneSvg{touch-action:pan-y;max-width:none;display:block;overflow:visible}.WHgWIW_plotFrame{fill:var(--lx-surface-card);stroke:var(--lx-border-default);stroke-width:1px;vector-effect:non-scaling-stroke}.WHgWIW_gridLine{stroke:var(--lx-border-subtle);stroke-width:1px;vector-effect:non-scaling-stroke}.WHgWIW_zeroAxis{stroke:var(--lx-border-strongest);stroke-width:1.4px;vector-effect:non-scaling-stroke}.WHgWIW_tickLabel{fill:var(--lx-label-tertiary);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums}.WHgWIW_axisLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-2xs);font-weight:550}.WHgWIW_seriesLine{fill:none;stroke:var(--visual-tone);stroke-width:2.7px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}[data-stroke=dashed] .WHgWIW_edgeVisible,[data-stroke=dashed] .WHgWIW_sceneLine,.WHgWIW_seriesLine[data-stroke=dashed]{stroke-dasharray:9 6}[data-stroke=dotted] .WHgWIW_edgeVisible,[data-stroke=dotted] .WHgWIW_sceneLine,.WHgWIW_seriesLine[data-stroke=dotted]{stroke-dasharray:2 6}.WHgWIW_seriesPoint,.WHgWIW_probePoint{fill:var(--visual-tone);stroke:var(--lx-surface-base);stroke-width:1.5px;vector-effect:non-scaling-stroke}.WHgWIW_seriesBar{fill:color-mix(in srgb, var(--visual-tone) 70%, transparent);stroke:var(--visual-tone);stroke-width:1px;vector-effect:non-scaling-stroke}.WHgWIW_probeLine{stroke:var(--lx-label-secondary);stroke-width:1px;stroke-dasharray:3 4;pointer-events:none;vector-effect:non-scaling-stroke}.WHgWIW_probeCard{bottom:9px;left:clamp(86px, var(--probe-x), calc(100% - 148px));z-index:2;gap:var(--lx-space-3xs);border:1px solid var(--lx-border-strong);border-radius:var(--lx-radius-sm);width:max-content;max-width:210px;padding:var(--lx-space-xs) var(--lx-space-sm);background:var(--lx-surface-card);box-shadow:0 6px 18px color-mix(in srgb, var(--lx-label-primary) 12%, transparent);color:var(--lx-label-secondary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro);pointer-events:none;margin-top:-66px;margin-bottom:9px;display:grid;position:sticky}.WHgWIW_probeCard strong{color:var(--lx-label-primary)}.WHgWIW_probeCard span:before{border-radius:var(--lx-radius-circle);background:var(--visual-tone);content:\"\";width:6px;height:6px;margin-right:5px;display:inline-block}.WHgWIW_seriesToggles{gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}.WHgWIW_seriesToggles button{align-items:center;gap:var(--lx-space-xs);border-radius:var(--lx-radius-pill);padding:var(--lx-space-2xs) var(--lx-space-md);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);display:inline-flex}.WHgWIW_seriesToggles button[aria-pressed=false]{opacity:.46;text-decoration:line-through}.WHgWIW_seriesToggles button[data-empty]{color:var(--lx-label-tertiary);border-style:dashed}.WHgWIW_seriesToggles button[data-empty]>small{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro)}.WHgWIW_emptyPlotNotice{border:1px dashed var(--lx-border-strong);border-radius:var(--lx-radius-md);width:max-content;max-width:min(92%,320px);padding:var(--lx-space-sm) var(--lx-space-lg);background:var(--lx-surface-card);color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);text-align:center;pointer-events:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}.WHgWIW_seriesToggles button>span{border-top:2.5px solid var(--visual-tone);width:18px;height:0;display:inline-block}.WHgWIW_seriesToggles button[data-series-type=points]>span{border-radius:var(--lx-radius-circle);background:var(--visual-tone);border:0;width:8px;height:8px}.WHgWIW_seriesToggles button[data-series-type=bars]>span{background:color-mix(in srgb, var(--visual-tone) 72%, transparent);border:0;border-radius:1px;width:9px;height:10px}.WHgWIW_seriesToggles button[data-stroke=dashed]>span{border-top-style:dashed}.WHgWIW_seriesToggles button[data-stroke=dotted]>span{border-top-style:dotted}.WHgWIW_interactionHint{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-2xs);margin:-2px 0 0}.WHgWIW_layerLabel{fill:var(--lx-label-tertiary);font-size:var(--lx-text-micro);letter-spacing:.04em;font-weight:550}.WHgWIW_edgeGroup,.WHgWIW_nodeGroup,.WHgWIW_sceneElement{cursor:pointer}.WHgWIW_edgeVisible{fill:none;stroke:var(--visual-tone);stroke-opacity:.48;stroke-width:1.5px;vector-effect:non-scaling-stroke}.WHgWIW_edgeHit,.WHgWIW_sceneHit{fill:none;stroke:#0000;stroke-width:13px;pointer-events:stroke;vector-effect:non-scaling-stroke}.WHgWIW_edgeGroup:hover .WHgWIW_edgeVisible,.WHgWIW_edgeGroup:focus-visible .WHgWIW_edgeVisible,.WHgWIW_edgeGroup[data-selected] .WHgWIW_edgeVisible{stroke-opacity:1;stroke-width:3px}.WHgWIW_edgeLabel{fill:var(--lx-label-secondary);stroke:var(--lx-surface-base);stroke-width:3px;paint-order:stroke;font-size:var(--lx-text-micro);pointer-events:none;transition:opacity var(--lx-motion-fast) var(--lx-easing)}.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeLabel{opacity:0}.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup:hover .WHgWIW_edgeLabel,.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup:focus-visible .WHgWIW_edgeLabel,.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup[data-selected] .WHgWIW_edgeLabel,.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup[data-edge-focused] .WHgWIW_edgeLabel{opacity:1}.WHgWIW_nodeGroup circle{fill:color-mix(in srgb, var(--visual-tone) 14%, var(--lx-surface-base));stroke:var(--visual-tone);stroke-width:2px;vector-effect:non-scaling-stroke}.WHgWIW_nodeGroup text{fill:var(--lx-label-primary);font-size:var(--lx-text-micro);pointer-events:none;font-weight:650}.WHgWIW_nodeGroup:hover circle,.WHgWIW_nodeGroup:focus-visible circle,.WHgWIW_nodeGroup[data-selected] circle{fill:color-mix(in srgb, var(--visual-tone) 25%, var(--lx-surface-base));stroke-width:3px}.WHgWIW_arrowMarker path{fill:var(--visual-tone)}.WHgWIW_detailPanel{gap:var(--lx-space-3xs) var(--lx-space-sm);border-left:3px solid var(--visual-tone);border-radius:0 var(--lx-radius-sm) var(--lx-radius-sm) 0;padding:var(--lx-space-sm) var(--lx-space-md) var(--lx-space-sm) var(--lx-space-md);background:color-mix(in srgb, var(--visual-tone) 7%, transparent);grid-template-columns:auto minmax(0,1fr) 28px;align-items:baseline;display:grid;position:relative}.WHgWIW_detailPanel>span{color:var(--visual-tone);font-size:var(--lx-text-micro);font-weight:650;line-height:var(--lx-leading-xs)}.WHgWIW_detailPanel>strong{color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-sm);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.WHgWIW_detailPanel>p{color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);grid-column:1/3;margin:2px 0 0}.WHgWIW_detailPanel>button{border-radius:var(--lx-radius-xs);width:26px;height:26px;font-size:var(--lx-text-lg);line-height:var(--lx-leading-md);grid-area:1/3/3;padding:0}.WHgWIW_sceneLine{stroke:var(--visual-tone);stroke-width:2.5px;vector-effect:non-scaling-stroke}.WHgWIW_scenePoint{fill:var(--visual-tone);stroke:var(--lx-surface-base);stroke-width:2px;vector-effect:non-scaling-stroke}.WHgWIW_sceneShape{fill:color-mix(in srgb, var(--visual-tone) 13%, transparent);stroke:var(--visual-tone);stroke-width:2px;vector-effect:non-scaling-stroke}.WHgWIW_sceneElement:hover .WHgWIW_sceneShape,.WHgWIW_sceneElement:focus-visible .WHgWIW_sceneShape,.WHgWIW_sceneElement[data-selected] .WHgWIW_sceneShape{fill:color-mix(in srgb, var(--visual-tone) 24%, transparent);stroke-width:3px}.WHgWIW_sceneText,.WHgWIW_shapeLabel{fill:var(--lx-label-primary);stroke:var(--lx-surface-raised);stroke-width:3px;paint-order:stroke;font-size:var(--lx-text-2xs);pointer-events:none;font-weight:550}.WHgWIW_shapeLabel{fill:var(--visual-tone);font-size:var(--lx-text-micro)}.WHgWIW_tableViewport{padding:var(--lx-space-2xs)}.WHgWIW_relationTable{border-spacing:0;border-collapse:separate;table-layout:fixed;width:100%;min-width:520px;color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs)}.WHgWIW_relationTable th,.WHgWIW_relationTable td{border-right:1px solid var(--lx-border-subtle);border-bottom:1px solid var(--lx-border-subtle);padding:var(--lx-space-md) var(--lx-space-md);text-align:center;overflow-wrap:anywhere}.WHgWIW_relationTable tr>:last-child{border-right:0}.WHgWIW_relationTable tbody tr:last-child>*{border-bottom:0}.WHgWIW_relationTable thead th{background:color-mix(in srgb, var(--lx-accent-soft) 25%, transparent);color:var(--lx-label-primary);font-weight:650}.WHgWIW_relationTable thead th:first-child,.WHgWIW_relationTable tbody th{width:22%}.WHgWIW_relationTable tbody th{background:var(--lx-surface-sunken);color:var(--lx-label-primary);text-align:left;font-weight:550}.WHgWIW_relationTable button{border-radius:var(--lx-radius-xs);max-width:100%;padding:var(--lx-space-3xs) var(--lx-space-xs);color:inherit;line-height:inherit;overflow-wrap:anywhere;background:0 0;border-color:#0000}.WHgWIW_relationTable td[data-tone]{color:var(--visual-tone);font-weight:550}.WHgWIW_matrixTable td{padding:var(--lx-space-xs)}.WHgWIW_matrixCell{width:100%;min-height:38px;border-color:color-mix(in srgb, var(--visual-tone) 25%, var(--lx-border-subtle))!important;background:color-mix(in srgb, var(--visual-tone) 9%, transparent)!important;color:var(--visual-tone)!important}.WHgWIW_emptyCell{color:var(--lx-label-tertiary);font-size:var(--lx-text-md)}.WHgWIW_setMap{gap:var(--lx-space-lg);display:grid}.WHgWIW_setZones{gap:var(--lx-space-md);grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));display:grid}.WHgWIW_setZone{border:2px solid color-mix(in srgb, var(--visual-tone) 58%, transparent);border-radius:36px 36px var(--lx-radius-lg) var(--lx-radius-lg);min-width:0;padding:var(--lx-space-lg);background:color-mix(in srgb, var(--visual-tone) 7%, transparent);position:relative;overflow:hidden}.WHgWIW_setZone h4,.WHgWIW_intersections h4{align-items:center;gap:var(--lx-space-sm);color:var(--lx-label-primary);font-size:var(--lx-text-xs);font-weight:650;line-height:var(--lx-leading-xs);margin:0 0 9px;display:flex}.WHgWIW_setZone h4>span{border-radius:var(--lx-radius-circle);background:var(--visual-tone);width:8px;height:8px}.WHgWIW_setZone>div{gap:var(--lx-space-xs);flex-wrap:wrap;align-content:flex-start;min-height:34px;display:flex}.WHgWIW_setZone button{border-color:color-mix(in srgb, var(--visual-tone) 24%, var(--lx-border-subtle));border-radius:var(--lx-radius-pill);padding:var(--lx-space-2xs) var(--lx-space-sm);background:color-mix(in srgb, var(--visual-tone) 10%, var(--lx-surface-base));color:var(--lx-label-primary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs)}.WHgWIW_emptySet{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-sm)}.WHgWIW_intersections{border:1px dashed var(--lx-border-strongest);border-radius:var(--lx-radius-lg);padding:var(--lx-space-md);background:repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--lx-border-subtle) 30%, transparent) 8px 9px)}.WHgWIW_intersections>div{gap:var(--lx-space-sm);grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));display:grid}.WHgWIW_intersections button{gap:var(--lx-space-3xs);border-radius:var(--lx-radius-sm);padding:var(--lx-space-xs) var(--lx-space-sm);text-align:left;display:grid}.WHgWIW_intersections strong{color:var(--lx-label-primary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs)}.WHgWIW_intersections span{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro)}.WHgWIW_timelineRenderer,.WHgWIW_formulaRenderer,.WHgWIW_studyRenderer,.WHgWIW_recallRenderer{gap:var(--lx-space-lg);flex-direction:column;min-width:0;display:flex}.WHgWIW_timelineViewport{overscroll-behavior-inline:contain;border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-lg);background:var(--lx-surface-sunken);scrollbar-width:thin;min-width:0;overflow-x:auto}.WHgWIW_timelineCanvas{min-width:0;position:relative}.WHgWIW_timelineAxis{border-radius:var(--lx-radius-pill);background:linear-gradient(to right, var(--lx-border-strong), var(--lx-accent), var(--lx-border-strong));height:3px;position:absolute;left:72px;right:72px}.WHgWIW_timelineAxis:after{border-top:5px solid #0000;border-bottom:5px solid #0000;border-left:8px solid var(--lx-border-strong);content:\"\";position:absolute;top:-4px;right:-2px}.WHgWIW_timelineEra,.WHgWIW_timelineEraChips button,.WHgWIW_timelineEvent,.WHgWIW_timelineVertical button{appearance:none;border:1px solid color-mix(in srgb, var(--visual-tone) 42%, var(--lx-border-subtle));background:color-mix(in srgb, var(--visual-tone) 10%, var(--lx-surface-base));color:var(--lx-label-primary);font:inherit;cursor:pointer}.WHgWIW_timelineEra{z-index:1;border-radius:var(--lx-radius-pill);height:23px;padding:var(--lx-space-3xs) var(--lx-space-md);color:var(--visual-tone);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong);line-height:var(--lx-leading-2xs);text-overflow:ellipsis;white-space:nowrap;position:absolute;overflow:hidden}.WHgWIW_timelineEvent{z-index:2;gap:var(--lx-space-3xs);border-radius:var(--lx-radius-sm);width:126px;min-height:50px;padding:var(--lx-space-xs) var(--lx-space-sm);text-align:left;box-shadow:var(--lx-shadow-sm);display:grid;position:absolute;transform:translate(-50%)}.WHgWIW_timelineEvent:before{border:2px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--visual-tone);width:10px;height:10px;box-shadow:0 0 0 1px var(--visual-tone);content:\"\";position:absolute;left:calc(50% - 6px)}.WHgWIW_timelineEvent:after{background:var(--visual-tone);content:\"\";width:1px;height:20px;position:absolute;left:50%}.WHgWIW_timelineEvent[data-side=top]:before{bottom:-32px}.WHgWIW_timelineEvent[data-side=top]:after{bottom:-22px}.WHgWIW_timelineEvent[data-side=bottom]:before{top:-32px}.WHgWIW_timelineEvent[data-side=bottom]:after{top:-22px}.WHgWIW_timelineEvent>span{color:var(--visual-tone);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums;font-weight:650;line-height:var(--lx-leading-micro)}.WHgWIW_timelineEvent>strong{color:var(--lx-label-primary);font-size:var(--lx-text-2xs);font-weight:550;line-height:var(--lx-leading-2xs);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.WHgWIW_timelineEra:hover,.WHgWIW_timelineEvent:hover,.WHgWIW_timelineVertical button:hover,.WHgWIW_timelineEraChips button:hover{border-color:var(--visual-tone);box-shadow:0 0 0 3px color-mix(in srgb, var(--visual-tone) 22%, transparent)}.WHgWIW_timelineEraChips{gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}.WHgWIW_timelineEraChips button{border-radius:var(--lx-radius-pill);padding:var(--lx-space-2xs) var(--lx-space-md);color:var(--visual-tone);text-align:left;gap:0;display:inline-grid}.WHgWIW_timelineEraChips button strong{font-size:var(--lx-text-micro);font-weight:650;line-height:var(--lx-leading-2xs)}.WHgWIW_timelineEraChips button span{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro)}.WHgWIW_timelineVertical{padding:var(--lx-space-2xs) 0 var(--lx-space-2xs) var(--lx-space-2xl);gap:0;margin:0;list-style:none;display:grid}.WHgWIW_timelineVertical li{border-left:2px solid color-mix(in srgb, var(--visual-tone) 48%, var(--lx-border-default));padding:0 0 var(--lx-space-lg) var(--lx-space-2xl);position:relative}.WHgWIW_timelineVertical li:last-child{padding-bottom:0}.WHgWIW_timelineVertical li:before{border:2px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--visual-tone);width:9px;height:9px;box-shadow:0 0 0 1px var(--visual-tone);content:\"\";position:absolute;top:16px;left:-7px}.WHgWIW_timelineVertical button{gap:var(--lx-space-3xs) var(--lx-space-lg);border-radius:var(--lx-radius-md);width:min(100%,620px);padding:var(--lx-space-sm) var(--lx-space-md);text-align:left;grid-template-columns:minmax(80px,auto) minmax(0,1fr);display:grid}.WHgWIW_timelineVertical button>span{color:var(--visual-tone);font-size:var(--lx-text-micro);font-weight:650}.WHgWIW_timelineVertical button>strong{color:var(--lx-label-primary);font-size:var(--lx-text-xs)}.WHgWIW_timelineVertical button>small{color:var(--lx-label-secondary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-2xs);grid-column:1/-1}.WHgWIW_formulaMeta{justify-content:space-between;align-items:center;gap:var(--lx-space-lg);min-width:0;color:var(--lx-accent);font-size:var(--lx-text-2xs);font-variant-numeric:tabular-nums;font-weight:650;line-height:var(--lx-leading-xs);display:flex}.WHgWIW_formulaMeta code{border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-xs);padding:var(--lx-space-3xs) var(--lx-space-sm);background:var(--lx-surface-sunken);color:var(--lx-label-secondary);font-size:var(--lx-text-micro);text-overflow:ellipsis;white-space:nowrap;font-weight:400;overflow:hidden}.WHgWIW_formulaSteps{gap:0;margin:0;padding:0;list-style:none;display:grid}.WHgWIW_formulaSteps>li{min-width:0}.WHgWIW_formulaStepCard{gap:var(--lx-space-md);border:1px solid color-mix(in srgb, var(--visual-tone) 30%, var(--lx-border-subtle));border-radius:var(--lx-radius-md);min-width:0;padding:var(--lx-space-md);background:color-mix(in srgb, var(--visual-tone) 6%, transparent);grid-template-columns:30px minmax(0,1fr);align-items:start;display:grid}.WHgWIW_formulaStepCard>span{border-radius:var(--lx-radius-circle);background:color-mix(in srgb, var(--visual-tone) 16%, transparent);width:28px;height:28px;color:var(--visual-tone);font-size:var(--lx-text-2xs);place-items:center;font-weight:700;display:grid}.WHgWIW_formulaStepCard>div{gap:var(--lx-space-2xs);min-width:0;display:grid}.WHgWIW_formulaExpression{padding:var(--lx-space-sm) 0 var(--lx-space-sm);color:var(--lx-label-primary);font-size:clamp(14px,3cqi,18px);font-weight:550;line-height:var(--lx-leading-lg);scrollbar-width:thin;overflow:auto hidden}.WHgWIW_formulaExpression>div{min-width:max-content}.WHgWIW_formulaExpression .katex-display{text-align:left;margin:2px 0}.WHgWIW_formulaStepCard strong{color:var(--visual-tone);font-size:var(--lx-text-micro);line-height:var(--lx-leading-2xs)}.WHgWIW_formulaStepCard p{color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);margin:0}.WHgWIW_formulaRule{gap:var(--lx-space-xs) var(--lx-space-md);min-height:42px;padding:var(--lx-space-3xs) var(--lx-space-md);color:var(--lx-label-secondary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-2xs);grid-template-columns:30px auto minmax(0,1fr);align-items:center;display:grid}.WHgWIW_formulaRule>span:first-child{color:var(--visual-tone);font-size:var(--lx-text-lg);text-align:center}.WHgWIW_formulaRule strong{color:var(--visual-tone);font-size:var(--lx-text-micro);letter-spacing:.04em;text-transform:uppercase}.WHgWIW_formulaUnknown{gap:var(--lx-space-md);padding:var(--lx-space-3xs) var(--lx-space-md);color:var(--lx-label-tertiary);grid-template-columns:30px minmax(0,1fr);align-items:center;display:grid}.WHgWIW_formulaUnknown>span{text-align:center}.WHgWIW_formulaUnknown code{border:1px dashed var(--lx-border-default);border-radius:var(--lx-radius-md);min-height:38px;font-size:var(--lx-text-lg);place-items:center;display:grid}.WHgWIW_formulaConclusion{gap:var(--lx-space-3xs);border-left:3px solid var(--lx-success);border-radius:0 var(--lx-radius-sm) var(--lx-radius-sm) 0;padding:var(--lx-space-sm) var(--lx-space-md);background:color-mix(in srgb, var(--lx-success) 8%, transparent);display:grid}.WHgWIW_formulaConclusion span{color:var(--lx-success);font-size:var(--lx-text-micro);font-weight:650}.WHgWIW_formulaConclusion strong{color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-sm)}.WHgWIW_formulaActions,.WHgWIW_recallNavigation,.WHgWIW_recallRating{gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}.WHgWIW_formulaActions .WHgWIW_primaryAction,.WHgWIW_recallRevealButton{min-height:var(--lx-control-height-md);border-color:var(--lx-focus-color);background:var(--lx-focus-color);color:var(--lx-label-on-accent)}.WHgWIW_formulaActions .WHgWIW_primaryAction:hover,.WHgWIW_recallRevealButton:hover{border-color:var(--lx-focus-color);background:color-mix(in srgb, var(--lx-focus-color) 88%, var(--lx-label-primary));color:var(--lx-label-on-accent)}.WHgWIW_studySource{gap:var(--lx-space-3xs) var(--lx-space-md);border-left:3px solid var(--lx-accent);padding:var(--lx-space-sm) var(--lx-space-md);background:color-mix(in srgb, var(--lx-accent-soft) 24%, transparent);grid-template-columns:auto minmax(0,1fr);align-items:baseline;display:grid}.WHgWIW_studySource>span{color:var(--lx-accent);font-size:var(--lx-text-micro);font-weight:650}.WHgWIW_studySource>strong{color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-sm)}.WHgWIW_studySource>p{color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);grid-column:1/-1;margin:2px 0 0}.WHgWIW_studySource>p b{color:var(--lx-label-primary);margin-right:7px;font-weight:550}.WHgWIW_studyLayout{gap:var(--lx-space-lg);grid-template-columns:minmax(150px,.34fr) minmax(0,1fr);min-width:0;display:grid}.WHgWIW_studySections{gap:var(--lx-space-xs);flex-direction:column;min-width:0;display:flex}.WHgWIW_studySections button{gap:0 var(--lx-space-sm);min-width:0;padding:var(--lx-space-sm);text-align:left;grid-template-columns:24px minmax(0,1fr);display:grid}.WHgWIW_studySections button>span{border-radius:var(--lx-radius-circle);background:var(--lx-border-subtle);width:22px;height:22px;color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);grid-row:1/3;place-items:center;display:grid}.WHgWIW_studySections button>strong{color:var(--lx-label-primary);font-size:var(--lx-text-2xs);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.WHgWIW_studySections button>small{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.WHgWIW_studySections button[aria-selected=true]{border-color:var(--lx-accent);background:color-mix(in srgb, var(--lx-accent-soft) 38%, transparent)}.WHgWIW_studySections button[aria-selected=true]>span{background:var(--lx-accent);color:var(--lx-label-on-accent)}.WHgWIW_studySectionPanel{gap:var(--lx-space-md);border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-md);min-width:0;padding:var(--lx-space-md);background:var(--lx-surface-sunken);flex-direction:column;display:flex}.WHgWIW_studySectionPanel>header{gap:var(--lx-space-xs);display:grid}.WHgWIW_studySectionPanel>header span{color:var(--lx-accent);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro)}.WHgWIW_studySectionPanel>header h4{color:var(--lx-label-primary);font-size:var(--lx-text-base);line-height:var(--lx-leading-base);margin:0}.WHgWIW_studySectionPanel>header p{color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);margin:0}.WHgWIW_studyConcepts{gap:var(--lx-space-sm);grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));display:grid}.WHgWIW_studyConcepts button{gap:var(--lx-space-3xs);border-color:color-mix(in srgb, var(--visual-tone) 25%, var(--lx-border-subtle));background:color-mix(in srgb, var(--visual-tone) 6%, transparent);text-align:left;min-width:0;display:grid}.WHgWIW_studyConcepts button>span{color:var(--visual-tone);font-size:var(--lx-text-micro);font-weight:650}.WHgWIW_studyConcepts button>strong{color:var(--lx-label-primary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs)}.WHgWIW_studyConcepts button>small{gap:var(--lx-space-3xs);color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro);display:grid}.WHgWIW_studyConcepts button>small b{color:var(--lx-label-secondary);font-weight:550}.WHgWIW_studyConcepts button[data-selected]{border-color:var(--visual-tone);box-shadow:0 0 0 2px color-mix(in srgb, var(--visual-tone) 12%, transparent)}.WHgWIW_studyDetail{gap:var(--lx-space-xs) var(--lx-space-md);border-left:3px solid var(--lx-accent);border-radius:0 var(--lx-radius-sm) var(--lx-radius-sm) 0;padding:var(--lx-space-md) var(--lx-space-md) var(--lx-space-md) var(--lx-space-md);background:color-mix(in srgb, var(--lx-accent-soft) 25%, transparent);grid-template-columns:minmax(0,1fr) 28px;display:grid;position:relative}.WHgWIW_studyDetail>div{gap:var(--lx-space-sm);align-items:baseline;min-width:0;display:flex}.WHgWIW_studyDetail>div span{color:var(--lx-accent);font-size:var(--lx-text-micro);flex:none;font-weight:650}.WHgWIW_studyDetail>div strong{color:var(--lx-label-primary);font-size:var(--lx-text-sm);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.WHgWIW_studyDetail>p{color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);grid-column:1;margin:0}.WHgWIW_studyDetail>dl{gap:var(--lx-space-sm);font-size:var(--lx-text-micro);line-height:var(--lx-leading-2xs);grid-column:1;margin:0;display:flex}.WHgWIW_studyDetail dt{color:var(--lx-label-tertiary)}.WHgWIW_studyDetail dd{color:var(--lx-label-secondary);margin:0}.WHgWIW_studyDetail>button{width:27px;height:27px;font-size:var(--lx-text-md);grid-area:1/2/4;padding:0}.WHgWIW_recallToolbar{justify-content:space-between;align-items:baseline;gap:var(--lx-space-lg);min-width:0;color:var(--lx-accent);font-size:var(--lx-text-2xs);font-variant-numeric:tabular-nums;font-weight:650;display:flex}.WHgWIW_recallToolbar output{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);font-weight:400}.WHgWIW_recallInstructions{color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);margin:0}.WHgWIW_recallCard{gap:var(--lx-space-lg);border:1px solid var(--lx-border-default);border-radius:var(--lx-radius-lg);background:radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--lx-accent-soft) 48%, transparent), transparent 38%), var(--lx-surface-raised);min-height:230px;box-shadow:var(--lx-shadow-md);align-content:start;padding:clamp(16px,4cqi,26px);display:grid}.WHgWIW_recallCardHeader{justify-content:space-between;align-items:center;gap:var(--lx-space-lg);display:flex}.WHgWIW_recallCardHeader>span{color:var(--lx-accent);font-size:var(--lx-text-micro);letter-spacing:.08em;text-transform:uppercase;font-weight:700}.WHgWIW_recallCardHeader>small{border-radius:var(--lx-radius-pill);padding:var(--lx-space-3xs) var(--lx-space-sm);background:var(--lx-border-subtle);color:var(--lx-label-tertiary);font-size:var(--lx-text-micro)}.WHgWIW_recallCardHeader>small[data-status=mastered]{background:color-mix(in srgb, var(--lx-success) 13%, transparent);color:var(--lx-success)}.WHgWIW_recallCardHeader>small[data-status=review]{background:color-mix(in srgb, var(--lx-warn) 13%, transparent);color:var(--lx-warn)}.WHgWIW_recallCard>h4{color:var(--lx-label-primary);margin:0;font-size:clamp(16px,4cqi,21px);font-weight:600;line-height:1.55}.WHgWIW_recallTags{gap:var(--lx-space-xs);flex-wrap:wrap;margin:-3px 0 0;padding:0;list-style:none;display:flex}.WHgWIW_recallTags li{border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-pill);padding:var(--lx-space-3xs) var(--lx-space-sm);color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-2xs)}.WHgWIW_recallReveal{gap:var(--lx-space-2xs);border-left:3px solid var(--lx-warn);padding:var(--lx-space-sm) var(--lx-space-md);background:color-mix(in srgb, var(--lx-warn) 7%, transparent);display:grid}.WHgWIW_recallReveal[data-kind=answer]{border-left-color:var(--lx-success);background:color-mix(in srgb, var(--lx-success) 7%, transparent)}.WHgWIW_recallReveal>span{color:var(--lx-warn);font-size:var(--lx-text-micro);font-weight:700}.WHgWIW_recallReveal[data-kind=answer]>span{color:var(--lx-success)}.WHgWIW_recallReveal>p{color:var(--lx-label-primary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm);margin:0}.WHgWIW_recallRevealButton{justify-self:start;width:max-content;min-width:120px}.WHgWIW_recallRating{align-self:end}.WHgWIW_recallRating button[aria-pressed=true]{border-color:var(--lx-accent);background:color-mix(in srgb, var(--lx-accent-soft) 46%, transparent);color:var(--lx-accent)}.WHgWIW_recallNavigation button:last-child{margin-left:auto}.WHgWIW_visualShell [data-focus-state=dim]{opacity:.2;filter:saturate(.35);transition:opacity var(--lx-motion-base) var(--lx-easing), filter var(--lx-motion-base) var(--lx-easing)}.WHgWIW_visualShell [data-focus-state=focus]{filter:drop-shadow(0 0 5px color-mix(in srgb, var(--visual-tone) 48%, transparent));transition:opacity var(--lx-motion-base) var(--lx-easing), filter var(--lx-motion-base) var(--lx-easing)}@container WHgWIW_learning-visual-v4 (width<=560px){.WHgWIW_visualShell{gap:var(--lx-space-lg);border-radius:var(--lx-radius-lg);padding:var(--lx-space-lg) var(--lx-space-lg)}.WHgWIW_visualHeader{grid-template-columns:1fr}.WHgWIW_visualEyebrow{grid-column:1;width:max-content}.WHgWIW_visualHeader h3{font-size:var(--lx-text-md);grid-column:1}.WHgWIW_sequence{grid-template-columns:1fr}.WHgWIW_sequenceActions{justify-content:stretch}.WHgWIW_sequenceActions button{flex:1;justify-content:center}.WHgWIW_sequenceActions button:last-child{flex:none}.WHgWIW_metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.WHgWIW_relationTable{min-width:500px}.WHgWIW_studyLayout{grid-template-columns:1fr}.WHgWIW_studySections{scrollbar-width:thin;flex-direction:row;padding-bottom:3px;overflow-x:auto}.WHgWIW_studySections button{min-width:156px}.WHgWIW_formulaActions button{flex:1}.WHgWIW_formulaActions button:nth-child(2){flex:2}.WHgWIW_recallNavigation button{flex:1}.WHgWIW_recallNavigation button:last-child{flex-basis:100%;margin-left:0}.WHgWIW_recallCard{min-height:210px}}@container WHgWIW_learning-visual-v4 (width<=360px){.WHgWIW_sequenceActions button span:not([aria-hidden]){display:none}.WHgWIW_metrics{grid-template-columns:1fr}.WHgWIW_detailPanel{grid-template-columns:1fr 28px}.WHgWIW_detailPanel>span,.WHgWIW_detailPanel>strong,.WHgWIW_detailPanel>p{grid-column:1}.WHgWIW_detailPanel>button{grid-column:2}.WHgWIW_formulaStepCard{padding:var(--lx-space-sm);grid-template-columns:24px minmax(0,1fr)}.WHgWIW_formulaStepCard>span{width:23px;height:23px}.WHgWIW_formulaRule{grid-template-columns:24px minmax(0,1fr)}.WHgWIW_formulaRule strong,.WHgWIW_formulaRule>span:last-child{grid-column:2}.WHgWIW_recallToolbar{align-items:flex-start;gap:var(--lx-space-3xs);flex-direction:column}}";
 		const tagId = "@dsh-portable/interactive-learning/LearningVisualV4.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -4257,103 +4305,104 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var LearningVisualV4_module_css_default = {
-			"learning-visual-v4": "WHgWIW_learning-visual-v4",
-			"parameterHeader": "WHgWIW_parameterHeader",
-			"sceneViewport": "WHgWIW_sceneViewport",
-			"parameterEnds": "WHgWIW_parameterEnds",
-			"setZone": "WHgWIW_setZone",
-			"recallRating": "WHgWIW_recallRating",
-			"metrics": "WHgWIW_metrics",
-			"interactionHint": "WHgWIW_interactionHint",
-			"sceneElement": "WHgWIW_sceneElement",
-			"primaryAction": "WHgWIW_primaryAction",
-			"axisLabel": "WHgWIW_axisLabel",
-			"emptyCell": "WHgWIW_emptyCell",
-			"timelineAxis": "WHgWIW_timelineAxis",
-			"formulaRule": "WHgWIW_formulaRule",
-			"plotRenderer": "WHgWIW_plotRenderer",
-			"recallRevealButton": "WHgWIW_recallRevealButton",
-			"sceneLine": "WHgWIW_sceneLine",
-			"plotSvg": "WHgWIW_plotSvg",
-			"seriesToggles": "WHgWIW_seriesToggles",
-			"probePoint": "WHgWIW_probePoint",
-			"timelineEraChips": "WHgWIW_timelineEraChips",
-			"formulaUnknown": "WHgWIW_formulaUnknown",
-			"recallCardHeader": "WHgWIW_recallCardHeader",
-			"parameter": "WHgWIW_parameter",
-			"matrixCell": "WHgWIW_matrixCell",
-			"seriesLine": "WHgWIW_seriesLine",
-			"errorFallback": "WHgWIW_errorFallback",
-			"visualEyebrow": "WHgWIW_visualEyebrow",
-			"sceneRenderer": "WHgWIW_sceneRenderer",
-			"seriesBar": "WHgWIW_seriesBar",
-			"layerLabel": "WHgWIW_layerLabel",
-			"sceneHit": "WHgWIW_sceneHit",
-			"visualHeader": "WHgWIW_visualHeader",
-			"edgeLabel": "WHgWIW_edgeLabel",
 			"arrowMarker": "WHgWIW_arrowMarker",
-			"shapeLabel": "WHgWIW_shapeLabel",
-			"matrixTable": "WHgWIW_matrixTable",
-			"sequenceText": "WHgWIW_sequenceText",
-			"relationTable": "WHgWIW_relationTable",
-			"edgeGroup": "WHgWIW_edgeGroup",
-			"sceneSvg": "WHgWIW_sceneSvg",
-			"emptySet": "WHgWIW_emptySet",
-			"relationRenderer": "WHgWIW_relationRenderer",
-			"formulaSteps": "WHgWIW_formulaSteps",
-			"recallInstructions": "WHgWIW_recallInstructions",
-			"setZones": "WHgWIW_setZones",
-			"nodeGroup": "WHgWIW_nodeGroup",
-			"recallNavigation": "WHgWIW_recallNavigation",
-			"formulaStepCard": "WHgWIW_formulaStepCard",
-			"seriesPoint": "WHgWIW_seriesPoint",
-			"plotFrame": "WHgWIW_plotFrame",
-			"nodeLinkRenderer": "WHgWIW_nodeLinkRenderer",
-			"sceneText": "WHgWIW_sceneText",
-			"edgeVisible": "WHgWIW_edgeVisible",
-			"timelineViewport": "WHgWIW_timelineViewport",
-			"studySections": "WHgWIW_studySections",
-			"formulaRenderer": "WHgWIW_formulaRenderer",
-			"graphViewport": "WHgWIW_graphViewport",
-			"studyConcepts": "WHgWIW_studyConcepts",
-			"recallReveal": "WHgWIW_recallReveal",
-			"parameterGrid": "WHgWIW_parameterGrid",
-			"probeLine": "WHgWIW_probeLine",
-			"setMap": "WHgWIW_setMap",
-			"scenePoint": "WHgWIW_scenePoint",
-			"edgeHit": "WHgWIW_edgeHit",
-			"sequenceActions": "WHgWIW_sequenceActions",
-			"intersections": "WHgWIW_intersections",
-			"recallRenderer": "WHgWIW_recallRenderer",
-			"timelineCanvas": "WHgWIW_timelineCanvas",
-			"visualShell": "WHgWIW_visualShell",
-			"timelineEra": "WHgWIW_timelineEra",
-			"formulaExpression": "WHgWIW_formulaExpression",
-			"timelineRenderer": "WHgWIW_timelineRenderer",
-			"studySource": "WHgWIW_studySource",
-			"zeroAxis": "WHgWIW_zeroAxis",
-			"recallCard": "WHgWIW_recallCard",
-			"recallToolbar": "WHgWIW_recallToolbar",
-			"sequence": "WHgWIW_sequence",
-			"formulaMeta": "WHgWIW_formulaMeta",
-			"timelineVertical": "WHgWIW_timelineVertical",
-			"srOnly": "WHgWIW_srOnly",
-			"tickLabel": "WHgWIW_tickLabel",
-			"timelineEvent": "WHgWIW_timelineEvent",
-			"formulaConclusion": "WHgWIW_formulaConclusion",
-			"formulaActions": "WHgWIW_formulaActions",
-			"detailPanel": "WHgWIW_detailPanel",
-			"studySectionPanel": "WHgWIW_studySectionPanel",
-			"tableViewport": "WHgWIW_tableViewport",
-			"graphSvg": "WHgWIW_graphSvg",
-			"probeCard": "WHgWIW_probeCard",
-			"sceneShape": "WHgWIW_sceneShape",
-			"recallTags": "WHgWIW_recallTags",
+			"axisLabel": "WHgWIW_axisLabel",
 			"chartViewport": "WHgWIW_chartViewport",
+			"detailPanel": "WHgWIW_detailPanel",
+			"edgeGroup": "WHgWIW_edgeGroup",
+			"edgeHit": "WHgWIW_edgeHit",
+			"edgeLabel": "WHgWIW_edgeLabel",
+			"edgeVisible": "WHgWIW_edgeVisible",
+			"emptyCell": "WHgWIW_emptyCell",
+			"emptyPlotNotice": "WHgWIW_emptyPlotNotice",
+			"emptySet": "WHgWIW_emptySet",
+			"errorFallback": "WHgWIW_errorFallback",
+			"formulaActions": "WHgWIW_formulaActions",
+			"formulaConclusion": "WHgWIW_formulaConclusion",
+			"formulaExpression": "WHgWIW_formulaExpression",
+			"formulaMeta": "WHgWIW_formulaMeta",
+			"formulaRenderer": "WHgWIW_formulaRenderer",
+			"formulaRule": "WHgWIW_formulaRule",
+			"formulaStepCard": "WHgWIW_formulaStepCard",
+			"formulaSteps": "WHgWIW_formulaSteps",
+			"formulaUnknown": "WHgWIW_formulaUnknown",
+			"graphSvg": "WHgWIW_graphSvg",
+			"graphViewport": "WHgWIW_graphViewport",
 			"gridLine": "WHgWIW_gridLine",
-			"studyRenderer": "WHgWIW_studyRenderer",
+			"interactionHint": "WHgWIW_interactionHint",
+			"intersections": "WHgWIW_intersections",
+			"layerLabel": "WHgWIW_layerLabel",
+			"learning-visual-v4": "WHgWIW_learning-visual-v4",
+			"matrixCell": "WHgWIW_matrixCell",
+			"matrixTable": "WHgWIW_matrixTable",
+			"metrics": "WHgWIW_metrics",
+			"nodeGroup": "WHgWIW_nodeGroup",
+			"nodeLinkRenderer": "WHgWIW_nodeLinkRenderer",
+			"parameter": "WHgWIW_parameter",
+			"parameterEnds": "WHgWIW_parameterEnds",
+			"parameterGrid": "WHgWIW_parameterGrid",
+			"parameterHeader": "WHgWIW_parameterHeader",
+			"plotFrame": "WHgWIW_plotFrame",
+			"plotRenderer": "WHgWIW_plotRenderer",
+			"plotSvg": "WHgWIW_plotSvg",
+			"primaryAction": "WHgWIW_primaryAction",
+			"probeCard": "WHgWIW_probeCard",
+			"probeLine": "WHgWIW_probeLine",
+			"probePoint": "WHgWIW_probePoint",
+			"recallCard": "WHgWIW_recallCard",
+			"recallCardHeader": "WHgWIW_recallCardHeader",
+			"recallInstructions": "WHgWIW_recallInstructions",
+			"recallNavigation": "WHgWIW_recallNavigation",
+			"recallRating": "WHgWIW_recallRating",
+			"recallRenderer": "WHgWIW_recallRenderer",
+			"recallReveal": "WHgWIW_recallReveal",
+			"recallRevealButton": "WHgWIW_recallRevealButton",
+			"recallTags": "WHgWIW_recallTags",
+			"recallToolbar": "WHgWIW_recallToolbar",
+			"relationRenderer": "WHgWIW_relationRenderer",
+			"relationTable": "WHgWIW_relationTable",
+			"sceneElement": "WHgWIW_sceneElement",
+			"sceneHit": "WHgWIW_sceneHit",
+			"sceneLine": "WHgWIW_sceneLine",
+			"scenePoint": "WHgWIW_scenePoint",
+			"sceneRenderer": "WHgWIW_sceneRenderer",
+			"sceneShape": "WHgWIW_sceneShape",
+			"sceneSvg": "WHgWIW_sceneSvg",
+			"sceneText": "WHgWIW_sceneText",
+			"sceneViewport": "WHgWIW_sceneViewport",
+			"sequence": "WHgWIW_sequence",
+			"sequenceActions": "WHgWIW_sequenceActions",
+			"sequenceText": "WHgWIW_sequenceText",
+			"seriesBar": "WHgWIW_seriesBar",
+			"seriesLine": "WHgWIW_seriesLine",
+			"seriesPoint": "WHgWIW_seriesPoint",
+			"seriesToggles": "WHgWIW_seriesToggles",
+			"setMap": "WHgWIW_setMap",
+			"setZone": "WHgWIW_setZone",
+			"setZones": "WHgWIW_setZones",
+			"shapeLabel": "WHgWIW_shapeLabel",
+			"srOnly": "WHgWIW_srOnly",
+			"studyConcepts": "WHgWIW_studyConcepts",
+			"studyDetail": "WHgWIW_studyDetail",
 			"studyLayout": "WHgWIW_studyLayout",
-			"studyDetail": "WHgWIW_studyDetail"
+			"studyRenderer": "WHgWIW_studyRenderer",
+			"studySectionPanel": "WHgWIW_studySectionPanel",
+			"studySections": "WHgWIW_studySections",
+			"studySource": "WHgWIW_studySource",
+			"tableViewport": "WHgWIW_tableViewport",
+			"tickLabel": "WHgWIW_tickLabel",
+			"timelineAxis": "WHgWIW_timelineAxis",
+			"timelineCanvas": "WHgWIW_timelineCanvas",
+			"timelineEra": "WHgWIW_timelineEra",
+			"timelineEraChips": "WHgWIW_timelineEraChips",
+			"timelineEvent": "WHgWIW_timelineEvent",
+			"timelineRenderer": "WHgWIW_timelineRenderer",
+			"timelineVertical": "WHgWIW_timelineVertical",
+			"timelineViewport": "WHgWIW_timelineViewport",
+			"visualEyebrow": "WHgWIW_visualEyebrow",
+			"visualHeader": "WHgWIW_visualHeader",
+			"visualShell": "WHgWIW_visualShell",
+			"zeroAxis": "WHgWIW_zeroAxis"
 		};
 		//#endregion
 		//#region src/client/LearningVisualV4.tsx
@@ -4369,18 +4418,20 @@ window.__ModuleLoader__.load({
 			metricsLabel: "当前指标",
 			legendLabel: "图例与系列显示",
 			plotInteractionHint: "鼠标移入图表可探查数值；键盘聚焦图表后可用 ← → 移动。",
+			noValuesInRange: "当前坐标范围内没有可显示的数值。",
+			seriesOutOfRange: "不在范围内",
 			nodeLinkSummary: "{nodes} 个节点，{edges} 条连线。",
 			connection: "{from} 到 {to}",
 			layerLabel: "第 {index} 层",
 			edgeLabel: "连线",
-			nodeLinkInteractionHint: "选择节点或连线查看解释；键盘可用 Tab 与 Enter 操作。",
+			nodeLinkInteractionHint: "选择节点或连线查看解释；键盘按 Tab 进入图形，再用 ← → 移动、Enter 选择。",
 			nodeKind: "节点",
 			edgeKind: "连线",
 			noDetail: "暂无补充说明。",
 			closeDetail: "关闭详细说明",
 			elementFallback: "图元 {id}",
 			sceneSummary: "二维场景，{elements} 个图元。{labels}",
-			sceneInteractionHint: "选择图中的点、线或形状查看说明。",
+			sceneInteractionHint: "选择图中的点、线或形状查看说明；键盘按 Tab 进入图形，再用 ← → 移动、Enter 选择。",
 			elementKind: "图元",
 			comparisonCaption: "特征对比表",
 			comparisonDimension: "对比维度",
@@ -4499,14 +4550,64 @@ window.__ModuleLoader__.load({
 			event.preventDefault();
 			action();
 		}
+		/**
+		* Roving tabindex over the interactive items of one figure.
+		*
+		* A node_link visual may declare 48 nodes and 160 edges, and a scene_2d up to
+		* 64 elements. Leaving every item in the tab order turns one inline diagram
+		* into a 200-stop detour that a keyboard user has to walk through to reach the
+		* rest of the conversation. The figure is a single tab stop instead: arrow
+		* keys, Home and End move between its items, Enter and Space select one.
+		*/
+		function useRovingFocus(ids) {
+			const containerRef = (0, react.useRef)(null);
+			const [focusedId, setFocusedId] = (0, react.useState)();
+			const active = focusedId !== void 0 && ids.includes(focusedId) ? focusedId : ids[0];
+			const focusAt = (index) => {
+				const next = ids[Math.max(0, Math.min(ids.length - 1, index))];
+				if (next === void 0) return;
+				setFocusedId(next);
+				for (const item of containerRef.current?.querySelectorAll("[data-roving-id]") ?? []) if (item.dataset.rovingId === next) {
+					item.focus();
+					return;
+				}
+			};
+			const itemProps = (id, activate) => ({
+				tabIndex: id === active ? 0 : -1,
+				"data-roving-id": id,
+				onFocus: () => setFocusedId(id),
+				onKeyDown: (event) => {
+					const index = ids.indexOf(id);
+					if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+						event.preventDefault();
+						focusAt(index + 1);
+					} else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+						event.preventDefault();
+						focusAt(index - 1);
+					} else if (event.key === "Home") {
+						event.preventDefault();
+						focusAt(0);
+					} else if (event.key === "End") {
+						event.preventDefault();
+						focusAt(ids.length - 1);
+					} else activateWithKeyboard(event, activate);
+				}
+			});
+			return {
+				containerRef,
+				itemProps
+			};
+		}
 		function useContainerWidth(minimum = 280) {
 			const ref = (0, react.useRef)(null);
 			const [width, setWidth] = (0, react.useState)(760);
 			(0, react.useEffect)(() => {
 				const element = ref.current;
 				if (element === null) return;
-				const update = (next) => {
-					if (next >= minimum) setWidth((current) => Math.abs(current - next) < 1 ? current : next);
+				const update = (measured) => {
+					if (measured <= 0) return;
+					const next = Math.max(minimum, measured);
+					setWidth((current) => Math.abs(current - next) < 1 ? current : next);
 				};
 				update(element.getBoundingClientRect().width);
 				if (typeof ResizeObserver === "undefined") return;
@@ -4584,6 +4685,7 @@ window.__ModuleLoader__.load({
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: LearningVisualV4_module_css_default.sequence,
+				role: "group",
 				onKeyDown,
 				"aria-label": labels.sequenceLabel,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -4645,11 +4747,21 @@ window.__ModuleLoader__.load({
 			} catch {}
 			return values;
 		}
-		function plotCurvePath(series, content, values, geometry) {
+		/**
+		* Sample one curve into a path, and report whether any sample is actually
+		* visible inside the declared axes.
+		*
+		* A schema-valid curve can still produce nothing to look at: `log` or `sqrt`
+		* over a negative domain yields no finite value, and a curve whose outputs sit
+		* far outside the declared y range is drawn entirely outside the clip. Both
+		* would otherwise leave the learner staring at an empty frame.
+		*/
+		function plotCurveRender(series, content, values, geometry) {
 			const samples = content.xAxis.samples ?? 160;
 			const commands = [];
 			let drawing = false;
 			let previousY;
+			let visible = false;
 			for (let index = 0; index < samples; index += 1) {
 				const x = interpolate(content.xAxis.min, content.xAxis.max, index / Math.max(1, samples - 1));
 				const y = evaluateMathExpression(series.expression, {
@@ -4661,6 +4773,7 @@ window.__ModuleLoader__.load({
 					previousY = void 0;
 					continue;
 				}
+				if (y >= content.yAxis.min && y <= content.yAxis.max) visible = true;
 				const px = scaleX(x, content.xAxis, geometry);
 				const py = scaleY(y, content.yAxis, geometry);
 				if (previousY !== void 0 && Math.abs(previousY - py) > geometry.plotHeight * 2) drawing = false;
@@ -4668,7 +4781,14 @@ window.__ModuleLoader__.load({
 				drawing = true;
 				previousY = py;
 			}
-			return commands.join(" ");
+			return {
+				path: commands.join(" "),
+				visible
+			};
+		}
+		/** Whether any declared point of a plotted series falls inside both axes. */
+		function pointsVisible(points, content) {
+			return points.some((point) => Number.isFinite(point.x) && Number.isFinite(point.y) && point.x >= content.xAxis.min && point.x <= content.xAxis.max && point.y >= content.yAxis.min && point.y <= content.yAxis.max);
 		}
 		function pointsPath(points, content, geometry) {
 			return points.map((point, index) => `${index === 0 ? "M" : "L"}${scaleX(point.x, content.xAxis, geometry).toFixed(2)},${scaleY(point.y, content.yAxis, geometry).toFixed(2)}`).join(" ");
@@ -4706,15 +4826,17 @@ window.__ModuleLoader__.load({
 					sessionStorage.setItem(`dsh-learning/visual@4:${storageKey}`, JSON.stringify(values));
 				} catch {}
 			}, [storageKey, values]);
-			const curvePaths = (0, react.useMemo)(() => content.series.flatMap((series) => series.type === "curve" ? [{
-				id: series.id,
-				path: plotCurvePath(series, content, values, geometry)
-			}] : []), [
+			const renders = (0, react.useMemo)(() => new Map(content.series.map((series) => [series.id, series.type === "curve" ? plotCurveRender(series, content, values, geometry) : {
+				path: void 0,
+				visible: pointsVisible(series.points, content)
+			}])), [
 				content,
 				geometry,
 				values
 			]);
 			const visibleSeries = content.series.filter((series) => !hiddenSeries.has(series.id));
+			const emptySeriesIds = new Set(content.series.filter((series) => renders.get(series.id)?.visible !== true).map((series) => series.id));
+			const nothingToSee = visibleSeries.length > 0 && visibleSeries.every((series) => emptySeriesIds.has(series.id));
 			const probeValues = probeX === void 0 ? [] : visibleSeries.flatMap((series) => {
 				let y;
 				if (series.type === "curve") y = evaluateMathExpression(series.expression, {
@@ -4730,7 +4852,7 @@ window.__ModuleLoader__.load({
 					tone: series.tone
 				}];
 			});
-			const chartDescription = `${content.xAxis.label ?? "x"} ${formatNumber(content.xAxis.min)}–${formatNumber(content.xAxis.max)}; ${content.yAxis.label ?? "y"} ${formatNumber(content.yAxis.min)}–${formatNumber(content.yAxis.max)}; ${content.series.map((series) => series.label).join(", ")}`;
+			const chartDescription = `${content.xAxis.label ?? "x"} ${formatNumber(content.xAxis.min)}–${formatNumber(content.xAxis.max)}; ${content.yAxis.label ?? "y"} ${formatNumber(content.yAxis.min)}–${formatNumber(content.yAxis.max)}; ${content.series.map((series) => series.label).join(", ")}${nothingToSee ? `. ${labels.noValuesInRange}` : ""}`;
 			const probeDescription = probeX === void 0 ? `${labels.chartProbeHint}. ${chartDescription}` : `x ${formatNumber(probeX)}。${probeValues.map((item) => `${item.label} ${formatNumber(item.y)}`).join("，")}`;
 			const updateProbeFromPointer = (event) => {
 				const rect = event.currentTarget.getBoundingClientRect();
@@ -4815,174 +4937,189 @@ window.__ModuleLoader__.load({
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						className: LearningVisualV4_module_css_default.chartViewport,
 						ref: regionRef,
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
-							className: LearningVisualV4_module_css_default.plotSvg,
-							width: geometry.width,
-							height: geometry.height,
-							viewBox: `0 0 ${geometry.width} ${geometry.height}`,
-							role: "img",
-							tabIndex: 0,
-							"aria-label": probeDescription,
-							onPointerMove: updateProbeFromPointer,
-							onPointerLeave: () => setProbeX(void 0),
-							onKeyDown: moveProbe,
-							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("defs", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("clipPath", {
-									id: `${id}-plot-clip`,
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+								className: LearningVisualV4_module_css_default.plotSvg,
+								width: geometry.width,
+								height: geometry.height,
+								viewBox: `0 0 ${geometry.width} ${geometry.height}`,
+								role: "img",
+								tabIndex: 0,
+								"aria-label": probeDescription,
+								onPointerMove: updateProbeFromPointer,
+								onPointerLeave: () => setProbeX(void 0),
+								onKeyDown: moveProbe,
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("defs", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("clipPath", {
+										id: `${id}-plot-clip`,
+										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+											x: geometry.left,
+											y: geometry.top,
+											width: geometry.plotWidth,
+											height: geometry.plotHeight
+										})
+									}) }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+										className: LearningVisualV4_module_css_default.plotFrame,
 										x: geometry.left,
 										y: geometry.top,
 										width: geometry.plotWidth,
 										height: geometry.plotHeight
-									})
-								}) }),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
-									className: LearningVisualV4_module_css_default.plotFrame,
-									x: geometry.left,
-									y: geometry.top,
-									width: geometry.plotWidth,
-									height: geometry.plotHeight
-								}),
-								yTicks.map((value) => {
-									const y = scaleY(value, content.yAxis, geometry);
-									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-										className: LearningVisualV4_module_css_default.gridLine,
-										x1: geometry.left,
-										x2: geometry.left + geometry.plotWidth,
-										y1: y,
-										y2: y
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-										className: LearningVisualV4_module_css_default.tickLabel,
-										x: geometry.left - 10,
-										y,
-										textAnchor: "end",
-										dominantBaseline: "middle",
-										children: formatNumber(value)
-									})] }, `y-${String(value)}`);
-								}),
-								xTicks.map((value) => {
-									const x = scaleX(value, content.xAxis, geometry);
-									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-										className: LearningVisualV4_module_css_default.gridLine,
-										x1: x,
-										x2: x,
-										y1: geometry.top,
-										y2: geometry.top + geometry.plotHeight
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-										className: LearningVisualV4_module_css_default.tickLabel,
-										x,
-										y: geometry.top + geometry.plotHeight + 22,
-										textAnchor: "middle",
-										children: formatNumber(value)
-									})] }, `x-${String(value)}`);
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
-									clipPath: `url(#${id}-plot-clip)`,
-									children: [
-										content.series.map((series, seriesIndex) => {
-											if (hiddenSeries.has(series.id)) return null;
-											const tone = toneAt(series.tone, seriesIndex);
-											const state = focusState(series.id, focusedIds);
-											if (series.type === "curve") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-												className: LearningVisualV4_module_css_default.seriesLine,
-												"data-tone": tone,
-												"data-focus-state": state,
-												"data-visual-id": series.id,
-												"data-stroke": series.stroke ?? "solid",
-												d: curvePaths.find((item) => item.id === series.id)?.path
-											}, series.id);
-											if (series.type === "line") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-												className: LearningVisualV4_module_css_default.seriesLine,
-												"data-tone": tone,
-												"data-focus-state": state,
-												"data-visual-id": series.id,
-												"data-stroke": series.stroke ?? "solid",
-												d: pointsPath(series.points, content, geometry)
-											}, series.id);
-											if (series.type === "bars") {
-												const sortedXs = series.points.map((point) => scaleX(point.x, content.xAxis, geometry)).sort((a, b) => a - b);
-												const smallestGap = sortedXs.slice(1).reduce((gap, x, index) => Math.min(gap, x - (sortedXs[index] ?? x)), geometry.plotWidth / Math.max(1, sortedXs.length));
-												const barWidth = Math.max(6, Math.min(44, smallestGap * .68));
-												const zeroY = scaleY(Math.max(content.yAxis.min, Math.min(content.yAxis.max, 0)), content.yAxis, geometry);
+									}),
+									yTicks.map((value) => {
+										const y = scaleY(value, content.yAxis, geometry);
+										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+											className: LearningVisualV4_module_css_default.gridLine,
+											x1: geometry.left,
+											x2: geometry.left + geometry.plotWidth,
+											y1: y,
+											y2: y
+										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+											className: LearningVisualV4_module_css_default.tickLabel,
+											x: geometry.left - 10,
+											y,
+											textAnchor: "end",
+											dominantBaseline: "middle",
+											children: formatNumber(value)
+										})] }, `y-${String(value)}`);
+									}),
+									xTicks.map((value) => {
+										const x = scaleX(value, content.xAxis, geometry);
+										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+											className: LearningVisualV4_module_css_default.gridLine,
+											x1: x,
+											x2: x,
+											y1: geometry.top,
+											y2: geometry.top + geometry.plotHeight
+										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+											className: LearningVisualV4_module_css_default.tickLabel,
+											x,
+											y: geometry.top + geometry.plotHeight + 22,
+											textAnchor: "middle",
+											children: formatNumber(value)
+										})] }, `x-${String(value)}`);
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+										clipPath: `url(#${id}-plot-clip)`,
+										children: [
+											content.series.map((series, seriesIndex) => {
+												if (hiddenSeries.has(series.id)) return null;
+												const tone = toneAt(series.tone, seriesIndex);
+												const state = focusState(series.id, focusedIds);
+												if (series.type === "curve") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+													className: LearningVisualV4_module_css_default.seriesLine,
+													"data-tone": tone,
+													"data-focus-state": state,
+													"data-visual-id": series.id,
+													"data-stroke": series.stroke ?? "solid",
+													d: renders.get(series.id)?.path
+												}, series.id);
+												if (series.type === "line") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+													className: LearningVisualV4_module_css_default.seriesLine,
+													"data-tone": tone,
+													"data-focus-state": state,
+													"data-visual-id": series.id,
+													"data-stroke": series.stroke ?? "solid",
+													d: pointsPath(series.points, content, geometry)
+												}, series.id);
+												if (series.type === "bars") {
+													const sortedXs = series.points.map((point) => scaleX(point.x, content.xAxis, geometry)).sort((a, b) => a - b);
+													const smallestGap = sortedXs.slice(1).reduce((gap, x, index) => Math.min(gap, x - (sortedXs[index] ?? x)), geometry.plotWidth / Math.max(1, sortedXs.length));
+													const barWidth = Math.max(6, Math.min(44, smallestGap * .68));
+													const zeroY = scaleY(Math.max(content.yAxis.min, Math.min(content.yAxis.max, 0)), content.yAxis, geometry);
+													return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", {
+														"data-visual-id": series.id,
+														"data-focus-state": state,
+														children: series.points.map((point, pointIndex) => {
+															const x = scaleX(point.x, content.xAxis, geometry);
+															const y = scaleY(point.y, content.yAxis, geometry);
+															return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+																className: LearningVisualV4_module_css_default.seriesBar,
+																"data-tone": tone,
+																x: x - barWidth / 2,
+																y: Math.min(y, zeroY),
+																width: barWidth,
+																height: Math.max(1, Math.abs(zeroY - y)),
+																children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("title", { children: point.label ?? `${series.label}: ${formatNumber(point.y)}` })
+															}, `${series.id}-${String(pointIndex)}`);
+														})
+													}, series.id);
+												}
 												return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", {
 													"data-visual-id": series.id,
 													"data-focus-state": state,
-													children: series.points.map((point, pointIndex) => {
-														const x = scaleX(point.x, content.xAxis, geometry);
-														const y = scaleY(point.y, content.yAxis, geometry);
-														return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
-															className: LearningVisualV4_module_css_default.seriesBar,
-															"data-tone": tone,
-															x: x - barWidth / 2,
-															y: Math.min(y, zeroY),
-															width: barWidth,
-															height: Math.max(1, Math.abs(zeroY - y)),
-															children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("title", { children: point.label ?? `${series.label}: ${formatNumber(point.y)}` })
-														}, `${series.id}-${String(pointIndex)}`);
-													})
+													children: series.points.map((point, pointIndex) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+														className: LearningVisualV4_module_css_default.seriesPoint,
+														"data-tone": tone,
+														cx: scaleX(point.x, content.xAxis, geometry),
+														cy: scaleY(point.y, content.yAxis, geometry),
+														r: "5.5",
+														children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("title", { children: point.label ?? `${series.label}: (${formatNumber(point.x)}, ${formatNumber(point.y)})` })
+													}, `${series.id}-${String(pointIndex)}`))
 												}, series.id);
-											}
-											return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", {
-												"data-visual-id": series.id,
-												"data-focus-state": state,
-												children: series.points.map((point, pointIndex) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
-													className: LearningVisualV4_module_css_default.seriesPoint,
-													"data-tone": tone,
-													cx: scaleX(point.x, content.xAxis, geometry),
-													cy: scaleY(point.y, content.yAxis, geometry),
-													r: "5.5",
-													children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("title", { children: point.label ?? `${series.label}: (${formatNumber(point.x)}, ${formatNumber(point.y)})` })
-												}, `${series.id}-${String(pointIndex)}`))
-											}, series.id);
-										}),
-										probeX === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-											className: LearningVisualV4_module_css_default.probeLine,
-											x1: scaleX(probeX, content.xAxis, geometry),
-											x2: scaleX(probeX, content.xAxis, geometry),
-											y1: geometry.top,
-											y2: geometry.top + geometry.plotHeight
-										}),
-										probeX === void 0 ? null : probeValues.map((item, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
-											className: LearningVisualV4_module_css_default.probePoint,
-											"data-tone": toneAt(item.tone, index),
-											cx: scaleX(probeX, content.xAxis, geometry),
-											cy: scaleY(item.y, content.yAxis, geometry),
-											r: "5"
-										}, item.id))
-									]
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-									className: LearningVisualV4_module_css_default.axisLabel,
-									x: geometry.left + geometry.plotWidth / 2,
-									y: geometry.height - 7,
-									textAnchor: "middle",
-									children: content.xAxis.label ?? "x"
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-									className: LearningVisualV4_module_css_default.axisLabel,
-									x: "16",
-									y: geometry.top + geometry.plotHeight / 2,
-									textAnchor: "middle",
-									transform: `rotate(-90 16 ${geometry.top + geometry.plotHeight / 2})`,
-									children: content.yAxis.label ?? "y"
-								})
-							]
-						}), probeX === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: LearningVisualV4_module_css_default.probeCard,
-							style: { "--probe-x": `${normalizedPosition(probeX, content.xAxis.min, content.xAxis.max) * 100}%` },
-							"aria-hidden": "true",
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: ["x = ", formatNumber(probeX)] }), probeValues.map((item, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-								"data-tone": toneAt(item.tone, index),
-								children: [
-									item.label,
-									": ",
-									formatNumber(item.y)
+											}),
+											probeX === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
+												className: LearningVisualV4_module_css_default.probeLine,
+												x1: scaleX(probeX, content.xAxis, geometry),
+												x2: scaleX(probeX, content.xAxis, geometry),
+												y1: geometry.top,
+												y2: geometry.top + geometry.plotHeight
+											}),
+											probeX === void 0 ? null : probeValues.map((item, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+												className: LearningVisualV4_module_css_default.probePoint,
+												"data-tone": toneAt(item.tone, index),
+												cx: scaleX(probeX, content.xAxis, geometry),
+												cy: scaleY(item.y, content.yAxis, geometry),
+												r: "5"
+											}, item.id))
+										]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+										className: LearningVisualV4_module_css_default.axisLabel,
+										x: geometry.left + geometry.plotWidth / 2,
+										y: geometry.height - 7,
+										textAnchor: "middle",
+										children: content.xAxis.label ?? "x"
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+										className: LearningVisualV4_module_css_default.axisLabel,
+										x: "16",
+										y: geometry.top + geometry.plotHeight / 2,
+										textAnchor: "middle",
+										transform: `rotate(-90 16 ${geometry.top + geometry.plotHeight / 2})`,
+										children: content.yAxis.label ?? "y"
+									})
 								]
-							}, item.id))]
-						})]
+							}),
+							!nothingToSee ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+								className: LearningVisualV4_module_css_default.emptyPlotNotice,
+								role: "note",
+								children: labels.noValuesInRange
+							}),
+							probeX === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								className: LearningVisualV4_module_css_default.probeCard,
+								style: { "--probe-x": `${normalizedPosition(probeX, content.xAxis.min, content.xAxis.max) * 100}%` },
+								"aria-hidden": "true",
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: ["x = ", formatNumber(probeX)] }), probeValues.map((item, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+									"data-tone": toneAt(item.tone, index),
+									children: [
+										item.label,
+										": ",
+										formatNumber(item.y)
+									]
+								}, item.id))]
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningVisualV4_module_css_default.srOnly,
+						role: "status",
+						"aria-live": "polite",
+						children: probeX === void 0 ? "" : probeDescription
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						className: LearningVisualV4_module_css_default.seriesToggles,
+						role: "group",
 						"aria-label": labels.legendLabel,
 						children: content.series.map((series, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 							type: "button",
@@ -4990,8 +5127,14 @@ window.__ModuleLoader__.load({
 							"data-tone": toneAt(series.tone, index),
 							"data-series-type": series.type,
 							"data-stroke": "stroke" in series ? series.stroke ?? "solid" : void 0,
+							"data-empty": emptySeriesIds.has(series.id) || void 0,
+							title: emptySeriesIds.has(series.id) ? labels.seriesOutOfRange : void 0,
 							onClick: () => toggleSeries(series.id),
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { "aria-hidden": "true" }), series.label]
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { "aria-hidden": "true" }),
+								series.label,
+								!emptySeriesIds.has(series.id) ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", { children: labels.seriesOutOfRange })
+							]
 						}, series.id))
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
@@ -5150,151 +5293,157 @@ window.__ModuleLoader__.load({
 				detail: edge.detail,
 				kind: "edge"
 			});
-			const accessibleDescription = [
-				labelTemplate(labels.nodeLinkSummary, {
-					nodes: content.nodes.length,
-					edges: content.edges.length
-				}),
-				...content.nodes.map((node) => `${node.label}${node.detail === void 0 ? "" : `: ${node.detail}`}`),
-				...content.edges.map((edge) => `${labelTemplate(labels.connection, {
-					from: nodeById.get(edge.from)?.label ?? edge.from,
-					to: nodeById.get(edge.to)?.label ?? edge.to
-				})}${edge.label === void 0 ? "" : `, ${edge.label}`}`)
-			].join(" ");
+			const summary = labelTemplate(labels.nodeLinkSummary, {
+				nodes: content.nodes.length,
+				edges: content.edges.length
+			});
+			const roving = useRovingFocus((0, react.useMemo)(() => [...content.nodes.map((node) => node.id), ...content.edges.map((edge) => edge.id)], [content.edges, content.nodes]));
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: LearningVisualV4_module_css_default.nodeLinkRenderer,
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: LearningVisualV4_module_css_default.graphViewport,
-					ref: regionRef,
-					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
-						className: LearningVisualV4_module_css_default.graphSvg,
-						width: layout.width,
-						height: layout.height,
-						viewBox: `0 0 ${layout.width} ${layout.height}`,
-						role: "group",
-						"aria-label": accessibleDescription,
-						"data-dense-edges": content.edges.length > 12 || void 0,
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("defs", { children: DEFAULT_TONES.map((tone) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("marker", {
-								id: `${id}-arrow-${tone}`,
-								className: LearningVisualV4_module_css_default.arrowMarker,
-								"data-tone": tone,
-								markerWidth: "8",
-								markerHeight: "8",
-								refX: "7",
-								refY: "4",
-								orient: "auto",
-								markerUnits: "strokeWidth",
-								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "M0,0 L8,4 L0,8 z" })
-							}, tone)) }),
-							content.layout !== "radial" && layout.layers.map((layer, index) => {
-								const first = layer.nodes[0];
-								const position = first === void 0 ? void 0 : layout.positions.get(first.id);
-								if (position === void 0) return null;
-								return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-									className: LearningVisualV4_module_css_default.layerLabel,
-									x: position.x,
-									y: content.layout === "layered" ? 30 : Math.max(22, position.y - 42),
-									textAnchor: "middle",
-									"data-visual-id": layer.id,
-									"data-focus-state": focusState(layer.id, focusedIds),
-									children: layer.label ?? labelTemplate(labels.layerLabel, { index: index + 1 })
-								}, layer.id);
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", { children: content.edges.map((edge, edgeIndex) => {
-								const from = layout.positions.get(edge.from);
-								const to = layout.positions.get(edge.to);
-								if (from === void 0 || to === void 0) return null;
-								const tone = toneAt(edge.tone, edgeIndex);
-								const fromNode = nodeById.get(edge.from);
-								const toNode = nodeById.get(edge.to);
-								const state = relatedFocusState(edge.id, [
-									edge.from,
-									edge.to,
-									fromNode?.group,
-									toNode?.group
-								], focusedIds);
-								const path = edgePath(from, to, content.layout);
-								const labelX = (from.x + to.x) / 2;
-								const labelY = (from.y + to.y) / 2 - 7;
-								return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
-									className: LearningVisualV4_module_css_default.edgeGroup,
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: LearningVisualV4_module_css_default.graphViewport,
+						ref: regionRef,
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+							ref: roving.containerRef,
+							className: LearningVisualV4_module_css_default.graphSvg,
+							width: layout.width,
+							height: layout.height,
+							viewBox: `0 0 ${layout.width} ${layout.height}`,
+							role: "group",
+							"aria-label": summary,
+							"data-dense-edges": content.edges.length > 12 || void 0,
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("defs", { children: DEFAULT_TONES.map((tone) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("marker", {
+									id: `${id}-arrow-${tone}`,
+									className: LearningVisualV4_module_css_default.arrowMarker,
 									"data-tone": tone,
-									"data-stroke": edge.stroke ?? "solid",
-									"data-focus-state": state,
-									"data-edge-focused": focusedIds.has(edge.id) || void 0,
-									"data-selected": selected?.id === edge.id || void 0,
-									"data-visual-id": edge.id,
-									role: "button",
-									tabIndex: 0,
-									"aria-label": `${edge.label ?? labels.edgeLabel}: ${labelTemplate(labels.connection, {
-										from: nodeById.get(edge.from)?.label ?? edge.from,
-										to: nodeById.get(edge.to)?.label ?? edge.to
-									})}${edge.detail === void 0 ? "" : `. ${edge.detail}`}`,
-									onClick: () => selectEdge(edge),
-									onKeyDown: (event) => activateWithKeyboard(event, () => selectEdge(edge)),
-									children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-											className: LearningVisualV4_module_css_default.edgeVisible,
-											d: path,
-											markerEnd: edge.directed === true ? `url(#${id}-arrow-${tone})` : void 0
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-											className: LearningVisualV4_module_css_default.edgeHit,
-											d: path
-										}),
-										edge.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-											className: LearningVisualV4_module_css_default.edgeLabel,
-											x: labelX,
-											y: labelY,
-											textAnchor: "middle",
-											children: edge.label
-										})
-									]
-								}, edge.id);
-							}) }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", { children: content.nodes.map((node, nodeIndex) => {
-								const position = layout.positions.get(node.id);
-								if (position === void 0) return null;
-								return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
-									className: LearningVisualV4_module_css_default.nodeGroup,
-									"data-tone": toneAt(node.tone, nodeIndex),
-									"data-focus-state": relatedFocusState(node.id, [node.group], focusedIds),
-									"data-selected": selected?.id === node.id || void 0,
-									"data-visual-id": node.id,
-									role: "button",
-									tabIndex: 0,
-									"aria-label": `${node.label}${node.detail === void 0 ? "" : `。${node.detail}`}`,
-									transform: `translate(${position.x} ${position.y})`,
-									onClick: () => selectNode(node),
-									onKeyDown: (event) => activateWithKeyboard(event, () => selectNode(node)),
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", { r: "29" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+									markerWidth: "8",
+									markerHeight: "8",
+									refX: "7",
+									refY: "4",
+									orient: "auto",
+									markerUnits: "strokeWidth",
+									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "M0,0 L8,4 L0,8 z" })
+								}, tone)) }),
+								content.layout !== "radial" && layout.layers.map((layer, index) => {
+									const first = layer.nodes[0];
+									const position = first === void 0 ? void 0 : layout.positions.get(first.id);
+									if (position === void 0) return null;
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+										className: LearningVisualV4_module_css_default.layerLabel,
+										x: position.x,
+										y: content.layout === "layered" ? 30 : Math.max(22, position.y - 42),
 										textAnchor: "middle",
-										dominantBaseline: "middle",
-										children: node.label
-									})]
-								}, node.id);
-							}) })
+										"data-visual-id": layer.id,
+										"data-focus-state": focusState(layer.id, focusedIds),
+										children: layer.label ?? labelTemplate(labels.layerLabel, { index: index + 1 })
+									}, layer.id);
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", { children: content.edges.map((edge, edgeIndex) => {
+									const from = layout.positions.get(edge.from);
+									const to = layout.positions.get(edge.to);
+									if (from === void 0 || to === void 0) return null;
+									const tone = toneAt(edge.tone, edgeIndex);
+									const fromNode = nodeById.get(edge.from);
+									const toNode = nodeById.get(edge.to);
+									const state = relatedFocusState(edge.id, [
+										edge.from,
+										edge.to,
+										fromNode?.group,
+										toNode?.group
+									], focusedIds);
+									const path = edgePath(from, to, content.layout);
+									const labelX = (from.x + to.x) / 2;
+									const labelY = (from.y + to.y) / 2 - 7;
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+										className: LearningVisualV4_module_css_default.edgeGroup,
+										"data-tone": tone,
+										"data-stroke": edge.stroke ?? "solid",
+										"data-focus-state": state,
+										"data-edge-focused": focusedIds.has(edge.id) || void 0,
+										"data-selected": selected?.id === edge.id || void 0,
+										"data-visual-id": edge.id,
+										role: "button",
+										"aria-label": `${edge.label ?? labels.edgeLabel}: ${labelTemplate(labels.connection, {
+											from: nodeById.get(edge.from)?.label ?? edge.from,
+											to: nodeById.get(edge.to)?.label ?? edge.to
+										})}${edge.detail === void 0 ? "" : `. ${edge.detail}`}`,
+										onClick: () => selectEdge(edge),
+										...roving.itemProps(edge.id, () => selectEdge(edge)),
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+												className: LearningVisualV4_module_css_default.edgeVisible,
+												d: path,
+												markerEnd: edge.directed === true ? `url(#${id}-arrow-${tone})` : void 0
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+												className: LearningVisualV4_module_css_default.edgeHit,
+												d: path
+											}),
+											edge.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+												className: LearningVisualV4_module_css_default.edgeLabel,
+												x: labelX,
+												y: labelY,
+												textAnchor: "middle",
+												children: edge.label
+											})
+										]
+									}, edge.id);
+								}) }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", { children: content.nodes.map((node, nodeIndex) => {
+									const position = layout.positions.get(node.id);
+									if (position === void 0) return null;
+									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+										className: LearningVisualV4_module_css_default.nodeGroup,
+										"data-tone": toneAt(node.tone, nodeIndex),
+										"data-focus-state": relatedFocusState(node.id, [node.group], focusedIds),
+										"data-selected": selected?.id === node.id || void 0,
+										"data-visual-id": node.id,
+										role: "button",
+										"aria-label": `${node.label}${node.detail === void 0 ? "" : `。${node.detail}`}`,
+										transform: `translate(${position.x} ${position.y})`,
+										onClick: () => selectNode(node),
+										...roving.itemProps(node.id, () => selectNode(node)),
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", { r: "29" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+											textAnchor: "middle",
+											dominantBaseline: "middle",
+											children: node.label
+										})]
+									}, node.id);
+								}) })
+							]
+						})
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: LearningVisualV4_module_css_default.srOnly,
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: summary }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("ul", { children: [content.nodes.map((node) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", { children: node.detail === void 0 ? node.label : `${node.label}: ${node.detail}` }, node.id)), content.edges.map((edge) => {
+							const connection = labelTemplate(labels.connection, {
+								from: nodeById.get(edge.from)?.label ?? edge.from,
+								to: nodeById.get(edge.to)?.label ?? edge.to
+							});
+							return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", { children: edge.label === void 0 ? connection : `${connection}, ${edge.label}` }, edge.id);
+						})] })]
+					}),
+					selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningVisualV4_module_css_default.interactionHint,
+						children: labels.nodeLinkInteractionHint
+					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
+						className: LearningVisualV4_module_css_default.detailPanel,
+						"aria-live": "polite",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: selected.kind === "node" ? labels.nodeKind : labels.edgeKind }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: selected.label }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: selected.detail ?? labels.noDetail }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								onClick: () => setSelected(void 0),
+								"aria-label": labels.closeDetail,
+								children: "×"
+							})
 						]
 					})
-				}), selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-					className: LearningVisualV4_module_css_default.interactionHint,
-					children: labels.nodeLinkInteractionHint
-				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
-					className: LearningVisualV4_module_css_default.detailPanel,
-					"aria-live": "polite",
-					children: [
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: selected.kind === "node" ? labels.nodeKind : labels.edgeKind }),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: selected.label }),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: selected.detail ?? labels.noDetail }),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-							type: "button",
-							onClick: () => setSelected(void 0),
-							"aria-label": labels.closeDetail,
-							children: "×"
-						})
-					]
-				})]
+				]
 			});
 		}
 		function Scene2DRenderer({ content, focusedIds }) {
@@ -5307,6 +5456,7 @@ window.__ModuleLoader__.load({
 			const yTicks = (0, react.useMemo)(() => ticks(content.yAxis.min, content.yAxis.max), [content.yAxis.max, content.yAxis.min]);
 			const zeroX = content.xAxis.min <= 0 && content.xAxis.max >= 0 ? scaleX(0, content.xAxis, geometry) : void 0;
 			const zeroY = content.yAxis.min <= 0 && content.yAxis.max >= 0 ? scaleY(0, content.yAxis, geometry) : void 0;
+			const roving = useRovingFocus((0, react.useMemo)(() => content.elements.map((element) => element.id), [content.elements]));
 			const selectElement = (element) => setSelected({
 				id: element.id,
 				label: element.type === "label" ? element.text : element.label ?? labelTemplate(labels.elementFallback, { id: element.id }),
@@ -5319,6 +5469,7 @@ window.__ModuleLoader__.load({
 					className: LearningVisualV4_module_css_default.sceneViewport,
 					ref: regionRef,
 					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+						ref: roving.containerRef,
 						className: LearningVisualV4_module_css_default.sceneSvg,
 						width: geometry.width,
 						height: geometry.height,
@@ -5410,10 +5561,9 @@ window.__ModuleLoader__.load({
 										"data-selected": selected?.id === element.id || void 0,
 										"data-visual-id": element.id,
 										role: "button",
-										tabIndex: 0,
 										"aria-label": `${element.type === "label" ? element.text : element.label ?? element.type}${element.detail === void 0 ? "" : `。${element.detail}`}`,
 										onClick: () => selectElement(element),
-										onKeyDown: (event) => activateWithKeyboard(event, () => selectElement(element))
+										...roving.itemProps(element.id, () => selectElement(element))
 									};
 									if (element.type === "point") {
 										const x = scaleX(element.x, content.xAxis, geometry);
@@ -5715,6 +5865,7 @@ window.__ModuleLoader__.load({
 				className: LearningVisualV4_module_css_default.relationRenderer,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 					className: LearningVisualV4_module_css_default.setMap,
+					role: "group",
 					"aria-label": labels.setsLabel,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						className: LearningVisualV4_module_css_default.setZones,
@@ -5806,6 +5957,7 @@ window.__ModuleLoader__.load({
 				children: [
 					eras.length === 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						className: LearningVisualV4_module_css_default.timelineEraChips,
+						role: "group",
 						"aria-label": labels.timelineEraKind,
 						children: eras.map((era, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 							type: "button",
@@ -5944,6 +6096,7 @@ window.__ModuleLoader__.load({
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: LearningVisualV4_module_css_default.formulaRenderer,
+				role: "group",
 				tabIndex: 0,
 				onKeyDown,
 				"aria-label": labels.formulaLabel,
@@ -6034,6 +6187,7 @@ window.__ModuleLoader__.load({
 		}
 		function StudyMapRenderer({ content, focusedIds }) {
 			const labels = useVisualLabels();
+			const id = (0, react.useId)();
 			const conceptById = (0, react.useMemo)(() => new Map(content.concepts.map((concept) => [concept.id, concept])), [content.concepts]);
 			const focusedConcept = content.concepts.find((concept) => focusedIds.has(concept.id));
 			const focusedSection = content.sections.find((section) => focusedIds.has(section.id));
@@ -6088,6 +6242,8 @@ window.__ModuleLoader__.load({
 							children: content.sections.map((item, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 								type: "button",
 								role: "tab",
+								id: `${id}-tab-${item.id}`,
+								"aria-controls": `${id}-panel`,
 								tabIndex: item.id === section?.id ? 0 : -1,
 								"aria-selected": item.id === section?.id,
 								"data-focus-state": relatedFocusState(item.id, content.concepts.filter((concept) => concept.sectionId === item.id).map((concept) => concept.id), focusedIds),
@@ -6103,8 +6259,11 @@ window.__ModuleLoader__.load({
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 							className: LearningVisualV4_module_css_default.studySectionPanel,
 							role: "tabpanel",
+							id: `${id}-panel`,
+							"aria-labelledby": section === void 0 ? void 0 : `${id}-tab-${section.id}`,
 							children: [section === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: section.anchor === void 0 ? labels.studySummary : `${labels.studyAnchor} · ${section.anchor}` }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: section.label })] }), section.summary === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: section.summary })] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 								className: LearningVisualV4_module_css_default.studyConcepts,
+								role: "group",
 								"aria-label": labels.studyConcepts,
 								children: concepts.map((concept, index) => {
 									const role = studyRoleLabel(concept.role, labels);
@@ -6174,12 +6333,13 @@ window.__ModuleLoader__.load({
 			const [stage, setStage] = (0, react.useState)(initial.stage);
 			const [statuses, setStatuses] = (0, react.useState)(initial.statuses);
 			const current = content.cards[cardIndex];
+			const followedFocus = (0, react.useRef)(-1);
 			(0, react.useEffect)(() => {
 				const focusedIndex = content.cards.findIndex((card) => focusedIds.has(card.id));
-				if (focusedIndex >= 0) {
-					setCardIndex(focusedIndex);
-					setStage("prompt");
-				}
+				if (focusedIndex < 0 || focusedIndex === followedFocus.current) return;
+				followedFocus.current = focusedIndex;
+				setCardIndex(focusedIndex);
+				setStage("prompt");
 			}, [content.cards, focusedIds]);
 			(0, react.useEffect)(() => {
 				if (storageKey === void 0 || typeof sessionStorage === "undefined") return;
@@ -6226,6 +6386,7 @@ window.__ModuleLoader__.load({
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				className: LearningVisualV4_module_css_default.recallRenderer,
+				role: "group",
 				tabIndex: 0,
 				onKeyDown,
 				"aria-label": labels.recallDeckLabel,
@@ -6354,11 +6515,12 @@ window.__ModuleLoader__.load({
 				...DEFAULT_LABELS,
 				...suppliedLabels
 			}), [suppliedLabels]);
-			(0, react.useEffect)(() => setFrameIndex(initialFrameIndex), [initialFrameIndex, visual]);
+			(0, react.useEffect)(() => setFrameIndex(initialFrameIndex), [initialFrameIndex, visual.sequence]);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VisualLabelsContext.Provider, {
 				value: labels,
 				children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 					className: LearningVisualV4_module_css_default.visualShell,
+					...learningScope,
 					"data-learning-visual": visual.content.kind,
 					"data-render-state": "ready",
 					"aria-labelledby": titleId,
@@ -6402,6 +6564,8 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client/LearningToolView.tsx
+		const MAX_PARSEABLE_ARGS_BYTES = 65536;
+		const MAX_FALLBACK_MARKDOWN_LENGTH = 8e3;
 		const VISUAL_LABEL_KEYS = {
 			eyebrow: "visualEyebrow",
 			errorTitle: "visualErrorTitle",
@@ -6414,6 +6578,8 @@ window.__ModuleLoader__.load({
 			metricsLabel: "visualMetricsLabel",
 			legendLabel: "visualLegendLabel",
 			plotInteractionHint: "visualPlotInteractionHint",
+			noValuesInRange: "visualNoValuesInRange",
+			seriesOutOfRange: "visualSeriesOutOfRange",
 			nodeLinkSummary: "visualNodeLinkSummary",
 			connection: "visualConnection",
 			layerLabel: "visualLayerLabel",
@@ -6483,6 +6649,122 @@ window.__ModuleLoader__.load({
 		function visualLabelsOf(t) {
 			return Object.fromEntries(Object.entries(VISUAL_LABEL_KEYS).map(([label, key]) => [label, t(key)]));
 		}
+		/** Read the model-authored arguments, whichever block shape carries them. */
+		function argsRawOf(block) {
+			return "kind" in block ? block.call?.argsRaw : block.argsRaw;
+		}
+		/** Concatenate the tool result text, whichever block shape carries it. */
+		function resultTextOf(block) {
+			if (!("kind" in block)) return "";
+			return block.content.filter((item) => item.type === "text").map((item) => item.text).join("");
+		}
+		function issuesOf(cause) {
+			if (cause instanceof LearningProtocolError) return cause.issues;
+			return [cause instanceof Error ? cause.message : String(cause)];
+		}
+		function boundedText(value, limit) {
+			if (typeof value !== "string") return void 0;
+			const trimmed = value.trim();
+			return trimmed === "" || value.length > limit ? void 0 : trimmed;
+		}
+		/**
+		* Salvage the model's own text equivalent from arguments that failed the
+		* closed schema, so a rejected payload still teaches instead of vanishing.
+		*/
+		function textFallbackOf(parsed) {
+			const protocol = parsed.protocol;
+			if (protocol === "dsh-learning/checkpoint@1") {
+				const markdown = parsed.fallbackMarkdown;
+				if (typeof markdown !== "string" || markdown.trim() === "" || markdown.length > MAX_FALLBACK_MARKDOWN_LENGTH || !isLearningCheckpointDisplayTextSafe(markdown)) return void 0;
+				return {
+					markdown,
+					protocol: CHECKPOINT_PROTOCOL
+				};
+			}
+			if (protocol !== "dsh-learning/visual@4" && protocol !== "dsh-learning/visual@3") return void 0;
+			const title = boundedText(parsed.title, 200);
+			const description = boundedText(parsed.description, 1e3);
+			const markdown = typeof parsed.fallbackMarkdown === "string" && parsed.fallbackMarkdown.trim() !== "" && parsed.fallbackMarkdown.length <= MAX_FALLBACK_MARKDOWN_LENGTH ? parsed.fallbackMarkdown : void 0;
+			if (markdown === void 0 && description === void 0 && title === void 0) return void 0;
+			return {
+				...markdown === void 0 ? {} : { markdown },
+				text: description ?? title ?? "",
+				protocol
+			};
+		}
+		/**
+		* Parse one complete `argsRaw` string exactly once.
+		*
+		* While arguments still stream this returns an empty result with no issues,
+		* which the surface renders as the neutral running state; a genuinely invalid
+		* payload returns the concrete schema violations instead.
+		*/
+		/**
+		* Recover the visual's title from arguments that are still streaming.
+		*
+		* `title` is the only top-level title in the visual@4 schema and the model
+		* emits it early, so the first match names the figure being built. Showing it
+		* turns a generic wait into a specific one; the value is rendered as plain
+		* text, never as Markdown or HTML.
+		*/
+		const PARTIAL_TITLE = /"title"\s*:\s*"((?:[^"\\]|\\.){0,240})"/;
+		function streamingTitleOf(raw) {
+			if (!raw.includes("dsh-learning/visual@4")) return void 0;
+			const encoded = PARTIAL_TITLE.exec(raw)?.[1];
+			if (encoded === void 0) return void 0;
+			try {
+				const title = JSON.parse(`"${encoded}"`);
+				if (typeof title !== "string") return void 0;
+				const trimmed = title.trim();
+				return trimmed === "" || trimmed.length > 200 ? void 0 : trimmed;
+			} catch {
+				return;
+			}
+		}
+		function parseLearningCall(raw) {
+			if (raw === void 0 || raw === "") return {};
+			if (raw.length > MAX_PARSEABLE_ARGS_BYTES) return { issues: [`arguments exceed ${String(MAX_PARSEABLE_ARGS_BYTES)} bytes`] };
+			let parsed;
+			try {
+				const value = JSON.parse(raw);
+				if (typeof value !== "object" || value === null || Array.isArray(value)) return { issues: ["arguments must be a JSON object"] };
+				parsed = value;
+			} catch {
+				const streamingTitle = streamingTitleOf(raw);
+				return streamingTitle === void 0 ? {} : { streamingTitle };
+			}
+			try {
+				const protocol = parsed.protocol;
+				return { definition: protocol === "dsh-learning/checkpoint@1" ? parseLearningCheckpointV1(parsed) : protocol === "dsh-learning/visual@4" ? parseLearningVisualV4(parsed) : protocol === "dsh-learning/visual@3" ? parseLearningVisualV3(parsed) : protocol === "dsh-learning/activity@2" ? parseLearningActivityV2(parsed) : parseLearningActivity(parsed) };
+			} catch (cause) {
+				const fallback = textFallbackOf(parsed);
+				return {
+					issues: issuesOf(cause),
+					...fallback === void 0 ? {} : { fallback }
+				};
+			}
+		}
+		/** Parse one complete tool result exactly once, in the definition's context. */
+		function parseLearningResult(text, definition) {
+			if (text === "") return void 0;
+			try {
+				const parsed = JSON.parse(text);
+				if (parsed.protocol === "dsh-learning/checkpoint-result@1") return parseLearningCheckpointResultV1(parsed, definition?.protocol === "dsh-learning/checkpoint@1" ? { checkpoint: definition } : {});
+				return parsed.protocol === "dsh-learning/response@2" ? parseLearningResponseV2(parsed) : parseLearningResponse(parsed);
+			} catch {
+				return;
+			}
+		}
+		/** Parse one complete visual result exactly once. */
+		function parseVisualResult(text) {
+			if (text === "") return void 0;
+			try {
+				const parsed = JSON.parse(text);
+				return parsed.protocol === "dsh-learning/visual-result@4" ? parseLearningVisualResultV4(parsed) : parseLearningVisualResultV3(parsed);
+			} catch {
+				return;
+			}
+		}
 		function pendingActivity(interactions, sessionId, activity, callId) {
 			if (activity === void 0) return void 0;
 			if (activity.protocol === "dsh-learning/visual@3" || activity.protocol === "dsh-learning/visual@4") return void 0;
@@ -6504,75 +6786,6 @@ window.__ModuleLoader__.load({
 				const envelope = envelopeOf(interaction);
 				return envelope !== void 0 && "activity" in envelope && JSON.stringify(envelope.activity) === canonical;
 			});
-		}
-		function activityOf(block) {
-			const raw = "kind" in block ? block.call?.argsRaw : block.argsRaw;
-			if (raw === void 0 || raw === "") return void 0;
-			try {
-				const parsed = JSON.parse(raw);
-				if (parsed.protocol === "dsh-learning/checkpoint@1") return parseLearningCheckpointV1(parsed);
-				if (parsed.protocol === "dsh-learning/visual@4") return parseLearningVisualV4(parsed);
-				if (parsed.protocol === "dsh-learning/visual@3") return parseLearningVisualV3(parsed);
-				return parsed.protocol === "dsh-learning/activity@2" ? parseLearningActivityV2(parsed) : parseLearningActivity(parsed);
-			} catch {
-				return;
-			}
-		}
-		function checkpointTextFallbackOf(block) {
-			const raw = "kind" in block ? block.call?.argsRaw : block.argsRaw;
-			if (raw === void 0 || raw === "" || raw.length > 65536) return void 0;
-			try {
-				const parsed = JSON.parse(raw);
-				if (parsed.protocol !== "dsh-learning/checkpoint@1" || typeof parsed.fallbackMarkdown !== "string" || parsed.fallbackMarkdown.trim() === "" || parsed.fallbackMarkdown.length > 8e3 || !isLearningCheckpointDisplayTextSafe(parsed.fallbackMarkdown)) return void 0;
-				return {
-					markdown: parsed.fallbackMarkdown,
-					protocol: CHECKPOINT_PROTOCOL
-				};
-			} catch {
-				return;
-			}
-		}
-		function visualTextFallbackOf(block) {
-			const raw = "kind" in block ? block.call?.argsRaw : block.argsRaw;
-			if (raw === void 0 || raw === "" || raw.length > 65536) return void 0;
-			try {
-				const parsed = JSON.parse(raw);
-				if (parsed.protocol !== "dsh-learning/visual@4" && parsed.protocol !== "dsh-learning/visual@3") return void 0;
-				const title = typeof parsed.title === "string" && parsed.title.trim() !== "" && parsed.title.length <= 200 ? parsed.title.trim() : void 0;
-				const description = typeof parsed.description === "string" && parsed.description.trim() !== "" && parsed.description.length <= 1e3 ? parsed.description.trim() : void 0;
-				const markdown = typeof parsed.fallbackMarkdown === "string" && parsed.fallbackMarkdown.trim() !== "" && parsed.fallbackMarkdown.length <= 8e3 ? parsed.fallbackMarkdown : void 0;
-				if (markdown === void 0 && description === void 0 && title === void 0) return void 0;
-				return {
-					...markdown === void 0 ? {} : { markdown },
-					text: description ?? title ?? "",
-					protocol: parsed.protocol
-				};
-			} catch {
-				return;
-			}
-		}
-		function responseOf(block, activity) {
-			if (!("kind" in block)) return void 0;
-			const text = block.content.filter((item) => item.type === "text").map((item) => item.text).join("");
-			if (text === "") return void 0;
-			try {
-				const parsed = JSON.parse(text);
-				if (parsed.protocol === "dsh-learning/checkpoint-result@1") return parseLearningCheckpointResultV1(parsed, activity?.protocol === "dsh-learning/checkpoint@1" ? { checkpoint: activity } : {});
-				return parsed.protocol === "dsh-learning/response@2" ? parseLearningResponseV2(parsed) : parseLearningResponse(parsed);
-			} catch {
-				return;
-			}
-		}
-		function visualResultOf(block) {
-			if (!("kind" in block)) return void 0;
-			const content = block.content.filter((item) => item.type === "text").map((item) => item.text).join("");
-			if (content === "") return void 0;
-			try {
-				const parsed = JSON.parse(content);
-				return parsed.protocol === "dsh-learning/visual-result@4" ? parseLearningVisualResultV4(parsed) : parseLearningVisualResultV3(parsed);
-			} catch {
-				return;
-			}
 		}
 		function explanationOf(response) {
 			if (response?.action !== "submit" || typeof response.answer !== "object" || response.answer === null || Array.isArray(response.answer)) return void 0;
@@ -6630,305 +6843,72 @@ window.__ModuleLoader__.load({
 			const text = response.text.trim();
 			return text.length <= 500 ? text : `${text.slice(0, 499)}…`;
 		}
-		function LearningToolView({ block, inspect, t, useSession, sessionId }) {
-			const activity = activityOf(block);
-			const done = "kind" in block;
-			const response = responseOf(block, activity);
-			const interactions = useSession((snapshot) => snapshot.pending);
-			const callId = "kind" in block ? block.callId : block.callId;
-			const raw = "kind" in block ? block.call?.argsRaw : block.argsRaw;
-			const invalidVisualFallback = activity === void 0 && done ? visualTextFallbackOf(block) : void 0;
-			const invalidCheckpointFallback = activity === void 0 && done ? checkpointTextFallbackOf(block) : void 0;
-			(0, react.useEffect)(() => {
-				if (done || raw === void 0 || raw === "") return;
-				if (activity === void 0) emitLearningCallLifecycle("learning.call.stream_started", { callId });
-				else emitLearningCallLifecycle("learning.call.args_completed", {
-					callId,
-					phase: activity.protocol === "dsh-learning/activity@2" ? activity.phase : void 0,
-					seq: activity.protocol === "dsh-learning/activity@2" ? activity.seq : void 0
-				});
-			}, [
-				activity,
-				callId,
-				done,
-				raw
-			]);
-			const matched = pendingActivity(interactions, String(sessionId), activity, callId);
-			if (activity === void 0) {
-				if (!done) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-					className: LearningActivity_module_css_default.inlineStatus,
-					"data-state": "running",
-					role: "status",
-					"aria-live": "polite",
-					children: [
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: LearningActivity_module_css_default.runningDot,
-							"aria-hidden": "true"
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("waiting") }),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: LearningActivity_module_css_default.skeletonLine,
-							"aria-hidden": "true"
-						})
-					]
-				});
-				const invalidFallback = invalidCheckpointFallback ?? invalidVisualFallback;
-				if (invalidFallback !== void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: LearningActivity_module_css_default.inlineFallback,
-					"data-learning-result": "invalid",
-					"data-learning-fallback": invalidFallback.protocol,
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-						className: LearningActivity_module_css_default.inlineResult,
-						role: "alert",
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: LearningActivity_module_css_default.errorMark,
-							"aria-hidden": "true",
-							children: "!"
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("invalidActivity") })]
-					}), "text" in invalidFallback && invalidFallback.markdown === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: LearningActivity_module_css_default.visualTextFallback,
-						children: invalidFallback.text
-					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: LearningActivity_module_css_default.fallbackText,
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: invalidFallback.markdown ?? "" })
-					})]
-				});
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-					className: LearningActivity_module_css_default.inlineStatus,
-					"data-state": done ? "done" : "running",
-					children: t("invalidActivity")
-				});
-			}
-			if (activity.protocol === "dsh-learning/checkpoint@1") {
-				if (!done) {
-					if (matched !== void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningInteraction, {
-						matched,
-						t
-					});
-					return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-						className: LearningActivity_module_css_default.inlineStatus,
-						"data-state": "running",
-						role: "status",
-						"aria-live": "polite",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: LearningActivity_module_css_default.runningDot,
-								"aria-hidden": "true"
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("waiting") }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: LearningActivity_module_css_default.skeletonLine,
-								"aria-hidden": "true"
-							})
-						]
-					});
-				}
-				const checkpointResult = response?.protocol === "dsh-learning/checkpoint-result@1" ? response : void 0;
-				if ("kind" in block && block.isError || checkpointResult === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: LearningActivity_module_css_default.inlineFallback,
-					"data-learning-result": "error",
-					"data-learning-fallback": CHECKPOINT_PROTOCOL,
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-						className: LearningActivity_module_css_default.inlineResult,
-						role: "alert",
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: LearningActivity_module_css_default.errorMark,
-							"aria-hidden": "true",
-							children: "!"
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("invalidResult") })]
-					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: LearningActivity_module_css_default.fallbackText,
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: activity.fallbackMarkdown })
-					})]
-				});
-				const answer = checkpointAnswerOf(activity, checkpointResult);
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-					className: LearningActivity_module_css_default.inlineResult,
-					"data-learning-result": checkpointResult.status,
-					children: [
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: LearningActivity_module_css_default.resultMark,
-							"aria-hidden": "true",
-							children: "✓"
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: checkpointResult.status === "submitted" ? t("completed") : checkpointResult.status === "skipped" ? t("skipped") : t("cancelled") }),
-						answer === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-							className: LearningActivity_module_css_default.resultAnswer,
-							children: [
-								"“",
-								answer,
-								"”"
-							]
-						})
-					]
-				});
-			}
-			if (activity.protocol === "dsh-learning/visual@4") {
-				const result = done ? visualResultOf(block) : void 0;
-				if (done && ("kind" in block && block.isError || result?.protocol !== "dsh-learning/visual-result@4")) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: LearningActivity_module_css_default.inlineFallback,
-					"data-learning-result": "error",
-					"data-learning-fallback": "visual-v4",
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-						className: LearningActivity_module_css_default.inlineResult,
-						role: "alert",
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: LearningActivity_module_css_default.errorMark,
-							"aria-hidden": "true",
-							children: "!"
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("visualFailed") })]
-					}), activity.fallbackMarkdown === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: LearningActivity_module_css_default.visualTextFallback,
-						children: activity.description ?? activity.title
-					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: LearningActivity_module_css_default.fallbackText,
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: activity.fallbackMarkdown })
-					})]
-				});
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningVisualV4, {
-					visual: activity,
-					storageKey: `${String(sessionId)}:${callId ?? "visual"}`,
-					labels: visualLabelsOf(t)
-				});
-			}
-			if (activity.protocol === "dsh-learning/visual@3") {
-				const result = done ? visualResultOf(block) : void 0;
-				if (done && ("kind" in block && block.isError || result?.protocol !== "dsh-learning/visual-result@3")) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: LearningActivity_module_css_default.inlineFallback,
-					"data-learning-result": "error",
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-						className: LearningActivity_module_css_default.inlineResult,
-						role: "alert",
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: LearningActivity_module_css_default.errorMark,
-							"aria-hidden": "true",
-							children: "!"
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("visualFailed") })]
-					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: LearningActivity_module_css_default.visualTextFallback,
-						children: activity.description ?? activity.title
-					})]
-				});
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningVisual, {
-					visual: activity,
-					storageKey: `${String(sessionId)}:${callId ?? "visual"}`
-				});
-			}
-			if (activity.protocol === "dsh-learning/activity@2") {
-				if (!done) {
-					if (matched !== void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningInteraction, {
-						matched,
-						t
-					});
-					return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-						className: LearningActivity_module_css_default.inlineStatus,
-						"data-state": "running",
-						role: "status",
-						"aria-live": "polite",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: LearningActivity_module_css_default.runningDot,
-								"aria-hidden": "true"
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("waiting") }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: LearningActivity_module_css_default.skeletonLine,
-								"aria-hidden": "true"
-							})
-						]
-					});
-				}
-				const v2Response = response?.protocol === "dsh-learning/response@2" ? response : void 0;
-				if (v2Response === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: LearningActivity_module_css_default.inlineFallback,
-					"data-learning-result": "error",
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-						className: LearningActivity_module_css_default.inlineResult,
-						role: "alert",
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: LearningActivity_module_css_default.errorMark,
-							"aria-hidden": "true",
-							children: "!"
-						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("invalidResult") })]
-					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: LearningActivity_module_css_default.fallbackText,
-						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: activity.fallbackMarkdown })
-					})]
-				});
-				if (activity.phase === "question") {
-					const answer = v2Response.phase === "question" ? compactAnswer(v2Response.answer) : void 0;
-					return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-						className: LearningActivity_module_css_default.inlineResult,
-						"data-learning-result": v2Response.action,
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: LearningActivity_module_css_default.resultMark,
-								"aria-hidden": "true",
-								children: "✓"
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: v2Response.action === "submit" ? t("completed") : v2Response.action === "skip" ? t("skipped") : t("cancelled") }),
-							answer === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-								className: LearningActivity_module_css_default.resultAnswer,
-								children: [
-									"“",
-									answer,
-									"”"
-								]
-							})
-						]
-					});
-				}
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: LearningActivity_module_css_default.legacyReveal,
-					"data-learning-result": v2Response.action,
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: activity.feedback.explanation }), activity.feedback.answer === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: activity.feedback.answer })]
-				});
-			}
-			if (!done) {
-				if (matched !== void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningInteraction, {
-					matched,
-					t
-				});
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-					className: LearningActivity_module_css_default.inlineStatus,
-					"data-state": "running",
-					role: "status",
-					"aria-live": "polite",
-					children: [
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: LearningActivity_module_css_default.runningDot,
-							"aria-hidden": "true"
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("waiting") }),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-							className: LearningActivity_module_css_default.skeletonLine,
-							"aria-hidden": "true"
-						})
-					]
-				});
-			}
-			if (response === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: LearningActivity_module_css_default.inlineFallback,
-				"data-learning-result": "unknown",
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-					className: LearningActivity_module_css_default.inlineResult,
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						className: LearningActivity_module_css_default.resultMark,
-						"aria-hidden": "true",
-						children: "!"
-					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("invalidResult") })]
-				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: LearningActivity_module_css_default.fallbackText,
-					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: activity.fallbackMarkdown })
-				})]
+		/** The single running state, shared by every protocol branch. */
+		function LearningRunning({ title, t }) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+				className: LearningActivity_module_css_default.inlineStatus,
+				...learningScope,
+				"data-state": "running",
+				role: "status",
+				"aria-live": "polite",
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: LearningActivity_module_css_default.runningDot,
+						"aria-hidden": "true"
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: title === void 0 ? t("waiting") : t("preparing", { title }) }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						className: LearningActivity_module_css_default.skeletonLine,
+						"aria-hidden": "true"
+					})
+				]
 			});
-			const legacyResponse = response.protocol === "dsh-learning/response@1" ? response : void 0;
-			const status = legacyResponse?.action === "submit" ? t("completed") : legacyResponse?.action === "skip" ? t("skipped") : legacyResponse?.action === "cancel" ? t("cancelled") : t("invalidResult");
-			const evidence = evidenceOf(activity, legacyResponse, t);
-			const explanation = explanationOf(legacyResponse);
+		}
+		/**
+		* The single failure surface, shared by every protocol branch.
+		*
+		* It always states what went wrong, and always keeps whatever text equivalent
+		* survived, so a rejected payload degrades to reading rather than to nothing.
+		*/
+		function LearningFallback({ headline, issues, fallback, markdown, text, state, protocol, t }) {
+			const body = markdown ?? fallback?.markdown;
+			const plain = text ?? fallback?.text;
+			const reason = issues === void 0 || issues.length === 0 ? void 0 : t("invalidReason", { reason: issues.join("; ") });
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: LearningActivity_module_css_default.inlineFallback,
+				...learningScope,
+				"data-learning-result": state,
+				...protocol === void 0 ? {} : { "data-learning-fallback": protocol },
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+						className: LearningActivity_module_css_default.inlineResult,
+						role: "alert",
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							className: LearningActivity_module_css_default.errorMark,
+							"aria-hidden": "true",
+							children: "!"
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: headline })]
+					}),
+					reason === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningActivity_module_css_default.fallbackReason,
+						children: reason
+					}),
+					body === void 0 ? plain === void 0 || plain === "" ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						className: LearningActivity_module_css_default.visualTextFallback,
+						children: plain
+					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: LearningActivity_module_css_default.fallbackText,
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: body })
+					})
+				]
+			});
+		}
+		/** The single completed-receipt line, shared by checkpoint and legacy replay. */
+		function LearningReceipt({ status, state, evidence, answer }) {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
 				className: LearningActivity_module_css_default.inlineResult,
-				"data-learning-result": legacyResponse?.action ?? "unknown",
+				...learningScope,
+				"data-learning-result": state,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 						className: LearningActivity_module_css_default.resultMark,
@@ -6940,15 +6920,145 @@ window.__ModuleLoader__.load({
 						className: LearningActivity_module_css_default.resultEvidence,
 						children: evidence
 					}),
-					explanation === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+					answer === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 						className: LearningActivity_module_css_default.resultAnswer,
 						children: [
 							"“",
-							explanation,
+							answer,
 							"”"
 						]
 					})
 				]
+			});
+		}
+		function LearningToolView({ block, inspect, t, useSession, sessionId }) {
+			const done = "kind" in block;
+			const raw = argsRawOf(block);
+			const resultText = resultTextOf(block);
+			const isError = "kind" in block && block.isError === true;
+			const callId = block.callId;
+			const { definition, issues, fallback, streamingTitle } = (0, react.useMemo)(() => parseLearningCall(raw), [raw]);
+			const result = (0, react.useMemo)(() => parseLearningResult(resultText, definition), [resultText, definition]);
+			const visualResult = (0, react.useMemo)(() => parseVisualResult(resultText), [resultText]);
+			const labels = (0, react.useMemo)(() => visualLabelsOf(t), [t]);
+			const matched = pendingActivity(useSession((snapshot) => snapshot.pending), String(sessionId), definition, callId);
+			(0, react.useEffect)(() => {
+				if (done || raw === void 0 || raw === "") return;
+				if (definition === void 0) emitLearningCallLifecycle("learning.call.stream_started", { callId });
+				else emitLearningCallLifecycle("learning.call.args_completed", {
+					callId,
+					phase: definition.protocol === "dsh-learning/activity@2" ? definition.phase : void 0,
+					seq: definition.protocol === "dsh-learning/activity@2" ? definition.seq : void 0
+				});
+			}, [
+				definition,
+				callId,
+				done,
+				raw
+			]);
+			if (definition === void 0) {
+				if (!done && issues === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningRunning, {
+					title: streamingTitle,
+					t
+				});
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningFallback, {
+					headline: t("invalidActivity"),
+					issues,
+					fallback,
+					state: "invalid",
+					protocol: fallback?.protocol,
+					t
+				});
+			}
+			if (definition.protocol === "dsh-learning/checkpoint@1") {
+				if (!done) return matched === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningRunning, { t }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningInteraction, {
+					matched,
+					t
+				});
+				const checkpointResult = result?.protocol === "dsh-learning/checkpoint-result@1" ? result : void 0;
+				if (isError || checkpointResult === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningFallback, {
+					headline: t("invalidResult"),
+					markdown: definition.fallbackMarkdown,
+					state: "error",
+					protocol: CHECKPOINT_PROTOCOL,
+					t
+				});
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningReceipt, {
+					state: checkpointResult.status,
+					status: checkpointResult.status === "submitted" ? t("completed") : checkpointResult.status === "skipped" ? t("skipped") : t("cancelled"),
+					answer: checkpointAnswerOf(definition, checkpointResult)
+				});
+			}
+			if (definition.protocol === "dsh-learning/visual@4") {
+				if (done && (isError || visualResult?.protocol !== "dsh-learning/visual-result@4")) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningFallback, {
+					headline: t("visualFailed"),
+					markdown: definition.fallbackMarkdown,
+					text: definition.description ?? definition.title,
+					state: "error",
+					protocol: "visual-v4",
+					t
+				});
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningVisualV4, {
+					visual: definition,
+					storageKey: `${String(sessionId)}:${callId ?? "visual"}`,
+					labels
+				});
+			}
+			if (definition.protocol === "dsh-learning/visual@3") {
+				if (done && (isError || visualResult?.protocol !== "dsh-learning/visual-result@3")) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningFallback, {
+					headline: t("visualFailed"),
+					text: definition.description ?? definition.title,
+					state: "error",
+					protocol: "visual-v3",
+					t
+				});
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningVisual, {
+					visual: definition,
+					storageKey: `${String(sessionId)}:${callId ?? "visual"}`
+				});
+			}
+			if (definition.protocol === "dsh-learning/activity@2") {
+				if (!done) return matched === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningRunning, { t }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningInteraction, {
+					matched,
+					t
+				});
+				const v2Response = result?.protocol === "dsh-learning/response@2" ? result : void 0;
+				if (v2Response === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningFallback, {
+					headline: t("invalidResult"),
+					markdown: definition.fallbackMarkdown,
+					state: "error",
+					protocol: ACTIVITY_PROTOCOL_V2,
+					t
+				});
+				if (definition.phase === "question") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningReceipt, {
+					state: v2Response.action,
+					status: v2Response.action === "submit" ? t("completed") : v2Response.action === "skip" ? t("skipped") : t("cancelled"),
+					answer: v2Response.phase === "question" ? compactAnswer(v2Response.answer) : void 0
+				});
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: LearningActivity_module_css_default.legacyReveal,
+					...learningScope,
+					"data-learning-result": v2Response.action,
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: definition.feedback.explanation }), definition.feedback.answer === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: definition.feedback.answer })]
+				});
+			}
+			if (!done) return matched === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningRunning, { t }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningInteraction, {
+				matched,
+				t
+			});
+			if (result === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningFallback, {
+				headline: t("invalidResult"),
+				markdown: definition.fallbackMarkdown,
+				state: "unknown",
+				protocol: RESPONSE_PROTOCOL,
+				t
+			});
+			const legacyResponse = result.protocol === "dsh-learning/response@1" ? result : void 0;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(LearningReceipt, {
+				state: legacyResponse?.action ?? "unknown",
+				status: legacyResponse?.action === "submit" ? t("completed") : legacyResponse?.action === "skip" ? t("skipped") : legacyResponse?.action === "cancel" ? t("cancelled") : t("invalidResult"),
+				evidence: evidenceOf(definition, legacyResponse, t),
+				answer: explanationOf(legacyResponse)
 			});
 		}
 		//#endregion
@@ -6960,6 +7070,7 @@ window.__ModuleLoader__.load({
 			cancel: "结束这里",
 			submitting: "正在提交…",
 			waiting: "准备交互内容…",
+			preparing: "正在准备：{title}",
 			completed: "已提交你的回答",
 			skipped: "已跳过",
 			cancelled: "已结束",
@@ -6983,6 +7094,7 @@ window.__ModuleLoader__.load({
 			chartLabel: "参数变化曲线",
 			chartDescription: "参数：{parameters}。横轴：{xAxis}。纵轴：{yAxis}。曲线：{curves}。",
 			invalidActivity: "该互动活动无法安全显示；如有文字说明，已在下方保留。",
+			invalidReason: "原因：{reason}",
 			visualFailed: "交互图未能完成，已保留文字说明",
 			error: "提交失败：{message}",
 			submitAnswer: "提交回答",
@@ -6990,6 +7102,11 @@ window.__ModuleLoader__.load({
 			continue: "继续",
 			roundProgress: "第 {current} / {total} 轮",
 			checkpointEyebrow: "学习检查点",
+			checkpointEvidenceAttempt: "试着作答",
+			checkpointEvidencePrediction: "先做预测",
+			checkpointEvidenceExplanation: "说明你的理由",
+			checkpointEvidenceContrast: "指出两者的差异",
+			checkpointEvidenceTransfer: "迁移到新的例子",
 			checkpointFreeTextLabel: "你的回答",
 			checkpointChoiceLabel: "选择一项",
 			checkpointNumericLabel: "填写数值",
@@ -7007,18 +7124,20 @@ window.__ModuleLoader__.load({
 			visualMetricsLabel: "当前指标",
 			visualLegendLabel: "图例与系列显示",
 			visualPlotInteractionHint: "鼠标移入图表可探查数值；键盘聚焦图表后可用 ← → 移动。",
+			visualNoValuesInRange: "当前坐标范围内没有可显示的数值。",
+			visualSeriesOutOfRange: "不在范围内",
 			visualNodeLinkSummary: "{nodes} 个节点，{edges} 条连线。",
 			visualConnection: "{from} 到 {to}",
 			visualLayerLabel: "第 {index} 层",
 			visualEdgeLabel: "连线",
-			visualNodeLinkInteractionHint: "选择节点或连线查看解释；键盘可用 Tab 与 Enter 操作。",
+			visualNodeLinkInteractionHint: "选择节点或连线查看解释；键盘按 Tab 进入图形，再用 ← → 移动、Enter 选择。",
 			visualNodeKind: "节点",
 			visualEdgeKind: "连线",
 			visualNoDetail: "暂无补充说明。",
 			visualCloseDetail: "关闭详细说明",
 			visualElementFallback: "图元 {id}",
 			visualSceneSummary: "二维场景，{elements} 个图元。{labels}",
-			visualSceneInteractionHint: "选择图中的点、线或形状查看说明。",
+			visualSceneInteractionHint: "选择图中的点、线或形状查看说明；键盘按 Tab 进入图形，再用 ← → 移动、Enter 选择。",
 			visualElementKind: "图元",
 			visualComparisonCaption: "特征对比表",
 			visualComparisonDimension: "对比维度",
@@ -7080,6 +7199,7 @@ window.__ModuleLoader__.load({
 			cancel: "End here",
 			submitting: "Submitting…",
 			waiting: "Preparing the interaction…",
+			preparing: "Preparing: {title}",
 			completed: "Response submitted",
 			skipped: "Skipped",
 			cancelled: "Ended",
@@ -7103,6 +7223,7 @@ window.__ModuleLoader__.load({
 			chartLabel: "Parameter relationship chart",
 			chartDescription: "Parameters: {parameters}. X axis: {xAxis}. Y axis: {yAxis}. Curves: {curves}.",
 			invalidActivity: "This activity could not be displayed safely; any available text explanation is preserved below.",
+			invalidReason: "Reason: {reason}",
 			visualFailed: "The interactive visual could not complete; the text explanation is preserved",
 			error: "Submission failed: {message}",
 			submitAnswer: "Submit answer",
@@ -7110,6 +7231,11 @@ window.__ModuleLoader__.load({
 			continue: "Continue",
 			roundProgress: "Round {current} / {total}",
 			checkpointEyebrow: "Learning checkpoint",
+			checkpointEvidenceAttempt: "Make an attempt",
+			checkpointEvidencePrediction: "Make a prediction",
+			checkpointEvidenceExplanation: "Explain your reasoning",
+			checkpointEvidenceContrast: "Draw the contrast",
+			checkpointEvidenceTransfer: "Apply it to a new case",
 			checkpointFreeTextLabel: "Your response",
 			checkpointChoiceLabel: "Choose one option",
 			checkpointNumericLabel: "Enter a number",
@@ -7127,18 +7253,20 @@ window.__ModuleLoader__.load({
 			visualMetricsLabel: "Current metrics",
 			visualLegendLabel: "Legend and series visibility",
 			visualPlotInteractionHint: "Move over the chart to inspect values, or focus it and use ← →.",
+			visualNoValuesInRange: "No values fall inside the current axes.",
+			visualSeriesOutOfRange: "outside the range",
 			visualNodeLinkSummary: "{nodes} nodes and {edges} connections.",
 			visualConnection: "{from} to {to}",
 			visualLayerLabel: "Layer {index}",
 			visualEdgeLabel: "Connection",
-			visualNodeLinkInteractionHint: "Select a node or connection for details; use Tab and Enter from the keyboard.",
+			visualNodeLinkInteractionHint: "Select a node or connection for details; from the keyboard, Tab into the figure, then move with ← → and select with Enter.",
 			visualNodeKind: "Node",
 			visualEdgeKind: "Connection",
 			visualNoDetail: "No additional detail.",
 			visualCloseDetail: "Close details",
 			visualElementFallback: "Element {id}",
 			visualSceneSummary: "Two-dimensional scene with {elements} elements. {labels}",
-			visualSceneInteractionHint: "Select a point, line, or shape for its explanation.",
+			visualSceneInteractionHint: "Select a point, line, or shape for its explanation; from the keyboard, Tab into the figure, then move with ← → and select with Enter.",
 			visualElementKind: "Element",
 			visualComparisonCaption: "Feature comparison",
 			visualComparisonDimension: "Dimension",

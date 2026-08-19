@@ -23,6 +23,10 @@ function changed(
 describe('V4.1 multi-turn grader/rubric sanity fixtures (not model-behavior evidence)', () => {
   it('covers the required counterfactual branches and grades the offline fixture traces', () => {
     expect(TEACHING_TRAJECTORY_CASES.map(item => item.id)).toEqual([
+      'plan-yields-to-demonstrated-transfer',
+      'unavailable-visual-continues-in-prose',
+      'notation-gap-decodes-symbols',
+      'task-model-gap-restates-the-question',
       'broad-topic-direct-explanation',
       'urgent-first-turn-direct',
       'mid-lesson-impatience-accelerates',
@@ -65,6 +69,60 @@ describe('V4.1 multi-turn grader/rubric sanity fixtures (not model-behavior evid
 
     const afterTransfer = changed('transfer-ends-segment', 4, { endedSegment: false, focusQuestionCount: 1, hasScaffold: true })
     expect(gradeTeachingTrajectorySuite(afterTransfer).find(item => item.caseId === 'transfer-ends-segment')?.passed).toBe(false)
+  })
+
+  it('rejects a lesson kept alive only by unfinished plan steps', () => {
+    // The whole point of the case is that the route is not a completion
+    // contract, so a fixture that finished the plan would prove nothing.
+    const finished = changed('plan-yields-to-demonstrated-transfer', 4, { planRemaining: 0 })
+    const finishedVerdict = gradeTeachingTrajectorySuite(finished)
+      .find(item => item.caseId === 'plan-yields-to-demonstrated-transfer')
+    expect(finishedVerdict?.passed).toBe(false)
+    expect(finishedVerdict?.checks.find(check => check.name === 'transfer-outranks-an-unfinished-plan')?.passed).toBe(false)
+
+    // Continuing to question the learner after transfer is the failure the
+    // remaining steps would otherwise be used to justify.
+    const keptGoing = changed('plan-yields-to-demonstrated-transfer', 5, { focusQuestionCount: 1, hasScaffold: true })
+    expect(gradeTeachingTrajectorySuite(keptGoing)
+      .find(item => item.caseId === 'plan-yields-to-demonstrated-transfer')?.passed).toBe(false)
+  })
+
+  it('rejects prose that points at a visual the learner never saw', () => {
+    // The tool succeeded but this composition rendered nothing, so naming an
+    // on-screen figure describes something that is not there.
+    const phantom = changed('unavailable-visual-continues-in-prose', 0, { referencesFigure: true })
+    const verdict = gradeTeachingTrajectorySuite(phantom)
+      .find(item => item.caseId === 'unavailable-visual-continues-in-prose')
+    expect(verdict?.passed).toBe(false)
+    expect(verdict?.checks.find(check => check.name === 'no-reference-to-an-unrendered-visual')?.passed).toBe(false)
+
+    // Referring to a figure that did render is ordinary teaching.
+    const rendered = changed('unavailable-visual-continues-in-prose', 0, { visualStatus: 'ready', referencesFigure: true })
+    expect(gradeTeachingTrajectorySuite(rendered)
+      .find(item => item.caseId === 'unavailable-visual-continues-in-prose')?.passed).toBe(true)
+  })
+
+  it('rejects a turn that answers a different failure mode than the learner shows', () => {
+    // Explaining what an average means to someone who already has the concept
+    // and is only blocked by the shorthand is the classic mis-routed answer.
+    const conceptualDetour = changed('notation-gap-decodes-symbols', 0, { addressedGap: 'concept' })
+    const detourVerdict = gradeTeachingTrajectorySuite(conceptualDetour)
+      .find(item => item.caseId === 'notation-gap-decodes-symbols')
+    expect(detourVerdict?.passed).toBe(false)
+    expect(detourVerdict?.checks.find(check => check.name === 'addresses-observed-gap-at-0')?.passed).toBe(false)
+
+    // Jumping to epsilon-delta mechanics before the learner knows what the
+    // exercise is asking for answers a procedure gap they do not have.
+    const prematureMethod = changed('task-model-gap-restates-the-question', 0, { addressedGap: 'procedure' })
+    const methodVerdict = gradeTeachingTrajectorySuite(prematureMethod)
+      .find(item => item.caseId === 'task-model-gap-restates-the-question')
+    expect(methodVerdict?.passed).toBe(false)
+    expect(methodVerdict?.checks.find(check => check.name === 'addresses-observed-gap-at-0')?.passed).toBe(false)
+
+    // A misread of the learner is a failure even when the answer is coherent.
+    const misreadLearner = changed('notation-gap-decodes-symbols', 2, { observedGap: 'concept', addressedGap: 'concept' })
+    expect(gradeTeachingTrajectorySuite(misreadLearner)
+      .find(item => item.caseId === 'notation-gap-decodes-symbols')?.passed).toBe(false)
   })
 
   it('requires a self-sufficient fallback and ordinary conversation after tool failure', () => {

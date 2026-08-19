@@ -1,7 +1,13 @@
 import { useEffect, useId, useState, type FormEvent, type KeyboardEvent } from 'react'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import type { LearningCheckpointResponseV1, LearningCheckpointV1 } from '../protocol.ts'
+import type {
+  LearningCheckpointEvidenceKindV1,
+  LearningCheckpointResponseV1,
+  LearningCheckpointV1,
+} from '../protocol.ts'
+import type { LearningLocaleKey } from './locales.ts'
 import css from './LearningActivity.module.css'
+import { learningScope } from './tokens.ts'
 
 type LearningCheckpointProps = PropsLocale<'interactive-learning'> & {
   checkpoint: LearningCheckpointV1
@@ -14,6 +20,22 @@ type LearningCheckpointProps = PropsLocale<'interactive-learning'> & {
 }
 
 const STORAGE_PREFIX = 'dsh-learning/checkpoint@1:'
+
+/**
+ * The header names the thinking the learner is being asked for.
+ *
+ * The payload already carries which cognitive move this checkpoint wants, and
+ * showing it tells the learner how to engage. A generic "checkpoint" label
+ * would instead narrate the teaching machinery, which the standing policy
+ * rules out for ordinary turns.
+ */
+const EVIDENCE_LABEL_KEYS = {
+  attempt: 'checkpointEvidenceAttempt',
+  prediction: 'checkpointEvidencePrediction',
+  explanation: 'checkpointEvidenceExplanation',
+  contrast: 'checkpointEvidenceContrast',
+  transfer: 'checkpointEvidenceTransfer',
+} as const satisfies Record<LearningCheckpointEvidenceKindV1, LearningLocaleKey>
 
 function readDraft(storageKey: string): string {
   try {
@@ -116,9 +138,11 @@ export function LearningCheckpoint({
     .join(' ')
 
   return (
-    <section className={css.checkpoint} data-learning-checkpoint={checkpoint.kind} aria-labelledby={headingId}>
+    <section className={css.checkpoint} {...learningScope} data-learning-checkpoint={checkpoint.kind} aria-labelledby={headingId}>
       <header className={css.checkpointHeader}>
-        <span className={css.checkpointEyebrow}>{t('checkpointEyebrow')}</span>
+        <span className={css.checkpointEyebrow} data-learning-evidence={checkpoint.expectedEvidence}>
+          {t(EVIDENCE_LABEL_KEYS[checkpoint.expectedEvidence] ?? 'checkpointEyebrow')}
+        </span>
         <h2 id={headingId}>{checkpoint.prompt}</h2>
         {checkpoint.context === undefined ? null : <p id={contextId}>{checkpoint.context}</p>}
       </header>

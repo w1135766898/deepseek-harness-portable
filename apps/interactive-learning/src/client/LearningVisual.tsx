@@ -8,6 +8,7 @@ import type {
   ParameterDefinitionV1,
 } from '../protocol.ts'
 import css from './LearningActivity.module.css'
+import { learningScope } from './tokens.ts'
 
 interface ChartGeometry {
   width: number
@@ -201,6 +202,7 @@ export function LearningVisual({ visual, storageKey }: { visual: LearningVisualV
   return (
     <section
       className={css.learningVisual}
+      {...learningScope}
       data-learning-visual="parameter_chart"
       aria-labelledby={`${chartId}-title`}
     >

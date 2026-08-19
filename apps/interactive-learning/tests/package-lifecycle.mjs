@@ -191,12 +191,25 @@ try {
     assert.equal(packedFiles.length, 1, 'pnpm pack must emit exactly one tarball')
     tarball = join(packRoot, packedFiles[0])
   } else {
+    // Stage an externally supplied tarball beside a packed one so the
+    // extraction below can address it relative to the smoke root, whichever
+    // drive or directory the caller passed.
     await readFile(tarball)
+    const staged = join(packRoot, basename(tarball))
+    await cp(tarball, staged)
+    tarball = staged
   }
 
   const extractionRoot = join(smokeRoot, 'tar-stage')
   await mkdir(extractionRoot, { recursive: true })
-  run('tar', ['-xf', tarball, '-C', extractionRoot], { cwd: repositoryRoot })
+  // GNU tar reads an operand containing a colon as `host:path`, so a Windows
+  // absolute path such as C:\Users\... is taken as the remote host "C" and the
+  // extraction fails before it starts. `--force-local` would fix that for GNU
+  // tar but is rejected by the bsdtar that ships with macOS and Windows, so
+  // both operands are addressed relative to a shared root instead: no colon
+  // reaches tar, and every implementation reads them as local paths.
+  const localOperand = path => relative(smokeRoot, path).split(sep).join('/')
+  run('tar', ['-xf', localOperand(tarball), '-C', localOperand(extractionRoot)], { cwd: smokeRoot })
   const packedPackage = join(extractionRoot, 'package')
   const tarballPurity = await assertPublishedPathPurity(join(packedPackage, 'lib'), { checkoutRoot: repositoryRoot })
 

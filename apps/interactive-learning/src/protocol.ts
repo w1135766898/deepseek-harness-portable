@@ -637,10 +637,21 @@ export interface LearningVisualV4 {
   fallbackMarkdown?: string
 }
 
+/**
+ * Terminal outcome of one `learning_visual` call.
+ *
+ * `unavailable` means the composition has no renderer for this payload, so the
+ * learner saw nothing. The model must then carry the explanation in prose
+ * instead of referring to a figure that is not on screen.
+ */
 export interface LearningVisualResultV4 {
   protocol: typeof VISUAL_RESULT_PROTOCOL_V4
-  status: 'ready'
+  status: LearningVisualStatusV4
 }
+
+export const LEARNING_VISUAL_STATUSES = ['ready', 'unavailable'] as const
+
+export type LearningVisualStatusV4 = typeof LEARNING_VISUAL_STATUSES[number]
 
 /** A stable, actionable protocol rejection surfaced to the tool call. */
 export class LearningProtocolError extends Error {
@@ -2289,7 +2300,9 @@ export function parseLearningVisualResultV4(value: unknown): LearningVisualResul
   if (value.protocol !== VISUAL_RESULT_PROTOCOL_V4) {
     issues.push(`visualResult.protocol must be ${VISUAL_RESULT_PROTOCOL_V4}`)
   }
-  if (value.status !== 'ready') issues.push('visualResult.status must be ready')
+  if (!LEARNING_VISUAL_STATUSES.includes(value.status as LearningVisualStatusV4)) {
+    issues.push(`visualResult.status must be one of ${LEARNING_VISUAL_STATUSES.join(', ')}`)
+  }
   if (issues.length > 0) throw new LearningProtocolError(issues)
   return value as unknown as LearningVisualResultV4
 }

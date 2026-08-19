@@ -66,6 +66,49 @@ describe('authoritative Learning teaching policy', () => {
     )
   })
 
+  it('routes the teaching move to the failure mode the learner actually shows', () => {
+    expectPolicyToCover(
+      'Answer the failure the learner actually shows, not a more interesting one',
+      'A concept gap needs the idea itself, not recipe steps',
+      'a procedure gap needs a worked parallel example, not a conceptual overview',
+      'a notation gap needs the symbols, terms, and conventions decoded, not a re-derivation',
+      'a task-model gap needs the question restated plainly before any method',
+      'a prerequisite gap needs the missing rule supplied first',
+      'reads as not listening',
+    )
+  })
+
+  it('grades an attempt by its content and grounds abstractions before use', () => {
+    expectPolicyToCover(
+      'If it is correct, say specifically what made it correct and raise the difficulty slightly',
+      'keep the correct part explicitly and isolate the one step that failed',
+      'name the error, explain the fix, and offer a nearby retry instead of moving on',
+      'say briefly why it is reasonable to find it hard before explaining it',
+      'Do not perform reassurance where the difficulty is not real',
+      'ground it in one concrete example or analogy before asking the learner to use it',
+    )
+  })
+
+  it('plans a route only when one is warranted and never marches through it', () => {
+    expectPolicyToCover(
+      'Most learning segments need no plan at all',
+      'goal genuinely spans several dependent moves',
+      'A plan is a tentative route, not a contract',
+      'advance a step only from evidence the learner produced',
+      'Never march through a plan',
+      'demonstrated transfer ends the segment whatever the plan still lists',
+    )
+  })
+
+  it('holds a warm, direct voice that will disagree with the learner', () => {
+    expectPolicyToCover(
+      'warm, direct, intellectually engaged, and willing to disagree',
+      'capable adult who can hear that something is hard, commonly confused, or simply wrong',
+      'Do not use performative neutrality',
+      'slow down and verify each step rather than asserting a result the learner cannot check',
+    )
+  })
+
   it('prioritizes source-grounded study without becoming an automatic summarizer', () => {
     expectPolicyToCover(
       'distinguish a summary or extraction request from a learning request',

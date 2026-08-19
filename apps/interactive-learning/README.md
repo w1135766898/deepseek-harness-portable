@@ -30,12 +30,17 @@ learner action, it creates exactly one user-result wait and then terminates.
 1. The assistant explains the missing idea in ordinary prose.
 2. When manipulation is genuinely useful, it calls `learning_visual` once with
    a safe declarative chart.
-3. Validation returns `visual-result@4 { status: "ready" }` immediately. No
-   lesson token, pending question, submit button, reveal call, or five-minute
-   user wait is created.
-4. The chart renders in the tool call's place and remains interactive after the
+3. While the arguments are still streaming, the tool call's place names the
+   visual being prepared instead of showing a generic wait.
+4. Validation returns `visual-result@4` immediately. No lesson token, pending
+   question, submit button, reveal call, or five-minute user wait is created.
+   The result distinguishes `ready` from `unavailable`: a composition without
+   the Learning Client renders nothing, so the assistant carries the same
+   explanation in prose and never points at a figure the learner cannot see.
+   An unrendered visual is also not recorded as a teaching move that happened.
+5. The chart renders in the tool call's place and remains interactive after the
    completed call is replayed.
-5. The assistant continues with the interpretation and, if useful, one natural
+6. The assistant continues with the interpretation and, if useful, one natural
    question. The learner answers through the normal composer on the next turn.
 
 This removes the old Question → Reveal split that duplicated rounds and left a
@@ -72,6 +77,28 @@ profile, personality model, learning-style classifier, or long-term mastery
 record. A learner correction is supplied in ordinary conversation and is
 accepted only as a correction—not as self-certified mastery.
 
+## Session-scoped learning route
+
+Most learning segments need no route at all: a single concept, a direct answer,
+or a short correction is complete without one. A route is recorded only when the
+goal genuinely spans several dependent moves — a multi-section source, a
+procedure with real prerequisites, or a multi-part objective the learner stated.
+
+The route lives in the learner state for the current session and is a revisable
+hypothesis rather than a contract:
+
+- At most 6 steps, with `pending`, `active`, and `evidenced` as the only
+  statuses, and never more than one `active`.
+- A step advances only on evidence the learner produced, never because the
+  material was covered.
+- Revising a route preserves whatever was already `evidenced` under the same
+  step id, so demonstrated progress is never erased.
+- The model context carries the objective and the current step only, never the
+  whole list, so the route cannot be read back as a checklist to march through.
+- Demonstrated transfer ends the segment however many steps remain; an
+  unfinished route is never a reason to continue.
+- A learning-boundary reset clears the route with the rest of the state.
+
 ## Optional checkpoint protocol v1
 
 `dsh-learning/checkpoint@1` is reserved for a prediction, explanation, contrast,
@@ -84,6 +111,9 @@ and must never become a per-turn Continue ceremony.
 - Its five closed kinds are `free_text`, `single_choice`, `numeric`,
   `prediction`, and `code_slot`. Single-choice results carry the stable option
   id; labels are presentation only.
+- The card header names the cognitive move being requested — predict, explain,
+  contrast, transfer, or attempt — rather than an internal label such as
+  "checkpoint", which the standing policy forbids for ordinary turns.
 - The pending payload may contain only the current prompt, context, expected
   evidence, answer-free options, and a self-sufficient fallback. Correct
   answers, grading rubrics, solutions, and future steps are rejected.
@@ -134,10 +164,44 @@ Unknown fields, undeclared variables, non-finite values, excessive payloads,
 invalid references, and invalid ranges are rejected. Model-provided HTML,
 Markdown diagrams, SVG markup, and JavaScript are never executed.
 
+A payload the schema accepts always reaches its renderer; it never degrades
+into Markdown, the description text, or an error box. When a series has no value
+inside the declared axes — `log` or `sqrt` over a negative domain, or a curve
+that sits entirely outside the y range — the chart still draws, states that no
+values fall inside the current axes, and marks that series in the legend, rather
+than leaving the learner with a frame that looks broken.
+
 V3 parameter charts and V1/V2 activities remain parseable only for historical
 replay. Their model tools are no
 longer exposed by the Learning preset. A failed historical result is shown as
 an explicit error/fallback instead of a disabled “completed” activity.
+
+## Design system and accessibility
+
+Every learning surface shares one set of design tokens, declared on
+`[data-learning-scope]` in `src/client/tokens.module.css`. The two CSS Modules
+compile into separate `<style>` tags and cannot share styles through classes, so
+the shared values are inherited as custom properties instead; a root component
+opts its subtree in by spreading `learningScope`.
+
+The tokens cover the type ramp, spacing scale, radii, elevation, control metrics
+and motion durations, plus the single accent, semantic palette and focus ring.
+Neither stylesheet now contains a raw font size, a raw radius, or a directly
+referenced Host alias. Every Host alias carries a fallback, so a theme that omits
+one degrades to a usable colour rather than an invalid declaration.
+
+The renderers are built for keyboards and assistive technology:
+
+- One figure is one tab stop. A `node_link` visual may declare 48 nodes and 160
+  edges and a `scene_2d` up to 64 elements; once inside a figure, the arrow keys
+  move between items, Home and End jump to the ends, and Enter or Space selects.
+- Plot probe readings are written to an `aria-live` region, so keyboard probing
+  is announced; Escape clears it.
+- A figure's accessible name is a short summary. The full structured text
+  alternative lives in readable content, so it can be browsed item by item
+  instead of spoken as one long name.
+- The focus ring, motion durations and reduced-motion behaviour all come from
+  the token layer.
 
 ## Development and verification
 

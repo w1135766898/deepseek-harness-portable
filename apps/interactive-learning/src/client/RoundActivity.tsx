@@ -6,6 +6,7 @@ import { initialRoundState, roundReducer } from './roundState.ts'
 import { emitLearningUiLifecycle } from './lifecycle.ts'
 import { ParameterRoundVisual } from './ParameterExplorer.tsx'
 import css from './LearningActivity.module.css'
+import { learningScope } from './tokens.ts'
 
 export interface RevealCompletion {
   completed: true
@@ -260,7 +261,7 @@ export function RoundActivity({
 
   const final = activity.phase === 'reveal' && state.status !== 'animating'
   return (
-    <section className={css.round} data-round-state={state.status}>
+    <section className={css.round} {...learningScope} data-round-state={state.status}>
       <header className={css.roundHeader}>
         {activity.focus.progress === undefined ? null : (
           <span>{t('roundProgress', {

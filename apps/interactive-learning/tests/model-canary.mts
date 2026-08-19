@@ -56,6 +56,15 @@ const model = process.env.DSH_CANARY_MODEL ?? 'mimo-v2.5'
 const ctx = new Context()
 await ctx.plugin(AgentRegistry)
 await ctx.plugin(UserQuestionService)
+// The canary asserts the rendered path, so it must advertise the Learning
+// Client the way a real Web composition does; without it learning_visual
+// correctly reports that nothing was rendered.
+ctx.provide('clientModules', {
+  graph: () => ({
+    rev: 'canary',
+    entries: [{ id: '@dsh-portable/interactive-learning', url: '/client.js', rev: 'canary' }],
+  }),
+} as never)
 await ctx.plugin(ToolRuntime)
 await ctx.plugin(SystemPrompt)
 await ctx.plugin(LearningActivityBroker)

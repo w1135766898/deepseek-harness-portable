@@ -17,6 +17,13 @@ export interface LearningUiLifecycleEvent {
 
 type Listener = (event: LearningUiLifecycleEvent) => void
 const listeners = new Set<Listener>()
+
+/**
+ * Per-call dedup keys, bounded so a long session cannot grow this module-level
+ * set without limit. Insertion order is eviction order: the oldest calls in a
+ * conversation are also the ones that can no longer emit a first event.
+ */
+const MAX_TRACKED_CALLS = 512
 const emittedCallEvents = new Set<string>()
 
 export function subscribeLearningUiLifecycle(listener: Listener): () => void {
@@ -37,5 +44,10 @@ export function emitLearningCallLifecycle(
   const key = `${name}:${projection.callId}`
   if (emittedCallEvents.has(key)) return
   emittedCallEvents.add(key)
+  while (emittedCallEvents.size > MAX_TRACKED_CALLS) {
+    const oldest = emittedCallEvents.values().next().value
+    if (oldest === undefined) break
+    emittedCallEvents.delete(oldest)
+  }
   emitLearningUiLifecycle({ name, ...projection })
 }

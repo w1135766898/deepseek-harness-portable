@@ -58,6 +58,8 @@ export declare function gradeTeachingSuite(candidates: readonly TeachingEvalCand
 /** Reference outputs exercise the rubric itself; they are not presented as model-quality evidence. */
 export declare const OFFLINE_REFERENCE_CANDIDATES: readonly TeachingEvalCandidate[];
 export declare function offlineContinuation(explanation: string): string;
+/** Mirrors LearnerGap: the failure mode a turn observes and answers. */
+export type TeachingGapKind = 'concept' | 'procedure' | 'notation' | 'task-model' | 'prerequisite' | 'unknown';
 export type TeachingTrajectoryDecision = 'direct' | 'calibrate' | 'scaffold' | 'accelerate' | 'foothold' | 'transfer' | 'complete' | 'fallback';
 export interface TeachingTrajectoryTurn {
     learner: string;
@@ -69,6 +71,16 @@ export interface TeachingTrajectoryTurn {
     progressSignal: 'progressing' | 'impatient' | 'stuck' | 'shutdown-risk' | 'unknown';
     mastery: 'unseen' | 'emerging' | 'transfer';
     usedLearnerEvidence?: readonly string[];
+    /** The failure mode the learner actually displays on this turn. */
+    observedGap?: TeachingGapKind;
+    /** The failure mode the assistant's move actually answers. */
+    addressedGap?: TeachingGapKind;
+    /** Terminal status reported by a learning_visual call made on this turn. */
+    visualStatus?: 'ready' | 'unavailable';
+    /** Whether the prose points the learner at an on-screen figure. */
+    referencesFigure?: boolean;
+    /** Plan steps still unevidenced on this turn, when a route is recorded. */
+    planRemaining?: number;
     /** Exact source locations cited by this turn; empty means it made no source-backed claim. */
     sourceAnchors?: readonly string[];
     hintFingerprint?: string;
@@ -110,6 +122,10 @@ export interface TeachingTrajectoryCase {
     sourceAnchorsAt?: Readonly<Record<number, readonly string[]>>;
     /** Turns where a decorative visual would be a routing error. */
     visualForbiddenTurns?: readonly number[];
+    /** Turns that must answer the failure mode the learner displays, not another. */
+    gapRoutingAt?: Readonly<Record<number, TeachingGapKind>>;
+    /** Minimum plan steps that must still be outstanding when the segment ends. */
+    stopsWithPlanRemaining?: number;
 }
 export interface TeachingTrajectoryCandidate {
     caseId: string;

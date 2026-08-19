@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots'
 import type { LearningActivityV1 } from '../protocol.ts'
 import css from './LearningActivity.module.css'
+import { learningScope } from './tokens.ts'
 
 export function ActivityFrame({
   activityId, activity, busy, error, children, onSkip, onCancel, t,
@@ -19,6 +20,7 @@ export function ActivityFrame({
   return (
     <section
       className={css.inlineActivity}
+      {...learningScope}
       aria-label={activity.title}
       data-learning-activity={activity.kind}
       data-learning-activity-id={activityId}

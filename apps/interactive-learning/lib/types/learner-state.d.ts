@@ -14,6 +14,7 @@ export declare const MAX_APPLIED_EVENT_IDS = 64;
 export declare const MAX_PRIOR_KNOWLEDGE = 8;
 export declare const MAX_MISCONCEPTIONS = 6;
 export declare const MAX_SOURCE_ANCHORS = 8;
+export declare const MAX_PLAN_STEPS = 6;
 export declare const DEFAULT_TRANSCRIPT_TOKEN_BUDGET = 300;
 export type LearnerRequestKind = 'concept' | 'procedure' | 'topic' | 'source-study' | 'practice' | 'resource' | 'direct-task' | 'unknown';
 export type LearnerLevel = 'novice' | 'intermediate' | 'advanced' | 'unknown';
@@ -25,6 +26,25 @@ export type LearnerUrgency = 'none' | 'initial-blocker' | 'later-pressure' | 'un
 export type LearnerSupportLevel = 0 | 1 | 2 | 3 | 4 | 5;
 export type LearnerAssessmentContext = 'self-study' | 'graded' | 'unknown';
 export type LearnerMastery = 'unseen' | 'emerging' | 'transfer';
+/**
+ * A step in the session's learning route.
+ *
+ * `evidenced` is deliberately not "done": a step is only advanced by a concrete
+ * observation, the same discipline every other field follows. Nothing in the
+ * teaching policy treats a fully evidenced plan as a completion criterion —
+ * demonstrated transfer still ends the segment, and an unfinished plan is not a
+ * reason to keep going.
+ */
+export type LearnerPlanStepStatus = 'pending' | 'active' | 'evidenced';
+export interface LearnerPlanStep {
+    id: string;
+    label: string;
+    status: LearnerPlanStepStatus;
+}
+export interface LearnerPlan {
+    objective: string;
+    steps: readonly LearnerPlanStep[];
+}
 export type LearnerTeachingMove = 'none' | 'visual' | 'checkpoint';
 export type LearnerEvidenceKind = 'attempt' | 'prediction' | 'explanation' | 'contrast' | 'transfer' | 'error';
 export type LearnerEvidenceConfidence = 'low' | 'medium' | 'high';
@@ -92,6 +112,8 @@ export interface LearnerState {
     evidence: readonly LearnerEvidence[];
     lastMove: LearnerTeachingMove;
     sourceAnchors: readonly string[];
+    /** The session's tentative route toward the goal; null when none is warranted. */
+    plan: LearnerPlan | null;
     /** Bounded replay/conflict fence. Never included in the model transcript. */
     appliedEventIds: readonly AppliedLearnerStateEvent[];
 }
@@ -113,6 +135,19 @@ export type LearnerStateEvent = {
     level?: LearnerLevel;
     items?: readonly string[];
     mode?: 'append' | 'replace';
+    observation: ObservableLearnerEvent;
+} | {
+    type: 'plan_observed';
+    objective: string;
+    steps: ReadonlyArray<{
+        id: string;
+        label: string;
+    }>;
+    activeStepId?: string;
+    observation: ObservableLearnerEvent;
+} | {
+    type: 'plan_step_evidenced';
+    stepId: string;
     observation: ObservableLearnerEvent;
 } | {
     type: 'gap_observed';

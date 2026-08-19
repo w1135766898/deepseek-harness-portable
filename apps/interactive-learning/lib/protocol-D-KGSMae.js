@@ -64,6 +64,7 @@ const MATH_UNARY_OPERATORS = [
 	"log",
 	"sigmoid"
 ];
+const LEARNING_VISUAL_STATUSES = ["ready", "unavailable"];
 /** A stable, actionable protocol rejection surfaced to the tool call. */
 var LearningProtocolError = class extends Error {
 	issues;
@@ -1893,7 +1894,7 @@ function parseLearningVisualResultV4(value) {
 	if (!record(value)) throw new LearningProtocolError(["visual result must be an object"]);
 	onlyKeys(value, ["protocol", "status"], "visualResult", issues);
 	if (value.protocol !== "dsh-learning/visual-result@4") issues.push(`visualResult.protocol must be ${VISUAL_RESULT_PROTOCOL_V4}`);
-	if (value.status !== "ready") issues.push("visualResult.status must be ready");
+	if (!LEARNING_VISUAL_STATUSES.includes(value.status)) issues.push(`visualResult.status must be one of ${LEARNING_VISUAL_STATUSES.join(", ")}`);
 	if (issues.length > 0) throw new LearningProtocolError(issues);
 	return value;
 }
@@ -1907,4 +1908,4 @@ function parseLearningVisualResultV3(value) {
 	return value;
 }
 //#endregion
-export { parseLearningCheckpointV1 as A, VISUAL_PROTOCOL_V4 as C, parseLearningActivity as D, isLearningCheckpointDisplayTextSafe as E, parseLearningVisualV3 as F, parseLearningVisualV4 as I, parseLearningResponseV2 as M, parseLearningVisualResultV3 as N, parseLearningActivityV2 as O, parseLearningVisualResultV4 as P, VISUAL_PROTOCOL_V3 as S, VISUAL_RESULT_PROTOCOL_V4 as T, MAX_VISUAL_MATH_DEPTH as _, CHECKPOINT_TRANSPORT_PROTOCOL as a, TRANSPORT_PROTOCOL as b, LEARNING_CHECKPOINT_KINDS as c, MATH_BINARY_OPERATORS as d, MATH_UNARY_OPERATORS as f, MAX_RESPONSE_BYTES as g, MAX_MATH_NODES as h, CHECKPOINT_RESULT_PROTOCOL as i, parseLearningResponse as j, parseLearningCheckpointResultV1 as k, LEARNING_VISUAL_KINDS_V4 as l, MAX_MATH_DEPTH as m, ACTIVITY_PROTOCOL_V2 as n, LEARNING_ACTIVITY_KINDS as o, MAX_ACTIVITY_BYTES as p, CHECKPOINT_PROTOCOL as r, LEARNING_CHECKPOINT_EVIDENCE_KINDS as s, ACTIVITY_PROTOCOL as t, LearningProtocolError as u, RESPONSE_PROTOCOL as v, VISUAL_RESULT_PROTOCOL_V3 as w, TRANSPORT_PROTOCOL_V2 as x, RESPONSE_PROTOCOL_V2 as y };
+export { parseLearningCheckpointResultV1 as A, VISUAL_PROTOCOL_V3 as C, isLearningCheckpointDisplayTextSafe as D, VISUAL_RESULT_PROTOCOL_V4 as E, parseLearningVisualResultV4 as F, parseLearningVisualV3 as I, parseLearningVisualV4 as L, parseLearningResponse as M, parseLearningResponseV2 as N, parseLearningActivity as O, parseLearningVisualResultV3 as P, TRANSPORT_PROTOCOL_V2 as S, VISUAL_RESULT_PROTOCOL_V3 as T, MAX_RESPONSE_BYTES as _, CHECKPOINT_TRANSPORT_PROTOCOL as a, RESPONSE_PROTOCOL_V2 as b, LEARNING_CHECKPOINT_KINDS as c, LearningProtocolError as d, MATH_BINARY_OPERATORS as f, MAX_MATH_NODES as g, MAX_MATH_DEPTH as h, CHECKPOINT_RESULT_PROTOCOL as i, parseLearningCheckpointV1 as j, parseLearningActivityV2 as k, LEARNING_VISUAL_KINDS_V4 as l, MAX_ACTIVITY_BYTES as m, ACTIVITY_PROTOCOL_V2 as n, LEARNING_ACTIVITY_KINDS as o, MATH_UNARY_OPERATORS as p, CHECKPOINT_PROTOCOL as r, LEARNING_CHECKPOINT_EVIDENCE_KINDS as s, ACTIVITY_PROTOCOL as t, LEARNING_VISUAL_STATUSES as u, MAX_VISUAL_MATH_DEPTH as v, VISUAL_PROTOCOL_V4 as w, TRANSPORT_PROTOCOL as x, RESPONSE_PROTOCOL as y };

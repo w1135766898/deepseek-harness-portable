@@ -17,6 +17,7 @@ export const MAX_APPLIED_EVENT_IDS = 64
 export const MAX_PRIOR_KNOWLEDGE = 8
 export const MAX_MISCONCEPTIONS = 6
 export const MAX_SOURCE_ANCHORS = 8
+export const MAX_PLAN_STEPS = 6
 export const DEFAULT_TRANSCRIPT_TOKEN_BUDGET = 300
 
 const MAX_STORED_TEXT = 240
@@ -60,6 +61,28 @@ export type LearnerUrgency =
 export type LearnerSupportLevel = 0 | 1 | 2 | 3 | 4 | 5
 export type LearnerAssessmentContext = 'self-study' | 'graded' | 'unknown'
 export type LearnerMastery = 'unseen' | 'emerging' | 'transfer'
+
+/**
+ * A step in the session's learning route.
+ *
+ * `evidenced` is deliberately not "done": a step is only advanced by a concrete
+ * observation, the same discipline every other field follows. Nothing in the
+ * teaching policy treats a fully evidenced plan as a completion criterion —
+ * demonstrated transfer still ends the segment, and an unfinished plan is not a
+ * reason to keep going.
+ */
+export type LearnerPlanStepStatus = 'pending' | 'active' | 'evidenced'
+
+export interface LearnerPlanStep {
+  id: string
+  label: string
+  status: LearnerPlanStepStatus
+}
+
+export interface LearnerPlan {
+  objective: string
+  steps: readonly LearnerPlanStep[]
+}
 
 export type LearnerTeachingMove =
   | 'none'
@@ -143,6 +166,8 @@ export interface LearnerState {
   evidence: readonly LearnerEvidence[]
   lastMove: LearnerTeachingMove
   sourceAnchors: readonly string[]
+  /** The session's tentative route toward the goal; null when none is warranted. */
+  plan: LearnerPlan | null
   /** Bounded replay/conflict fence. Never included in the model transcript. */
   appliedEventIds: readonly AppliedLearnerStateEvent[]
 }
@@ -169,6 +194,18 @@ export type LearnerStateEvent =
       level?: LearnerLevel
       items?: readonly string[]
       mode?: 'append' | 'replace'
+      observation: ObservableLearnerEvent
+    }
+  | {
+      type: 'plan_observed'
+      objective: string
+      steps: ReadonlyArray<{ id: string; label: string }>
+      activeStepId?: string
+      observation: ObservableLearnerEvent
+    }
+  | {
+      type: 'plan_step_evidenced'
+      stepId: string
       observation: ObservableLearnerEvent
     }
   | {
@@ -450,6 +487,10 @@ function freezeState(state: LearnerState): LearnerState {
     misconceptions: Object.freeze([...state.misconceptions]),
     evidence: freezeEvidence(state.evidence),
     sourceAnchors: Object.freeze([...state.sourceAnchors]),
+    plan: state.plan === null ? null : Object.freeze({
+      objective: state.plan.objective,
+      steps: Object.freeze(state.plan.steps.map(step => Object.freeze({ ...step }))),
+    }),
     appliedEventIds: Object.freeze(state.appliedEventIds.map(item => Object.freeze({ ...item }))),
   })
 }
@@ -590,6 +631,7 @@ export function createInitialLearnerState(sessionId: string): LearnerState {
     evidence: [],
     lastMove: 'none',
     sourceAnchors: [],
+    plan: null,
     appliedEventIds: [],
   })
 }
@@ -690,6 +732,65 @@ export function reduceLearnerState(state: LearnerState, event: LearnerStateEvent
         next.priorKnowledge = event.mode === 'replace'
           ? normalizeStringList(event.items, MAX_PRIOR_KNOWLEDGE, 'priorKnowledge')
           : appendBoundedUnique(state.priorKnowledge, event.items, MAX_PRIOR_KNOWLEDGE, 'priorKnowledge')
+      }
+      break
+    }
+    case 'plan_observed': {
+      const objective = normalizeRequiredText(event.objective, 'plan.objective')
+      if (!Array.isArray(event.steps) || event.steps.length < 1 || event.steps.length > MAX_PLAN_STEPS) {
+        throw new TypeError(`plan.steps must contain 1 to ${String(MAX_PLAN_STEPS)} steps`)
+      }
+      const seen = new Set<string>()
+      const steps = event.steps.map((step, index) => {
+        const id = normalizeRequiredText(step.id, `plan.steps[${String(index)}].id`)
+        if (seen.has(id)) throw new TypeError('plan.steps must not repeat a step id')
+        seen.add(id)
+        return { id, label: normalizeRequiredText(step.label, `plan.steps[${String(index)}].label`), status: 'pending' as LearnerPlanStepStatus }
+      })
+      const activeId = event.activeStepId === undefined
+        ? steps[0]?.id
+        : normalizeRequiredText(event.activeStepId, 'plan.activeStepId')
+      if (activeId !== undefined && !seen.has(activeId)) {
+        throw new TypeError('plan.activeStepId must name a declared step')
+      }
+      // Replacing a route keeps whatever the learner already evidenced under
+      // the same step id: a revised plan must not erase demonstrated progress.
+      const evidenced = new Set((state.plan?.steps ?? [])
+        .filter(step => step.status === 'evidenced')
+        .map(step => step.id))
+      // The requested active step may already be evidenced after a revision, so
+      // fall through to the first outstanding one. A route always names exactly
+      // one current move, or none at all once every step is evidenced.
+      const current = activeId !== undefined && !evidenced.has(activeId)
+        ? activeId
+        : steps.find(step => !evidenced.has(step.id))?.id
+      next.plan = {
+        objective,
+        steps: steps.map(step => ({
+          ...step,
+          status: evidenced.has(step.id) ? 'evidenced' : step.id === current ? 'active' : 'pending',
+        })),
+      }
+      break
+    }
+    case 'plan_step_evidenced': {
+      const plan = state.plan
+      if (plan === null) throw new TypeError('plan_step_evidenced requires an observed plan')
+      const stepId = normalizeRequiredText(event.stepId, 'plan.stepId')
+      if (!plan.steps.some(step => step.id === stepId)) {
+        throw new TypeError('plan.stepId must name a declared step')
+      }
+      const steps = plan.steps.map(step => step.id === stepId
+        ? { ...step, status: 'evidenced' as LearnerPlanStepStatus }
+        : step)
+      // The next unevidenced step becomes active so the route always names one
+      // current move rather than leaving the learner between steps.
+      const nextActive = steps.find(step => step.status !== 'evidenced')
+      next.plan = {
+        objective: plan.objective,
+        steps: steps.map(step => step.id === nextActive?.id && step.status === 'pending'
+          ? { ...step, status: 'active' as LearnerPlanStepStatus }
+          : step),
       }
       break
     }
@@ -815,6 +916,7 @@ const SNAPSHOT_KEYS = [
   'evidence',
   'lastMove',
   'sourceAnchors',
+  'plan',
   'appliedEventIds',
 ] as const
 
@@ -1051,6 +1153,7 @@ export function parseLearnerStateSnapshot(value: unknown, expectedSessionId: str
       MAX_SOURCE_ANCHORS,
       'learner state snapshot sourceAnchors',
     ),
+    plan: parsePlanSnapshot(record.plan, 'learner state snapshot plan'),
     appliedEventIds: parseAppliedEventFence(record.appliedEventIds),
   }
   assertMasteryEvidenceConsistency(parsed)
@@ -1074,6 +1177,41 @@ export function hydrateLearnerStateSnapshot(value: unknown, sessionId: string): 
   return parseLearnerStateSnapshot(value, sessionId)
 }
 
+const PLAN_STEP_STATUSES: ReadonlySet<string> = new Set<LearnerPlanStepStatus>([
+  'pending', 'active', 'evidenced',
+])
+
+function parsePlanSnapshot(value: unknown, label: string): LearnerPlan | null {
+  if (value === null) return null
+  const record = asRecord(value, label)
+  assertExactKeys(record, ['objective', 'steps'] as const, [], label)
+  if (!Array.isArray(record.steps) || record.steps.length < 1 || record.steps.length > MAX_PLAN_STEPS) {
+    throw new TypeError(`${label}.steps must contain 1 to ${String(MAX_PLAN_STEPS)} steps`)
+  }
+  const seen = new Set<string>()
+  const steps = record.steps.map((item, index) => {
+    const stepLabel = `${label}.steps[${String(index)}]`
+    const step = asRecord(item, stepLabel)
+    assertExactKeys(step, ['id', 'label', 'status'] as const, [], stepLabel)
+    const id = strictString(step.id, `${stepLabel}.id`)
+    if (seen.has(id)) throw new TypeError(`${label}.steps must not repeat a step id`)
+    seen.add(id)
+    return {
+      id,
+      label: strictString(step.label, `${stepLabel}.label`),
+      status: assertEnum(
+        strictString(step.status, `${stepLabel}.status`),
+        PLAN_STEP_STATUSES,
+        `${stepLabel}.status`,
+      ) as LearnerPlanStepStatus,
+    }
+  })
+  if (steps.filter(step => step.status === 'active').length > 1) {
+    throw new TypeError(`${label} must not mark more than one active step`)
+  }
+  return { objective: strictString(record.objective, `${label}.objective`), steps }
+}
+
 function normalizeSnapshotReason(value: unknown): LearnerStateSnapshotReason {
   if (value !== 'update' && value !== 'correction' && value !== 'reset') {
     throw new TypeError('learner state snapshot reason must be update, correction, or reset')
@@ -1086,7 +1224,7 @@ function assertResetSnapshot(snapshot: LearnerState): void {
   const pedagogicalKeys = [
     'goal', 'requestKind', 'level', 'priorKnowledge', 'gap', 'misconceptions', 'readiness',
     'progressSignal', 'urgency', 'supportLevel', 'assessmentContext', 'mastery', 'evidence',
-    'lastMove', 'sourceAnchors',
+    'lastMove', 'sourceAnchors', 'plan',
   ] as const
   for (const key of pedagogicalKeys) {
     if (JSON.stringify(snapshot[key]) !== JSON.stringify(initial[key])) {
@@ -1261,6 +1399,21 @@ export function renderLearnerStateTranscript(
   })
   if (state.sourceAnchors.length) {
     optional.push({ order: 300, priority: 60, text: `source_anchors: ${safeList(state.sourceAnchors)}` })
+  }
+  if (state.plan !== null) {
+    // The route is projected as the objective plus the one current step, never
+    // as the whole checklist: the model needs to know where it is, and a full
+    // step list would both crowd out evidence and invite marching through it.
+    const active = state.plan.steps.find(step => step.status === 'active')
+    const evidenced = state.plan.steps.filter(step => step.status === 'evidenced').length
+    optional.push({
+      order: 150,
+      priority: 74,
+      text: `plan: ${safeQuoted(state.plan.objective, 48)} (${String(evidenced)}/${String(state.plan.steps.length)} evidenced)`,
+    })
+    if (active !== undefined) {
+      optional.push({ order: 160, priority: 84, text: `plan_step: ${safeQuoted(active.label, 48)}` })
+    }
   }
 
   for (const candidate of optional.sort((left, right) => right.priority - left.priority)) {

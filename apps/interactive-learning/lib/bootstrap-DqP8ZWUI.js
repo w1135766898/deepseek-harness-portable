@@ -206,6 +206,10 @@ function freezeState(state) {
 		misconceptions: Object.freeze([...state.misconceptions]),
 		evidence: freezeEvidence(state.evidence),
 		sourceAnchors: Object.freeze([...state.sourceAnchors]),
+		plan: state.plan === null ? null : Object.freeze({
+			objective: state.plan.objective,
+			steps: Object.freeze(state.plan.steps.map((step) => Object.freeze({ ...step })))
+		}),
 		appliedEventIds: Object.freeze(state.appliedEventIds.map((item) => Object.freeze({ ...item })))
 	});
 }
@@ -303,6 +307,7 @@ function createInitialLearnerState(sessionId) {
 		evidence: [],
 		lastMove: "none",
 		sourceAnchors: [],
+		plan: null,
 		appliedEventIds: []
 	});
 }
@@ -361,6 +366,52 @@ function reduceLearnerState(state, event) {
 			if (event.level !== void 0) next.level = assertEnum(event.level, LEVELS, "level");
 			if (event.items !== void 0) next.priorKnowledge = event.mode === "replace" ? normalizeStringList(event.items, 8, "priorKnowledge") : appendBoundedUnique(state.priorKnowledge, event.items, 8, "priorKnowledge");
 			break;
+		case "plan_observed": {
+			const objective = normalizeRequiredText(event.objective, "plan.objective");
+			if (!Array.isArray(event.steps) || event.steps.length < 1 || event.steps.length > 6) throw new TypeError(`plan.steps must contain 1 to ${String(6)} steps`);
+			const seen = /* @__PURE__ */ new Set();
+			const steps = event.steps.map((step, index) => {
+				const id = normalizeRequiredText(step.id, `plan.steps[${String(index)}].id`);
+				if (seen.has(id)) throw new TypeError("plan.steps must not repeat a step id");
+				seen.add(id);
+				return {
+					id,
+					label: normalizeRequiredText(step.label, `plan.steps[${String(index)}].label`),
+					status: "pending"
+				};
+			});
+			const activeId = event.activeStepId === void 0 ? steps[0]?.id : normalizeRequiredText(event.activeStepId, "plan.activeStepId");
+			if (activeId !== void 0 && !seen.has(activeId)) throw new TypeError("plan.activeStepId must name a declared step");
+			const evidenced = new Set((state.plan?.steps ?? []).filter((step) => step.status === "evidenced").map((step) => step.id));
+			const current = activeId !== void 0 && !evidenced.has(activeId) ? activeId : steps.find((step) => !evidenced.has(step.id))?.id;
+			next.plan = {
+				objective,
+				steps: steps.map((step) => ({
+					...step,
+					status: evidenced.has(step.id) ? "evidenced" : step.id === current ? "active" : "pending"
+				}))
+			};
+			break;
+		}
+		case "plan_step_evidenced": {
+			const plan = state.plan;
+			if (plan === null) throw new TypeError("plan_step_evidenced requires an observed plan");
+			const stepId = normalizeRequiredText(event.stepId, "plan.stepId");
+			if (!plan.steps.some((step) => step.id === stepId)) throw new TypeError("plan.stepId must name a declared step");
+			const steps = plan.steps.map((step) => step.id === stepId ? {
+				...step,
+				status: "evidenced"
+			} : step);
+			const nextActive = steps.find((step) => step.status !== "evidenced");
+			next.plan = {
+				objective: plan.objective,
+				steps: steps.map((step) => step.id === nextActive?.id && step.status === "pending" ? {
+					...step,
+					status: "active"
+				} : step)
+			};
+			break;
+		}
 		case "gap_observed":
 			next.gap = assertEnum(event.gap, GAPS, "gap");
 			if (event.misconceptions !== void 0) next.misconceptions = event.misconceptionMode === "replace" ? normalizeStringList(event.misconceptions, 6, "misconceptions") : appendBoundedUnique(state.misconceptions, event.misconceptions, 6, "misconceptions");
@@ -445,6 +496,7 @@ const SNAPSHOT_KEYS = [
 	"evidence",
 	"lastMove",
 	"sourceAnchors",
+	"plan",
 	"appliedEventIds"
 ];
 function asRecord(value, label) {
@@ -572,6 +624,7 @@ function parseLearnerStateSnapshot(value, expectedSessionId) {
 		evidence: parseSnapshotEvidence(record.evidence),
 		lastMove: assertEnum(strictString(record.lastMove, "learner state snapshot lastMove"), TEACHING_MOVES, "learner state snapshot lastMove"),
 		sourceAnchors: strictStringList(record.sourceAnchors, 8, "learner state snapshot sourceAnchors"),
+		plan: parsePlanSnapshot(record.plan, "learner state snapshot plan"),
 		appliedEventIds: parseAppliedEventFence(record.appliedEventIds)
 	};
 	assertMasteryEvidenceConsistency(parsed);
@@ -589,6 +642,40 @@ function serializeLearnerStateSnapshot(state) {
 /** Hydrates a persisted identity-free snapshot into exactly the current session. */
 function hydrateLearnerStateSnapshot(value, sessionId) {
 	return parseLearnerStateSnapshot(value, sessionId);
+}
+const PLAN_STEP_STATUSES = /* @__PURE__ */ new Set([
+	"pending",
+	"active",
+	"evidenced"
+]);
+function parsePlanSnapshot(value, label) {
+	if (value === null) return null;
+	const record = asRecord(value, label);
+	assertExactKeys(record, ["objective", "steps"], [], label);
+	if (!Array.isArray(record.steps) || record.steps.length < 1 || record.steps.length > 6) throw new TypeError(`${label}.steps must contain 1 to ${String(6)} steps`);
+	const seen = /* @__PURE__ */ new Set();
+	const steps = record.steps.map((item, index) => {
+		const stepLabel = `${label}.steps[${String(index)}]`;
+		const step = asRecord(item, stepLabel);
+		assertExactKeys(step, [
+			"id",
+			"label",
+			"status"
+		], [], stepLabel);
+		const id = strictString(step.id, `${stepLabel}.id`);
+		if (seen.has(id)) throw new TypeError(`${label}.steps must not repeat a step id`);
+		seen.add(id);
+		return {
+			id,
+			label: strictString(step.label, `${stepLabel}.label`),
+			status: assertEnum(strictString(step.status, `${stepLabel}.status`), PLAN_STEP_STATUSES, `${stepLabel}.status`)
+		};
+	});
+	if (steps.filter((step) => step.status === "active").length > 1) throw new TypeError(`${label} must not mark more than one active step`);
+	return {
+		objective: strictString(record.objective, `${label}.objective`),
+		steps
+	};
 }
 function normalizeSnapshotReason(value) {
 	if (value !== "update" && value !== "correction" && value !== "reset") throw new TypeError("learner state snapshot reason must be update, correction, or reset");
@@ -611,7 +698,8 @@ function assertResetSnapshot(snapshot) {
 		"mastery",
 		"evidence",
 		"lastMove",
-		"sourceAnchors"
+		"sourceAnchors",
+		"plan"
 	]) if (JSON.stringify(snapshot[key]) !== JSON.stringify(initial[key])) throw new TypeError(`reset learner state snapshot must clear ${key}`);
 }
 function createLearnerStateSnapshotEvent(state, reason) {
@@ -785,6 +873,20 @@ function renderLearnerStateTranscript(state, options = {}) {
 		priority: 60,
 		text: `source_anchors: ${safeList(state.sourceAnchors)}`
 	});
+	if (state.plan !== null) {
+		const active = state.plan.steps.find((step) => step.status === "active");
+		const evidenced = state.plan.steps.filter((step) => step.status === "evidenced").length;
+		optional.push({
+			order: 150,
+			priority: 74,
+			text: `plan: ${safeQuoted(state.plan.objective, 48)} (${String(evidenced)}/${String(state.plan.steps.length)} evidenced)`
+		});
+		if (active !== void 0) optional.push({
+			order: 160,
+			priority: 84,
+			text: `plan_step: ${safeQuoted(active.label, 48)}`
+		});
+	}
 	for (const candidate of optional.sort((left, right) => right.priority - left.priority)) admit(candidate);
 	const rendered = transcriptText(accepted);
 	if (estimateLearnerStateTokens(rendered) > maxTokens) throw new Error("learner state transcript exceeded its hard token budget");

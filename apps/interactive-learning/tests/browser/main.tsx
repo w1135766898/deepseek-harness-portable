@@ -303,7 +303,34 @@ const useEmptySession = (selector: (snapshot: { pending: unknown[] }) => unknown
 type VisualCatalogKey = keyof typeof visualV4Catalog
 type FixtureView = 'v4-gallery' | 'v3-running' | 'v3-completed' | 'checkpoint' | 'legacy-replay'
 
-const visualV4Entries = Object.entries(visualV4Catalog) as Array<[VisualCatalogKey, LearningVisualV4]>
+/**
+ * A schema-valid plot whose curve samples to nothing inside the declared axes.
+ * Harness-only: it exists so the empty-chart notice can be inspected visually
+ * alongside the ordinary catalog.
+ */
+const emptyRangePlot = {
+  protocol: VISUAL_PROTOCOL_V4,
+  title: '超出坐标范围的曲线',
+  description: '声明的 y 轴范围内没有任何取值，图表会说明这一点而不是留下空白。',
+  content: {
+    kind: 'plot',
+    xAxis: { label: 'x', min: 0, max: 1, samples: 32 },
+    yAxis: { label: 'y', min: 0, max: 1 },
+    series: [{
+      type: 'curve',
+      id: 'off_range',
+      label: 'x + 1000',
+      expression: { op: 'add', left: { op: 'variable', name: 'x' }, right: { op: 'constant', value: 1000 } },
+    }],
+  },
+} as unknown as LearningVisualV4
+
+const visualV4Entries = [
+  ...Object.entries(visualV4Catalog),
+  ['emptyRangePlot', emptyRangePlot],
+] as Array<[VisualCatalogKey, LearningVisualV4]>
+
+const visualV4ById = new Map(visualV4Entries)
 
 function visualDeclaredIds(visual: LearningVisualV4): string[] {
   const { content } = visual
@@ -392,7 +419,7 @@ function BrowserAcceptance() {
   const [sentMessages, setSentMessages] = useState<string[]>([])
   const [readiness, setReadiness] = useState<FixtureReadiness>(initialReadiness)
   const fixtureRef = useRef<HTMLElement>(null)
-  const selectedVisual = visualV4Catalog[visualKey]
+  const selectedVisual = visualV4ById.get(visualKey) as LearningVisualV4
   const legacyActivity = legacyActivities[legacyKind]()
   const checkpoint = useMemo(() => checkpointFixture(checkpointKind), [checkpointKind])
   const checkpointIds = checkpointIdentity(checkpointSession)

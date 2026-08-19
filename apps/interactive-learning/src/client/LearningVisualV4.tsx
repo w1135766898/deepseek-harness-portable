@@ -18,6 +18,7 @@ import { MarkdownText } from '@deepseek-ai/dsh-client-ui-primitives'
 import { evaluateMathExpression } from '../math-expression.ts'
 import type { LearningVisualV4 as LearningVisualV4Definition } from '../protocol.ts'
 import css from './LearningVisualV4.module.css'
+import { learningScope } from './tokens.ts'
 
 type VisualContent = LearningVisualV4Definition['content']
 type PlotContent = Extract<VisualContent, { kind: 'plot' }>
@@ -42,6 +43,8 @@ export interface LearningVisualV4Labels {
   metricsLabel: string
   legendLabel: string
   plotInteractionHint: string
+  noValuesInRange: string
+  seriesOutOfRange: string
   nodeLinkSummary: string
   connection: string
   layerLabel: string
@@ -121,18 +124,20 @@ const DEFAULT_LABELS: LearningVisualV4Labels = {
   metricsLabel: '当前指标',
   legendLabel: '图例与系列显示',
   plotInteractionHint: '鼠标移入图表可探查数值；键盘聚焦图表后可用 ← → 移动。',
+  noValuesInRange: '当前坐标范围内没有可显示的数值。',
+  seriesOutOfRange: '不在范围内',
   nodeLinkSummary: '{nodes} 个节点，{edges} 条连线。',
   connection: '{from} 到 {to}',
   layerLabel: '第 {index} 层',
   edgeLabel: '连线',
-  nodeLinkInteractionHint: '选择节点或连线查看解释；键盘可用 Tab 与 Enter 操作。',
+  nodeLinkInteractionHint: '选择节点或连线查看解释；键盘按 Tab 进入图形，再用 ← → 移动、Enter 选择。',
   nodeKind: '节点',
   edgeKind: '连线',
   noDetail: '暂无补充说明。',
   closeDetail: '关闭详细说明',
   elementFallback: '图元 {id}',
   sceneSummary: '二维场景，{elements} 个图元。{labels}',
-  sceneInteractionHint: '选择图中的点、线或形状查看说明。',
+  sceneInteractionHint: '选择图中的点、线或形状查看说明；键盘按 Tab 进入图形，再用 ← → 移动、Enter 选择。',
   elementKind: '图元',
   comparisonCaption: '特征对比表',
   comparisonDimension: '对比维度',
@@ -291,12 +296,6 @@ function toneAt(tone: string | undefined, index = 0): VisualTone {
   return DEFAULT_TONES[index % DEFAULT_TONES.length] ?? 'blue'
 }
 
-function strokeDash(stroke: string | undefined): string | undefined {
-  if (stroke === 'dashed') return '9 6'
-  if (stroke === 'dotted') return '2 6'
-  return undefined
-}
-
 function focusState(id: string, focusedIds: ReadonlySet<string>): 'focus' | 'dim' | undefined {
   if (focusedIds.size === 0) return undefined
   return focusedIds.has(id) ? 'focus' : 'dim'
@@ -313,14 +312,63 @@ function activateWithKeyboard(event: KeyboardEvent, action: () => void): void {
   action()
 }
 
+/**
+ * Roving tabindex over the interactive items of one figure.
+ *
+ * A node_link visual may declare 48 nodes and 160 edges, and a scene_2d up to
+ * 64 elements. Leaving every item in the tab order turns one inline diagram
+ * into a 200-stop detour that a keyboard user has to walk through to reach the
+ * rest of the conversation. The figure is a single tab stop instead: arrow
+ * keys, Home and End move between its items, Enter and Space select one.
+ */
+function useRovingFocus(ids: readonly string[]) {
+  const containerRef = useRef<SVGSVGElement>(null)
+  const [focusedId, setFocusedId] = useState<string>()
+  const active = focusedId !== undefined && ids.includes(focusedId) ? focusedId : ids[0]
+
+  const focusAt = (index: number): void => {
+    const next = ids[Math.max(0, Math.min(ids.length - 1, index))]
+    if (next === undefined) return
+    setFocusedId(next)
+    // Resolved by attribute rather than a ref map: a ref callback would be a
+    // new identity on every render and detach/reattach every item each time.
+    for (const item of containerRef.current?.querySelectorAll<SVGGElement>('[data-roving-id]') ?? []) {
+      if (item.dataset.rovingId === next) {
+        item.focus()
+        return
+      }
+    }
+  }
+
+  const itemProps = (id: string, activate: () => void) => ({
+    tabIndex: id === active ? 0 : -1,
+    'data-roving-id': id,
+    onFocus: () => setFocusedId(id),
+    onKeyDown: (event: KeyboardEvent): void => {
+      const index = ids.indexOf(id)
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); focusAt(index + 1) }
+      else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); focusAt(index - 1) }
+      else if (event.key === 'Home') { event.preventDefault(); focusAt(0) }
+      else if (event.key === 'End') { event.preventDefault(); focusAt(ids.length - 1) }
+      else activateWithKeyboard(event, activate)
+    },
+  })
+
+  return { containerRef, itemProps }
+}
+
 function useContainerWidth(minimum = 280): [React.RefObject<HTMLDivElement>, number] {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(760)
   useEffect(() => {
     const element = ref.current
     if (element === null) return
-    const update = (next: number): void => {
-      if (next >= minimum) setWidth(current => Math.abs(current - next) < 1 ? current : next)
+    const update = (measured: number): void => {
+      // A zero reading means "not laid out yet"; a small one means a genuinely
+      // narrow surface, which must clamp rather than keep the stale default.
+      if (measured <= 0) return
+      const next = Math.max(minimum, measured)
+      setWidth(current => Math.abs(current - next) < 1 ? current : next)
     }
     update(element.getBoundingClientRect().width)
     if (typeof ResizeObserver === 'undefined') return
@@ -420,7 +468,7 @@ function SequenceController({
     }
   }
   return (
-    <div className={css.sequence} onKeyDown={onKeyDown} aria-label={labels.sequenceLabel}>
+    <div className={css.sequence} role="group" onKeyDown={onKeyDown} aria-label={labels.sequenceLabel}>
       <div className={css.sequenceText} aria-live="polite" aria-atomic="true">
         <span>{frameIndex + 1} / {sequence.frames.length}</span>
         <strong>{frame?.label}</strong>
@@ -458,16 +506,26 @@ function initialParameterValues(content: PlotContent, storageKey: string | undef
   return values
 }
 
-function plotCurvePath(
+/**
+ * Sample one curve into a path, and report whether any sample is actually
+ * visible inside the declared axes.
+ *
+ * A schema-valid curve can still produce nothing to look at: `log` or `sqrt`
+ * over a negative domain yields no finite value, and a curve whose outputs sit
+ * far outside the declared y range is drawn entirely outside the clip. Both
+ * would otherwise leave the learner staring at an empty frame.
+ */
+function plotCurveRender(
   series: Extract<PlotContent['series'][number], { type: 'curve' }>,
   content: PlotContent,
   values: Readonly<Record<string, number>>,
   geometry: ChartGeometry,
-): string {
+): { path: string; visible: boolean } {
   const samples = content.xAxis.samples ?? 160
   const commands: string[] = []
   let drawing = false
   let previousY: number | undefined
+  let visible = false
   for (let index = 0; index < samples; index += 1) {
     const x = interpolate(content.xAxis.min, content.xAxis.max, index / Math.max(1, samples - 1))
     const y = evaluateMathExpression(series.expression, { ...values, x })
@@ -476,6 +534,7 @@ function plotCurvePath(
       previousY = undefined
       continue
     }
+    if (y >= content.yAxis.min && y <= content.yAxis.max) visible = true
     const px = scaleX(x, content.xAxis, geometry)
     const py = scaleY(y, content.yAxis, geometry)
     if (previousY !== undefined && Math.abs(previousY - py) > geometry.plotHeight * 2) drawing = false
@@ -483,7 +542,14 @@ function plotCurvePath(
     drawing = true
     previousY = py
   }
-  return commands.join(' ')
+  return { path: commands.join(' '), visible }
+}
+
+/** Whether any declared point of a plotted series falls inside both axes. */
+function pointsVisible(points: readonly Point[], content: PlotContent): boolean {
+  return points.some(point => Number.isFinite(point.x) && Number.isFinite(point.y)
+    && point.x >= content.xAxis.min && point.x <= content.xAxis.max
+    && point.y >= content.yAxis.min && point.y <= content.yAxis.max)
 }
 
 function pointsPath(points: readonly Point[], content: PlotContent, geometry: ChartGeometry): string {
@@ -534,10 +600,20 @@ function PlotRenderer({ content, focusedIds, storageKey }: RendererProps<PlotCon
     }
   }, [storageKey, values])
 
-  const curvePaths = useMemo(() => content.series.flatMap(series => series.type === 'curve'
-    ? [{ id: series.id, path: plotCurvePath(series, content, values, geometry) }]
-    : []), [content, geometry, values])
+  const renders = useMemo(() => new Map(content.series.map(series => [
+    series.id,
+    series.type === 'curve'
+      ? plotCurveRender(series, content, values, geometry)
+      : { path: undefined, visible: pointsVisible(series.points, content) },
+  ])), [content, geometry, values])
   const visibleSeries = content.series.filter(series => !hiddenSeries.has(series.id))
+  // A series the learner enabled but which has nothing inside the axes is the
+  // silent failure this reports; every shown series being empty is worse still.
+  const emptySeriesIds = new Set(content.series
+    .filter(series => renders.get(series.id)?.visible !== true)
+    .map(series => series.id))
+  const nothingToSee = visibleSeries.length > 0
+    && visibleSeries.every(series => emptySeriesIds.has(series.id))
   const probeValues = probeX === undefined ? [] : visibleSeries.flatMap(series => {
     let y: number | undefined
     if (series.type === 'curve') y = evaluateMathExpression(series.expression, { ...values, x: probeX })
@@ -545,7 +621,7 @@ function PlotRenderer({ content, focusedIds, storageKey }: RendererProps<PlotCon
     else y = nearestPointValue(series.points, probeX)
     return y === undefined || !Number.isFinite(y) ? [] : [{ id: series.id, label: series.label, y, tone: series.tone }]
   })
-  const chartDescription = `${content.xAxis.label ?? 'x'} ${formatNumber(content.xAxis.min)}–${formatNumber(content.xAxis.max)}; ${content.yAxis.label ?? 'y'} ${formatNumber(content.yAxis.min)}–${formatNumber(content.yAxis.max)}; ${content.series.map(series => series.label).join(', ')}`
+  const chartDescription = `${content.xAxis.label ?? 'x'} ${formatNumber(content.xAxis.min)}–${formatNumber(content.xAxis.max)}; ${content.yAxis.label ?? 'y'} ${formatNumber(content.yAxis.min)}–${formatNumber(content.yAxis.max)}; ${content.series.map(series => series.label).join(', ')}${nothingToSee ? `. ${labels.noValuesInRange}` : ''}`
   const probeDescription = probeX === undefined ? `${labels.chartProbeHint}. ${chartDescription}`
     : `x ${formatNumber(probeX)}。${probeValues.map(item => `${item.label} ${formatNumber(item.y)}`).join('，')}`
 
@@ -655,7 +731,7 @@ function PlotRenderer({ content, focusedIds, storageKey }: RendererProps<PlotCon
               const tone = toneAt(series.tone, seriesIndex)
               const state = focusState(series.id, focusedIds)
               if (series.type === 'curve') return (
-                <path key={series.id} className={css.seriesLine} data-tone={tone} data-focus-state={state} data-visual-id={series.id} data-stroke={series.stroke ?? 'solid'} d={curvePaths.find(item => item.id === series.id)?.path} />
+                <path key={series.id} className={css.seriesLine} data-tone={tone} data-focus-state={state} data-visual-id={series.id} data-stroke={series.stroke ?? 'solid'} d={renders.get(series.id)?.path} />
               )
               if (series.type === 'line') return (
                 <path key={series.id} className={css.seriesLine} data-tone={tone} data-focus-state={state} data-visual-id={series.id} data-stroke={series.stroke ?? 'solid'} d={pointsPath(series.points, content, geometry)} />
@@ -681,6 +757,9 @@ function PlotRenderer({ content, focusedIds, storageKey }: RendererProps<PlotCon
           <text className={css.axisLabel} x={geometry.left + geometry.plotWidth / 2} y={geometry.height - 7} textAnchor="middle">{content.xAxis.label ?? 'x'}</text>
           <text className={css.axisLabel} x="16" y={geometry.top + geometry.plotHeight / 2} textAnchor="middle" transform={`rotate(-90 16 ${geometry.top + geometry.plotHeight / 2})`}>{content.yAxis.label ?? 'y'}</text>
         </svg>
+        {!nothingToSee ? null : (
+          <p className={css.emptyPlotNotice} role="note">{labels.noValuesInRange}</p>
+        )}
         {probeX === undefined ? null : (
           <div className={css.probeCard} style={{ '--probe-x': `${normalizedPosition(probeX, content.xAxis.min, content.xAxis.max) * 100}%` } as CSSProperties} aria-hidden="true">
             <strong>x = {formatNumber(probeX)}</strong>
@@ -688,10 +767,24 @@ function PlotRenderer({ content, focusedIds, storageKey }: RendererProps<PlotCon
           </div>
         )}
       </div>
-      <div className={css.seriesToggles} aria-label={labels.legendLabel}>
+      <p className={css.srOnly} role="status" aria-live="polite">
+        {probeX === undefined ? '' : probeDescription}
+      </p>
+      <div className={css.seriesToggles} role="group" aria-label={labels.legendLabel}>
         {content.series.map((series, index) => (
-          <button key={series.id} type="button" aria-pressed={!hiddenSeries.has(series.id)} data-tone={toneAt(series.tone, index)} data-series-type={series.type} data-stroke={'stroke' in series ? series.stroke ?? 'solid' : undefined} onClick={() => toggleSeries(series.id)}>
+          <button
+            key={series.id}
+            type="button"
+            aria-pressed={!hiddenSeries.has(series.id)}
+            data-tone={toneAt(series.tone, index)}
+            data-series-type={series.type}
+            data-stroke={'stroke' in series ? series.stroke ?? 'solid' : undefined}
+            data-empty={emptySeriesIds.has(series.id) || undefined}
+            title={emptySeriesIds.has(series.id) ? labels.seriesOutOfRange : undefined}
+            onClick={() => toggleSeries(series.id)}
+          >
             <span aria-hidden="true" />{series.label}
+            {!emptySeriesIds.has(series.id) ? null : <small>{labels.seriesOutOfRange}</small>}
           </button>
         ))}
       </div>
@@ -833,16 +926,19 @@ function NodeLinkRenderer({ content, focusedIds }: RendererProps<NodeLinkContent
     detail: edge.detail,
     kind: 'edge',
   })
-  const accessibleDescription = [
-    labelTemplate(labels.nodeLinkSummary, { nodes: content.nodes.length, edges: content.edges.length }),
-    ...content.nodes.map(node => `${node.label}${node.detail === undefined ? '' : `: ${node.detail}`}`),
-    ...content.edges.map(edge => `${labelTemplate(labels.connection, { from: nodeById.get(edge.from)?.label ?? edge.from, to: nodeById.get(edge.to)?.label ?? edge.to })}${edge.label === undefined ? '' : `, ${edge.label}`}`),
-  ].join(' ')
+  const summary = labelTemplate(labels.nodeLinkSummary, { nodes: content.nodes.length, edges: content.edges.length })
+  // Nodes first, then edges: the traversal order a learner expects when
+  // exploring a topology, and independent of SVG paint order.
+  const rovingIds = useMemo(
+    () => [...content.nodes.map(node => node.id), ...content.edges.map(edge => edge.id)],
+    [content.edges, content.nodes],
+  )
+  const roving = useRovingFocus(rovingIds)
 
   return (
     <div className={css.nodeLinkRenderer}>
       <div className={css.graphViewport} ref={regionRef}>
-        <svg className={css.graphSvg} width={layout.width} height={layout.height} viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label={accessibleDescription} data-dense-edges={content.edges.length > 12 || undefined}>
+        <svg ref={roving.containerRef} className={css.graphSvg} width={layout.width} height={layout.height} viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label={summary} data-dense-edges={content.edges.length > 12 || undefined}>
           <defs>
             {DEFAULT_TONES.map(tone => (
               <marker key={tone} id={`${id}-arrow-${tone}`} className={css.arrowMarker} data-tone={tone} markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
@@ -879,10 +975,9 @@ function NodeLinkRenderer({ content, focusedIds }: RendererProps<NodeLinkContent
                   data-selected={selected?.id === edge.id || undefined}
                   data-visual-id={edge.id}
                   role="button"
-                  tabIndex={0}
                   aria-label={`${edge.label ?? labels.edgeLabel}: ${labelTemplate(labels.connection, { from: nodeById.get(edge.from)?.label ?? edge.from, to: nodeById.get(edge.to)?.label ?? edge.to })}${edge.detail === undefined ? '' : `. ${edge.detail}`}`}
                   onClick={() => selectEdge(edge)}
-                  onKeyDown={event => activateWithKeyboard(event, () => selectEdge(edge))}
+                  {...roving.itemProps(edge.id, () => selectEdge(edge))}
                 >
                   <path className={css.edgeVisible} d={path} markerEnd={edge.directed === true ? `url(#${id}-arrow-${tone})` : undefined} />
                   <path className={css.edgeHit} d={path} />
@@ -904,11 +999,10 @@ function NodeLinkRenderer({ content, focusedIds }: RendererProps<NodeLinkContent
                   data-selected={selected?.id === node.id || undefined}
                   data-visual-id={node.id}
                   role="button"
-                  tabIndex={0}
                   aria-label={`${node.label}${node.detail === undefined ? '' : `。${node.detail}`}`}
                   transform={`translate(${position.x} ${position.y})`}
                   onClick={() => selectNode(node)}
-                  onKeyDown={event => activateWithKeyboard(event, () => selectNode(node))}
+                  {...roving.itemProps(node.id, () => selectNode(node))}
                 >
                   <circle r="29" />
                   <text textAnchor="middle" dominantBaseline="middle">{node.label}</text>
@@ -917,6 +1011,21 @@ function NodeLinkRenderer({ content, focusedIds }: RendererProps<NodeLinkContent
             })}
           </g>
         </svg>
+      </div>
+      <div className={css.srOnly}>
+        <p>{summary}</p>
+        <ul>
+          {content.nodes.map(node => (
+            <li key={node.id}>{node.detail === undefined ? node.label : `${node.label}: ${node.detail}`}</li>
+          ))}
+          {content.edges.map(edge => {
+            const connection = labelTemplate(labels.connection, {
+              from: nodeById.get(edge.from)?.label ?? edge.from,
+              to: nodeById.get(edge.to)?.label ?? edge.to,
+            })
+            return <li key={edge.id}>{edge.label === undefined ? connection : `${connection}, ${edge.label}`}</li>
+          })}
+        </ul>
       </div>
       {selected === undefined ? (
         <p className={css.interactionHint}>{labels.nodeLinkInteractionHint}</p>
@@ -943,6 +1052,9 @@ function Scene2DRenderer({ content, focusedIds }: RendererProps<Scene2DContent>)
   const zeroX = content.xAxis.min <= 0 && content.xAxis.max >= 0 ? scaleX(0, content.xAxis, geometry) : undefined
   const zeroY = content.yAxis.min <= 0 && content.yAxis.max >= 0 ? scaleY(0, content.yAxis, geometry) : undefined
 
+  const rovingIds = useMemo(() => content.elements.map(element => element.id), [content.elements])
+  const roving = useRovingFocus(rovingIds)
+
   const selectElement = (element: Scene2DContent['elements'][number]): void => setSelected({
     id: element.id,
     label: element.type === 'label' ? element.text : element.label ?? labelTemplate(labels.elementFallback, { id: element.id }),
@@ -954,6 +1066,7 @@ function Scene2DRenderer({ content, focusedIds }: RendererProps<Scene2DContent>)
     <div className={css.sceneRenderer}>
       <div className={css.sceneViewport} ref={regionRef}>
         <svg
+          ref={roving.containerRef}
           className={css.sceneSvg}
           width={geometry.width}
           height={geometry.height}
@@ -991,10 +1104,9 @@ function Scene2DRenderer({ content, focusedIds }: RendererProps<Scene2DContent>)
                 'data-selected': selected?.id === element.id || undefined,
                 'data-visual-id': element.id,
                 role: 'button',
-                tabIndex: 0,
                 'aria-label': `${element.type === 'label' ? element.text : element.label ?? element.type}${element.detail === undefined ? '' : `。${element.detail}`}`,
                 onClick: () => selectElement(element),
-                onKeyDown: (event: KeyboardEvent<SVGGElement>) => activateWithKeyboard(event, () => selectElement(element)),
+                ...roving.itemProps(element.id, () => selectElement(element)),
               } as const
               if (element.type === 'point') {
                 const x = scaleX(element.x, content.xAxis, geometry)
@@ -1115,7 +1227,7 @@ function RelationRenderer({ content, focusedIds }: RendererProps<RelationContent
   const sharedItems = content.items.filter(item => item.setIds.length !== 1)
   return (
     <div className={css.relationRenderer}>
-      <div className={css.setMap} aria-label={labels.setsLabel}>
+      <div className={css.setMap} role="group" aria-label={labels.setsLabel}>
         <div className={css.setZones}>
           {content.sets.map((set, setIndex) => (
             <section key={set.id} className={css.setZone} data-tone={toneAt(set.tone, setIndex)} data-focus-state={focusState(set.id, focusedIds)} data-visual-id={set.id}>
@@ -1176,7 +1288,7 @@ function TimelineRenderer({ content, focusedIds }: RendererProps<TimelineContent
     return (
       <div className={css.timelineRenderer} role="group" aria-label={labels.timelineLabel}>
         {eras.length === 0 ? null : (
-          <div className={css.timelineEraChips} aria-label={labels.timelineEraKind}>
+          <div className={css.timelineEraChips} role="group" aria-label={labels.timelineEraKind}>
             {eras.map((era, index) => <button key={era.id} type="button" data-tone={toneAt(era.tone, index)} data-focus-state={focusState(era.id, focusedIds)} data-visual-id={era.id} onClick={() => selectEra(era)}><strong>{era.label}</strong><span>{content.events[eventIndex.get(era.startEventId) ?? 0]?.time} – {content.events[eventIndex.get(era.endEventId) ?? 0]?.time}</span></button>)}
           </div>
         )}
@@ -1266,7 +1378,7 @@ function FormulaStepsRenderer({ content, focusedIds }: RendererProps<FormulaStep
     else if (event.key === 'End') { event.preventDefault(); setRevealedIndex(lastIndex) }
   }
   return (
-    <div className={css.formulaRenderer} tabIndex={0} onKeyDown={onKeyDown} aria-label={labels.formulaLabel}>
+    <div className={css.formulaRenderer} role="group" tabIndex={0} onKeyDown={onKeyDown} aria-label={labels.formulaLabel}>
       <div className={css.formulaMeta}>
         <span>{labelTemplate(labels.formulaProgress, { current: revealedIndex + 1, total: content.steps.length })}</span>
         {content.notation === undefined ? null : <code>{content.notation}</code>}
@@ -1307,6 +1419,7 @@ function studyRoleLabel(role: StudyMapContent['concepts'][number]['role'], label
 
 function StudyMapRenderer({ content, focusedIds }: RendererProps<StudyMapContent>) {
   const labels = useVisualLabels()
+  const id = useId()
   const conceptById = useMemo(() => new Map(content.concepts.map(concept => [concept.id, concept])), [content.concepts])
   const focusedConcept = content.concepts.find(concept => focusedIds.has(concept.id))
   const focusedSection = content.sections.find(section => focusedIds.has(section.id))
@@ -1343,14 +1456,19 @@ function StudyMapRenderer({ content, focusedIds }: RendererProps<StudyMapContent
       <div className={css.studyLayout}>
         <nav className={css.studySections} role="tablist" aria-label={labels.studySections}>
           {content.sections.map((item, index) => (
-            <button key={item.id} type="button" role="tab" tabIndex={item.id === section?.id ? 0 : -1} aria-selected={item.id === section?.id} data-focus-state={relatedFocusState(item.id, content.concepts.filter(concept => concept.sectionId === item.id).map(concept => concept.id), focusedIds)} data-visual-id={item.id} onClick={() => selectSection(item.id)} onKeyDown={event => sectionKeyDown(event, index)}>
+            <button key={item.id} type="button" role="tab" id={`${id}-tab-${item.id}`} aria-controls={`${id}-panel`} tabIndex={item.id === section?.id ? 0 : -1} aria-selected={item.id === section?.id} data-focus-state={relatedFocusState(item.id, content.concepts.filter(concept => concept.sectionId === item.id).map(concept => concept.id), focusedIds)} data-visual-id={item.id} onClick={() => selectSection(item.id)} onKeyDown={event => sectionKeyDown(event, index)}>
               <span>{index + 1}</span><strong>{item.label}</strong>{item.anchor === undefined ? null : <small>{item.anchor}</small>}
             </button>
           ))}
         </nav>
-        <section className={css.studySectionPanel} role="tabpanel">
+        <section
+          className={css.studySectionPanel}
+          role="tabpanel"
+          id={`${id}-panel`}
+          aria-labelledby={section === undefined ? undefined : `${id}-tab-${section.id}`}
+        >
           {section === undefined ? null : <header><div><span>{section.anchor === undefined ? labels.studySummary : `${labels.studyAnchor} · ${section.anchor}`}</span><h4>{section.label}</h4></div>{section.summary === undefined ? null : <p>{section.summary}</p>}</header>}
-          <div className={css.studyConcepts} aria-label={labels.studyConcepts}>
+          <div className={css.studyConcepts} role="group" aria-label={labels.studyConcepts}>
             {concepts.map((concept, index) => {
               const role = studyRoleLabel(concept.role, labels)
               const prerequisites = (concept.prerequisiteIds ?? []).map(id => conceptById.get(id)?.label ?? id)
@@ -1410,9 +1528,15 @@ function RecallDeckRenderer({ content, focusedIds, storageKey }: RendererProps<R
   const [stage, setStage] = useState<RecallStage>(initial.stage)
   const [statuses, setStatuses] = useState<Record<string, RecallStatus>>(initial.statuses)
   const current = content.cards[cardIndex]
+  const followedFocus = useRef(-1)
   useEffect(() => {
     const focusedIndex = content.cards.findIndex(card => focusedIds.has(card.id))
-    if (focusedIndex >= 0) { setCardIndex(focusedIndex); setStage('prompt') }
+    // Only a genuinely new focus target moves the deck; re-running with the
+    // same target must not collapse a card the learner already revealed.
+    if (focusedIndex < 0 || focusedIndex === followedFocus.current) return
+    followedFocus.current = focusedIndex
+    setCardIndex(focusedIndex)
+    setStage('prompt')
   }, [content.cards, focusedIds])
   useEffect(() => {
     if (storageKey === undefined || typeof sessionStorage === 'undefined') return
@@ -1437,7 +1561,7 @@ function RecallDeckRenderer({ content, focusedIds, storageKey }: RendererProps<R
     else if (event.key === 'ArrowRight') { event.preventDefault(); move(1) }
   }
   return (
-    <div className={css.recallRenderer} tabIndex={0} onKeyDown={onKeyDown} aria-label={labels.recallDeckLabel}>
+    <div className={css.recallRenderer} role="group" tabIndex={0} onKeyDown={onKeyDown} aria-label={labels.recallDeckLabel}>
       <div className={css.recallToolbar}>
         <span>{labelTemplate(labels.recallProgress, { current: cardIndex + 1, total: content.cards.length })}</span>
         <output>{labelTemplate(labels.recallStatus, { mastered: masteredCount, review: reviewCount })}</output>
@@ -1507,12 +1631,15 @@ export function LearningVisualV4({
   const focusedIds = useMemo(() => new Set(frame?.focusIds ?? []), [frame?.focusIds])
   const labels = useMemo(() => ({ ...DEFAULT_LABELS, ...suppliedLabels }), [suppliedLabels])
 
-  useEffect(() => setFrameIndex(initialFrameIndex), [initialFrameIndex, visual])
+  // Keyed on the sequence, not the whole visual: a re-render that produces an
+  // equivalent definition must not rewind the step the learner chose.
+  useEffect(() => setFrameIndex(initialFrameIndex), [initialFrameIndex, visual.sequence])
 
   return (
     <VisualLabelsContext.Provider value={labels}>
       <section
         className={css.visualShell}
+        {...learningScope}
         data-learning-visual={visual.content.kind}
         data-render-state="ready"
         aria-labelledby={titleId}

@@ -1,6 +1,6 @@
 import { Context, Service } from '@deepseek-ai/cordis';
 import type { Agent } from '@deepseek-ai/dsh-agent';
-import { type LearningCheckpointResultV1, type LearningCheckpointV1, type LearningActivityV2, type LearningActivityV1, type LearningQuestionV2, type LearningRevealV2, type LearningResponseV2, type LearningResponseV1 } from './protocol.ts';
+import { type LearningVisualStatusV4, type LearningCheckpointResultV1, type LearningCheckpointV1, type LearningActivityV2, type LearningActivityV1, type LearningQuestionV2, type LearningRevealV2, type LearningResponseV2, type LearningResponseV1 } from './protocol.ts';
 import { type LearnerState, type LearnerStateCorrection, type LearnerStateEvent, type ObservableLearnerEvent } from './learner-state.ts';
 export declare const INTERACTIVE_LEARNING_PACKAGE = "@dsh-portable/interactive-learning";
 export declare const DEFAULT_LEARNING_WAIT_TIMEOUT_MS: number;
@@ -105,8 +105,16 @@ export declare class LearningActivityBroker extends Service {
     private abortPendingCheckpointSession;
     private appendLearnerState;
     private recordAutomaticEvents;
-    /** Record the concrete assistant move without adding another user wait. */
-    recordVisual(agent: Agent | undefined, callId: string): void;
+    /**
+     * Record the concrete assistant move without adding another user wait.
+     *
+     * A composition with no Learning Client renders nothing, so the move never
+     * happened: claiming it would both mislead the next teaching step and write
+     * a false observation into the session's pedagogical state.
+     *
+     * @returns whether the learner can actually see this visual.
+     */
+    recordVisual(agent: Agent | undefined, callId: string): LearningVisualStatusV4;
     private recordCheckpointOutcome;
     /** Optional V4.1 path: one answer-free checkpoint, independent of V2 lessons. */
     presentCheckpoint(request: PresentLearningCheckpointRequest): Promise<LearningCheckpointResultV1>;

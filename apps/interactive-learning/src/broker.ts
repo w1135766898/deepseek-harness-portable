@@ -16,6 +16,7 @@ import {
   parseLearningActivity,
   parseLearningActivityV2,
   parseLearningResponseV2,
+  type LearningVisualStatusV4,
   type LearningCheckpointResultV1,
   type LearningCheckpointV1,
   type LearningActivityV2,
@@ -478,10 +479,19 @@ export class LearningActivityBroker extends Service {
     }
   }
 
-  /** Record the concrete assistant move without adding another user wait. */
-  recordVisual(agent: Agent | undefined, callId: string): void {
-    if (agent === undefined) return
+  /**
+   * Record the concrete assistant move without adding another user wait.
+   *
+   * A composition with no Learning Client renders nothing, so the move never
+   * happened: claiming it would both mislead the next teaching step and write
+   * a false observation into the session's pedagogical state.
+   *
+   * @returns whether the learner can actually see this visual.
+   */
+  recordVisual(agent: Agent | undefined, callId: string): LearningVisualStatusV4 {
     const stableCallId = boundedIdentity(callId, 'callId')
+    if (!this.hasRichClient()) return 'unavailable'
+    if (agent === undefined) return 'ready'
     this.recordAutomaticEvents(agent, [{
       type: 'assistant_move_observed',
       move: 'visual',
@@ -491,6 +501,7 @@ export class LearningActivityBroker extends Service {
         summary: 'The assistant rendered one non-blocking semantic visual.',
       },
     }])
+    return 'ready'
   }
 
   private recordCheckpointOutcome(
