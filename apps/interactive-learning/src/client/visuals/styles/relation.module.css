@@ -1,0 +1,184 @@
+/** `relation`: comparison table, pairwise matrix and set map. */
+
+.tableViewport { padding: var(--lx-space-2xs); }
+
+.relationTable {
+  width: 100%;
+  min-width: 460px;
+  border-spacing: 0;
+  border-collapse: separate;
+  table-layout: fixed;
+  color: var(--lx-label-primary);
+  font-size: var(--lx-text-xs);
+  line-height: var(--lx-leading-xs);
+}
+
+.relationTable th,
+.relationTable td {
+  border-right: 1px solid var(--lx-border-subtle);
+  border-bottom: 1px solid var(--lx-border-subtle);
+  padding: var(--lx-space-sm) var(--lx-space-md);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.relationTable tr > :last-child { border-right: 0; }
+.relationTable tbody tr:last-child > * { border-bottom: 0; }
+
+.relationTable thead th {
+  background: color-mix(in srgb, var(--lx-accent-soft) 30%, transparent);
+  color: var(--lx-label-primary);
+  font-size: var(--lx-text-sm);
+  font-weight: var(--lx-weight-strong);
+}
+
+.relationTable thead th:first-child,
+.relationTable tbody th { width: 24%; }
+
+.relationTable tbody th {
+  background: var(--lx-surface-sunken);
+  color: var(--lx-label-primary);
+  text-align: left;
+  font-weight: var(--lx-weight-medium);
+}
+
+.relationTable td { color: var(--lx-label-secondary); }
+.relationTable td[data-tone] { color: var(--visual-tone); font-weight: var(--lx-weight-medium); }
+
+.relationTable th[data-visual-state],
+.relationTable tr[data-visual-state] > * { opacity: var(--lx-vs-alpha); }
+
+.relationTable th[data-visual-state="current"] { box-shadow: inset 0 -3px 0 var(--lx-accent); }
+.relationTable tr[data-visual-state="current"] > th { box-shadow: inset 3px 0 0 var(--lx-accent); }
+
+.cellButton {
+  max-width: 100%;
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: var(--lx-radius-xs);
+  padding: var(--lx-space-3xs) var(--lx-space-xs);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.cellButton:hover { border-color: var(--lx-border-default); background: color-mix(in srgb, var(--lx-accent) 8%, transparent); }
+.cellButton:active { background: color-mix(in srgb, var(--lx-accent) 14%, transparent); }
+
+.matrixTable td { padding: var(--lx-space-xs); }
+
+.matrixCell {
+  width: 100%;
+  min-height: 38px;
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--visual-tone) 28%, var(--lx-border-subtle));
+  border-radius: var(--lx-radius-sm);
+  padding: var(--lx-space-2xs) var(--lx-space-xs);
+  background: color-mix(in srgb, var(--visual-tone) 10%, transparent);
+  color: var(--visual-tone);
+  font: inherit;
+  font-size: var(--lx-text-2xs);
+  opacity: var(--lx-vs-alpha);
+  cursor: pointer;
+}
+
+.matrixCell:hover { border-color: var(--visual-tone); background: color-mix(in srgb, var(--visual-tone) 18%, transparent); }
+.matrixCell[data-visual-state="current"] { border-width: 2px; font-weight: var(--lx-weight-strong); }
+
+.emptyCell { color: var(--lx-label-tertiary); font-size: var(--lx-text-md); }
+
+.setMap {
+  display: grid;
+  gap: var(--lx-space-lg);
+}
+
+.setZones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: var(--lx-space-md);
+}
+
+.setZone {
+  position: relative;
+  min-width: 0;
+  border: 1.5px solid color-mix(in srgb, var(--visual-tone) 50%, transparent);
+  border-radius: var(--lx-radius-lg);
+  padding: var(--lx-space-lg);
+  background: color-mix(in srgb, var(--visual-tone) 7%, transparent);
+  opacity: var(--lx-vs-alpha);
+}
+
+.setZone[data-visual-state="current"] { border-width: 2px; }
+
+.setZone h4,
+.intersections h4 {
+  display: flex;
+  align-items: center;
+  gap: var(--lx-space-sm);
+  margin: 0 0 var(--lx-space-sm);
+  color: var(--lx-label-primary);
+  font-size: var(--lx-text-sm);
+  font-weight: var(--lx-weight-strong);
+  line-height: var(--lx-leading-sm);
+}
+
+.setZone h4 > span {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: var(--lx-radius-circle);
+  background: var(--visual-tone);
+}
+
+.setZone > div {
+  display: flex;
+  min-height: 34px;
+  flex-wrap: wrap;
+  gap: var(--lx-space-xs);
+  align-content: flex-start;
+}
+
+.setItem {
+  border-color: color-mix(in srgb, var(--visual-tone) 28%, var(--lx-border-subtle));
+  border-radius: var(--lx-radius-pill);
+  background: color-mix(in srgb, var(--visual-tone) 10%, var(--lx-surface-base));
+  opacity: var(--lx-vs-alpha);
+}
+
+.emptySet {
+  align-self: center;
+  color: var(--lx-label-tertiary);
+  font-size: var(--lx-text-2xs);
+  line-height: var(--lx-leading-2xs);
+}
+
+.intersections {
+  border: 1px dashed var(--lx-border-strong);
+  border-radius: var(--lx-radius-lg);
+  padding: var(--lx-space-md);
+}
+
+.intersections > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: var(--lx-space-sm);
+}
+
+.intersectionItem {
+  display: grid;
+  gap: var(--lx-space-3xs);
+  justify-items: start;
+  padding: var(--lx-space-xs) var(--lx-space-sm);
+  text-align: left;
+  opacity: var(--lx-vs-alpha);
+}
+
+.intersectionItem strong { color: var(--lx-label-primary); font-size: var(--lx-text-2xs); line-height: var(--lx-leading-2xs); }
+.intersectionItem span { color: var(--lx-label-tertiary); font-size: var(--lx-text-micro); line-height: var(--lx-leading-micro); }
+
+@container learning-visual-v4 (max-width: 560px) {
+  .relationTable { min-width: 420px; }
+}
