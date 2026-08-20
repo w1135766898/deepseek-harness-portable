@@ -2,7 +2,7 @@
  * `node_link`: topologies, trees, dependency and process graphs.
  *
  * Three things changed relative to the first implementation, all of them
- * visible in a five-node decision tree:
+ * visible in the five-node decision tree that prompted them.
  *
  * 1. Geometry comes from the content (see `layout/graph-layout.ts`) instead of
  *    a fixed 560×390 canvas with 29px circles, so a small tree is compact and a

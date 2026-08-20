@@ -127,8 +127,7 @@
   font-size: var(--lx-text-2xs);
   line-height: var(--lx-leading-2xs);
   cursor: pointer;
-  transition:
-    background-color var(--lx-motion-fast) var(--lx-easing),
+  transition: background-color var(--lx-motion-fast) var(--lx-easing),
     border-color var(--lx-motion-fast) var(--lx-easing),
     color var(--lx-motion-fast) var(--lx-easing);
 }

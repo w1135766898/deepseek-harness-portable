@@ -101,8 +101,7 @@
   stroke-opacity: var(--lx-vs-alpha);
   stroke-width: calc(1.6px + var(--lx-vs-ring) * 1.2px);
   vector-effect: non-scaling-stroke;
-  transition:
-    fill-opacity var(--lx-motion-base) var(--lx-easing),
+  transition: fill-opacity var(--lx-motion-base) var(--lx-easing),
     stroke-opacity var(--lx-motion-base) var(--lx-easing),
     stroke-width var(--lx-motion-base) var(--lx-easing);
 }

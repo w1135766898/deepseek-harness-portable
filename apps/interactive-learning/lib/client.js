@@ -2060,13 +2060,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:src/client/LearningActivity.module.css.mjs
-		const css$2 = "._7ar4Xq_inlineActivity{gap:var(--lx-space-xl);min-width:0;color:var(--lx-label-primary);font-size:var(--lx-text-md);flex-direction:column;line-height:28px;display:flex}._7ar4Xq_scaffold{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);align-self:flex-start}._7ar4Xq_scaffold summary{cursor:pointer}._7ar4Xq_activityActions{align-items:center;gap:var(--lx-space-lg);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm);margin-top:-6px;display:flex}._7ar4Xq_error{color:var(--lx-label-error);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);margin:0}._7ar4Xq_activityContent,._7ar4Xq_controls,._7ar4Xq_answerField,._7ar4Xq_stepFocus,._7ar4Xq_prediction{flex-direction:column;display:flex}._7ar4Xq_activityContent{gap:var(--lx-space-xl)}._7ar4Xq_prompt{color:var(--lx-label-primary);font-size:var(--lx-text-md);margin:0;font-weight:400;line-height:28px}._7ar4Xq_explorer{gap:var(--lx-space-xl);flex-direction:column;min-width:0;display:flex}._7ar4Xq_controls{gap:var(--lx-space-lg) var(--lx-space-3xl);grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));display:grid}._7ar4Xq_rangeField{min-width:0;color:var(--lx-label-secondary);font-size:var(--lx-text-sm)}._7ar4Xq_rangeHeader{justify-content:space-between;align-items:baseline;gap:var(--lx-space-lg);margin-bottom:6px;display:flex}._7ar4Xq_rangeHeader label{color:var(--lx-label-primary);font-weight:500}._7ar4Xq_rangeHeader output{color:var(--lx-accent);font-size:var(--lx-text-base);font-variant-numeric:tabular-nums;font-weight:650}._7ar4Xq_rangeControl{grid-template-rows:30px 16px;grid-template-columns:28px minmax(0,1fr) 28px;align-items:center;column-gap:9px;display:grid}._7ar4Xq_stepButton{appearance:none;border:1px solid var(--lx-border-strong);border-radius:var(--lx-radius-xs);width:28px;height:28px;color:var(--lx-label-secondary);font:inherit;font-size:var(--lx-text-lg);line-height:var(--lx-leading-lg);cursor:pointer;background:0 0;padding:0}._7ar4Xq_stepButton:hover:not(:disabled){border-color:var(--lx-accent);color:var(--lx-accent)}._7ar4Xq_stepButton:disabled{cursor:default;opacity:.35}._7ar4Xq_rangeInput{appearance:none;border-radius:var(--lx-radius-pill);background:linear-gradient(to right, var(--lx-border-strongest) 0 var(--range-low), var(--lx-accent) var(--range-low) var(--range-high), var(--lx-border-strongest) var(--range-high) 100%);cursor:pointer;width:100%;height:4px}._7ar4Xq_rangeInput:disabled{cursor:default;opacity:.55}._7ar4Xq_rangeInput::-webkit-slider-runnable-track{border-radius:var(--lx-radius-pill);background:0 0;height:4px}._7ar4Xq_rangeInput::-webkit-slider-thumb{appearance:none;border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:16px;height:16px;box-shadow:0 0 0 1px var(--lx-accent);margin-top:-6px}._7ar4Xq_rangeInput::-moz-range-track{border-radius:var(--lx-radius-pill);background:0 0;height:4px}._7ar4Xq_rangeInput::-moz-range-thumb{border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:10px;height:10px;box-shadow:0 0 0 1px var(--lx-accent)}._7ar4Xq_rangeEnds{color:var(--lx-label-tertiary);font-size:var(--lx-text-2xs);font-variant-numeric:tabular-nums;line-height:var(--lx-leading-2xs);grid-column:2;justify-content:space-between;display:flex;position:relative}._7ar4Xq_rangeZero{position:absolute;transform:translate(-50%)}._7ar4Xq_chartRegion{min-width:0}._7ar4Xq_chart{width:100%;height:auto;display:block;overflow:visible}._7ar4Xq_plotFrame{fill:var(--lx-surface-base);stroke:var(--lx-border-strong);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_gridLine{stroke:var(--lx-border-subtle);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_zeroAxis{stroke:var(--lx-border-strongest);stroke-width:1.25px}._7ar4Xq_tickLabel{fill:var(--lx-label-tertiary);font-size:var(--lx-text-2xs);font-variant-numeric:tabular-nums}._7ar4Xq_axisLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-xs);font-weight:500}._7ar4Xq_curve{fill:none;stroke:var(--lx-accent);stroke-width:3px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}._7ar4Xq_curve[data-curve=\"1\"]{stroke:var(--lx-success);stroke-dasharray:9 5}._7ar4Xq_curve[data-curve=\"2\"]{stroke:var(--lx-warn);stroke-dasharray:2 6}._7ar4Xq_legend{gap:var(--lx-space-sm) var(--lx-space-lg);color:var(--lx-label-secondary);font-size:var(--lx-text-xs);flex-wrap:wrap;margin:0 0 5px 64px;padding:0;list-style:none;display:flex}._7ar4Xq_legend li:before{content:\"\";border-top:3px solid var(--lx-accent);vertical-align:middle;width:18px;height:0;margin-right:5px;display:inline-block}._7ar4Xq_legend li[data-curve=\"1\"]:before{border-top-color:var(--lx-success);border-top-style:dashed}._7ar4Xq_legend li[data-curve=\"2\"]:before{border-top-color:var(--lx-warn);border-top-style:dotted}._7ar4Xq_answerField{gap:var(--lx-space-xs);color:var(--lx-label-secondary);font-size:var(--lx-text-sm)}._7ar4Xq_answerField textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--lx-border-default);min-height:52px;padding:var(--lx-space-xs) 0;color:var(--lx-label-primary);font:inherit;background:0 0;border-radius:0;line-height:1.5}._7ar4Xq_primaryRow,._7ar4Xq_navigation{gap:var(--lx-space-sm);display:flex}._7ar4Xq_primaryRow{justify-content:flex-start}._7ar4Xq_navigation{justify-content:space-between}._7ar4Xq_primaryButton,._7ar4Xq_ghostButton,._7ar4Xq_revealButton,._7ar4Xq_textButton{min-height:var(--lx-control-height-md);appearance:none;border-radius:var(--lx-radius-sm);padding:var(--lx-control-padding-md);font:inherit;font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);cursor:pointer;transition:background var(--lx-motion-fast) var(--lx-easing), border-color var(--lx-motion-fast) var(--lx-easing), color var(--lx-motion-fast) var(--lx-easing);justify-content:center;align-items:center;display:inline-flex}._7ar4Xq_primaryButton:hover:not(:disabled),._7ar4Xq_revealButton:hover:not(:disabled){background:color-mix(in srgb, var(--lx-accent) 88%, var(--lx-label-primary))}._7ar4Xq_ghostButton:hover:not(:disabled),._7ar4Xq_textButton:hover:not(:disabled){border-color:var(--lx-accent);color:var(--lx-accent)}._7ar4Xq_primaryButton,._7ar4Xq_revealButton{border:1px solid var(--lx-accent);background:var(--lx-accent);color:var(--lx-label-on-accent,white)}._7ar4Xq_ghostButton{border:1px solid var(--lx-border-default);color:var(--lx-label-secondary);background:0 0}._7ar4Xq_textButton{color:var(--lx-label-tertiary);background:0 0;border:1px solid #0000}._7ar4Xq_primaryButton:disabled,._7ar4Xq_ghostButton:disabled,._7ar4Xq_revealButton:disabled,._7ar4Xq_textButton:disabled{cursor:default;opacity:var(--lx-control-disabled-opacity)}._7ar4Xq_stepMeta{color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);justify-content:space-between;align-items:center;display:flex}._7ar4Xq_processMap{grid-template-columns:repeat(var(--process-step-count), minmax(0, 1fr));margin:0;padding:0;list-style:none;display:grid}._7ar4Xq_processStep{min-width:0;position:relative}._7ar4Xq_processStep:not(:last-child):after{z-index:0;background:var(--lx-border-default);content:\"\";height:2px;position:absolute;top:13px;left:calc(50% + 16px);right:calc(16px - 50%)}._7ar4Xq_processStep[data-connector-complete]:after{background:var(--lx-accent)}._7ar4Xq_processStepButton{z-index:1;align-items:center;gap:var(--lx-space-xs);width:100%;min-width:0;padding:0 var(--lx-space-2xs);color:var(--lx-label-tertiary);text-align:center;font:inherit;font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);cursor:pointer;background:0 0;border:0;flex-direction:column;display:flex;position:relative}._7ar4Xq_processStepButton:disabled{cursor:default}._7ar4Xq_processNode{box-sizing:border-box;border:1px solid var(--lx-border-strongest);border-radius:var(--lx-radius-circle);background:var(--lx-surface-base);width:28px;height:28px;color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);font-variant-numeric:tabular-nums;place-items:center;line-height:1;display:grid}._7ar4Xq_processTitle{-webkit-line-clamp:2;-webkit-box-orient:vertical;min-width:0;display:-webkit-box;overflow:hidden}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processNode{border-color:var(--lx-accent);background:var(--lx-accent-soft);color:var(--lx-accent)}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processTitle{color:var(--lx-label-primary);font-weight:500}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processNode{border-color:var(--lx-accent);background:var(--lx-accent);color:var(--lx-label-inverted)}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processTitle{color:var(--lx-label-secondary)}._7ar4Xq_processMapVertical{grid-template-columns:1fr}._7ar4Xq_processMapVertical ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMapVertical ._7ar4Xq_processStepButton{align-items:flex-start;gap:var(--lx-space-md);padding:var(--lx-space-2xs) 0 var(--lx-space-md);text-align:left;flex-direction:row}._7ar4Xq_processMapVertical ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMapVertical ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_stepFocus{gap:var(--lx-space-lg);border-left:2px solid var(--lx-accent);padding-left:16px}._7ar4Xq_stepFocus h3,._7ar4Xq_prediction p{margin:0}._7ar4Xq_stepFocus h3{color:var(--lx-label-primary);font-size:var(--lx-text-md);font-weight:500;line-height:var(--lx-leading-md)}._7ar4Xq_stepFocus>._7ar4Xq_revealButton{align-self:flex-start}._7ar4Xq_prediction{gap:var(--lx-space-md);border:0;margin:0;padding:0}._7ar4Xq_prediction legend{color:var(--lx-accent);font-size:var(--lx-text-xs);margin-bottom:8px;font-weight:500}._7ar4Xq_prediction textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--lx-border-default);min-height:52px;padding:var(--lx-space-xs) 0;color:var(--lx-label-primary);font:inherit;background:0 0}._7ar4Xq_predictionOptions{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:0 18px;display:grid}._7ar4Xq_option{gap:var(--lx-space-sm);border-bottom:1px solid var(--lx-border-subtle);padding:var(--lx-space-sm) 0;color:var(--lx-label-secondary);cursor:pointer;align-items:flex-start;display:flex}._7ar4Xq_option[data-selected]{color:var(--lx-label-primary)}._7ar4Xq_option input{accent-color:var(--lx-accent);margin-top:3px}._7ar4Xq_revealed{color:var(--lx-label-secondary);line-height:1.6}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) minmax(16px,36px) 24px minmax(16px,36px) minmax(0,1fr);align-items:center;display:grid}._7ar4Xq_compareHeader{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);padding-bottom:4px}._7ar4Xq_compareHeader strong{min-width:0;font-weight:500}._7ar4Xq_compareHeader strong[data-side=left]{text-align:right;grid-column:1}._7ar4Xq_compareHeader strong[data-side=right]{text-align:left;grid-column:5}._7ar4Xq_compareHeaderLink{color:var(--lx-label-tertiary);text-align:center;grid-column:3}._7ar4Xq_compareRows{min-width:0}._7ar4Xq_compareRow{min-width:0;padding:var(--lx-space-lg) 0;cursor:pointer;background:0 0;position:relative}._7ar4Xq_compareRow+._7ar4Xq_compareRow{border-top:1px solid var(--lx-border-default)}._7ar4Xq_compareLine{background:var(--lx-border-strong);height:1px}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareLine{background:var(--lx-accent);height:2px}._7ar4Xq_compareSelector{place-items:center;display:grid}._7ar4Xq_compareSelector input{width:16px;height:16px;accent-color:var(--lx-accent);margin:0}._7ar4Xq_compareItem{min-width:0;padding:0 var(--lx-space-xs);color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:1.5}._7ar4Xq_compareItem[data-side=left]{text-align:right}._7ar4Xq_compareItem[data-side=right]{text-align:left}._7ar4Xq_compareItem strong{font-weight:500}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareItem strong{color:var(--lx-accent)}._7ar4Xq_compareItem p{color:var(--lx-label-tertiary);margin:4px 0 0}._7ar4Xq_emptyCell{padding:0 var(--lx-space-xs);color:var(--lx-label-tertiary)}._7ar4Xq_emptyCell[data-side=left]{text-align:right}._7ar4Xq_emptyCell[data-side=right]{text-align:left}._7ar4Xq_rowPrompt{max-width:80%;color:var(--lx-label-tertiary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-2xs);text-align:center;grid-column:1/6;justify-self:center;margin-top:6px}._7ar4Xq_inlineStatus{align-items:center;gap:var(--lx-space-sm);width:max-content;max-width:100%;color:var(--lx-label-tertiary);text-align:left;font:inherit;font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);background:0 0;border:0;margin:0;padding:0;display:flex}._7ar4Xq_runningDot{border-radius:var(--lx-radius-circle);background:var(--lx-accent);flex:none;width:6px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_pulse}._7ar4Xq_skeletonLine{border-radius:var(--lx-radius-pill);background:var(--lx-border-default);width:64px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_skeletonPulse}._7ar4Xq_inlineResult{align-items:baseline;gap:var(--lx-space-sm);color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);flex-wrap:wrap;margin:0;display:flex}._7ar4Xq_inlineFallback{gap:var(--lx-space-xs);border-left:2px solid var(--lx-danger);border-radius:0 var(--lx-radius-sm) var(--lx-radius-sm) 0;padding:var(--lx-space-md) var(--lx-space-lg);background:color-mix(in srgb, var(--lx-danger) 6%, transparent);flex-direction:column;display:flex}._7ar4Xq_fallbackReason{color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);overflow-wrap:anywhere;margin:0}._7ar4Xq_fallbackText{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base)}._7ar4Xq_resultMark{color:var(--lx-success)}._7ar4Xq_errorMark{color:var(--lx-label-error)}._7ar4Xq_resultEvidence{color:var(--lx-label-secondary);font-variant-numeric:tabular-nums}._7ar4Xq_resultAnswer{color:var(--lx-label-tertiary)}._7ar4Xq_legacyReveal{gap:var(--lx-space-2xs);color:var(--lx-label-secondary);font-size:var(--lx-text-base);line-height:var(--lx-leading-md);display:grid}._7ar4Xq_legacyReveal strong{color:var(--lx-label-primary);font-weight:550}._7ar4Xq_srOnly{clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}._7ar4Xq_checkpoint{gap:var(--lx-space-lg);min-width:0;margin:var(--lx-space-sm) 0 var(--lx-space-xl);border:var(--lx-card-border);border-radius:var(--lx-card-radius);padding:var(--lx-card-padding);background:var(--lx-card-background);color:var(--lx-label-primary);box-shadow:var(--lx-shadow-lg);flex-direction:column;display:flex;container:_7ar4Xq_learning-checkpoint/inline-size}._7ar4Xq_checkpointHeader,._7ar4Xq_checkpointForm,._7ar4Xq_checkpointField{flex-direction:column;min-width:0;display:flex}._7ar4Xq_checkpointHeader{gap:var(--lx-space-xs)}._7ar4Xq_checkpointForm{gap:var(--lx-space-md)}._7ar4Xq_checkpointField{gap:var(--lx-space-xs);color:var(--lx-label-secondary);font-size:var(--lx-text-sm)}._7ar4Xq_checkpointEyebrow{border-radius:var(--lx-radius-pill);width:max-content;padding:var(--lx-space-3xs) var(--lx-space-sm);background:var(--lx-accent-soft);color:var(--lx-accent);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong);letter-spacing:var(--lx-tracking-eyebrow);line-height:var(--lx-leading-xs)}._7ar4Xq_checkpointHeader h2{font-size:var(--lx-text-lg);font-weight:var(--lx-weight-strong);line-height:var(--lx-leading-lg);margin:0}._7ar4Xq_checkpointHeader p{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);margin:0}._7ar4Xq_checkpointInput{box-sizing:border-box;resize:vertical;border:1px solid var(--lx-border-default);border-radius:var(--lx-radius-sm);width:100%;min-height:36px;padding:var(--lx-space-sm) var(--lx-space-md);color:var(--lx-label-primary);font:inherit;background:0 0;line-height:1.5}._7ar4Xq_checkpointCode{font-family:var(--lx-font-mono)}._7ar4Xq_checkpointChoices{gap:var(--lx-space-xs);border:0;margin:0;padding:0;display:grid}._7ar4Xq_checkpointChoices legend{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);margin-bottom:3px;padding:0}._7ar4Xq_checkpointOption{align-items:flex-start;gap:var(--lx-space-sm);color:var(--lx-label-primary);font-size:var(--lx-text-base);line-height:var(--lx-leading-base);cursor:pointer;display:flex}._7ar4Xq_checkpointOption input{accent-color:var(--lx-accent);margin:4px 0 0}._7ar4Xq_checkpointActions{align-items:center;gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}@container _7ar4Xq_learning-checkpoint (width<=340px){._7ar4Xq_checkpointActions>button{flex:auto}._7ar4Xq_checkpointActions>._7ar4Xq_textButton{flex-basis:100%}}._7ar4Xq_checkpointHint{color:var(--lx-label-tertiary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);margin:0}._7ar4Xq_learningVisual{gap:var(--lx-space-lg);min-width:0;color:var(--lx-label-primary);flex-direction:column;margin:4px 0 10px;display:flex}._7ar4Xq_visualDescription,._7ar4Xq_visualTextFallback{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);margin:0}._7ar4Xq_visualControls{gap:var(--lx-space-lg) 28px;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));display:grid}._7ar4Xq_visualRange{gap:var(--lx-space-3xs);cursor:pointer;grid-template-rows:auto 18px 14px;min-width:0;display:grid}._7ar4Xq_visualRangeHeader{justify-content:space-between;align-items:baseline;gap:var(--lx-space-lg);min-width:0;color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm);display:flex}._7ar4Xq_visualRangeHeader output{color:var(--lx-accent);font-size:var(--lx-text-sm);font-variant-numeric:tabular-nums;font-weight:600}._7ar4Xq_visualRange input{appearance:none;border-radius:var(--lx-radius-pill);background:linear-gradient(to right, var(--lx-accent) 0 var(--visual-range-progress), var(--lx-border-default) var(--visual-range-progress) 100%);cursor:pointer;align-self:center;width:100%;height:4px}._7ar4Xq_visualRange input::-webkit-slider-runnable-track{border-radius:var(--lx-radius-pill);background:0 0;height:4px}._7ar4Xq_visualRange input::-webkit-slider-thumb{appearance:none;border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:16px;height:16px;box-shadow:0 0 0 1px var(--lx-accent);margin-top:-6px}._7ar4Xq_visualRange input::-moz-range-track{border-radius:var(--lx-radius-pill);background:0 0;height:4px}._7ar4Xq_visualRange input::-moz-range-thumb{border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:10px;height:10px;box-shadow:0 0 0 1px var(--lx-accent)}._7ar4Xq_visualRangeEnds{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums;line-height:var(--lx-leading-micro);justify-content:space-between;display:flex}._7ar4Xq_visualMetrics{gap:var(--lx-space-sm) var(--lx-space-2xl);color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm);flex-wrap:wrap;display:flex}._7ar4Xq_visualMetrics>span{align-items:baseline;gap:var(--lx-space-sm);display:inline-flex}._7ar4Xq_visualMetrics output{color:var(--lx-accent);font-variant-numeric:tabular-nums;font-weight:550}._7ar4Xq_visualChartRegion{min-width:0}._7ar4Xq_visualLegend{gap:var(--lx-space-sm) var(--lx-space-xl);color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);flex-wrap:wrap;margin:3px 0 0 64px;padding:0;list-style:none;display:flex}._7ar4Xq_visualLegend li{--visual-tone:var(--lx-accent);align-items:center;gap:var(--lx-space-xs);display:inline-flex}._7ar4Xq_visualLegend li>span{border-top:2.5px solid var(--visual-tone);width:18px;height:0;display:inline-block}._7ar4Xq_visualLegend li[data-series-type=points]>span{border-radius:var(--lx-radius-circle);background:var(--visual-tone);border:0;width:8px;height:8px}._7ar4Xq_visualLegend li[data-stroke=dashed]>span{border-top-style:dashed}._7ar4Xq_visualLegend li[data-stroke=dotted]>span{border-top-style:dotted}._7ar4Xq_visualChart{width:100%;height:auto;display:block;overflow:visible}._7ar4Xq_visualPlot{fill:var(--lx-surface-card);stroke:var(--lx-border-default);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_visualGrid{stroke:var(--lx-border-subtle);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_visualTick{fill:var(--lx-label-tertiary);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums}._7ar4Xq_visualAxisLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-2xs)}._7ar4Xq_visualCurve{--visual-tone:var(--lx-accent);fill:none;stroke:var(--visual-tone);stroke-width:2.5px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}._7ar4Xq_visualCurve[data-stroke=dashed]{stroke-dasharray:8 5}._7ar4Xq_visualCurve[data-stroke=dotted]{stroke-dasharray:2 5}._7ar4Xq_visualPoint{--visual-tone:var(--lx-accent);fill:var(--visual-tone);stroke:var(--lx-surface-base);stroke-width:1.5px;vector-effect:non-scaling-stroke}._7ar4Xq_round{gap:var(--lx-space-lg);min-width:0;color:var(--lx-label-primary);flex-direction:column;display:flex}._7ar4Xq_roundHeader{gap:var(--lx-space-2xs);flex-direction:column;display:flex}._7ar4Xq_roundHeader span{color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm)}._7ar4Xq_roundHeader h2,._7ar4Xq_roundProcess h3,._7ar4Xq_roundStructure h3,._7ar4Xq_roundFeedback p{margin:0}._7ar4Xq_roundHeader h2{font-size:var(--lx-text-lg);font-weight:500;line-height:var(--lx-leading-lg)}._7ar4Xq_roundProcess{gap:var(--lx-space-md);border-left:2px solid var(--lx-accent);padding:var(--lx-space-md) 0 var(--lx-space-md) var(--lx-space-lg);grid-template-columns:30px minmax(0,1fr);display:grid}._7ar4Xq_roundNode{border:1px solid var(--lx-accent);border-radius:var(--lx-radius-circle);width:28px;height:28px;color:var(--lx-accent);font-size:var(--lx-text-xs);place-items:center;display:grid}._7ar4Xq_roundProcess[data-final] ._7ar4Xq_roundNode{background:var(--lx-accent);color:var(--lx-label-inverted)}._7ar4Xq_roundParameter,._7ar4Xq_roundParameterValues,._7ar4Xq_roundCurveList{gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}._7ar4Xq_roundParameter{flex-direction:column}._7ar4Xq_roundParameterValues span,._7ar4Xq_roundCurveList span{border:1px solid var(--lx-border-default);border-radius:var(--lx-radius-pill);padding:var(--lx-space-2xs) var(--lx-space-md);color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm)}._7ar4Xq_roundStructure{gap:var(--lx-space-sm) var(--lx-space-lg);grid-template-columns:repeat(2,minmax(0,1fr));display:grid}._7ar4Xq_roundStructure h3{font-size:var(--lx-text-sm);font-weight:500}._7ar4Xq_roundAlignment{gap:var(--lx-space-sm);border-top:1px solid var(--lx-border-default);padding:var(--lx-space-sm) 0;color:var(--lx-label-secondary);font-size:var(--lx-text-sm);cursor:pointer;grid-column:1/3;grid-template-columns:20px 1fr 1fr;display:grid}._7ar4Xq_roundAlignment input{accent-color:var(--lx-accent);margin-top:3px}._7ar4Xq_roundAlignment small{color:var(--lx-label-tertiary);grid-column:2/4}._7ar4Xq_roundAlignment[data-selected]{color:var(--lx-accent)}._7ar4Xq_roundFeedback{gap:var(--lx-space-sm);color:var(--lx-label-secondary);display:grid}._7ar4Xq_completedRound{min-width:0}._7ar4Xq_revealTransition{animation:.7s both _7ar4Xq_revealCurrentFrame}._7ar4Xq_round[data-round-state=completed] ._7ar4Xq_revealTransition,._7ar4Xq_round[data-round-state=ready_to_continue] ._7ar4Xq_revealTransition,._7ar4Xq_round[data-round-state=ack_submitting] ._7ar4Xq_revealTransition{animation:none}@keyframes _7ar4Xq_revealCurrentFrame{0%{opacity:.45;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes _7ar4Xq_pulse{0%,to{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}@keyframes _7ar4Xq_skeletonPulse{0%,to{opacity:.35}50%{opacity:.75}}@media (width<=560px){._7ar4Xq_processMap{grid-template-columns:1fr}._7ar4Xq_processMap ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMap ._7ar4Xq_processStepButton{align-items:flex-start;gap:var(--lx-space-md);padding:var(--lx-space-2xs) 0 var(--lx-space-md);text-align:left;flex-direction:row}._7ar4Xq_processMap ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMap ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) 12px 22px 12px minmax(0,1fr)}._7ar4Xq_rowPrompt{max-width:100%}}@media (width<=420px){._7ar4Xq_legend{margin-left:56px}._7ar4Xq_visualLegend{margin-left:54px}._7ar4Xq_stepFocus{padding-left:12px}}@media (prefers-reduced-motion:reduce){._7ar4Xq_runningDot,._7ar4Xq_skeletonLine,._7ar4Xq_revealTransition{animation:none}}";
-		const tagId$2 = "@dsh-portable/interactive-learning/LearningActivity.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$2) + "]") === null) {
+		const css$9 = "._7ar4Xq_inlineActivity{gap:var(--lx-space-xl);min-width:0;color:var(--lx-label-primary);font-size:var(--lx-text-md);flex-direction:column;line-height:28px;display:flex}._7ar4Xq_scaffold{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);align-self:flex-start}._7ar4Xq_scaffold summary{cursor:pointer}._7ar4Xq_activityActions{align-items:center;gap:var(--lx-space-lg);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm);margin-top:-6px;display:flex}._7ar4Xq_error{color:var(--lx-label-error);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);margin:0}._7ar4Xq_activityContent,._7ar4Xq_controls,._7ar4Xq_answerField,._7ar4Xq_stepFocus,._7ar4Xq_prediction{flex-direction:column;display:flex}._7ar4Xq_activityContent{gap:var(--lx-space-xl)}._7ar4Xq_prompt{color:var(--lx-label-primary);font-size:var(--lx-text-md);margin:0;font-weight:400;line-height:28px}._7ar4Xq_explorer{gap:var(--lx-space-xl);flex-direction:column;min-width:0;display:flex}._7ar4Xq_controls{gap:var(--lx-space-lg) var(--lx-space-3xl);grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));display:grid}._7ar4Xq_rangeField{min-width:0;color:var(--lx-label-secondary);font-size:var(--lx-text-sm)}._7ar4Xq_rangeHeader{justify-content:space-between;align-items:baseline;gap:var(--lx-space-lg);margin-bottom:6px;display:flex}._7ar4Xq_rangeHeader label{color:var(--lx-label-primary);font-weight:500}._7ar4Xq_rangeHeader output{color:var(--lx-accent);font-size:var(--lx-text-base);font-variant-numeric:tabular-nums;font-weight:650}._7ar4Xq_rangeControl{grid-template-rows:30px 16px;grid-template-columns:28px minmax(0,1fr) 28px;align-items:center;column-gap:9px;display:grid}._7ar4Xq_stepButton{appearance:none;border:1px solid var(--lx-border-strong);border-radius:var(--lx-radius-xs);width:28px;height:28px;color:var(--lx-label-secondary);font:inherit;font-size:var(--lx-text-lg);line-height:var(--lx-leading-lg);cursor:pointer;background:0 0;padding:0}._7ar4Xq_stepButton:hover:not(:disabled){border-color:var(--lx-accent);color:var(--lx-accent)}._7ar4Xq_stepButton:disabled{cursor:default;opacity:.35}._7ar4Xq_rangeInput{appearance:none;border-radius:var(--lx-radius-pill);background:linear-gradient(to right, var(--lx-border-strongest) 0 var(--range-low), var(--lx-accent) var(--range-low) var(--range-high), var(--lx-border-strongest) var(--range-high) 100%);cursor:pointer;width:100%;height:4px}._7ar4Xq_rangeInput:disabled{cursor:default;opacity:.55}._7ar4Xq_rangeInput::-webkit-slider-runnable-track{border-radius:var(--lx-radius-pill);background:0 0;height:4px}._7ar4Xq_rangeInput::-webkit-slider-thumb{appearance:none;border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:16px;height:16px;box-shadow:0 0 0 1px var(--lx-accent);margin-top:-6px}._7ar4Xq_rangeInput::-moz-range-track{border-radius:var(--lx-radius-pill);background:0 0;height:4px}._7ar4Xq_rangeInput::-moz-range-thumb{border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:10px;height:10px;box-shadow:0 0 0 1px var(--lx-accent)}._7ar4Xq_rangeEnds{color:var(--lx-label-tertiary);font-size:var(--lx-text-2xs);font-variant-numeric:tabular-nums;line-height:var(--lx-leading-2xs);grid-column:2;justify-content:space-between;display:flex;position:relative}._7ar4Xq_rangeZero{position:absolute;transform:translate(-50%)}._7ar4Xq_chartRegion{min-width:0}._7ar4Xq_chart{width:100%;height:auto;display:block;overflow:visible}._7ar4Xq_plotFrame{fill:var(--lx-surface-base);stroke:var(--lx-border-strong);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_gridLine{stroke:var(--lx-border-subtle);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_zeroAxis{stroke:var(--lx-border-strongest);stroke-width:1.25px}._7ar4Xq_tickLabel{fill:var(--lx-label-tertiary);font-size:var(--lx-text-2xs);font-variant-numeric:tabular-nums}._7ar4Xq_axisLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-xs);font-weight:500}._7ar4Xq_curve{fill:none;stroke:var(--lx-accent);stroke-width:3px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}._7ar4Xq_curve[data-curve=\"1\"]{stroke:var(--lx-success);stroke-dasharray:9 5}._7ar4Xq_curve[data-curve=\"2\"]{stroke:var(--lx-warn);stroke-dasharray:2 6}._7ar4Xq_legend{gap:var(--lx-space-sm) var(--lx-space-lg);color:var(--lx-label-secondary);font-size:var(--lx-text-xs);flex-wrap:wrap;margin:0 0 5px 64px;padding:0;list-style:none;display:flex}._7ar4Xq_legend li:before{content:\"\";border-top:3px solid var(--lx-accent);vertical-align:middle;width:18px;height:0;margin-right:5px;display:inline-block}._7ar4Xq_legend li[data-curve=\"1\"]:before{border-top-color:var(--lx-success);border-top-style:dashed}._7ar4Xq_legend li[data-curve=\"2\"]:before{border-top-color:var(--lx-warn);border-top-style:dotted}._7ar4Xq_answerField{gap:var(--lx-space-xs);color:var(--lx-label-secondary);font-size:var(--lx-text-sm)}._7ar4Xq_answerField textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--lx-border-default);min-height:52px;padding:var(--lx-space-xs) 0;color:var(--lx-label-primary);font:inherit;background:0 0;border-radius:0;line-height:1.5}._7ar4Xq_primaryRow,._7ar4Xq_navigation{gap:var(--lx-space-sm);display:flex}._7ar4Xq_primaryRow{justify-content:flex-start}._7ar4Xq_navigation{justify-content:space-between}._7ar4Xq_primaryButton,._7ar4Xq_ghostButton,._7ar4Xq_revealButton,._7ar4Xq_textButton{min-height:var(--lx-control-height-md);appearance:none;border-radius:var(--lx-radius-sm);padding:var(--lx-control-padding-md);font:inherit;font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);cursor:pointer;transition:background var(--lx-motion-fast) var(--lx-easing), border-color var(--lx-motion-fast) var(--lx-easing), color var(--lx-motion-fast) var(--lx-easing);justify-content:center;align-items:center;display:inline-flex}._7ar4Xq_primaryButton:hover:not(:disabled),._7ar4Xq_revealButton:hover:not(:disabled){background:color-mix(in srgb, var(--lx-accent) 88%, var(--lx-label-primary))}._7ar4Xq_ghostButton:hover:not(:disabled),._7ar4Xq_textButton:hover:not(:disabled){border-color:var(--lx-accent);color:var(--lx-accent)}._7ar4Xq_primaryButton,._7ar4Xq_revealButton{border:1px solid var(--lx-accent);background:var(--lx-accent);color:var(--lx-label-on-accent,white)}._7ar4Xq_ghostButton{border:1px solid var(--lx-border-default);color:var(--lx-label-secondary);background:0 0}._7ar4Xq_textButton{color:var(--lx-label-tertiary);background:0 0;border:1px solid #0000}._7ar4Xq_primaryButton:disabled,._7ar4Xq_ghostButton:disabled,._7ar4Xq_revealButton:disabled,._7ar4Xq_textButton:disabled{cursor:default;opacity:var(--lx-control-disabled-opacity)}._7ar4Xq_stepMeta{color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);justify-content:space-between;align-items:center;display:flex}._7ar4Xq_processMap{grid-template-columns:repeat(var(--process-step-count), minmax(0, 1fr));margin:0;padding:0;list-style:none;display:grid}._7ar4Xq_processStep{min-width:0;position:relative}._7ar4Xq_processStep:not(:last-child):after{z-index:0;background:var(--lx-border-default);content:\"\";height:2px;position:absolute;top:13px;left:calc(50% + 16px);right:calc(16px - 50%)}._7ar4Xq_processStep[data-connector-complete]:after{background:var(--lx-accent)}._7ar4Xq_processStepButton{z-index:1;align-items:center;gap:var(--lx-space-xs);width:100%;min-width:0;padding:0 var(--lx-space-2xs);color:var(--lx-label-tertiary);text-align:center;font:inherit;font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);cursor:pointer;background:0 0;border:0;flex-direction:column;display:flex;position:relative}._7ar4Xq_processStepButton:disabled{cursor:default}._7ar4Xq_processNode{box-sizing:border-box;border:1px solid var(--lx-border-strongest);border-radius:var(--lx-radius-circle);background:var(--lx-surface-base);width:28px;height:28px;color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);font-variant-numeric:tabular-nums;place-items:center;line-height:1;display:grid}._7ar4Xq_processTitle{-webkit-line-clamp:2;-webkit-box-orient:vertical;min-width:0;display:-webkit-box;overflow:hidden}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processNode{border-color:var(--lx-accent);background:var(--lx-accent-soft);color:var(--lx-accent)}._7ar4Xq_processStep[data-state=current] ._7ar4Xq_processTitle{color:var(--lx-label-primary);font-weight:500}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processNode{border-color:var(--lx-accent);background:var(--lx-accent);color:var(--lx-label-inverted)}._7ar4Xq_processStep[data-state=complete] ._7ar4Xq_processTitle{color:var(--lx-label-secondary)}._7ar4Xq_processMapVertical{grid-template-columns:1fr}._7ar4Xq_processMapVertical ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMapVertical ._7ar4Xq_processStepButton{align-items:flex-start;gap:var(--lx-space-md);padding:var(--lx-space-2xs) 0 var(--lx-space-md);text-align:left;flex-direction:row}._7ar4Xq_processMapVertical ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMapVertical ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_stepFocus{gap:var(--lx-space-lg);border-left:2px solid var(--lx-accent);padding-left:16px}._7ar4Xq_stepFocus h3,._7ar4Xq_prediction p{margin:0}._7ar4Xq_stepFocus h3{color:var(--lx-label-primary);font-size:var(--lx-text-md);font-weight:500;line-height:var(--lx-leading-md)}._7ar4Xq_stepFocus>._7ar4Xq_revealButton{align-self:flex-start}._7ar4Xq_prediction{gap:var(--lx-space-md);border:0;margin:0;padding:0}._7ar4Xq_prediction legend{color:var(--lx-accent);font-size:var(--lx-text-xs);margin-bottom:8px;font-weight:500}._7ar4Xq_prediction textarea{box-sizing:border-box;resize:vertical;border:0;border-bottom:1px solid var(--lx-border-default);min-height:52px;padding:var(--lx-space-xs) 0;color:var(--lx-label-primary);font:inherit;background:0 0}._7ar4Xq_predictionOptions{grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));gap:0 18px;display:grid}._7ar4Xq_option{gap:var(--lx-space-sm);border-bottom:1px solid var(--lx-border-subtle);padding:var(--lx-space-sm) 0;color:var(--lx-label-secondary);cursor:pointer;align-items:flex-start;display:flex}._7ar4Xq_option[data-selected]{color:var(--lx-label-primary)}._7ar4Xq_option input{accent-color:var(--lx-accent);margin-top:3px}._7ar4Xq_revealed{color:var(--lx-label-secondary);line-height:1.6}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) minmax(16px,36px) 24px minmax(16px,36px) minmax(0,1fr);align-items:center;display:grid}._7ar4Xq_compareHeader{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);padding-bottom:4px}._7ar4Xq_compareHeader strong{min-width:0;font-weight:500}._7ar4Xq_compareHeader strong[data-side=left]{text-align:right;grid-column:1}._7ar4Xq_compareHeader strong[data-side=right]{text-align:left;grid-column:5}._7ar4Xq_compareHeaderLink{color:var(--lx-label-tertiary);text-align:center;grid-column:3}._7ar4Xq_compareRows{min-width:0}._7ar4Xq_compareRow{min-width:0;padding:var(--lx-space-lg) 0;cursor:pointer;background:0 0;position:relative}._7ar4Xq_compareRow+._7ar4Xq_compareRow{border-top:1px solid var(--lx-border-default)}._7ar4Xq_compareLine{background:var(--lx-border-strong);height:1px}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareLine{background:var(--lx-accent);height:2px}._7ar4Xq_compareSelector{place-items:center;display:grid}._7ar4Xq_compareSelector input{width:16px;height:16px;accent-color:var(--lx-accent);margin:0}._7ar4Xq_compareItem{min-width:0;padding:0 var(--lx-space-xs);color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:1.5}._7ar4Xq_compareItem[data-side=left]{text-align:right}._7ar4Xq_compareItem[data-side=right]{text-align:left}._7ar4Xq_compareItem strong{font-weight:500}._7ar4Xq_compareRow[data-selected] ._7ar4Xq_compareItem strong{color:var(--lx-accent)}._7ar4Xq_compareItem p{color:var(--lx-label-tertiary);margin:4px 0 0}._7ar4Xq_emptyCell{padding:0 var(--lx-space-xs);color:var(--lx-label-tertiary)}._7ar4Xq_emptyCell[data-side=left]{text-align:right}._7ar4Xq_emptyCell[data-side=right]{text-align:left}._7ar4Xq_rowPrompt{max-width:80%;color:var(--lx-label-tertiary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-2xs);text-align:center;grid-column:1/6;justify-self:center;margin-top:6px}._7ar4Xq_inlineStatus{align-items:center;gap:var(--lx-space-sm);width:max-content;max-width:100%;color:var(--lx-label-tertiary);text-align:left;font:inherit;font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);background:0 0;border:0;margin:0;padding:0;display:flex}._7ar4Xq_runningDot{border-radius:var(--lx-radius-circle);background:var(--lx-accent);flex:none;width:6px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_pulse}._7ar4Xq_skeletonLine{border-radius:var(--lx-radius-pill);background:var(--lx-border-default);width:64px;height:6px;animation:1.2s ease-in-out infinite _7ar4Xq_skeletonPulse}._7ar4Xq_inlineResult{align-items:baseline;gap:var(--lx-space-sm);color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);flex-wrap:wrap;margin:0;display:flex}._7ar4Xq_inlineFallback{gap:var(--lx-space-xs);border-left:2px solid var(--lx-danger);border-radius:0 var(--lx-radius-sm) var(--lx-radius-sm) 0;padding:var(--lx-space-md) var(--lx-space-lg);background:color-mix(in srgb, var(--lx-danger) 6%, transparent);flex-direction:column;display:flex}._7ar4Xq_fallbackReason{color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);overflow-wrap:anywhere;margin:0}._7ar4Xq_fallbackText{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base)}._7ar4Xq_resultMark{color:var(--lx-success)}._7ar4Xq_errorMark{color:var(--lx-label-error)}._7ar4Xq_resultEvidence{color:var(--lx-label-secondary);font-variant-numeric:tabular-nums}._7ar4Xq_resultAnswer{color:var(--lx-label-tertiary)}._7ar4Xq_legacyReveal{gap:var(--lx-space-2xs);color:var(--lx-label-secondary);font-size:var(--lx-text-base);line-height:var(--lx-leading-md);display:grid}._7ar4Xq_legacyReveal strong{color:var(--lx-label-primary);font-weight:550}._7ar4Xq_srOnly{clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}._7ar4Xq_checkpoint{gap:var(--lx-space-lg);min-width:0;margin:var(--lx-space-sm) 0 var(--lx-space-xl);border:var(--lx-card-border);border-radius:var(--lx-card-radius);padding:var(--lx-card-padding);background:var(--lx-card-background);color:var(--lx-label-primary);box-shadow:var(--lx-shadow-lg);flex-direction:column;display:flex;container:_7ar4Xq_learning-checkpoint/inline-size}._7ar4Xq_checkpointHeader,._7ar4Xq_checkpointForm,._7ar4Xq_checkpointField{flex-direction:column;min-width:0;display:flex}._7ar4Xq_checkpointHeader{gap:var(--lx-space-xs)}._7ar4Xq_checkpointForm{gap:var(--lx-space-md)}._7ar4Xq_checkpointField{gap:var(--lx-space-xs);color:var(--lx-label-secondary);font-size:var(--lx-text-sm)}._7ar4Xq_checkpointEyebrow{border-radius:var(--lx-radius-pill);width:max-content;padding:var(--lx-space-3xs) var(--lx-space-sm);background:var(--lx-accent-soft);color:var(--lx-accent);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong);letter-spacing:var(--lx-tracking-eyebrow);line-height:var(--lx-leading-xs)}._7ar4Xq_checkpointHeader h2{font-size:var(--lx-text-lg);font-weight:var(--lx-weight-strong);line-height:var(--lx-leading-lg);margin:0}._7ar4Xq_checkpointHeader p{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);margin:0}._7ar4Xq_checkpointInput{box-sizing:border-box;resize:vertical;border:1px solid var(--lx-border-default);border-radius:var(--lx-radius-sm);width:100%;min-height:36px;padding:var(--lx-space-sm) var(--lx-space-md);color:var(--lx-label-primary);font:inherit;background:0 0;line-height:1.5}._7ar4Xq_checkpointCode{font-family:var(--lx-font-mono)}._7ar4Xq_checkpointChoices{gap:var(--lx-space-xs);border:0;margin:0;padding:0;display:grid}._7ar4Xq_checkpointChoices legend{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);margin-bottom:3px;padding:0}._7ar4Xq_checkpointOption{align-items:flex-start;gap:var(--lx-space-sm);color:var(--lx-label-primary);font-size:var(--lx-text-base);line-height:var(--lx-leading-base);cursor:pointer;display:flex}._7ar4Xq_checkpointOption input{accent-color:var(--lx-accent);margin:4px 0 0}._7ar4Xq_checkpointActions{align-items:center;gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}@container _7ar4Xq_learning-checkpoint (width<=340px){._7ar4Xq_checkpointActions>button{flex:auto}._7ar4Xq_checkpointActions>._7ar4Xq_textButton{flex-basis:100%}}._7ar4Xq_checkpointHint{color:var(--lx-label-tertiary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);margin:0}._7ar4Xq_learningVisual{gap:var(--lx-space-lg);min-width:0;color:var(--lx-label-primary);flex-direction:column;margin:4px 0 10px;display:flex}._7ar4Xq_visualDescription,._7ar4Xq_visualTextFallback{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);margin:0}._7ar4Xq_visualControls{gap:var(--lx-space-lg) 28px;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));display:grid}._7ar4Xq_visualRange{gap:var(--lx-space-3xs);cursor:pointer;grid-template-rows:auto 18px 14px;min-width:0;display:grid}._7ar4Xq_visualRangeHeader{justify-content:space-between;align-items:baseline;gap:var(--lx-space-lg);min-width:0;color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm);display:flex}._7ar4Xq_visualRangeHeader output{color:var(--lx-accent);font-size:var(--lx-text-sm);font-variant-numeric:tabular-nums;font-weight:600}._7ar4Xq_visualRange input{appearance:none;border-radius:var(--lx-radius-pill);background:linear-gradient(to right, var(--lx-accent) 0 var(--visual-range-progress), var(--lx-border-default) var(--visual-range-progress) 100%);cursor:pointer;align-self:center;width:100%;height:4px}._7ar4Xq_visualRange input::-webkit-slider-runnable-track{border-radius:var(--lx-radius-pill);background:0 0;height:4px}._7ar4Xq_visualRange input::-webkit-slider-thumb{appearance:none;border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:16px;height:16px;box-shadow:0 0 0 1px var(--lx-accent);margin-top:-6px}._7ar4Xq_visualRange input::-moz-range-track{border-radius:var(--lx-radius-pill);background:0 0;height:4px}._7ar4Xq_visualRange input::-moz-range-thumb{border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:10px;height:10px;box-shadow:0 0 0 1px var(--lx-accent)}._7ar4Xq_visualRangeEnds{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums;line-height:var(--lx-leading-micro);justify-content:space-between;display:flex}._7ar4Xq_visualMetrics{gap:var(--lx-space-sm) var(--lx-space-2xl);color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm);flex-wrap:wrap;display:flex}._7ar4Xq_visualMetrics>span{align-items:baseline;gap:var(--lx-space-sm);display:inline-flex}._7ar4Xq_visualMetrics output{color:var(--lx-accent);font-variant-numeric:tabular-nums;font-weight:550}._7ar4Xq_visualChartRegion{min-width:0}._7ar4Xq_visualLegend{gap:var(--lx-space-sm) var(--lx-space-xl);color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);flex-wrap:wrap;margin:3px 0 0 64px;padding:0;list-style:none;display:flex}._7ar4Xq_visualLegend li{--visual-tone:var(--lx-accent);align-items:center;gap:var(--lx-space-xs);display:inline-flex}._7ar4Xq_visualLegend li>span{border-top:2.5px solid var(--visual-tone);width:18px;height:0;display:inline-block}._7ar4Xq_visualLegend li[data-series-type=points]>span{border-radius:var(--lx-radius-circle);background:var(--visual-tone);border:0;width:8px;height:8px}._7ar4Xq_visualLegend li[data-stroke=dashed]>span{border-top-style:dashed}._7ar4Xq_visualLegend li[data-stroke=dotted]>span{border-top-style:dotted}._7ar4Xq_visualChart{width:100%;height:auto;display:block;overflow:visible}._7ar4Xq_visualPlot{fill:var(--lx-surface-card);stroke:var(--lx-border-default);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_visualGrid{stroke:var(--lx-border-subtle);stroke-width:1px;vector-effect:non-scaling-stroke}._7ar4Xq_visualTick{fill:var(--lx-label-tertiary);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums}._7ar4Xq_visualAxisLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-2xs)}._7ar4Xq_visualCurve{--visual-tone:var(--lx-accent);fill:none;stroke:var(--visual-tone);stroke-width:2.5px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}._7ar4Xq_visualCurve[data-stroke=dashed]{stroke-dasharray:8 5}._7ar4Xq_visualCurve[data-stroke=dotted]{stroke-dasharray:2 5}._7ar4Xq_visualPoint{--visual-tone:var(--lx-accent);fill:var(--visual-tone);stroke:var(--lx-surface-base);stroke-width:1.5px;vector-effect:non-scaling-stroke}._7ar4Xq_round{gap:var(--lx-space-lg);min-width:0;color:var(--lx-label-primary);flex-direction:column;display:flex}._7ar4Xq_roundHeader{gap:var(--lx-space-2xs);flex-direction:column;display:flex}._7ar4Xq_roundHeader span{color:var(--lx-label-tertiary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm)}._7ar4Xq_roundHeader h2,._7ar4Xq_roundProcess h3,._7ar4Xq_roundStructure h3,._7ar4Xq_roundFeedback p{margin:0}._7ar4Xq_roundHeader h2{font-size:var(--lx-text-lg);font-weight:500;line-height:var(--lx-leading-lg)}._7ar4Xq_roundProcess{gap:var(--lx-space-md);border-left:2px solid var(--lx-accent);padding:var(--lx-space-md) 0 var(--lx-space-md) var(--lx-space-lg);grid-template-columns:30px minmax(0,1fr);display:grid}._7ar4Xq_roundNode{border:1px solid var(--lx-accent);border-radius:var(--lx-radius-circle);width:28px;height:28px;color:var(--lx-accent);font-size:var(--lx-text-xs);place-items:center;display:grid}._7ar4Xq_roundProcess[data-final] ._7ar4Xq_roundNode{background:var(--lx-accent);color:var(--lx-label-inverted)}._7ar4Xq_roundParameter,._7ar4Xq_roundParameterValues,._7ar4Xq_roundCurveList{gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}._7ar4Xq_roundParameter{flex-direction:column}._7ar4Xq_roundParameterValues span,._7ar4Xq_roundCurveList span{border:1px solid var(--lx-border-default);border-radius:var(--lx-radius-pill);padding:var(--lx-space-2xs) var(--lx-space-md);color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm)}._7ar4Xq_roundStructure{gap:var(--lx-space-sm) var(--lx-space-lg);grid-template-columns:repeat(2,minmax(0,1fr));display:grid}._7ar4Xq_roundStructure h3{font-size:var(--lx-text-sm);font-weight:500}._7ar4Xq_roundAlignment{gap:var(--lx-space-sm);border-top:1px solid var(--lx-border-default);padding:var(--lx-space-sm) 0;color:var(--lx-label-secondary);font-size:var(--lx-text-sm);cursor:pointer;grid-column:1/3;grid-template-columns:20px 1fr 1fr;display:grid}._7ar4Xq_roundAlignment input{accent-color:var(--lx-accent);margin-top:3px}._7ar4Xq_roundAlignment small{color:var(--lx-label-tertiary);grid-column:2/4}._7ar4Xq_roundAlignment[data-selected]{color:var(--lx-accent)}._7ar4Xq_roundFeedback{gap:var(--lx-space-sm);color:var(--lx-label-secondary);display:grid}._7ar4Xq_completedRound{min-width:0}._7ar4Xq_revealTransition{animation:.7s both _7ar4Xq_revealCurrentFrame}._7ar4Xq_round[data-round-state=completed] ._7ar4Xq_revealTransition,._7ar4Xq_round[data-round-state=ready_to_continue] ._7ar4Xq_revealTransition,._7ar4Xq_round[data-round-state=ack_submitting] ._7ar4Xq_revealTransition{animation:none}@keyframes _7ar4Xq_revealCurrentFrame{0%{opacity:.45;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}@keyframes _7ar4Xq_pulse{0%,to{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}@keyframes _7ar4Xq_skeletonPulse{0%,to{opacity:.35}50%{opacity:.75}}@media (width<=560px){._7ar4Xq_processMap{grid-template-columns:1fr}._7ar4Xq_processMap ._7ar4Xq_processStep:not(:last-child):after{width:2px;height:auto;inset:29px auto -1px 13px}._7ar4Xq_processMap ._7ar4Xq_processStepButton{align-items:flex-start;gap:var(--lx-space-md);padding:var(--lx-space-2xs) 0 var(--lx-space-md);text-align:left;flex-direction:row}._7ar4Xq_processMap ._7ar4Xq_processNode{flex:none}._7ar4Xq_processMap ._7ar4Xq_processTitle{-webkit-line-clamp:3;padding-top:4px}._7ar4Xq_compareHeader,._7ar4Xq_compareRow{grid-template-columns:minmax(0,1fr) 12px 22px 12px minmax(0,1fr)}._7ar4Xq_rowPrompt{max-width:100%}}@media (width<=420px){._7ar4Xq_legend{margin-left:56px}._7ar4Xq_visualLegend{margin-left:54px}._7ar4Xq_stepFocus{padding-left:12px}}@media (prefers-reduced-motion:reduce){._7ar4Xq_runningDot,._7ar4Xq_skeletonLine,._7ar4Xq_revealTransition{animation:none}}";
+		const tagId$9 = "@dsh-portable/interactive-learning/LearningActivity.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$9) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@dsh-portable/interactive-learning";
-			tag.dataset.pluginCss = tagId$2;
-			tag.textContent = css$2;
+			tag.dataset.pluginCss = tagId$9;
+			tag.textContent = css$9;
 			document.head.appendChild(tag);
 		}
 		var LearningActivity_module_css_default = {
@@ -2182,13 +2182,13 @@ window.__ModuleLoader__.load({
 		};
 		//#endregion
 		//#region \0dsh-css:src/client/tokens.module.css.mjs
-		const css$1 = "[data-learning-scope]{--lx-text-micro:10px;--lx-leading-micro:15px;--lx-text-2xs:11px;--lx-leading-2xs:16px;--lx-text-xs:12px;--lx-leading-xs:18px;--lx-text-sm:13px;--lx-leading-sm:20px;--lx-text-base:14px;--lx-leading-base:22px;--lx-text-md:15px;--lx-leading-md:24px;--lx-text-lg:17px;--lx-leading-lg:26px;--lx-text-xl:clamp(17px, 4cqi, 21px);--lx-leading-xl:1.55;--lx-text-formula:clamp(15px, 3cqi, 19px);--lx-leading-formula:26px;--lx-weight-regular:400;--lx-weight-medium:550;--lx-weight-strong:650;--lx-tracking-eyebrow:.08em;--lx-font-mono:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);--lx-space-3xs:2px;--lx-space-2xs:4px;--lx-space-xs:6px;--lx-space-sm:8px;--lx-space-md:10px;--lx-space-lg:12px;--lx-space-xl:16px;--lx-space-2xl:20px;--lx-space-3xl:24px;--lx-radius-xs:6px;--lx-radius-sm:8px;--lx-radius-md:10px;--lx-radius-lg:12px;--lx-radius-xl:16px;--lx-radius-pill:999px;--lx-radius-circle:50%;--lx-surface-base:var(--dsw-alias-bg-layer-1,Canvas);--lx-surface-card:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 96%, transparent);--lx-surface-raised:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 84%, transparent);--lx-surface-sunken:color-mix(in srgb, var(--dsw-alias-bg-layer-1) 70%, transparent);--lx-surface-accent:color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 30%, transparent);--lx-border-subtle:var(--dsw-alias-border-l1,color-mix(in srgb, var(--lx-label-primary) 10%, transparent));--lx-border-default:var(--dsw-alias-border-l2,color-mix(in srgb, var(--lx-label-primary) 16%, transparent));--lx-border-strong:var(--dsw-alias-border-l3,color-mix(in srgb, var(--lx-label-primary) 24%, transparent));--lx-border-strongest:var(--dsw-alias-border-l4,color-mix(in srgb, var(--lx-label-primary) 34%, transparent));--lx-label-primary:var(--dsw-alias-label-primary,CanvasText);--lx-label-secondary:var(--dsw-alias-label-secondary,color-mix(in srgb, var(--lx-label-primary) 72%, transparent));--lx-label-tertiary:var(--dsw-alias-label-tertiary,color-mix(in srgb, var(--lx-label-primary) 52%, transparent));--lx-label-on-accent:var(--dsw-alias-label-on-primary,white);--lx-accent:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary,#2f73ea));--lx-accent-soft:var(--dsw-alias-state-business-tertiary,color-mix(in srgb, var(--lx-accent) 12%, transparent));--lx-success:var(--dsw-alias-state-success-primary,#2f9e5f);--lx-warn:var(--dsw-alias-state-warn-primary,#d1741f);--lx-danger:var(--dsw-alias-state-error-primary,#df4f4f);--lx-label-error:var(--dsw-alias-label-error,var(--lx-danger));--lx-label-inverted:var(--dsw-alias-label-primary-inverted,var(--lx-surface-base));--lx-card-border:1px solid var(--lx-border-default);--lx-card-radius:var(--lx-radius-xl);--lx-card-padding:clamp(16px, 3cqi, 24px);--lx-card-background:linear-gradient(135deg, color-mix(in srgb, var(--lx-accent-soft) 34%, transparent), transparent 42%), var(--lx-surface-card);--lx-shadow-sm:0 4px 14px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);--lx-shadow-md:0 10px 26px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);--lx-shadow-lg:0 12px 32px color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent);--lx-focus-color:var(--lx-accent);--lx-focus-width:2px;--lx-focus-offset:3px;--lx-control-height-sm:28px;--lx-control-height-md:32px;--lx-control-padding-sm:var(--lx-space-2xs) var(--lx-space-md);--lx-control-padding-md:var(--lx-space-xs) var(--lx-space-lg);--lx-control-disabled-opacity:.4;--lx-motion-fast:.14s;--lx-motion-base:.18s;--lx-easing:ease;--lx-tone-blue:var(--lx-accent);--lx-tone-green:var(--lx-success);--lx-tone-red:var(--lx-danger);--lx-tone-orange:var(--lx-warn);--lx-tone-purple:color-mix(in srgb, var(--lx-accent) 58%, var(--lx-danger));--lx-tone-gray:var(--dsw-alias-label-tertiary);--visual-tone:var(--lx-tone-blue)}[data-learning-scope] [data-tone=blue]{--visual-tone:var(--lx-tone-blue)}[data-learning-scope] [data-tone=green]{--visual-tone:var(--lx-tone-green)}[data-learning-scope] [data-tone=red]{--visual-tone:var(--lx-tone-red)}[data-learning-scope] [data-tone=orange]{--visual-tone:var(--lx-tone-orange)}[data-learning-scope] [data-tone=purple]{--visual-tone:var(--lx-tone-purple)}[data-learning-scope] [data-tone=gray]{--visual-tone:var(--lx-tone-gray)}[data-learning-scope] :focus-visible{outline:var(--lx-focus-width) solid var(--lx-focus-color);outline-offset:var(--lx-focus-offset)}@media (prefers-reduced-motion:reduce){[data-learning-scope]{--lx-motion-fast:0s;--lx-motion-base:0s}}";
-		const tagId$1 = "@dsh-portable/interactive-learning/tokens.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$1) + "]") === null) {
+		const css$8 = "[data-learning-scope]{--lx-text-micro:11px;--lx-leading-micro:16px;--lx-text-2xs:12px;--lx-leading-2xs:17px;--lx-text-xs:13px;--lx-leading-xs:20px;--lx-text-sm:14px;--lx-leading-sm:21px;--lx-text-base:15px;--lx-leading-base:23px;--lx-text-md:16px;--lx-leading-md:25px;--lx-text-lg:18px;--lx-leading-lg:27px;--lx-text-xl:clamp(18px, 4cqi, 22px);--lx-leading-xl:1.5;--lx-text-formula:clamp(16px, 3cqi, 20px);--lx-leading-formula:27px;--lx-weight-regular:400;--lx-weight-medium:550;--lx-weight-strong:650;--lx-tracking-eyebrow:.08em;--lx-font-mono:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);--lx-space-3xs:2px;--lx-space-2xs:4px;--lx-space-xs:6px;--lx-space-sm:8px;--lx-space-md:10px;--lx-space-lg:12px;--lx-space-xl:16px;--lx-space-2xl:20px;--lx-space-3xl:24px;--lx-radius-xs:6px;--lx-radius-sm:8px;--lx-radius-md:10px;--lx-radius-lg:12px;--lx-radius-xl:16px;--lx-radius-pill:999px;--lx-radius-circle:50%;--lx-host-bg:var(--dsw-alias-bg-layer-1,Canvas);--lx-host-label:var(--dsw-alias-label-primary,CanvasText);--lx-host-accent:var(--dsw-alias-state-business-primary,var(--dsw-alias-brand-primary,#2f73ea));--lx-host-accent-soft:var(--dsw-alias-state-business-tertiary,color-mix(in srgb, var(--lx-host-accent) 14%, transparent));--lx-surface-base:var(--lx-host-bg);--lx-surface-card:color-mix(in srgb, var(--lx-host-bg) 96%, transparent);--lx-surface-raised:color-mix(in srgb, var(--lx-host-bg) 84%, transparent);--lx-surface-sunken:color-mix(in srgb, var(--lx-host-label) 3%, var(--lx-host-bg));--lx-surface-accent:color-mix(in srgb, var(--lx-host-accent-soft) 30%, transparent);--lx-border-subtle:var(--dsw-alias-border-l1,color-mix(in srgb, var(--lx-host-label) 12%, transparent));--lx-border-default:var(--dsw-alias-border-l2,color-mix(in srgb, var(--lx-host-label) 18%, transparent));--lx-border-strong:var(--dsw-alias-border-l3,color-mix(in srgb, var(--lx-host-label) 28%, transparent));--lx-border-strongest:var(--dsw-alias-border-l4,color-mix(in srgb, var(--lx-host-label) 38%, transparent));--lx-label-primary:var(--lx-host-label);--lx-label-secondary:var(--dsw-alias-label-secondary,color-mix(in srgb, var(--lx-host-label) 76%, transparent));--lx-label-tertiary:var(--dsw-alias-label-tertiary,color-mix(in srgb, var(--lx-host-label) 58%, transparent));--lx-label-on-accent:var(--dsw-alias-label-on-primary,white);--lx-accent:var(--lx-host-accent);--lx-accent-soft:var(--lx-host-accent-soft);--lx-success:var(--dsw-alias-state-success-primary,#2f9e5f);--lx-warn:var(--dsw-alias-state-warn-primary,#d1741f);--lx-danger:var(--dsw-alias-state-error-primary,#df4f4f);--lx-label-error:var(--dsw-alias-label-error,var(--lx-danger));--lx-label-inverted:var(--dsw-alias-label-primary-inverted,var(--lx-surface-base));--lx-card-border:1px solid var(--lx-border-default);--lx-card-radius:var(--lx-radius-xl);--lx-card-padding:clamp(14px, 2.6cqi, 20px);--lx-card-background:var(--lx-surface-card);--lx-shadow-sm:0 1px 2px color-mix(in srgb, var(--lx-host-label) 7%, transparent);--lx-shadow-md:0 2px 8px color-mix(in srgb, var(--lx-host-label) 7%, transparent);--lx-shadow-lg:0 4px 16px color-mix(in srgb, var(--lx-host-label) 6%, transparent);--lx-focus-color:var(--lx-accent);--lx-focus-width:2px;--lx-focus-offset:3px;--lx-control-height-sm:30px;--lx-control-height-md:34px;--lx-control-padding-sm:var(--lx-space-2xs) var(--lx-space-md);--lx-control-padding-md:var(--lx-space-xs) var(--lx-space-lg);--lx-control-disabled-opacity:.42;--lx-motion-fast:.14s;--lx-motion-base:.18s;--lx-easing:ease;--lx-tone-blue:var(--lx-accent);--lx-tone-green:var(--lx-success);--lx-tone-red:var(--lx-danger);--lx-tone-orange:var(--lx-warn);--lx-tone-purple:color-mix(in srgb, var(--lx-accent) 58%, var(--lx-danger));--lx-tone-gray:var(--dsw-alias-label-tertiary,color-mix(in srgb, var(--lx-host-label) 58%, transparent));--visual-tone:var(--lx-tone-blue);--lx-vs-alpha:1;--lx-vs-ring:0;--lx-vs-lift:0}[data-learning-scope] [data-visual-state]{--lx-vs-alpha:1;--lx-vs-ring:0;--lx-vs-lift:0}[data-learning-scope] [data-visual-state=current]{--lx-vs-alpha:1;--lx-vs-ring:1;--lx-vs-lift:1}[data-learning-scope] [data-visual-state=selected]{--lx-vs-alpha:1;--lx-vs-ring:1}[data-learning-scope] [data-visual-state=related]{--lx-vs-alpha:.92}[data-learning-scope] [data-visual-state=visited]{--lx-vs-alpha:.78}[data-learning-scope] [data-visual-state=context]{--lx-vs-alpha:.62}[data-learning-scope] [data-visual-state=inactive]{--lx-vs-alpha:.55}[data-learning-scope] [data-visual-state=disabled]{--lx-vs-alpha:.38;pointer-events:none}[data-learning-scope] [data-tone=blue]{--visual-tone:var(--lx-tone-blue)}[data-learning-scope] [data-tone=green]{--visual-tone:var(--lx-tone-green)}[data-learning-scope] [data-tone=red]{--visual-tone:var(--lx-tone-red)}[data-learning-scope] [data-tone=orange]{--visual-tone:var(--lx-tone-orange)}[data-learning-scope] [data-tone=purple]{--visual-tone:var(--lx-tone-purple)}[data-learning-scope] [data-tone=gray]{--visual-tone:var(--lx-tone-gray)}[data-learning-scope] :focus-visible{outline:var(--lx-focus-width) solid var(--lx-focus-color);outline-offset:var(--lx-focus-offset)}@media (prefers-reduced-motion:reduce){[data-learning-scope]{--lx-motion-fast:0s;--lx-motion-base:0s}}@media (forced-colors:active){[data-learning-scope] [data-visual-state],[data-learning-scope] [data-visual-state=disabled]{--lx-vs-alpha:1}}";
+		const tagId$8 = "@dsh-portable/interactive-learning/tokens.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$8) + "]") === null) {
 			const tag = document.createElement("style");
 			tag.dataset.plugin = "@dsh-portable/interactive-learning";
-			tag.dataset.pluginCss = tagId$1;
-			tag.textContent = css$1;
+			tag.dataset.pluginCss = tagId$8;
+			tag.textContent = css$8;
 			document.head.appendChild(tag);
 		}
 		//#endregion
@@ -4294,118 +4294,14 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
-		//#region \0dsh-css:src/client/LearningVisualV4.module.css.mjs
-		const css = ".WHgWIW_visualShell{--visual-tone:var(--lx-accent);gap:var(--lx-space-xl);min-width:0;margin:var(--lx-space-sm) 0 var(--lx-space-xl);border:var(--lx-card-border);border-radius:var(--lx-card-radius);padding:var(--lx-card-padding);background:var(--lx-card-background);color:var(--lx-label-primary);box-shadow:var(--lx-shadow-lg);flex-direction:column;display:flex;container:WHgWIW_learning-visual-v4/inline-size}.WHgWIW_visualHeader{gap:var(--lx-space-2xs) var(--lx-space-md);grid-template-columns:auto minmax(0,1fr);align-items:baseline;min-width:0;display:grid}.WHgWIW_visualEyebrow{border-radius:var(--lx-radius-pill);padding:var(--lx-space-3xs) var(--lx-space-sm);background:var(--lx-accent-soft);color:var(--lx-accent);font-size:var(--lx-text-micro);letter-spacing:.08em;font-weight:650;line-height:var(--lx-leading-xs);grid-column:1}.WHgWIW_visualHeader h3{font-size:var(--lx-text-lg);font-weight:650;line-height:var(--lx-leading-lg);grid-column:2;margin:0}.WHgWIW_visualHeader p{color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);grid-column:1/-1;margin:4px 0 0}.WHgWIW_srOnly{clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}.WHgWIW_errorFallback{gap:var(--lx-space-2xs);border-left:3px solid var(--lx-danger);padding:var(--lx-space-md) var(--lx-space-lg);background:color-mix(in srgb, var(--lx-danger) 7%, transparent);color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);display:grid}.WHgWIW_errorFallback strong{color:var(--lx-label-error)}.WHgWIW_errorFallback pre{white-space:pre-wrap;max-height:240px;font:inherit;margin:6px 0 0;overflow:auto}.WHgWIW_sequence{gap:var(--lx-space-lg);border:1px solid color-mix(in srgb, var(--lx-accent) 22%, var(--lx-border-default));border-radius:var(--lx-radius-lg);min-width:0;padding:var(--lx-space-md) var(--lx-space-lg);background:color-mix(in srgb, var(--lx-accent-soft) 45%, transparent);grid-template-columns:minmax(0,1fr) auto;align-items:center;display:grid}.WHgWIW_sequenceText{gap:var(--lx-space-3xs) var(--lx-space-md);grid-template-columns:auto minmax(0,1fr);align-items:baseline;min-width:0;display:grid}.WHgWIW_sequenceText>span{color:var(--lx-accent);font-size:var(--lx-text-2xs);font-variant-numeric:tabular-nums;font-weight:650}.WHgWIW_sequenceText strong{color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-sm);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.WHgWIW_sequenceText p{color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);grid-column:1/-1;margin:2px 0 0}.WHgWIW_sequenceActions{gap:var(--lx-space-xs);display:flex}.WHgWIW_sequenceActions button,.WHgWIW_seriesToggles button,.WHgWIW_detailPanel button,.WHgWIW_relationTable button,.WHgWIW_setZone button,.WHgWIW_intersections button,.WHgWIW_formulaActions button,.WHgWIW_recallNavigation button,.WHgWIW_recallRating button,.WHgWIW_recallRevealButton,.WHgWIW_studySections button,.WHgWIW_studyConcepts button,.WHgWIW_studyDetail button{appearance:none;border:1px solid var(--lx-border-default);border-radius:var(--lx-radius-sm);padding:var(--lx-control-padding-sm);background:var(--lx-surface-raised);color:var(--lx-label-secondary);font:inherit;font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);cursor:pointer}.WHgWIW_sequenceActions button{min-height:var(--lx-control-height-md);align-items:center;gap:var(--lx-space-xs);padding:var(--lx-control-padding-md);display:inline-flex}.WHgWIW_sequenceActions button:hover:not(:disabled),.WHgWIW_seriesToggles button:hover,.WHgWIW_relationTable button:hover,.WHgWIW_setZone button:hover,.WHgWIW_intersections button:hover,.WHgWIW_sequenceActions button:disabled,.WHgWIW_formulaActions button:disabled,.WHgWIW_recallNavigation button:disabled{cursor:default;opacity:var(--lx-control-disabled-opacity)}.WHgWIW_plotRenderer,.WHgWIW_nodeLinkRenderer,.WHgWIW_sceneRenderer,.WHgWIW_relationRenderer{gap:var(--lx-space-lg);flex-direction:column;min-width:0;display:flex}.WHgWIW_parameterGrid{gap:var(--lx-space-lg) var(--lx-space-3xl);grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));display:grid}.WHgWIW_parameter{grid-template-rows:auto 20px var(--lx-leading-micro);gap:var(--lx-space-3xs);cursor:pointer;min-width:0;display:grid}.WHgWIW_parameterHeader{justify-content:space-between;align-items:baseline;gap:var(--lx-space-lg);min-width:0;color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm);display:flex}.WHgWIW_parameterHeader output{color:var(--lx-accent);font-size:var(--lx-text-sm);font-variant-numeric:tabular-nums;font-weight:650}.WHgWIW_parameter input{appearance:none;border-radius:var(--lx-radius-pill);background:linear-gradient(to right, var(--lx-accent) 0 var(--range-progress), var(--lx-border-default) var(--range-progress) 100%);cursor:pointer;align-self:center;width:100%;height:4px}.WHgWIW_parameter input::-webkit-slider-runnable-track{background:0 0;height:4px}.WHgWIW_parameter input::-moz-range-track{background:0 0;height:4px}.WHgWIW_parameter input::-webkit-slider-thumb{appearance:none;border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:17px;height:17px;box-shadow:0 0 0 1px var(--lx-accent);margin-top:-6.5px}.WHgWIW_parameter input::-moz-range-thumb{border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:11px;height:11px;box-shadow:0 0 0 1px var(--lx-accent)}.WHgWIW_parameterEnds{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums;line-height:var(--lx-leading-micro);justify-content:space-between;display:flex}.WHgWIW_metrics{gap:var(--lx-space-sm);grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin:0;display:grid}.WHgWIW_metrics>div{gap:var(--lx-space-3xs);border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-sm);min-width:0;padding:var(--lx-space-sm) var(--lx-space-md);background:var(--lx-surface-sunken);display:grid}.WHgWIW_metrics dt{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-2xs);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.WHgWIW_metrics dd{color:var(--lx-accent);font-size:var(--lx-text-md);font-variant-numeric:tabular-nums;font-weight:650;line-height:var(--lx-leading-base);margin:0}.WHgWIW_chartViewport,.WHgWIW_graphViewport,.WHgWIW_sceneViewport,.WHgWIW_tableViewport{overscroll-behavior-inline:contain;border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-lg);background:var(--lx-surface-sunken);scrollbar-width:thin;min-width:0;position:relative;overflow-x:auto}.WHgWIW_plotSvg,.WHgWIW_graphSvg,.WHgWIW_sceneSvg{touch-action:pan-y;max-width:none;display:block;overflow:visible}.WHgWIW_plotFrame{fill:var(--lx-surface-card);stroke:var(--lx-border-default);stroke-width:1px;vector-effect:non-scaling-stroke}.WHgWIW_gridLine{stroke:var(--lx-border-subtle);stroke-width:1px;vector-effect:non-scaling-stroke}.WHgWIW_zeroAxis{stroke:var(--lx-border-strongest);stroke-width:1.4px;vector-effect:non-scaling-stroke}.WHgWIW_tickLabel{fill:var(--lx-label-tertiary);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums}.WHgWIW_axisLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-2xs);font-weight:550}.WHgWIW_seriesLine{fill:none;stroke:var(--visual-tone);stroke-width:2.7px;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}[data-stroke=dashed] .WHgWIW_edgeVisible,[data-stroke=dashed] .WHgWIW_sceneLine,.WHgWIW_seriesLine[data-stroke=dashed]{stroke-dasharray:9 6}[data-stroke=dotted] .WHgWIW_edgeVisible,[data-stroke=dotted] .WHgWIW_sceneLine,.WHgWIW_seriesLine[data-stroke=dotted]{stroke-dasharray:2 6}.WHgWIW_seriesPoint,.WHgWIW_probePoint{fill:var(--visual-tone);stroke:var(--lx-surface-base);stroke-width:1.5px;vector-effect:non-scaling-stroke}.WHgWIW_seriesBar{fill:color-mix(in srgb, var(--visual-tone) 70%, transparent);stroke:var(--visual-tone);stroke-width:1px;vector-effect:non-scaling-stroke}.WHgWIW_probeLine{stroke:var(--lx-label-secondary);stroke-width:1px;stroke-dasharray:3 4;pointer-events:none;vector-effect:non-scaling-stroke}.WHgWIW_probeCard{bottom:9px;left:clamp(86px, var(--probe-x), calc(100% - 148px));z-index:2;gap:var(--lx-space-3xs);border:1px solid var(--lx-border-strong);border-radius:var(--lx-radius-sm);width:max-content;max-width:210px;padding:var(--lx-space-xs) var(--lx-space-sm);background:var(--lx-surface-card);box-shadow:0 6px 18px color-mix(in srgb, var(--lx-label-primary) 12%, transparent);color:var(--lx-label-secondary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro);pointer-events:none;margin-top:-66px;margin-bottom:9px;display:grid;position:sticky}.WHgWIW_probeCard strong{color:var(--lx-label-primary)}.WHgWIW_probeCard span:before{border-radius:var(--lx-radius-circle);background:var(--visual-tone);content:\"\";width:6px;height:6px;margin-right:5px;display:inline-block}.WHgWIW_seriesToggles{gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}.WHgWIW_seriesToggles button{align-items:center;gap:var(--lx-space-xs);border-radius:var(--lx-radius-pill);padding:var(--lx-space-2xs) var(--lx-space-md);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);display:inline-flex}.WHgWIW_seriesToggles button[aria-pressed=false]{opacity:.46;text-decoration:line-through}.WHgWIW_seriesToggles button[data-empty]{color:var(--lx-label-tertiary);border-style:dashed}.WHgWIW_seriesToggles button[data-empty]>small{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro)}.WHgWIW_emptyPlotNotice{border:1px dashed var(--lx-border-strong);border-radius:var(--lx-radius-md);width:max-content;max-width:min(92%,320px);padding:var(--lx-space-sm) var(--lx-space-lg);background:var(--lx-surface-card);color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);text-align:center;pointer-events:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}.WHgWIW_seriesToggles button>span{border-top:2.5px solid var(--visual-tone);width:18px;height:0;display:inline-block}.WHgWIW_seriesToggles button[data-series-type=points]>span{border-radius:var(--lx-radius-circle);background:var(--visual-tone);border:0;width:8px;height:8px}.WHgWIW_seriesToggles button[data-series-type=bars]>span{background:color-mix(in srgb, var(--visual-tone) 72%, transparent);border:0;border-radius:1px;width:9px;height:10px}.WHgWIW_seriesToggles button[data-stroke=dashed]>span{border-top-style:dashed}.WHgWIW_seriesToggles button[data-stroke=dotted]>span{border-top-style:dotted}.WHgWIW_interactionHint{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-2xs);margin:-2px 0 0}.WHgWIW_layerLabel{fill:var(--lx-label-tertiary);font-size:var(--lx-text-micro);letter-spacing:.04em;font-weight:550}.WHgWIW_edgeGroup,.WHgWIW_nodeGroup,.WHgWIW_sceneElement{cursor:pointer}.WHgWIW_edgeVisible{fill:none;stroke:var(--visual-tone);stroke-opacity:.48;stroke-width:1.5px;vector-effect:non-scaling-stroke}.WHgWIW_edgeHit,.WHgWIW_sceneHit{fill:none;stroke:#0000;stroke-width:13px;pointer-events:stroke;vector-effect:non-scaling-stroke}.WHgWIW_edgeGroup:hover .WHgWIW_edgeVisible,.WHgWIW_edgeGroup:focus-visible .WHgWIW_edgeVisible,.WHgWIW_edgeGroup[data-selected] .WHgWIW_edgeVisible{stroke-opacity:1;stroke-width:3px}.WHgWIW_edgeLabel{fill:var(--lx-label-secondary);stroke:var(--lx-surface-base);stroke-width:3px;paint-order:stroke;font-size:var(--lx-text-micro);pointer-events:none;transition:opacity var(--lx-motion-fast) var(--lx-easing)}.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeLabel{opacity:0}.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup:hover .WHgWIW_edgeLabel,.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup:focus-visible .WHgWIW_edgeLabel,.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup[data-selected] .WHgWIW_edgeLabel,.WHgWIW_graphSvg[data-dense-edges] .WHgWIW_edgeGroup[data-edge-focused] .WHgWIW_edgeLabel{opacity:1}.WHgWIW_nodeGroup circle{fill:color-mix(in srgb, var(--visual-tone) 14%, var(--lx-surface-base));stroke:var(--visual-tone);stroke-width:2px;vector-effect:non-scaling-stroke}.WHgWIW_nodeGroup text{fill:var(--lx-label-primary);font-size:var(--lx-text-micro);pointer-events:none;font-weight:650}.WHgWIW_nodeGroup:hover circle,.WHgWIW_nodeGroup:focus-visible circle,.WHgWIW_nodeGroup[data-selected] circle{fill:color-mix(in srgb, var(--visual-tone) 25%, var(--lx-surface-base));stroke-width:3px}.WHgWIW_arrowMarker path{fill:var(--visual-tone)}.WHgWIW_detailPanel{gap:var(--lx-space-3xs) var(--lx-space-sm);border-left:3px solid var(--visual-tone);border-radius:0 var(--lx-radius-sm) var(--lx-radius-sm) 0;padding:var(--lx-space-sm) var(--lx-space-md) var(--lx-space-sm) var(--lx-space-md);background:color-mix(in srgb, var(--visual-tone) 7%, transparent);grid-template-columns:auto minmax(0,1fr) 28px;align-items:baseline;display:grid;position:relative}.WHgWIW_detailPanel>span{color:var(--visual-tone);font-size:var(--lx-text-micro);font-weight:650;line-height:var(--lx-leading-xs)}.WHgWIW_detailPanel>strong{color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-sm);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.WHgWIW_detailPanel>p{color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);grid-column:1/3;margin:2px 0 0}.WHgWIW_detailPanel>button{border-radius:var(--lx-radius-xs);width:26px;height:26px;font-size:var(--lx-text-lg);line-height:var(--lx-leading-md);grid-area:1/3/3;padding:0}.WHgWIW_sceneLine{stroke:var(--visual-tone);stroke-width:2.5px;vector-effect:non-scaling-stroke}.WHgWIW_scenePoint{fill:var(--visual-tone);stroke:var(--lx-surface-base);stroke-width:2px;vector-effect:non-scaling-stroke}.WHgWIW_sceneShape{fill:color-mix(in srgb, var(--visual-tone) 13%, transparent);stroke:var(--visual-tone);stroke-width:2px;vector-effect:non-scaling-stroke}.WHgWIW_sceneElement:hover .WHgWIW_sceneShape,.WHgWIW_sceneElement:focus-visible .WHgWIW_sceneShape,.WHgWIW_sceneElement[data-selected] .WHgWIW_sceneShape{fill:color-mix(in srgb, var(--visual-tone) 24%, transparent);stroke-width:3px}.WHgWIW_sceneText,.WHgWIW_shapeLabel{fill:var(--lx-label-primary);stroke:var(--lx-surface-raised);stroke-width:3px;paint-order:stroke;font-size:var(--lx-text-2xs);pointer-events:none;font-weight:550}.WHgWIW_shapeLabel{fill:var(--visual-tone);font-size:var(--lx-text-micro)}.WHgWIW_tableViewport{padding:var(--lx-space-2xs)}.WHgWIW_relationTable{border-spacing:0;border-collapse:separate;table-layout:fixed;width:100%;min-width:520px;color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs)}.WHgWIW_relationTable th,.WHgWIW_relationTable td{border-right:1px solid var(--lx-border-subtle);border-bottom:1px solid var(--lx-border-subtle);padding:var(--lx-space-md) var(--lx-space-md);text-align:center;overflow-wrap:anywhere}.WHgWIW_relationTable tr>:last-child{border-right:0}.WHgWIW_relationTable tbody tr:last-child>*{border-bottom:0}.WHgWIW_relationTable thead th{background:color-mix(in srgb, var(--lx-accent-soft) 25%, transparent);color:var(--lx-label-primary);font-weight:650}.WHgWIW_relationTable thead th:first-child,.WHgWIW_relationTable tbody th{width:22%}.WHgWIW_relationTable tbody th{background:var(--lx-surface-sunken);color:var(--lx-label-primary);text-align:left;font-weight:550}.WHgWIW_relationTable button{border-radius:var(--lx-radius-xs);max-width:100%;padding:var(--lx-space-3xs) var(--lx-space-xs);color:inherit;line-height:inherit;overflow-wrap:anywhere;background:0 0;border-color:#0000}.WHgWIW_relationTable td[data-tone]{color:var(--visual-tone);font-weight:550}.WHgWIW_matrixTable td{padding:var(--lx-space-xs)}.WHgWIW_matrixCell{width:100%;min-height:38px;border-color:color-mix(in srgb, var(--visual-tone) 25%, var(--lx-border-subtle))!important;background:color-mix(in srgb, var(--visual-tone) 9%, transparent)!important;color:var(--visual-tone)!important}.WHgWIW_emptyCell{color:var(--lx-label-tertiary);font-size:var(--lx-text-md)}.WHgWIW_setMap{gap:var(--lx-space-lg);display:grid}.WHgWIW_setZones{gap:var(--lx-space-md);grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));display:grid}.WHgWIW_setZone{border:2px solid color-mix(in srgb, var(--visual-tone) 58%, transparent);border-radius:36px 36px var(--lx-radius-lg) var(--lx-radius-lg);min-width:0;padding:var(--lx-space-lg);background:color-mix(in srgb, var(--visual-tone) 7%, transparent);position:relative;overflow:hidden}.WHgWIW_setZone h4,.WHgWIW_intersections h4{align-items:center;gap:var(--lx-space-sm);color:var(--lx-label-primary);font-size:var(--lx-text-xs);font-weight:650;line-height:var(--lx-leading-xs);margin:0 0 9px;display:flex}.WHgWIW_setZone h4>span{border-radius:var(--lx-radius-circle);background:var(--visual-tone);width:8px;height:8px}.WHgWIW_setZone>div{gap:var(--lx-space-xs);flex-wrap:wrap;align-content:flex-start;min-height:34px;display:flex}.WHgWIW_setZone button{border-color:color-mix(in srgb, var(--visual-tone) 24%, var(--lx-border-subtle));border-radius:var(--lx-radius-pill);padding:var(--lx-space-2xs) var(--lx-space-sm);background:color-mix(in srgb, var(--visual-tone) 10%, var(--lx-surface-base));color:var(--lx-label-primary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs)}.WHgWIW_emptySet{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-sm)}.WHgWIW_intersections{border:1px dashed var(--lx-border-strongest);border-radius:var(--lx-radius-lg);padding:var(--lx-space-md);background:repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--lx-border-subtle) 30%, transparent) 8px 9px)}.WHgWIW_intersections>div{gap:var(--lx-space-sm);grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));display:grid}.WHgWIW_intersections button{gap:var(--lx-space-3xs);border-radius:var(--lx-radius-sm);padding:var(--lx-space-xs) var(--lx-space-sm);text-align:left;display:grid}.WHgWIW_intersections strong{color:var(--lx-label-primary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs)}.WHgWIW_intersections span{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro)}.WHgWIW_timelineRenderer,.WHgWIW_formulaRenderer,.WHgWIW_studyRenderer,.WHgWIW_recallRenderer{gap:var(--lx-space-lg);flex-direction:column;min-width:0;display:flex}.WHgWIW_timelineViewport{overscroll-behavior-inline:contain;border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-lg);background:var(--lx-surface-sunken);scrollbar-width:thin;min-width:0;overflow-x:auto}.WHgWIW_timelineCanvas{min-width:0;position:relative}.WHgWIW_timelineAxis{border-radius:var(--lx-radius-pill);background:linear-gradient(to right, var(--lx-border-strong), var(--lx-accent), var(--lx-border-strong));height:3px;position:absolute;left:72px;right:72px}.WHgWIW_timelineAxis:after{border-top:5px solid #0000;border-bottom:5px solid #0000;border-left:8px solid var(--lx-border-strong);content:\"\";position:absolute;top:-4px;right:-2px}.WHgWIW_timelineEra,.WHgWIW_timelineEraChips button,.WHgWIW_timelineEvent,.WHgWIW_timelineVertical button{appearance:none;border:1px solid color-mix(in srgb, var(--visual-tone) 42%, var(--lx-border-subtle));background:color-mix(in srgb, var(--visual-tone) 10%, var(--lx-surface-base));color:var(--lx-label-primary);font:inherit;cursor:pointer}.WHgWIW_timelineEra{z-index:1;border-radius:var(--lx-radius-pill);height:23px;padding:var(--lx-space-3xs) var(--lx-space-md);color:var(--visual-tone);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong);line-height:var(--lx-leading-2xs);text-overflow:ellipsis;white-space:nowrap;position:absolute;overflow:hidden}.WHgWIW_timelineEvent{z-index:2;gap:var(--lx-space-3xs);border-radius:var(--lx-radius-sm);width:126px;min-height:50px;padding:var(--lx-space-xs) var(--lx-space-sm);text-align:left;box-shadow:var(--lx-shadow-sm);display:grid;position:absolute;transform:translate(-50%)}.WHgWIW_timelineEvent:before{border:2px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--visual-tone);width:10px;height:10px;box-shadow:0 0 0 1px var(--visual-tone);content:\"\";position:absolute;left:calc(50% - 6px)}.WHgWIW_timelineEvent:after{background:var(--visual-tone);content:\"\";width:1px;height:20px;position:absolute;left:50%}.WHgWIW_timelineEvent[data-side=top]:before{bottom:-32px}.WHgWIW_timelineEvent[data-side=top]:after{bottom:-22px}.WHgWIW_timelineEvent[data-side=bottom]:before{top:-32px}.WHgWIW_timelineEvent[data-side=bottom]:after{top:-22px}.WHgWIW_timelineEvent>span{color:var(--visual-tone);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums;font-weight:650;line-height:var(--lx-leading-micro)}.WHgWIW_timelineEvent>strong{color:var(--lx-label-primary);font-size:var(--lx-text-2xs);font-weight:550;line-height:var(--lx-leading-2xs);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.WHgWIW_timelineEra:hover,.WHgWIW_timelineEvent:hover,.WHgWIW_timelineVertical button:hover,.WHgWIW_timelineEraChips button:hover{border-color:var(--visual-tone);box-shadow:0 0 0 3px color-mix(in srgb, var(--visual-tone) 22%, transparent)}.WHgWIW_timelineEraChips{gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}.WHgWIW_timelineEraChips button{border-radius:var(--lx-radius-pill);padding:var(--lx-space-2xs) var(--lx-space-md);color:var(--visual-tone);text-align:left;gap:0;display:inline-grid}.WHgWIW_timelineEraChips button strong{font-size:var(--lx-text-micro);font-weight:650;line-height:var(--lx-leading-2xs)}.WHgWIW_timelineEraChips button span{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro)}.WHgWIW_timelineVertical{padding:var(--lx-space-2xs) 0 var(--lx-space-2xs) var(--lx-space-2xl);gap:0;margin:0;list-style:none;display:grid}.WHgWIW_timelineVertical li{border-left:2px solid color-mix(in srgb, var(--visual-tone) 48%, var(--lx-border-default));padding:0 0 var(--lx-space-lg) var(--lx-space-2xl);position:relative}.WHgWIW_timelineVertical li:last-child{padding-bottom:0}.WHgWIW_timelineVertical li:before{border:2px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--visual-tone);width:9px;height:9px;box-shadow:0 0 0 1px var(--visual-tone);content:\"\";position:absolute;top:16px;left:-7px}.WHgWIW_timelineVertical button{gap:var(--lx-space-3xs) var(--lx-space-lg);border-radius:var(--lx-radius-md);width:min(100%,620px);padding:var(--lx-space-sm) var(--lx-space-md);text-align:left;grid-template-columns:minmax(80px,auto) minmax(0,1fr);display:grid}.WHgWIW_timelineVertical button>span{color:var(--visual-tone);font-size:var(--lx-text-micro);font-weight:650}.WHgWIW_timelineVertical button>strong{color:var(--lx-label-primary);font-size:var(--lx-text-xs)}.WHgWIW_timelineVertical button>small{color:var(--lx-label-secondary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-2xs);grid-column:1/-1}.WHgWIW_formulaMeta{justify-content:space-between;align-items:center;gap:var(--lx-space-lg);min-width:0;color:var(--lx-accent);font-size:var(--lx-text-2xs);font-variant-numeric:tabular-nums;font-weight:650;line-height:var(--lx-leading-xs);display:flex}.WHgWIW_formulaMeta code{border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-xs);padding:var(--lx-space-3xs) var(--lx-space-sm);background:var(--lx-surface-sunken);color:var(--lx-label-secondary);font-size:var(--lx-text-micro);text-overflow:ellipsis;white-space:nowrap;font-weight:400;overflow:hidden}.WHgWIW_formulaSteps{gap:0;margin:0;padding:0;list-style:none;display:grid}.WHgWIW_formulaSteps>li{min-width:0}.WHgWIW_formulaStepCard{gap:var(--lx-space-md);border:1px solid color-mix(in srgb, var(--visual-tone) 30%, var(--lx-border-subtle));border-radius:var(--lx-radius-md);min-width:0;padding:var(--lx-space-md);background:color-mix(in srgb, var(--visual-tone) 6%, transparent);grid-template-columns:30px minmax(0,1fr);align-items:start;display:grid}.WHgWIW_formulaStepCard>span{border-radius:var(--lx-radius-circle);background:color-mix(in srgb, var(--visual-tone) 16%, transparent);width:28px;height:28px;color:var(--visual-tone);font-size:var(--lx-text-2xs);place-items:center;font-weight:700;display:grid}.WHgWIW_formulaStepCard>div{gap:var(--lx-space-2xs);min-width:0;display:grid}.WHgWIW_formulaExpression{padding:var(--lx-space-sm) 0 var(--lx-space-sm);color:var(--lx-label-primary);font-size:clamp(14px,3cqi,18px);font-weight:550;line-height:var(--lx-leading-lg);scrollbar-width:thin;overflow:auto hidden}.WHgWIW_formulaExpression>div{min-width:max-content}.WHgWIW_formulaExpression .katex-display{text-align:left;margin:2px 0}.WHgWIW_formulaStepCard strong{color:var(--visual-tone);font-size:var(--lx-text-micro);line-height:var(--lx-leading-2xs)}.WHgWIW_formulaStepCard p{color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);margin:0}.WHgWIW_formulaRule{gap:var(--lx-space-xs) var(--lx-space-md);min-height:42px;padding:var(--lx-space-3xs) var(--lx-space-md);color:var(--lx-label-secondary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-2xs);grid-template-columns:30px auto minmax(0,1fr);align-items:center;display:grid}.WHgWIW_formulaRule>span:first-child{color:var(--visual-tone);font-size:var(--lx-text-lg);text-align:center}.WHgWIW_formulaRule strong{color:var(--visual-tone);font-size:var(--lx-text-micro);letter-spacing:.04em;text-transform:uppercase}.WHgWIW_formulaUnknown{gap:var(--lx-space-md);padding:var(--lx-space-3xs) var(--lx-space-md);color:var(--lx-label-tertiary);grid-template-columns:30px minmax(0,1fr);align-items:center;display:grid}.WHgWIW_formulaUnknown>span{text-align:center}.WHgWIW_formulaUnknown code{border:1px dashed var(--lx-border-default);border-radius:var(--lx-radius-md);min-height:38px;font-size:var(--lx-text-lg);place-items:center;display:grid}.WHgWIW_formulaConclusion{gap:var(--lx-space-3xs);border-left:3px solid var(--lx-success);border-radius:0 var(--lx-radius-sm) var(--lx-radius-sm) 0;padding:var(--lx-space-sm) var(--lx-space-md);background:color-mix(in srgb, var(--lx-success) 8%, transparent);display:grid}.WHgWIW_formulaConclusion span{color:var(--lx-success);font-size:var(--lx-text-micro);font-weight:650}.WHgWIW_formulaConclusion strong{color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-sm)}.WHgWIW_formulaActions,.WHgWIW_recallNavigation,.WHgWIW_recallRating{gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}.WHgWIW_formulaActions .WHgWIW_primaryAction,.WHgWIW_recallRevealButton{min-height:var(--lx-control-height-md);border-color:var(--lx-focus-color);background:var(--lx-focus-color);color:var(--lx-label-on-accent)}.WHgWIW_formulaActions .WHgWIW_primaryAction:hover,.WHgWIW_recallRevealButton:hover{border-color:var(--lx-focus-color);background:color-mix(in srgb, var(--lx-focus-color) 88%, var(--lx-label-primary));color:var(--lx-label-on-accent)}.WHgWIW_studySource{gap:var(--lx-space-3xs) var(--lx-space-md);border-left:3px solid var(--lx-accent);padding:var(--lx-space-sm) var(--lx-space-md);background:color-mix(in srgb, var(--lx-accent-soft) 24%, transparent);grid-template-columns:auto minmax(0,1fr);align-items:baseline;display:grid}.WHgWIW_studySource>span{color:var(--lx-accent);font-size:var(--lx-text-micro);font-weight:650}.WHgWIW_studySource>strong{color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-sm)}.WHgWIW_studySource>p{color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);grid-column:1/-1;margin:2px 0 0}.WHgWIW_studySource>p b{color:var(--lx-label-primary);margin-right:7px;font-weight:550}.WHgWIW_studyLayout{gap:var(--lx-space-lg);grid-template-columns:minmax(150px,.34fr) minmax(0,1fr);min-width:0;display:grid}.WHgWIW_studySections{gap:var(--lx-space-xs);flex-direction:column;min-width:0;display:flex}.WHgWIW_studySections button{gap:0 var(--lx-space-sm);min-width:0;padding:var(--lx-space-sm);text-align:left;grid-template-columns:24px minmax(0,1fr);display:grid}.WHgWIW_studySections button>span{border-radius:var(--lx-radius-circle);background:var(--lx-border-subtle);width:22px;height:22px;color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);grid-row:1/3;place-items:center;display:grid}.WHgWIW_studySections button>strong{color:var(--lx-label-primary);font-size:var(--lx-text-2xs);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.WHgWIW_studySections button>small{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.WHgWIW_studySections button[aria-selected=true]{border-color:var(--lx-accent);background:color-mix(in srgb, var(--lx-accent-soft) 38%, transparent)}.WHgWIW_studySections button[aria-selected=true]>span{background:var(--lx-accent);color:var(--lx-label-on-accent)}.WHgWIW_studySectionPanel{gap:var(--lx-space-md);border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-md);min-width:0;padding:var(--lx-space-md);background:var(--lx-surface-sunken);flex-direction:column;display:flex}.WHgWIW_studySectionPanel>header{gap:var(--lx-space-xs);display:grid}.WHgWIW_studySectionPanel>header span{color:var(--lx-accent);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro)}.WHgWIW_studySectionPanel>header h4{color:var(--lx-label-primary);font-size:var(--lx-text-base);line-height:var(--lx-leading-base);margin:0}.WHgWIW_studySectionPanel>header p{color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);margin:0}.WHgWIW_studyConcepts{gap:var(--lx-space-sm);grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));display:grid}.WHgWIW_studyConcepts button{gap:var(--lx-space-3xs);border-color:color-mix(in srgb, var(--visual-tone) 25%, var(--lx-border-subtle));background:color-mix(in srgb, var(--visual-tone) 6%, transparent);text-align:left;min-width:0;display:grid}.WHgWIW_studyConcepts button>span{color:var(--visual-tone);font-size:var(--lx-text-micro);font-weight:650}.WHgWIW_studyConcepts button>strong{color:var(--lx-label-primary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs)}.WHgWIW_studyConcepts button>small{gap:var(--lx-space-3xs);color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro);display:grid}.WHgWIW_studyConcepts button>small b{color:var(--lx-label-secondary);font-weight:550}.WHgWIW_studyConcepts button[data-selected]{border-color:var(--visual-tone);box-shadow:0 0 0 2px color-mix(in srgb, var(--visual-tone) 12%, transparent)}.WHgWIW_studyDetail{gap:var(--lx-space-xs) var(--lx-space-md);border-left:3px solid var(--lx-accent);border-radius:0 var(--lx-radius-sm) var(--lx-radius-sm) 0;padding:var(--lx-space-md) var(--lx-space-md) var(--lx-space-md) var(--lx-space-md);background:color-mix(in srgb, var(--lx-accent-soft) 25%, transparent);grid-template-columns:minmax(0,1fr) 28px;display:grid;position:relative}.WHgWIW_studyDetail>div{gap:var(--lx-space-sm);align-items:baseline;min-width:0;display:flex}.WHgWIW_studyDetail>div span{color:var(--lx-accent);font-size:var(--lx-text-micro);flex:none;font-weight:650}.WHgWIW_studyDetail>div strong{color:var(--lx-label-primary);font-size:var(--lx-text-sm);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.WHgWIW_studyDetail>p{color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);grid-column:1;margin:0}.WHgWIW_studyDetail>dl{gap:var(--lx-space-sm);font-size:var(--lx-text-micro);line-height:var(--lx-leading-2xs);grid-column:1;margin:0;display:flex}.WHgWIW_studyDetail dt{color:var(--lx-label-tertiary)}.WHgWIW_studyDetail dd{color:var(--lx-label-secondary);margin:0}.WHgWIW_studyDetail>button{width:27px;height:27px;font-size:var(--lx-text-md);grid-area:1/2/4;padding:0}.WHgWIW_recallToolbar{justify-content:space-between;align-items:baseline;gap:var(--lx-space-lg);min-width:0;color:var(--lx-accent);font-size:var(--lx-text-2xs);font-variant-numeric:tabular-nums;font-weight:650;display:flex}.WHgWIW_recallToolbar output{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);font-weight:400}.WHgWIW_recallInstructions{color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-xs);margin:0}.WHgWIW_recallCard{gap:var(--lx-space-lg);border:1px solid var(--lx-border-default);border-radius:var(--lx-radius-lg);background:radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--lx-accent-soft) 48%, transparent), transparent 38%), var(--lx-surface-raised);min-height:230px;box-shadow:var(--lx-shadow-md);align-content:start;padding:clamp(16px,4cqi,26px);display:grid}.WHgWIW_recallCardHeader{justify-content:space-between;align-items:center;gap:var(--lx-space-lg);display:flex}.WHgWIW_recallCardHeader>span{color:var(--lx-accent);font-size:var(--lx-text-micro);letter-spacing:.08em;text-transform:uppercase;font-weight:700}.WHgWIW_recallCardHeader>small{border-radius:var(--lx-radius-pill);padding:var(--lx-space-3xs) var(--lx-space-sm);background:var(--lx-border-subtle);color:var(--lx-label-tertiary);font-size:var(--lx-text-micro)}.WHgWIW_recallCardHeader>small[data-status=mastered]{background:color-mix(in srgb, var(--lx-success) 13%, transparent);color:var(--lx-success)}.WHgWIW_recallCardHeader>small[data-status=review]{background:color-mix(in srgb, var(--lx-warn) 13%, transparent);color:var(--lx-warn)}.WHgWIW_recallCard>h4{color:var(--lx-label-primary);margin:0;font-size:clamp(16px,4cqi,21px);font-weight:600;line-height:1.55}.WHgWIW_recallTags{gap:var(--lx-space-xs);flex-wrap:wrap;margin:-3px 0 0;padding:0;list-style:none;display:flex}.WHgWIW_recallTags li{border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-pill);padding:var(--lx-space-3xs) var(--lx-space-sm);color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-2xs)}.WHgWIW_recallReveal{gap:var(--lx-space-2xs);border-left:3px solid var(--lx-warn);padding:var(--lx-space-sm) var(--lx-space-md);background:color-mix(in srgb, var(--lx-warn) 7%, transparent);display:grid}.WHgWIW_recallReveal[data-kind=answer]{border-left-color:var(--lx-success);background:color-mix(in srgb, var(--lx-success) 7%, transparent)}.WHgWIW_recallReveal>span{color:var(--lx-warn);font-size:var(--lx-text-micro);font-weight:700}.WHgWIW_recallReveal[data-kind=answer]>span{color:var(--lx-success)}.WHgWIW_recallReveal>p{color:var(--lx-label-primary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm);margin:0}.WHgWIW_recallRevealButton{justify-self:start;width:max-content;min-width:120px}.WHgWIW_recallRating{align-self:end}.WHgWIW_recallRating button[aria-pressed=true]{border-color:var(--lx-accent);background:color-mix(in srgb, var(--lx-accent-soft) 46%, transparent);color:var(--lx-accent)}.WHgWIW_recallNavigation button:last-child{margin-left:auto}.WHgWIW_visualShell [data-focus-state=dim]{opacity:.2;filter:saturate(.35);transition:opacity var(--lx-motion-base) var(--lx-easing), filter var(--lx-motion-base) var(--lx-easing)}.WHgWIW_visualShell [data-focus-state=focus]{filter:drop-shadow(0 0 5px color-mix(in srgb, var(--visual-tone) 48%, transparent));transition:opacity var(--lx-motion-base) var(--lx-easing), filter var(--lx-motion-base) var(--lx-easing)}@container WHgWIW_learning-visual-v4 (width<=560px){.WHgWIW_visualShell{gap:var(--lx-space-lg);border-radius:var(--lx-radius-lg);padding:var(--lx-space-lg) var(--lx-space-lg)}.WHgWIW_visualHeader{grid-template-columns:1fr}.WHgWIW_visualEyebrow{grid-column:1;width:max-content}.WHgWIW_visualHeader h3{font-size:var(--lx-text-md);grid-column:1}.WHgWIW_sequence{grid-template-columns:1fr}.WHgWIW_sequenceActions{justify-content:stretch}.WHgWIW_sequenceActions button{flex:1;justify-content:center}.WHgWIW_sequenceActions button:last-child{flex:none}.WHgWIW_metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.WHgWIW_relationTable{min-width:500px}.WHgWIW_studyLayout{grid-template-columns:1fr}.WHgWIW_studySections{scrollbar-width:thin;flex-direction:row;padding-bottom:3px;overflow-x:auto}.WHgWIW_studySections button{min-width:156px}.WHgWIW_formulaActions button{flex:1}.WHgWIW_formulaActions button:nth-child(2){flex:2}.WHgWIW_recallNavigation button{flex:1}.WHgWIW_recallNavigation button:last-child{flex-basis:100%;margin-left:0}.WHgWIW_recallCard{min-height:210px}}@container WHgWIW_learning-visual-v4 (width<=360px){.WHgWIW_sequenceActions button span:not([aria-hidden]){display:none}.WHgWIW_metrics{grid-template-columns:1fr}.WHgWIW_detailPanel{grid-template-columns:1fr 28px}.WHgWIW_detailPanel>span,.WHgWIW_detailPanel>strong,.WHgWIW_detailPanel>p{grid-column:1}.WHgWIW_detailPanel>button{grid-column:2}.WHgWIW_formulaStepCard{padding:var(--lx-space-sm);grid-template-columns:24px minmax(0,1fr)}.WHgWIW_formulaStepCard>span{width:23px;height:23px}.WHgWIW_formulaRule{grid-template-columns:24px minmax(0,1fr)}.WHgWIW_formulaRule strong,.WHgWIW_formulaRule>span:last-child{grid-column:2}.WHgWIW_recallToolbar{align-items:flex-start;gap:var(--lx-space-3xs);flex-direction:column}}";
-		const tagId = "@dsh-portable/interactive-learning/LearningVisualV4.module.css";
-		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
-			const tag = document.createElement("style");
-			tag.dataset.plugin = "@dsh-portable/interactive-learning";
-			tag.dataset.pluginCss = tagId;
-			tag.textContent = css;
-			document.head.appendChild(tag);
-		}
-		var LearningVisualV4_module_css_default = {
-			"arrowMarker": "WHgWIW_arrowMarker",
-			"axisLabel": "WHgWIW_axisLabel",
-			"chartViewport": "WHgWIW_chartViewport",
-			"detailPanel": "WHgWIW_detailPanel",
-			"edgeGroup": "WHgWIW_edgeGroup",
-			"edgeHit": "WHgWIW_edgeHit",
-			"edgeLabel": "WHgWIW_edgeLabel",
-			"edgeVisible": "WHgWIW_edgeVisible",
-			"emptyCell": "WHgWIW_emptyCell",
-			"emptyPlotNotice": "WHgWIW_emptyPlotNotice",
-			"emptySet": "WHgWIW_emptySet",
-			"errorFallback": "WHgWIW_errorFallback",
-			"formulaActions": "WHgWIW_formulaActions",
-			"formulaConclusion": "WHgWIW_formulaConclusion",
-			"formulaExpression": "WHgWIW_formulaExpression",
-			"formulaMeta": "WHgWIW_formulaMeta",
-			"formulaRenderer": "WHgWIW_formulaRenderer",
-			"formulaRule": "WHgWIW_formulaRule",
-			"formulaStepCard": "WHgWIW_formulaStepCard",
-			"formulaSteps": "WHgWIW_formulaSteps",
-			"formulaUnknown": "WHgWIW_formulaUnknown",
-			"graphSvg": "WHgWIW_graphSvg",
-			"graphViewport": "WHgWIW_graphViewport",
-			"gridLine": "WHgWIW_gridLine",
-			"interactionHint": "WHgWIW_interactionHint",
-			"intersections": "WHgWIW_intersections",
-			"layerLabel": "WHgWIW_layerLabel",
-			"learning-visual-v4": "WHgWIW_learning-visual-v4",
-			"matrixCell": "WHgWIW_matrixCell",
-			"matrixTable": "WHgWIW_matrixTable",
-			"metrics": "WHgWIW_metrics",
-			"nodeGroup": "WHgWIW_nodeGroup",
-			"nodeLinkRenderer": "WHgWIW_nodeLinkRenderer",
-			"parameter": "WHgWIW_parameter",
-			"parameterEnds": "WHgWIW_parameterEnds",
-			"parameterGrid": "WHgWIW_parameterGrid",
-			"parameterHeader": "WHgWIW_parameterHeader",
-			"plotFrame": "WHgWIW_plotFrame",
-			"plotRenderer": "WHgWIW_plotRenderer",
-			"plotSvg": "WHgWIW_plotSvg",
-			"primaryAction": "WHgWIW_primaryAction",
-			"probeCard": "WHgWIW_probeCard",
-			"probeLine": "WHgWIW_probeLine",
-			"probePoint": "WHgWIW_probePoint",
-			"recallCard": "WHgWIW_recallCard",
-			"recallCardHeader": "WHgWIW_recallCardHeader",
-			"recallInstructions": "WHgWIW_recallInstructions",
-			"recallNavigation": "WHgWIW_recallNavigation",
-			"recallRating": "WHgWIW_recallRating",
-			"recallRenderer": "WHgWIW_recallRenderer",
-			"recallReveal": "WHgWIW_recallReveal",
-			"recallRevealButton": "WHgWIW_recallRevealButton",
-			"recallTags": "WHgWIW_recallTags",
-			"recallToolbar": "WHgWIW_recallToolbar",
-			"relationRenderer": "WHgWIW_relationRenderer",
-			"relationTable": "WHgWIW_relationTable",
-			"sceneElement": "WHgWIW_sceneElement",
-			"sceneHit": "WHgWIW_sceneHit",
-			"sceneLine": "WHgWIW_sceneLine",
-			"scenePoint": "WHgWIW_scenePoint",
-			"sceneRenderer": "WHgWIW_sceneRenderer",
-			"sceneShape": "WHgWIW_sceneShape",
-			"sceneSvg": "WHgWIW_sceneSvg",
-			"sceneText": "WHgWIW_sceneText",
-			"sceneViewport": "WHgWIW_sceneViewport",
-			"sequence": "WHgWIW_sequence",
-			"sequenceActions": "WHgWIW_sequenceActions",
-			"sequenceText": "WHgWIW_sequenceText",
-			"seriesBar": "WHgWIW_seriesBar",
-			"seriesLine": "WHgWIW_seriesLine",
-			"seriesPoint": "WHgWIW_seriesPoint",
-			"seriesToggles": "WHgWIW_seriesToggles",
-			"setMap": "WHgWIW_setMap",
-			"setZone": "WHgWIW_setZone",
-			"setZones": "WHgWIW_setZones",
-			"shapeLabel": "WHgWIW_shapeLabel",
-			"srOnly": "WHgWIW_srOnly",
-			"studyConcepts": "WHgWIW_studyConcepts",
-			"studyDetail": "WHgWIW_studyDetail",
-			"studyLayout": "WHgWIW_studyLayout",
-			"studyRenderer": "WHgWIW_studyRenderer",
-			"studySectionPanel": "WHgWIW_studySectionPanel",
-			"studySections": "WHgWIW_studySections",
-			"studySource": "WHgWIW_studySource",
-			"tableViewport": "WHgWIW_tableViewport",
-			"tickLabel": "WHgWIW_tickLabel",
-			"timelineAxis": "WHgWIW_timelineAxis",
-			"timelineCanvas": "WHgWIW_timelineCanvas",
-			"timelineEra": "WHgWIW_timelineEra",
-			"timelineEraChips": "WHgWIW_timelineEraChips",
-			"timelineEvent": "WHgWIW_timelineEvent",
-			"timelineRenderer": "WHgWIW_timelineRenderer",
-			"timelineVertical": "WHgWIW_timelineVertical",
-			"timelineViewport": "WHgWIW_timelineViewport",
-			"visualEyebrow": "WHgWIW_visualEyebrow",
-			"visualHeader": "WHgWIW_visualHeader",
-			"visualShell": "WHgWIW_visualShell",
-			"zeroAxis": "WHgWIW_zeroAxis"
-		};
-		//#endregion
-		//#region src/client/LearningVisualV4.tsx
+		//#region src/client/visuals/core/labels.ts
+		/**
+		* Every model-independent string the visual@4 renderers show.
+		*
+		* The Host supplies these through the plugin locale; the defaults here keep the
+		* renderers usable in isolation (tests, the browser fixture) without forking the
+		* wording.
+		*/
 		const DEFAULT_LABELS = {
 			eyebrow: "交互可视化",
 			errorTitle: "视觉组件暂时无法显示",
@@ -4484,20 +4380,279 @@ window.__ModuleLoader__.load({
 			reviewAgain: "待复习",
 			unrated: "未标记",
 			recallStatus: "掌握 {mastered} · 待复习 {review}",
-			recallInteractionHint: "先在心中回答，再查看提示和答案，最后标记掌握状态。"
+			recallInteractionHint: "先在心中回答，再查看提示和答案，最后标记掌握状态。",
+			stepOfTotal: "第 {current} / {total} 步",
+			emptyVisual: "这张图目前没有可显示的内容。",
+			graphLegendLabel: "图形状态说明",
+			stateCurrent: "当前重点",
+			stateRelated: "相关路径",
+			stateContext: "其余结构",
+			stateVisited: "已讲过"
 		};
 		const VisualLabelsContext = (0, react.createContext)(DEFAULT_LABELS);
+		const VisualLabelsProvider = VisualLabelsContext.Provider;
 		function useVisualLabels() {
 			return (0, react.useContext)(VisualLabelsContext);
 		}
+		/** Fill `{name}` placeholders, leaving unknown ones untouched. */
 		function labelTemplate(template, values) {
 			return template.replace(/\{([a-z]+)\}/gi, (match, key) => values[key] === void 0 ? match : String(values[key]));
 		}
-		function displayMath(expression) {
-			const value = expression.trim().replaceAll("′", "'").replaceAll("−", "-").replaceAll("²", "^{2}").replaceAll("³", "^{3}").replaceAll("→", "\\to ").replaceAll("≤", "\\le ").replaceAll("≥", "\\ge ").replaceAll("≠", "\\ne ").replaceAll("×", "\\times ").replaceAll("÷", "\\div ").replaceAll("∞", "\\infty ").replace(/\blim\s*\[([^\]]+)\]/g, "\\lim_{$1}");
-			if (value.startsWith("$$") && value.endsWith("$$") || value.startsWith("\\[") && value.endsWith("\\]")) return value;
-			return `$$\n${value}\n$$`;
+		//#endregion
+		//#region \0dsh-css:src/client/visuals/styles/shell.module.css.mjs
+		const css$7 = ".h8ir_G_visualShell{--visual-tone:var(--lx-accent);gap:var(--lx-space-lg);min-width:0;margin:var(--lx-space-sm) 0 var(--lx-space-xl);border:var(--lx-card-border);border-radius:var(--lx-card-radius);padding:var(--lx-card-padding);background:var(--lx-card-background);color:var(--lx-label-primary);box-shadow:var(--lx-shadow-sm);flex-direction:column;display:flex;container:h8ir_G_learning-visual-v4/inline-size}.h8ir_G_visualHeader{gap:var(--lx-space-2xs) var(--lx-space-md);flex-wrap:wrap;align-items:baseline;min-width:0;display:flex}.h8ir_G_visualEyebrow{border-radius:var(--lx-radius-pill);padding:var(--lx-space-3xs) var(--lx-space-sm);background:color-mix(in srgb, var(--lx-accent-soft) 60%, transparent);color:var(--lx-accent);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong);letter-spacing:var(--lx-tracking-eyebrow);line-height:var(--lx-leading-micro);flex:none}.h8ir_G_visualHeader h3{min-width:0;font-size:var(--lx-text-lg);font-weight:var(--lx-weight-strong);line-height:var(--lx-leading-lg);flex:12ch;margin:0}.h8ir_G_visualHeader p{margin:var(--lx-space-2xs) 0 0;color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);flex:100%}.h8ir_G_srOnly{clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}.h8ir_G_errorFallback{gap:var(--lx-space-2xs);border-left:3px solid var(--lx-danger);padding:var(--lx-space-md) var(--lx-space-lg);background:color-mix(in srgb, var(--lx-danger) 8%, transparent);color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);display:grid}.h8ir_G_errorFallback strong{color:var(--lx-label-error)}.h8ir_G_errorFallback pre{max-height:240px;margin:var(--lx-space-xs) 0 0;white-space:pre-wrap;font:inherit;overflow:auto}.h8ir_G_emptyState{gap:var(--lx-space-2xs);border:1px dashed var(--lx-border-strong);border-radius:var(--lx-radius-lg);padding:var(--lx-space-2xl) var(--lx-space-lg);color:var(--lx-label-secondary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-base);text-align:center;display:grid}.h8ir_G_control{min-height:var(--lx-control-height-sm);justify-content:center;align-items:center;gap:var(--lx-space-xs);appearance:none;border:1px solid var(--lx-border-default);border-radius:var(--lx-radius-sm);padding:var(--lx-control-padding-sm);background:var(--lx-surface-base);color:var(--lx-label-primary);font:inherit;font-size:var(--lx-text-2xs);line-height:var(--lx-leading-2xs);cursor:pointer;transition:background-color var(--lx-motion-fast) var(--lx-easing), border-color var(--lx-motion-fast) var(--lx-easing), color var(--lx-motion-fast) var(--lx-easing);display:inline-flex}.h8ir_G_control:hover:not(:disabled){border-color:var(--lx-border-strong);background:color-mix(in srgb, var(--lx-accent) 8%, var(--lx-surface-base));color:var(--lx-label-primary)}.h8ir_G_control:active:not(:disabled){border-color:var(--lx-accent);background:color-mix(in srgb, var(--lx-accent) 14%, var(--lx-surface-base))}.h8ir_G_control:disabled{border-color:var(--lx-border-subtle);color:var(--lx-label-tertiary);opacity:var(--lx-control-disabled-opacity);cursor:not-allowed}.h8ir_G_controlPrimary{min-height:var(--lx-control-height-md);border-color:var(--lx-accent);background:var(--lx-accent);color:var(--lx-label-on-accent);font-weight:var(--lx-weight-medium)}.h8ir_G_controlPrimary:hover:not(:disabled){border-color:color-mix(in srgb, var(--lx-accent) 84%, var(--lx-label-primary));background:color-mix(in srgb, var(--lx-accent) 84%, var(--lx-label-primary));color:var(--lx-label-on-accent)}.h8ir_G_controlPrimary:active:not(:disabled){background:color-mix(in srgb, var(--lx-accent) 72%, var(--lx-label-primary))}.h8ir_G_controlQuiet{color:var(--lx-label-secondary);background:0 0;border-color:#0000}.h8ir_G_controlQuiet:hover:not(:disabled){border-color:var(--lx-border-default);background:color-mix(in srgb, var(--lx-accent) 7%, transparent)}.h8ir_G_controlToned{border-color:color-mix(in srgb, var(--visual-tone) 32%, var(--lx-border-subtle));background:color-mix(in srgb, var(--visual-tone) 9%, var(--lx-surface-base));color:var(--lx-label-primary)}.h8ir_G_controlToned:hover:not(:disabled){border-color:var(--visual-tone);background:color-mix(in srgb, var(--visual-tone) 16%, var(--lx-surface-base))}.h8ir_G_controlRow{gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}.h8ir_G_closeButton{border-radius:var(--lx-radius-xs);width:28px;height:28px;min-height:28px;font-size:var(--lx-text-md);padding:0;line-height:1}.h8ir_G_sequence{gap:var(--lx-space-sm) var(--lx-space-lg);border:1px solid color-mix(in srgb, var(--lx-accent) 26%, var(--lx-border-default));border-radius:var(--lx-radius-lg);min-width:0;padding:var(--lx-space-md) var(--lx-space-lg);background:color-mix(in srgb, var(--lx-accent-soft) 40%, transparent);grid-template-columns:minmax(0,1fr) auto;align-items:center;display:grid}.h8ir_G_sequenceText{gap:var(--lx-space-3xs) var(--lx-space-md);grid-template-columns:auto minmax(0,1fr);align-items:baseline;min-width:0;display:grid}.h8ir_G_sequenceText>span{color:var(--lx-accent);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums;font-weight:var(--lx-weight-strong)}.h8ir_G_sequenceText strong{min-width:0;color:var(--lx-label-primary);font-size:var(--lx-text-sm);font-weight:var(--lx-weight-strong);line-height:var(--lx-leading-sm);overflow-wrap:anywhere}.h8ir_G_sequenceText p{margin:var(--lx-space-3xs) 0 0;color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);grid-column:1/-1}.h8ir_G_sequenceActions{gap:var(--lx-space-xs);flex:none;display:flex}.h8ir_G_sequenceActions .h8ir_G_control{padding:var(--lx-control-padding-md)}.h8ir_G_sequenceRail{gap:var(--lx-space-2xs);flex-wrap:wrap;grid-column:1/-1;margin:0;padding:0;list-style:none;display:flex}.h8ir_G_sequenceRail button{appearance:none;border-radius:var(--lx-radius-pill);background:color-mix(in srgb, var(--lx-accent) 22%, transparent);cursor:pointer;width:100%;min-width:18px;height:5px;transition:background-color var(--lx-motion-fast) var(--lx-easing);border:0;padding:0;display:block}.h8ir_G_sequenceRail li{flex:1 1 0;min-width:18px}.h8ir_G_sequenceRail button:hover{background:color-mix(in srgb, var(--lx-accent) 46%, transparent)}.h8ir_G_sequenceRail button[data-visual-state=visited]{background:color-mix(in srgb, var(--lx-accent) 58%, transparent)}.h8ir_G_sequenceRail button[data-visual-state=current]{background:var(--lx-accent)}.h8ir_G_selectionSlot{min-height:var(--lx-control-height-md);align-content:center;display:grid}.h8ir_G_interactionHint{color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-2xs);margin:0}.h8ir_G_detailPanel{gap:var(--lx-space-3xs) var(--lx-space-sm);border:1px solid color-mix(in srgb, var(--visual-tone) 34%, var(--lx-border-subtle));border-left:3px solid var(--visual-tone);border-radius:var(--lx-radius-sm);padding:var(--lx-space-sm) var(--lx-space-md);background:color-mix(in srgb, var(--visual-tone) 8%, transparent);grid-template-columns:auto minmax(0,1fr) 28px;align-items:baseline;display:grid}.h8ir_G_detailPanel>span{color:var(--visual-tone);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong);line-height:var(--lx-leading-xs)}.h8ir_G_detailPanel>strong{min-width:0;color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-sm);overflow-wrap:anywhere}.h8ir_G_detailPanel>p{margin:var(--lx-space-3xs) 0 0;color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);grid-column:1/3}.h8ir_G_detailPanel>button{grid-area:1/3/3;align-self:start}.h8ir_G_rendererStack{gap:var(--lx-space-lg);flex-direction:column;min-width:0;display:flex}.h8ir_G_viewport{overscroll-behavior-inline:contain;border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-lg);background:var(--lx-surface-sunken);scrollbar-width:thin;min-width:0;position:relative;overflow-x:auto}.h8ir_G_viewport>svg{touch-action:pan-y;max-width:none;margin:0 auto;display:block;overflow:visible}.h8ir_G_stateLegend{gap:var(--lx-space-xs) var(--lx-space-lg);color:var(--lx-label-secondary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro);flex-wrap:wrap;margin:0;display:flex}.h8ir_G_stateLegend>span{align-items:center;gap:var(--lx-space-xs);display:inline-flex}.h8ir_G_stateLegend i{border-radius:var(--lx-radius-pill);background:var(--lx-label-tertiary);width:16px;height:3px;opacity:var(--lx-vs-alpha)}.h8ir_G_stateLegend>span[data-visual-state=current] i{background:var(--lx-accent);height:5px}@container h8ir_G_learning-visual-v4 (width<=560px){.h8ir_G_visualShell{gap:var(--lx-space-md);border-radius:var(--lx-radius-lg);padding:var(--lx-space-lg)}.h8ir_G_visualHeader h3{font-size:var(--lx-text-md);flex-basis:100%}.h8ir_G_sequence{grid-template-columns:minmax(0,1fr)}.h8ir_G_sequenceActions{justify-content:stretch}.h8ir_G_sequenceActions .h8ir_G_control{flex:1}.h8ir_G_sequenceActions .h8ir_G_control:last-child{flex:none}}@container h8ir_G_learning-visual-v4 (width<=360px){.h8ir_G_sequenceActions .h8ir_G_control>span:not([aria-hidden]){display:none}.h8ir_G_detailPanel{grid-template-columns:minmax(0,1fr) 28px}.h8ir_G_detailPanel>span,.h8ir_G_detailPanel>strong,.h8ir_G_detailPanel>p{grid-column:1}.h8ir_G_detailPanel>button{grid-column:2}}";
+		const tagId$7 = "@dsh-portable/interactive-learning/shell.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$7) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@dsh-portable/interactive-learning";
+			tag.dataset.pluginCss = tagId$7;
+			tag.textContent = css$7;
+			document.head.appendChild(tag);
 		}
+		var shell_module_css_default = {
+			"closeButton": "h8ir_G_closeButton",
+			"control": "h8ir_G_control",
+			"controlPrimary": "h8ir_G_controlPrimary",
+			"controlQuiet": "h8ir_G_controlQuiet",
+			"controlRow": "h8ir_G_controlRow",
+			"controlToned": "h8ir_G_controlToned",
+			"detailPanel": "h8ir_G_detailPanel",
+			"emptyState": "h8ir_G_emptyState",
+			"errorFallback": "h8ir_G_errorFallback",
+			"interactionHint": "h8ir_G_interactionHint",
+			"learning-visual-v4": "h8ir_G_learning-visual-v4",
+			"rendererStack": "h8ir_G_rendererStack",
+			"selectionSlot": "h8ir_G_selectionSlot",
+			"sequence": "h8ir_G_sequence",
+			"sequenceActions": "h8ir_G_sequenceActions",
+			"sequenceRail": "h8ir_G_sequenceRail",
+			"sequenceText": "h8ir_G_sequenceText",
+			"srOnly": "h8ir_G_srOnly",
+			"stateLegend": "h8ir_G_stateLegend",
+			"viewport": "h8ir_G_viewport",
+			"visualEyebrow": "h8ir_G_visualEyebrow",
+			"visualHeader": "h8ir_G_visualHeader",
+			"visualShell": "h8ir_G_visualShell"
+		};
+		//#endregion
+		//#region src/client/visuals/core/shell-parts.tsx
+		/**
+		* The chrome shared by all eight renderers: the error boundary, the sequence
+		* controller, the selection surface, the figure viewport and the state legend.
+		*
+		* Every renderer composes these rather than restating them, so the heading
+		* hierarchy, control shapes, empty and error surfaces, keyboard behaviour and
+		* responsive rules are the same wherever a learner meets them.
+		*/
+		var VisualErrorBoundary = class extends react.Component {
+			state = {};
+			static getDerivedStateFromError(error) {
+				return { error };
+			}
+			componentDidCatch(error, info) {
+				console.error("Learning visual renderer failed", error, info);
+			}
+			render() {
+				if (this.state.error === void 0) return this.props.children;
+				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					className: shell_module_css_default.errorFallback,
+					role: "alert",
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: this.props.labels.errorTitle }), this.props.fallbackMarkdown === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: this.props.labels.errorContinue }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", { children: this.props.fallbackMarkdown })]
+				});
+			}
+		};
+		function SequenceController({ sequence, frameIndex, onFrameChange }) {
+			const labels = useVisualLabels();
+			const frame = sequence.frames[frameIndex];
+			const initialIndex = Math.max(0, sequence.frames.findIndex((item) => item.id === sequence.initialFrameId));
+			const move = (delta) => {
+				onFrameChange(Math.max(0, Math.min(sequence.frames.length - 1, frameIndex + delta)));
+			};
+			const onKeyDown = (event) => {
+				if (event.key === "ArrowLeft") {
+					event.preventDefault();
+					move(-1);
+				} else if (event.key === "ArrowRight") {
+					event.preventDefault();
+					move(1);
+				} else if (event.key === "Home") {
+					event.preventDefault();
+					onFrameChange(0);
+				} else if (event.key === "End") {
+					event.preventDefault();
+					onFrameChange(sequence.frames.length - 1);
+				}
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: shell_module_css_default.sequence,
+				role: "group",
+				onKeyDown,
+				"aria-label": labels.sequenceLabel,
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: shell_module_css_default.sequenceText,
+						"aria-live": "polite",
+						"aria-atomic": "true",
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
+								frameIndex + 1,
+								" / ",
+								sequence.frames.length
+							] }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: frame?.label }),
+							frame?.description === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: frame.description })
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						className: shell_module_css_default.sequenceActions,
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+								type: "button",
+								className: shell_module_css_default.control,
+								onClick: () => move(-1),
+								disabled: frameIndex === 0,
+								"aria-label": labels.previousStep,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									"aria-hidden": "true",
+									children: "←"
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.previousStep })]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+								type: "button",
+								className: shell_module_css_default.control,
+								onClick: () => move(1),
+								disabled: frameIndex >= sequence.frames.length - 1,
+								"aria-label": labels.nextStep,
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.nextStep }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									"aria-hidden": "true",
+									children: "→"
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								className: shell_module_css_default.control,
+								onClick: () => onFrameChange(initialIndex),
+								disabled: frameIndex === initialIndex,
+								children: labels.reset
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ol", {
+						className: shell_module_css_default.sequenceRail,
+						children: sequence.frames.map((item, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							"data-visual-state": index === frameIndex ? "current" : index < frameIndex ? "visited" : "context",
+							"aria-current": index === frameIndex ? "step" : void 0,
+							"aria-label": `${labelTemplate(labels.stepOfTotal, {
+								current: index + 1,
+								total: sequence.frames.length
+							})}: ${item.label}`,
+							onClick: () => onFrameChange(index)
+						}) }, item.id))
+					})
+				]
+			});
+		}
+		/**
+		* The hint and the selection detail share one slot.
+		*
+		* Selecting a mark used to swap a one-line hint for a three-line panel, which
+		* moved the figure under the learner's pointer. The slot reserves the taller of
+		* the two instead.
+		*/
+		function SelectionSurface({ hint, selected, kindLabel, onClose }) {
+			const labels = useVisualLabels();
+			if (selected === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				className: shell_module_css_default.selectionSlot,
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+					className: shell_module_css_default.interactionHint,
+					children: hint
+				})
+			});
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				className: shell_module_css_default.selectionSlot,
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
+					className: shell_module_css_default.detailPanel,
+					"data-tone": selected.tone,
+					"aria-live": "polite",
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: kindLabel ?? selected.kind }),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: selected.label }),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: selected.detail ?? labels.noDetail }),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							className: `${shell_module_css_default.control} ${shell_module_css_default.closeButton}`,
+							onClick: onClose,
+							"aria-label": labels.closeDetail,
+							children: "×"
+						})
+					]
+				})
+			});
+		}
+		/** The scrollable frame a measured SVG figure is drawn into. */
+		function FigureViewport({ viewportRef, children }) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				className: shell_module_css_default.viewport,
+				ref: viewportRef,
+				children
+			});
+		}
+		/** Names the emphasis states a figure is currently using, in words. */
+		function StateLegend({ states }) {
+			const labels = useVisualLabels();
+			const naming = {
+				current: labels.stateCurrent,
+				related: labels.stateRelated,
+				visited: labels.stateVisited,
+				context: labels.stateContext,
+				inactive: labels.stateContext
+			};
+			const shown = [...new Set(states)].filter((state) => naming[state] !== void 0);
+			if (shown.length < 2) return null;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+				className: shell_module_css_default.stateLegend,
+				"aria-label": labels.graphLegendLabel,
+				children: shown.map((state) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+					"data-visual-state": state,
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("i", { "aria-hidden": "true" }), naming[state]]
+				}, state))
+			});
+		}
+		function EmptyFigure({ message }) {
+			const labels = useVisualLabels();
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+				className: shell_module_css_default.emptyState,
+				role: "note",
+				children: message ?? labels.emptyVisual
+			});
+		}
+		//#endregion
+		//#region src/client/visuals/state/visual-state.ts
+		function visualFocus(currentIds, visitedIds = []) {
+			const current = new Set(currentIds);
+			return {
+				currentIds: current,
+				visitedIds: new Set([...visitedIds].filter((id) => !current.has(id))),
+				active: current.size > 0
+			};
+		}
+		/**
+		* Resolve one element's state.
+		*
+		* `relatedIds` are the ids that make this element part of the current story
+		* without being its subject: the group a node belongs to, the endpoints of a
+		* focused edge, the section a concept sits in.
+		*/
+		function elementState(id, focus, relatedIds = []) {
+			if (!focus.active) return "overview";
+			if (focus.currentIds.has(id)) return "current";
+			if (relatedIds.some((related) => related !== void 0 && focus.currentIds.has(related))) return "related";
+			if (focus.visitedIds.has(id)) return "visited";
+			return "context";
+		}
+		//#endregion
+		//#region src/client/visuals/core/types.ts
 		const DEFAULT_TONES = [
 			"blue",
 			"red",
@@ -4506,7 +4661,8 @@ window.__ModuleLoader__.load({
 			"purple",
 			"gray"
 		];
-		const SVG_MIN_WIDTH = 560;
+		//#endregion
+		//#region src/client/visuals/core/format.ts
 		function formatNumber(value, digits) {
 			if (!Number.isFinite(value)) return "—";
 			if (digits !== void 0) return value.toFixed(digits);
@@ -4537,19 +4693,26 @@ window.__ModuleLoader__.load({
 			if (tone === "blue" || tone === "green" || tone === "red" || tone === "orange" || tone === "purple" || tone === "gray") return tone;
 			return DEFAULT_TONES[index % DEFAULT_TONES.length] ?? "blue";
 		}
-		function focusState(id, focusedIds) {
-			if (focusedIds.size === 0) return void 0;
-			return focusedIds.has(id) ? "focus" : "dim";
-		}
-		function relatedFocusState(id, relatedIds, focusedIds) {
-			if (focusedIds.size === 0) return void 0;
-			return focusedIds.has(id) || relatedIds.some((relatedId) => relatedId !== void 0 && focusedIds.has(relatedId)) ? "focus" : "dim";
-		}
 		function activateWithKeyboard(event, action) {
 			if (event.key !== "Enter" && event.key !== " ") return;
 			event.preventDefault();
 			action();
 		}
+		/**
+		* Normalise a model-written expression into display math.
+		*
+		* The payload carries LaTeX without delimiters, but models routinely emit the
+		* Unicode form of the same symbols; rewriting them keeps a valid derivation
+		* from rendering as literal text.
+		*/
+		function displayMath(expression) {
+			const value = expression.trim().replaceAll("′", "'").replaceAll("−", "-").replaceAll("²", "^{2}").replaceAll("³", "^{3}").replaceAll("→", "\\to ").replaceAll("≤", "\\le ").replaceAll("≥", "\\ge ").replaceAll("≠", "\\ne ").replaceAll("×", "\\times ").replaceAll("÷", "\\div ").replaceAll("∞", "\\infty ").replace(/\blim\s*\[([^\]]+)\]/g, "\\lim_{$1}");
+			if (value.startsWith("$$") && value.endsWith("$$") || value.startsWith("\\[") && value.endsWith("\\]")) return value;
+			return `$$\n${value}\n$$`;
+		}
+		//#endregion
+		//#region src/client/visuals/state/hooks.ts
+		/** Interaction hooks shared by the figure renderers. */
 		/**
 		* Roving tabindex over the interactive items of one figure.
 		*
@@ -4598,9 +4761,16 @@ window.__ModuleLoader__.load({
 				itemProps
 			};
 		}
-		function useContainerWidth(minimum = 280) {
+		/**
+		* Track the usable inline size of a figure's viewport.
+		*
+		* Layout is derived from the measured width, so the default has to be a
+		* plausible conversation column rather than zero: a zero reading means "not
+		* laid out yet" and must not collapse the figure before the observer fires.
+		*/
+		function useContainerWidth(minimum = 260) {
 			const ref = (0, react.useRef)(null);
-			const [width, setWidth] = (0, react.useState)(760);
+			const [width, setWidth] = (0, react.useState)(680);
 			(0, react.useEffect)(() => {
 				const element = ref.current;
 				if (element === null) return;
@@ -4620,13 +4790,13 @@ window.__ModuleLoader__.load({
 			}, [minimum]);
 			return [ref, width];
 		}
-		function chartGeometry(containerWidth, minWidth = SVG_MIN_WIDTH) {
+		function chartGeometry(containerWidth, minWidth = 320) {
 			const width = Math.max(minWidth, Math.round(containerWidth));
-			const height = width < 700 ? 350 : 390;
-			const left = 62;
-			const right = 22;
-			const top = 24;
-			const bottom = 58;
+			const height = Math.round(Math.max(260, Math.min(400, width * .56)));
+			const left = width < 420 ? 46 : 56;
+			const right = 18;
+			const top = 20;
+			const bottom = width < 420 ? 46 : 52;
 			return {
 				width,
 				height,
@@ -4644,96 +4814,51 @@ window.__ModuleLoader__.load({
 		function scaleY(value, axis, geometry) {
 			return geometry.top + (1 - normalizedPosition(value, axis.min, axis.max)) * geometry.plotHeight;
 		}
-		var VisualErrorBoundary = class extends react.Component {
-			state = {};
-			static getDerivedStateFromError(error) {
-				return { error };
-			}
-			componentDidCatch(error, info) {
-				console.error("Learning visual renderer failed", error, info);
-			}
-			render() {
-				if (this.state.error === void 0) return this.props.children;
-				return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: LearningVisualV4_module_css_default.errorFallback,
-					role: "alert",
-					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: this.props.labels.errorTitle }), this.props.fallbackMarkdown === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: this.props.labels.errorContinue }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", { children: this.props.fallbackMarkdown })]
-				});
-			}
-		};
-		function SequenceController({ sequence, frameIndex, onFrameChange }) {
-			const labels = useVisualLabels();
-			const frame = sequence.frames[frameIndex];
-			const initialIndex = Math.max(0, sequence.frames.findIndex((item) => item.id === sequence.initialFrameId));
-			const move = (delta) => {
-				onFrameChange(Math.max(0, Math.min(sequence.frames.length - 1, frameIndex + delta)));
-			};
-			const onKeyDown = (event) => {
-				if (event.key === "ArrowLeft") {
-					event.preventDefault();
-					move(-1);
-				} else if (event.key === "ArrowRight") {
-					event.preventDefault();
-					move(1);
-				} else if (event.key === "Home") {
-					event.preventDefault();
-					onFrameChange(0);
-				} else if (event.key === "End") {
-					event.preventDefault();
-					onFrameChange(sequence.frames.length - 1);
-				}
-			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: LearningVisualV4_module_css_default.sequence,
-				role: "group",
-				onKeyDown,
-				"aria-label": labels.sequenceLabel,
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: LearningVisualV4_module_css_default.sequenceText,
-					"aria-live": "polite",
-					"aria-atomic": "true",
-					children: [
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
-							frameIndex + 1,
-							" / ",
-							sequence.frames.length
-						] }),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: frame?.label }),
-						frame?.description === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: frame.description })
-					]
-				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: LearningVisualV4_module_css_default.sequenceActions,
-					children: [
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-							type: "button",
-							onClick: () => move(-1),
-							disabled: frameIndex === 0,
-							"aria-label": labels.previousStep,
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								"aria-hidden": "true",
-								children: "←"
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.previousStep })]
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-							type: "button",
-							onClick: () => move(1),
-							disabled: frameIndex >= sequence.frames.length - 1,
-							"aria-label": labels.nextStep,
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.nextStep }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								"aria-hidden": "true",
-								children: "→"
-							})]
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-							type: "button",
-							onClick: () => onFrameChange(initialIndex),
-							disabled: frameIndex === initialIndex,
-							children: labels.reset
-						})
-					]
-				})]
-			});
+		//#endregion
+		//#region \0dsh-css:src/client/visuals/styles/plot.module.css.mjs
+		const css$6 = ".sAv75W_plotSvg,.sAv75W_sceneSvg{touch-action:pan-y;max-width:none;display:block;overflow:visible}.sAv75W_parameterGrid{gap:var(--lx-space-lg) var(--lx-space-3xl);grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));display:grid}.sAv75W_parameter{grid-template-rows:auto 20px var(--lx-leading-micro);gap:var(--lx-space-3xs);cursor:pointer;min-width:0;opacity:var(--lx-vs-alpha);display:grid}.sAv75W_parameterHeader{justify-content:space-between;align-items:baseline;gap:var(--lx-space-lg);min-width:0;color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-sm);display:flex}.sAv75W_parameterHeader output{color:var(--lx-accent);font-size:var(--lx-text-sm);font-variant-numeric:tabular-nums;font-weight:var(--lx-weight-strong)}.sAv75W_parameter input{appearance:none;border-radius:var(--lx-radius-pill);background:linear-gradient(to right, var(--lx-accent) 0 var(--range-progress), var(--lx-border-default) var(--range-progress) 100%);cursor:pointer;align-self:center;width:100%;height:4px}.sAv75W_parameter input::-webkit-slider-runnable-track{background:0 0;height:4px}.sAv75W_parameter input::-moz-range-track{background:0 0;height:4px}.sAv75W_parameter input::-webkit-slider-thumb{appearance:none;border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:17px;height:17px;box-shadow:0 0 0 1px var(--lx-accent);margin-top:-6.5px}.sAv75W_parameter input::-moz-range-thumb{border:3px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--lx-accent);width:11px;height:11px;box-shadow:0 0 0 1px var(--lx-accent)}.sAv75W_parameterEnds{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums;line-height:var(--lx-leading-micro);justify-content:space-between;display:flex}.sAv75W_metrics{gap:var(--lx-space-sm);grid-template-columns:repeat(auto-fit,minmax(128px,1fr));margin:0;display:grid}.sAv75W_metrics>div{gap:var(--lx-space-3xs);border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-sm);min-width:0;padding:var(--lx-space-sm) var(--lx-space-md);background:var(--lx-surface-sunken);opacity:var(--lx-vs-alpha);display:grid}.sAv75W_metrics dt{color:var(--lx-label-secondary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.sAv75W_metrics dd{color:var(--lx-accent);font-size:var(--lx-text-md);font-variant-numeric:tabular-nums;font-weight:var(--lx-weight-strong);line-height:var(--lx-leading-base);margin:0}.sAv75W_plotFrame{fill:var(--lx-surface-base);stroke:var(--lx-border-default);stroke-width:1px;vector-effect:non-scaling-stroke}.sAv75W_gridLine{stroke:var(--lx-border-subtle);stroke-width:1px;vector-effect:non-scaling-stroke}.sAv75W_zeroAxis{stroke:var(--lx-border-strongest);stroke-width:1.4px;vector-effect:non-scaling-stroke}.sAv75W_tickLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums}.sAv75W_axisLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-2xs);font-weight:var(--lx-weight-medium)}.sAv75W_seriesLine{fill:none;stroke:var(--visual-tone);stroke-opacity:var(--lx-vs-alpha);stroke-width:calc(2.4px + var(--lx-vs-ring) * .8px);stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;transition:stroke-opacity var(--lx-motion-base) var(--lx-easing)}.sAv75W_seriesPoint,.sAv75W_probePoint{fill:var(--visual-tone);fill-opacity:var(--lx-vs-alpha);stroke:var(--lx-surface-base);stroke-width:1.5px;vector-effect:non-scaling-stroke}.sAv75W_seriesBar{fill:color-mix(in srgb, var(--visual-tone) 70%, transparent);fill-opacity:var(--lx-vs-alpha);stroke:var(--visual-tone);stroke-opacity:var(--lx-vs-alpha);stroke-width:1px;vector-effect:non-scaling-stroke}.sAv75W_probeLine{stroke:var(--lx-label-secondary);stroke-width:1px;stroke-dasharray:3 4;pointer-events:none;vector-effect:non-scaling-stroke}.sAv75W_probeCard{bottom:9px;left:clamp(80px, var(--probe-x), calc(100% - 150px));z-index:2;gap:var(--lx-space-3xs);border:1px solid var(--lx-border-strong);border-radius:var(--lx-radius-sm);width:max-content;max-width:210px;padding:var(--lx-space-xs) var(--lx-space-sm);background:var(--lx-surface-base);box-shadow:var(--lx-shadow-md);color:var(--lx-label-secondary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro);pointer-events:none;margin-top:-64px;margin-bottom:9px;display:grid;position:sticky}.sAv75W_probeCard strong{color:var(--lx-label-primary);font-size:var(--lx-text-2xs)}.sAv75W_probeCard span:before{border-radius:var(--lx-radius-circle);background:var(--visual-tone);content:\"\";width:6px;height:6px;margin-right:5px;display:inline-block}.sAv75W_emptyPlotNotice{border:1px dashed var(--lx-border-strong);border-radius:var(--lx-radius-md);width:max-content;max-width:min(92%,320px);padding:var(--lx-space-sm) var(--lx-space-lg);background:var(--lx-surface-base);color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);text-align:center;pointer-events:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}.sAv75W_seriesToggles{gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}.sAv75W_seriesToggle{border-radius:var(--lx-radius-pill);padding:var(--lx-space-2xs) var(--lx-space-md)}.sAv75W_seriesToggle>span{border-top:2.5px solid var(--visual-tone);width:18px;height:0;display:inline-block}.sAv75W_seriesToggle[data-series-type=points]>span{border-radius:var(--lx-radius-circle);background:var(--visual-tone);border:0;width:8px;height:8px}.sAv75W_seriesToggle[data-series-type=bars]>span{background:color-mix(in srgb, var(--visual-tone) 72%, transparent);border:0;border-radius:1px;width:9px;height:10px}.sAv75W_seriesToggle[data-stroke=dashed]>span{border-top-style:dashed}.sAv75W_seriesToggle[data-stroke=dotted]>span{border-top-style:dotted}.sAv75W_seriesToggle[aria-pressed=false]{color:var(--lx-label-tertiary);text-decoration:line-through}.sAv75W_seriesToggle[aria-pressed=false]>span{opacity:.55}.sAv75W_seriesToggle[data-empty]{border-style:dashed}.sAv75W_seriesToggle[data-empty]>small{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro)}.sAv75W_sceneElement{cursor:pointer}.sAv75W_sceneLine{stroke:var(--visual-tone);stroke-opacity:var(--lx-vs-alpha);stroke-width:calc(2.2px + var(--lx-vs-ring) * .8px);vector-effect:non-scaling-stroke}.sAv75W_sceneHit{fill:none;stroke:#0000;stroke-width:14px;pointer-events:stroke;vector-effect:non-scaling-stroke}.sAv75W_scenePoint{fill:var(--visual-tone);fill-opacity:var(--lx-vs-alpha);stroke:var(--lx-surface-base);stroke-width:2px;vector-effect:non-scaling-stroke}.sAv75W_sceneShape{fill:color-mix(in srgb, var(--visual-tone) 13%, transparent);fill-opacity:var(--lx-vs-alpha);stroke:var(--visual-tone);stroke-opacity:var(--lx-vs-alpha);stroke-width:2px;vector-effect:non-scaling-stroke}.sAv75W_sceneElement:hover .sAv75W_sceneShape,.sAv75W_sceneElement:focus-visible .sAv75W_sceneShape,.sAv75W_sceneElement[data-selected] .sAv75W_sceneShape{fill:color-mix(in srgb, var(--visual-tone) 24%, transparent);fill-opacity:1;stroke-opacity:1;stroke-width:3px}.sAv75W_sceneText,.sAv75W_shapeLabel{fill:var(--lx-label-primary);stroke:var(--lx-surface-base);stroke-width:3px;paint-order:stroke;font-size:var(--lx-text-2xs);font-weight:var(--lx-weight-medium);opacity:var(--lx-vs-alpha);pointer-events:none}.sAv75W_shapeLabel{fill:var(--visual-tone)}.sAv75W_arrowMarker path{fill:var(--visual-tone);fill-opacity:var(--lx-vs-alpha)}@media (prefers-reduced-motion:reduce){.sAv75W_seriesLine{transition:none}}";
+		const tagId$6 = "@dsh-portable/interactive-learning/plot.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$6) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@dsh-portable/interactive-learning";
+			tag.dataset.pluginCss = tagId$6;
+			tag.textContent = css$6;
+			document.head.appendChild(tag);
 		}
+		var plot_module_css_default = {
+			"arrowMarker": "sAv75W_arrowMarker",
+			"axisLabel": "sAv75W_axisLabel",
+			"emptyPlotNotice": "sAv75W_emptyPlotNotice",
+			"gridLine": "sAv75W_gridLine",
+			"metrics": "sAv75W_metrics",
+			"parameter": "sAv75W_parameter",
+			"parameterEnds": "sAv75W_parameterEnds",
+			"parameterGrid": "sAv75W_parameterGrid",
+			"parameterHeader": "sAv75W_parameterHeader",
+			"plotFrame": "sAv75W_plotFrame",
+			"plotSvg": "sAv75W_plotSvg",
+			"probeCard": "sAv75W_probeCard",
+			"probeLine": "sAv75W_probeLine",
+			"probePoint": "sAv75W_probePoint",
+			"sceneElement": "sAv75W_sceneElement",
+			"sceneHit": "sAv75W_sceneHit",
+			"sceneLine": "sAv75W_sceneLine",
+			"scenePoint": "sAv75W_scenePoint",
+			"sceneShape": "sAv75W_sceneShape",
+			"sceneSvg": "sAv75W_sceneSvg",
+			"sceneText": "sAv75W_sceneText",
+			"seriesBar": "sAv75W_seriesBar",
+			"seriesLine": "sAv75W_seriesLine",
+			"seriesPoint": "sAv75W_seriesPoint",
+			"seriesToggle": "sAv75W_seriesToggle",
+			"seriesToggles": "sAv75W_seriesToggles",
+			"shapeLabel": "sAv75W_shapeLabel",
+			"tickLabel": "sAv75W_tickLabel",
+			"zeroAxis": "sAv75W_zeroAxis"
+		};
+		//#endregion
+		//#region src/client/visuals/renderers/PlotRenderer.tsx
+		/** `plot`: quantitative relationships on axes, with optional live parameters. */
 		function initialParameterValues(content, storageKey) {
 			const parameters = content.parameters ?? [];
 			const values = Object.fromEntries(parameters.map((parameter) => [parameter.id, parameter.initial]));
@@ -4799,20 +4924,27 @@ window.__ModuleLoader__.load({
 			return nearest?.y;
 		}
 		function interpolatedLineValue(points, x) {
-			const ordered = [...points].sort((a, b) => a.x - b.x);
-			if (ordered.length === 0) return void 0;
-			if (x <= (ordered[0]?.x ?? x)) return ordered[0]?.y;
-			if (x >= (ordered.at(-1)?.x ?? x)) return ordered.at(-1)?.y;
-			for (let index = 1; index < ordered.length; index += 1) {
-				const right = ordered[index];
-				const left = ordered[index - 1];
-				if (left !== void 0 && right !== void 0 && x <= right.x) return interpolate(left.y, right.y, normalizedPosition(x, left.x, right.x));
+			const sorted = [...points].sort((left, right) => left.x - right.x);
+			const first = sorted[0];
+			const last = sorted[sorted.length - 1];
+			if (first === void 0 || last === void 0) return void 0;
+			if (x <= first.x) return first.y;
+			if (x >= last.x) return last.y;
+			for (let index = 1; index < sorted.length; index += 1) {
+				const previous = sorted[index - 1];
+				const current = sorted[index];
+				if (previous === void 0 || current === void 0) continue;
+				if (x <= current.x) {
+					const span = current.x - previous.x;
+					return span === 0 ? current.y : previous.y + (current.y - previous.y) * ((x - previous.x) / span);
+				}
 			}
+			return last.y;
 		}
-		function PlotRenderer({ content, focusedIds, storageKey }) {
+		function PlotRenderer({ content, focus, storageKey }) {
 			const labels = useVisualLabels();
 			const id = (0, react.useId)();
-			const [regionRef, containerWidth] = useContainerWidth();
+			const [viewportRef, containerWidth] = useContainerWidth();
 			const geometry = (0, react.useMemo)(() => chartGeometry(containerWidth), [containerWidth]);
 			const [values, setValues] = (0, react.useState)(() => initialParameterValues(content, storageKey));
 			const [hiddenSeries, setHiddenSeries] = (0, react.useState)(() => /* @__PURE__ */ new Set());
@@ -4882,22 +5014,22 @@ window.__ModuleLoader__.load({
 				});
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: LearningVisualV4_module_css_default.plotRenderer,
+				className: shell_module_css_default.rendererStack,
 				children: [
 					parameters.length === 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: LearningVisualV4_module_css_default.parameterGrid,
+						className: plot_module_css_default.parameterGrid,
 						children: parameters.map((parameter) => {
 							const value = values[parameter.id] ?? parameter.initial;
 							const inputId = `${id}-${parameter.id}`;
 							const progress = normalizedPosition(value, parameter.min, parameter.max) * 100;
 							return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
-								className: LearningVisualV4_module_css_default.parameter,
+								className: plot_module_css_default.parameter,
 								htmlFor: inputId,
 								"data-visual-id": parameter.id,
-								"data-focus-state": focusState(parameter.id, focusedIds),
+								"data-visual-state": elementState(parameter.id, focus),
 								children: [
 									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-										className: LearningVisualV4_module_css_default.parameterHeader,
+										className: plot_module_css_default.parameterHeader,
 										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: parameter.label }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("output", {
 											htmlFor: inputId,
 											children: formatNumber(value)
@@ -4917,7 +5049,7 @@ window.__ModuleLoader__.load({
 										}))
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-										className: LearningVisualV4_module_css_default.parameterEnds,
+										className: plot_module_css_default.parameterEnds,
 										"aria-hidden": "true",
 										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatNumber(parameter.min) }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: formatNumber(parameter.max) })]
 									})
@@ -4926,20 +5058,19 @@ window.__ModuleLoader__.load({
 						})
 					}),
 					content.metrics === void 0 || content.metrics.length === 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dl", {
-						className: LearningVisualV4_module_css_default.metrics,
+						className: plot_module_css_default.metrics,
 						"aria-label": labels.metricsLabel,
 						children: content.metrics.map((metric) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							"data-visual-id": metric.id,
-							"data-focus-state": focusState(metric.id, focusedIds),
+							"data-visual-state": elementState(metric.id, focus),
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: metric.label }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dd", { children: [formatNumber(evaluateMathExpression(metric.expression, values), metric.digits), metric.suffix ?? ""] })]
 						}, metric.id))
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: LearningVisualV4_module_css_default.chartViewport,
-						ref: regionRef,
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)(FigureViewport, {
+						viewportRef,
 						children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
-								className: LearningVisualV4_module_css_default.plotSvg,
+								className: plot_module_css_default.plotSvg,
 								width: geometry.width,
 								height: geometry.height,
 								viewBox: `0 0 ${geometry.width} ${geometry.height}`,
@@ -4960,7 +5091,7 @@ window.__ModuleLoader__.load({
 										})
 									}) }),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
-										className: LearningVisualV4_module_css_default.plotFrame,
+										className: plot_module_css_default.plotFrame,
 										x: geometry.left,
 										y: geometry.top,
 										width: geometry.plotWidth,
@@ -4969,14 +5100,14 @@ window.__ModuleLoader__.load({
 									yTicks.map((value) => {
 										const y = scaleY(value, content.yAxis, geometry);
 										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-											className: LearningVisualV4_module_css_default.gridLine,
+											className: plot_module_css_default.gridLine,
 											x1: geometry.left,
 											x2: geometry.left + geometry.plotWidth,
 											y1: y,
 											y2: y
 										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-											className: LearningVisualV4_module_css_default.tickLabel,
-											x: geometry.left - 10,
+											className: plot_module_css_default.tickLabel,
+											x: geometry.left - 9,
 											y,
 											textAnchor: "end",
 											dominantBaseline: "middle",
@@ -4986,15 +5117,15 @@ window.__ModuleLoader__.load({
 									xTicks.map((value) => {
 										const x = scaleX(value, content.xAxis, geometry);
 										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-											className: LearningVisualV4_module_css_default.gridLine,
+											className: plot_module_css_default.gridLine,
 											x1: x,
 											x2: x,
 											y1: geometry.top,
 											y2: geometry.top + geometry.plotHeight
 										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-											className: LearningVisualV4_module_css_default.tickLabel,
+											className: plot_module_css_default.tickLabel,
 											x,
-											y: geometry.top + geometry.plotHeight + 22,
+											y: geometry.top + geometry.plotHeight + 19,
 											textAnchor: "middle",
 											children: formatNumber(value)
 										})] }, `x-${String(value)}`);
@@ -5005,19 +5136,19 @@ window.__ModuleLoader__.load({
 											content.series.map((series, seriesIndex) => {
 												if (hiddenSeries.has(series.id)) return null;
 												const tone = toneAt(series.tone, seriesIndex);
-												const state = focusState(series.id, focusedIds);
+												const state = elementState(series.id, focus);
 												if (series.type === "curve") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-													className: LearningVisualV4_module_css_default.seriesLine,
+													className: plot_module_css_default.seriesLine,
 													"data-tone": tone,
-													"data-focus-state": state,
+													"data-visual-state": state,
 													"data-visual-id": series.id,
 													"data-stroke": series.stroke ?? "solid",
 													d: renders.get(series.id)?.path
 												}, series.id);
 												if (series.type === "line") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-													className: LearningVisualV4_module_css_default.seriesLine,
+													className: plot_module_css_default.seriesLine,
 													"data-tone": tone,
-													"data-focus-state": state,
+													"data-visual-state": state,
 													"data-visual-id": series.id,
 													"data-stroke": series.stroke ?? "solid",
 													d: pointsPath(series.points, content, geometry)
@@ -5029,12 +5160,12 @@ window.__ModuleLoader__.load({
 													const zeroY = scaleY(Math.max(content.yAxis.min, Math.min(content.yAxis.max, 0)), content.yAxis, geometry);
 													return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", {
 														"data-visual-id": series.id,
-														"data-focus-state": state,
+														"data-visual-state": state,
 														children: series.points.map((point, pointIndex) => {
 															const x = scaleX(point.x, content.xAxis, geometry);
 															const y = scaleY(point.y, content.yAxis, geometry);
 															return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
-																className: LearningVisualV4_module_css_default.seriesBar,
+																className: plot_module_css_default.seriesBar,
 																"data-tone": tone,
 																x: x - barWidth / 2,
 																y: Math.min(y, zeroY),
@@ -5047,26 +5178,26 @@ window.__ModuleLoader__.load({
 												}
 												return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", {
 													"data-visual-id": series.id,
-													"data-focus-state": state,
+													"data-visual-state": state,
 													children: series.points.map((point, pointIndex) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
-														className: LearningVisualV4_module_css_default.seriesPoint,
+														className: plot_module_css_default.seriesPoint,
 														"data-tone": tone,
 														cx: scaleX(point.x, content.xAxis, geometry),
 														cy: scaleY(point.y, content.yAxis, geometry),
-														r: "5.5",
+														r: "5",
 														children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("title", { children: point.label ?? `${series.label}: (${formatNumber(point.x)}, ${formatNumber(point.y)})` })
 													}, `${series.id}-${String(pointIndex)}`))
 												}, series.id);
 											}),
 											probeX === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-												className: LearningVisualV4_module_css_default.probeLine,
+												className: plot_module_css_default.probeLine,
 												x1: scaleX(probeX, content.xAxis, geometry),
 												x2: scaleX(probeX, content.xAxis, geometry),
 												y1: geometry.top,
 												y2: geometry.top + geometry.plotHeight
 											}),
 											probeX === void 0 ? null : probeValues.map((item, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
-												className: LearningVisualV4_module_css_default.probePoint,
+												className: plot_module_css_default.probePoint,
 												"data-tone": toneAt(item.tone, index),
 												cx: scaleX(probeX, content.xAxis, geometry),
 												cy: scaleY(item.y, content.yAxis, geometry),
@@ -5075,29 +5206,29 @@ window.__ModuleLoader__.load({
 										]
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-										className: LearningVisualV4_module_css_default.axisLabel,
+										className: plot_module_css_default.axisLabel,
 										x: geometry.left + geometry.plotWidth / 2,
-										y: geometry.height - 7,
+										y: geometry.height - 6,
 										textAnchor: "middle",
 										children: content.xAxis.label ?? "x"
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-										className: LearningVisualV4_module_css_default.axisLabel,
-										x: "16",
+										className: plot_module_css_default.axisLabel,
+										x: "14",
 										y: geometry.top + geometry.plotHeight / 2,
 										textAnchor: "middle",
-										transform: `rotate(-90 16 ${geometry.top + geometry.plotHeight / 2})`,
+										transform: `rotate(-90 14 ${geometry.top + geometry.plotHeight / 2})`,
 										children: content.yAxis.label ?? "y"
 									})
 								]
 							}),
 							!nothingToSee ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-								className: LearningVisualV4_module_css_default.emptyPlotNotice,
+								className: plot_module_css_default.emptyPlotNotice,
 								role: "note",
 								children: labels.noValuesInRange
 							}),
 							probeX === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: LearningVisualV4_module_css_default.probeCard,
+								className: plot_module_css_default.probeCard,
 								style: { "--probe-x": `${normalizedPosition(probeX, content.xAxis.min, content.xAxis.max) * 100}%` },
 								"aria-hidden": "true",
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", { children: ["x = ", formatNumber(probeX)] }), probeValues.map((item, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
@@ -5112,17 +5243,18 @@ window.__ModuleLoader__.load({
 						]
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: LearningVisualV4_module_css_default.srOnly,
+						className: shell_module_css_default.srOnly,
 						role: "status",
 						"aria-live": "polite",
 						children: probeX === void 0 ? "" : probeDescription
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: LearningVisualV4_module_css_default.seriesToggles,
+						className: plot_module_css_default.seriesToggles,
 						role: "group",
 						"aria-label": labels.legendLabel,
 						children: content.series.map((series, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 							type: "button",
+							className: `${shell_module_css_default.control} ${plot_module_css_default.seriesToggle}`,
 							"aria-pressed": !hiddenSeries.has(series.id),
 							"data-tone": toneAt(series.tone, index),
 							"data-series-type": series.type,
@@ -5137,13 +5269,178 @@ window.__ModuleLoader__.load({
 							]
 						}, series.id))
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: LearningVisualV4_module_css_default.interactionHint,
-						children: labels.plotInteractionHint
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: shell_module_css_default.selectionSlot,
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+							className: shell_module_css_default.interactionHint,
+							children: labels.plotInteractionHint
+						})
 					})
 				]
 			});
 		}
+		//#endregion
+		//#region src/client/visuals/state/graph-state.ts
+		/** Above this node count a figure is dense enough for a fourth, quieter tier. */
+		const DENSE_GRAPH_NODES = 26;
+		function graphEmphasis(content, focus) {
+			if (!focus.active) return {
+				state: () => "overview",
+				active: false
+			};
+			const nodeIds = new Set(content.nodes.map((node) => node.id));
+			const incoming = /* @__PURE__ */ new Map();
+			const outgoing = /* @__PURE__ */ new Map();
+			for (const edge of content.edges) {
+				incoming.set(edge.to, [...incoming.get(edge.to) ?? [], {
+					edgeId: edge.id,
+					from: edge.from
+				}]);
+				outgoing.set(edge.from, [...outgoing.get(edge.from) ?? [], {
+					edgeId: edge.id,
+					to: edge.to
+				}]);
+			}
+			const related = /* @__PURE__ */ new Set();
+			const seedNodes = [];
+			for (const id of focus.currentIds) if (nodeIds.has(id)) seedNodes.push(id);
+			for (const edge of content.edges) {
+				if (!focus.currentIds.has(edge.id)) continue;
+				related.add(edge.from);
+				related.add(edge.to);
+				seedNodes.push(edge.from);
+			}
+			for (const node of content.nodes) {
+				if (node.group !== void 0 && focus.currentIds.has(node.group)) {
+					related.add(node.id);
+					seedNodes.push(node.id);
+				}
+				if (focus.currentIds.has(node.id) && node.group !== void 0) related.add(node.group);
+			}
+			const visitedAncestors = /* @__PURE__ */ new Set();
+			const queue = [...seedNodes];
+			while (queue.length > 0) {
+				const current = queue.shift();
+				if (current === void 0 || visitedAncestors.has(current)) continue;
+				visitedAncestors.add(current);
+				for (const step of incoming.get(current) ?? []) {
+					related.add(step.edgeId);
+					related.add(step.from);
+					queue.push(step.from);
+				}
+			}
+			for (const id of focus.currentIds) for (const step of outgoing.get(id) ?? []) {
+				related.add(step.edgeId);
+				related.add(step.to);
+			}
+			const dense = content.nodes.length > DENSE_GRAPH_NODES;
+			return {
+				active: true,
+				state: (id) => {
+					if (focus.currentIds.has(id)) return "current";
+					if (related.has(id)) return "related";
+					if (focus.visitedIds.has(id)) return "visited";
+					return dense ? "inactive" : "context";
+				}
+			};
+		}
+		//#endregion
+		//#region src/client/visuals/layout/text-metrics.ts
+		/**
+		* Label measurement for SVG figures.
+		*
+		* Node boxes used to be fixed 29px-radius circles holding 10px text, which
+		* meant a four-character Chinese label filled the circle edge to edge and a
+		* longer one simply overflowed it. Sizing a node needs the label's real extent,
+		* and `measureText` is not available during the first layout pass (or in the
+		* test environment), so widths are estimated per script instead: CJK, fullwidth
+		* punctuation and emoji occupy roughly one em, Latin roughly 0.55em, and digits
+		* and spaces slightly less.
+		*/
+		const WIDE_CHARACTER = /[\u1100-\u115F\u2E80-\uA4CF\uA960-\uA97F\uAC00-\uD7A3\uF900-\uFAFF\uFE10-\uFE19\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6]/;
+		const THIN_CHARACTER = /[\s.,:;!|'`()[\]{}\-ilj]/;
+		/** Estimated advance width of one character at the given font size. */
+		function characterWidth(character, fontSize) {
+			if (WIDE_CHARACTER.test(character)) return fontSize;
+			if (THIN_CHARACTER.test(character)) return fontSize * .32;
+			if (/[0-9]/.test(character)) return fontSize * .56;
+			if (/[A-Z]/.test(character)) return fontSize * .66;
+			return fontSize * .55;
+		}
+		/** Estimated rendered width of a whole string. */
+		function measureText(text, fontSize) {
+			let width = 0;
+			for (const character of text) width += characterWidth(character, fontSize);
+			return width;
+		}
+		/**
+		* Wrap a label to at most `maxLines`, breaking between CJK characters and at
+		* spaces or hyphens for Latin text. The final line is ellipsised rather than
+		* clipped, and the untruncated text always remains the accessible name.
+		*/
+		function wrapLabel(text, { fontSize, maxWidth, maxLines = 3 }) {
+			const source = text.trim();
+			if (source === "") return {
+				lines: [""],
+				width: 0,
+				truncated: false
+			};
+			if (measureText(source, fontSize) <= maxWidth) return {
+				lines: [source],
+				width: measureText(source, fontSize),
+				truncated: false
+			};
+			const lines = [];
+			let line = "";
+			let lineWidth = 0;
+			let lastBreak = -1;
+			const flush = () => {
+				lines.push(line);
+				line = "";
+				lineWidth = 0;
+				lastBreak = -1;
+			};
+			for (const character of source) {
+				const width = characterWidth(character, fontSize);
+				if (lineWidth + width > maxWidth && line !== "") {
+					if (lastBreak > 0 && !WIDE_CHARACTER.test(character)) {
+						const carry = line.slice(lastBreak).trimStart();
+						line = line.slice(0, lastBreak).trimEnd();
+						flush();
+						line = carry;
+						lineWidth = measureText(carry, fontSize);
+					} else flush();
+					if (lines.length >= maxLines) break;
+				}
+				if (/[\s-]/.test(character)) lastBreak = line.length;
+				line += character;
+				lineWidth += width;
+			}
+			if (line !== "" && lines.length < maxLines) lines.push(line);
+			const truncated = lines.join("").length < source.length;
+			if (truncated) {
+				const last = lines[lines.length - 1] ?? "";
+				lines[lines.length - 1] = `${last.slice(0, Math.max(1, last.length - 1))}…`;
+			}
+			return {
+				lines,
+				width: Math.max(...lines.map((entry) => measureText(entry, fontSize))),
+				truncated
+			};
+		}
+		const NODE_MAX_TEXT_WIDTH = 124;
+		const NODE_MIN_WIDTH = 66;
+		const NODE_MIN_HEIGHT = 36;
+		const NODE_LINE_HEIGHT$1 = 17;
+		const CANVAS_PADDING = 14;
+		const HEADER_HEIGHT = 28;
+		const SIBLING_GAP = 22;
+		const MAIN_GAP_MIN = 58;
+		const MAIN_GAP_BASE = 78;
+		const MAIN_GAP_MAX = 180;
+		/** Text below this scale stops being comfortably readable, so we scroll instead. */
+		const MINIMUM_FIT_SCALE = .82;
+		/** Group nodes into the bands the layout draws: declared groups, else levels. */
 		function graphLayers(content) {
 			if (content.groups !== void 0 && content.groups.length > 0) {
 				const grouped = content.groups.map((group) => ({
@@ -5155,6 +5452,7 @@ window.__ModuleLoader__.load({
 				const ungrouped = content.nodes.filter((node) => node.group === void 0 || !knownGroups.has(node.group));
 				if (ungrouped.length > 0) grouped.push({
 					id: "ungrouped",
+					label: void 0,
 					nodes: ungrouped
 				});
 				return grouped;
@@ -5183,240 +5481,436 @@ window.__ModuleLoader__.load({
 			const levelCount = Math.max(0, ...levels.values()) + 1;
 			return Array.from({ length: levelCount }, (_, index) => ({
 				id: `layer-${String(index)}`,
+				label: void 0,
 				nodes: content.nodes.filter((node) => levels.get(node.id) === index)
 			})).filter((layer) => layer.nodes.length > 0);
 		}
-		function graphLayout(content, containerWidth) {
-			const layers = graphLayers(content);
-			const positions = /* @__PURE__ */ new Map();
-			if (content.layout === "radial") {
-				const width = Math.max(SVG_MIN_WIDTH, Math.round(containerWidth));
-				const height = Math.max(430, Math.min(600, width * .68));
-				const centerX = width / 2;
-				const centerY = height / 2;
-				const radius = Math.max(120, Math.min(width, height) / 2 - 68);
-				content.nodes.forEach((node, index) => {
-					const angle = -Math.PI / 2 + index / Math.max(1, content.nodes.length) * Math.PI * 2;
-					positions.set(node.id, {
-						id: node.id,
-						x: centerX + Math.cos(angle) * radius,
-						y: centerY + Math.sin(angle) * radius
-					});
-				});
-				return {
-					width,
-					height,
-					positions,
-					layers
-				};
-			}
-			if (content.layout === "hierarchy") {
-				const widestLayer = Math.max(1, ...layers.map((layer) => layer.nodes.length));
-				const width = Math.max(SVG_MIN_WIDTH, Math.round(containerWidth), widestLayer * 142 + 72);
-				const height = Math.max(390, layers.length * 128 + 74);
-				layers.forEach((layer, layerIndex) => layer.nodes.forEach((node, nodeIndex) => {
-					positions.set(node.id, {
-						id: node.id,
-						x: width * (nodeIndex + 1) / (layer.nodes.length + 1),
-						y: 56 + layerIndex * ((height - 104) / Math.max(1, layers.length - 1))
-					});
-				}));
-				return {
-					width,
-					height,
-					positions,
-					layers
-				};
-			}
-			const tallestLayer = Math.max(1, ...layers.map((layer) => layer.nodes.length));
-			const width = Math.max(SVG_MIN_WIDTH, Math.round(containerWidth), layers.length * 182 + 78);
-			const height = Math.max(390, tallestLayer * 82 + 92);
-			layers.forEach((layer, layerIndex) => layer.nodes.forEach((node, nodeIndex) => {
-				positions.set(node.id, {
-					id: node.id,
-					x: 58 + layerIndex * ((width - 116) / Math.max(1, layers.length - 1)),
-					y: 62 + (nodeIndex + 1) * ((height - 92) / (layer.nodes.length + 1))
-				});
-			}));
+		/** Size one node box around its wrapped label. */
+		function nodeBox(node) {
+			const wrapped = wrapLabel(node.label, {
+				fontSize: 13,
+				maxWidth: NODE_MAX_TEXT_WIDTH
+			});
+			const width = Math.max(NODE_MIN_WIDTH, Math.round(wrapped.width + 30));
+			const height = Math.max(NODE_MIN_HEIGHT, wrapped.lines.length * NODE_LINE_HEIGHT$1 + 20);
 			return {
+				id: node.id,
 				width,
 				height,
-				positions,
-				layers
+				cornerRadius: wrapped.lines.length === 1 ? height / 2 : 12,
+				lines: wrapped.lines,
+				truncated: wrapped.truncated
 			};
 		}
-		function shortenedEdge(from, to, radius = 30) {
-			const dx = to.x - from.x;
-			const dy = to.y - from.y;
-			const length = Math.hypot(dx, dy) || 1;
-			const ux = dx / length;
-			const uy = dy / length;
+		function fitScale(width, containerWidth) {
+			if (containerWidth <= 0 || width <= containerWidth) return 1;
+			return Math.max(MINIMUM_FIT_SCALE, containerWidth / width);
+		}
+		function finish(layout, containerWidth) {
+			const scale = fitScale(layout.width, containerWidth);
 			return {
-				start: {
-					x: from.x + ux * radius,
-					y: from.y + uy * radius
-				},
-				end: {
-					x: to.x - ux * (radius + 3),
-					y: to.y - uy * (radius + 3)
-				}
+				...layout,
+				scale,
+				renderWidth: Math.round(layout.width * scale),
+				renderHeight: Math.round(layout.height * scale)
 			};
 		}
-		function edgePath(from, to, layout) {
-			const { start, end } = shortenedEdge(from, to);
-			if (layout === "layered") {
-				const middle = (start.x + end.x) / 2;
-				return `M${start.x},${start.y} C${middle},${start.y} ${middle},${end.y} ${end.x},${end.y}`;
-			}
-			if (layout === "hierarchy") {
-				const middle = (start.y + end.y) / 2;
-				return `M${start.x},${start.y} C${start.x},${middle} ${end.x},${middle} ${end.x},${end.y}`;
-			}
-			return `M${start.x},${start.y} L${end.x},${end.y}`;
+		function radialLayout(content, containerWidth, boxes) {
+			const sizes = [...boxes.values()];
+			const widest = Math.max(...sizes.map((box) => box.width));
+			const tallest = Math.max(...sizes.map((box) => box.height));
+			const count = Math.max(1, content.nodes.length);
+			const radius = Math.max(96, count * (widest + SIBLING_GAP) / (2 * Math.PI));
+			const width = Math.round(radius * 2 + widest + 28);
+			const height = Math.round(radius * 2 + tallest + 28);
+			const centerX = width / 2;
+			const centerY = height / 2;
+			const positioned = /* @__PURE__ */ new Map();
+			content.nodes.forEach((node, index) => {
+				const angle = -Math.PI / 2 + index / count * Math.PI * 2;
+				const box = boxes.get(node.id);
+				if (box === void 0) return;
+				positioned.set(node.id, {
+					...box,
+					x: centerX + Math.cos(angle) * radius,
+					y: centerY + Math.sin(angle) * radius
+				});
+			});
+			return finish({
+				width,
+				height,
+				nodes: positioned,
+				layers: [],
+				orientation: "radial",
+				showHeaders: false
+			}, containerWidth);
 		}
-		function NodeLinkRenderer({ content, focusedIds }) {
+		function graphLayout(content, containerWidth) {
+			const boxes = new Map(content.nodes.map((node) => [node.id, nodeBox(node)]));
+			if (content.layout === "radial") return radialLayout(content, containerWidth, boxes);
+			const layers = graphLayers(content);
+			const showHeaders = layers.length > 1 && content.groups !== void 0 && content.groups.length > 0;
+			const headerSpace = showHeaders ? HEADER_HEIGHT : 0;
+			const vertical = content.layout === "hierarchy";
+			const positioned = /* @__PURE__ */ new Map();
+			const mainExtent = layers.map((layer) => Math.max(...layer.nodes.map((node) => (vertical ? boxes.get(node.id)?.height : boxes.get(node.id)?.width) ?? 0)));
+			const crossExtent = layers.map((layer) => layer.nodes.reduce((total, node, index) => {
+				const box = boxes.get(node.id);
+				return total + ((vertical ? box?.width : box?.height) ?? 0) + (index === 0 ? 0 : SIBLING_GAP);
+			}, 0));
+			const crossContent = Math.max(...crossExtent);
+			const mainContent = mainExtent.reduce((total, size) => total + size, 0);
+			const gapCount = Math.max(0, layers.length - 1);
+			let mainGap = vertical ? Math.max(MAIN_GAP_MIN, Math.round(MAIN_GAP_BASE * .72)) : MAIN_GAP_BASE;
+			let width = vertical ? 28 + crossContent : 28 + mainContent + gapCount * mainGap;
+			if (!vertical && gapCount > 0 && width < containerWidth) {
+				mainGap = Math.min(MAIN_GAP_MAX, mainGap + (containerWidth - width) / gapCount);
+				width = 28 + mainContent + gapCount * mainGap;
+			}
+			if (vertical && width < containerWidth) width = Math.min(containerWidth, width + 28);
+			const height = vertical ? 28 + headerSpace + mainContent + gapCount * mainGap : 28 + headerSpace + crossContent;
+			const bands = [];
+			let mainCursor = CANVAS_PADDING + headerSpace;
+			layers.forEach((layer, layerIndex) => {
+				const mainSize = mainExtent[layerIndex] ?? 0;
+				const crossSize = crossExtent[layerIndex] ?? 0;
+				const crossTrack = vertical ? width : height - headerSpace;
+				const crossOrigin = vertical ? 0 : CANVAS_PADDING + headerSpace;
+				let crossCursor = crossOrigin + Math.max(CANVAS_PADDING - crossOrigin, (crossTrack - crossSize) / 2);
+				for (const node of layer.nodes) {
+					const box = boxes.get(node.id);
+					if (box === void 0) continue;
+					const crossOwn = vertical ? box.width : box.height;
+					positioned.set(node.id, {
+						...box,
+						x: vertical ? crossCursor + crossOwn / 2 : mainCursor + mainSize / 2,
+						y: vertical ? mainCursor + mainSize / 2 : crossCursor + crossOwn / 2
+					});
+					crossCursor += crossOwn + SIBLING_GAP;
+				}
+				bands.push({
+					id: layer.id,
+					label: layer.label,
+					nodes: layer.nodes,
+					headerX: vertical ? CANVAS_PADDING : mainCursor + mainSize / 2,
+					headerY: vertical ? mainCursor - 12 : 27,
+					headerAnchor: vertical ? "start" : "middle",
+					band: vertical ? {
+						x: CANVAS_PADDING / 2,
+						y: mainCursor - 9,
+						width: Math.max(0, width - CANVAS_PADDING),
+						height: mainSize + 18
+					} : {
+						x: mainCursor - 11,
+						y: CANVAS_PADDING + headerSpace - 9,
+						width: mainSize + 22,
+						height: Math.max(0, height - 28 - headerSpace + 18)
+					}
+				});
+				mainCursor += mainSize + mainGap;
+			});
+			return finish({
+				width: Math.round(width),
+				height: Math.round(height),
+				nodes: positioned,
+				layers: bands,
+				orientation: vertical ? "vertical" : "horizontal",
+				showHeaders
+			}, containerWidth);
+		}
+		/** Where a straight line towards `towards` leaves the border of `box`. */
+		function boxAnchor(box, towards, inset = 0) {
+			const dx = towards.x - box.x;
+			const dy = towards.y - box.y;
+			if (dx === 0 && dy === 0) return {
+				x: box.x,
+				y: box.y
+			};
+			const halfWidth = box.width / 2 + inset;
+			const halfHeight = box.height / 2 + inset;
+			const scale = Math.min(dx === 0 ? Number.POSITIVE_INFINITY : halfWidth / Math.abs(dx), dy === 0 ? Number.POSITIVE_INFINITY : halfHeight / Math.abs(dy));
+			return {
+				x: box.x + dx * scale,
+				y: box.y + dy * scale
+			};
+		}
+		/** Route one edge between two boxes, curving along the layout's main axis. */
+		function edgeGeometry(from, to, orientation) {
+			const start = boxAnchor(from, {
+				x: to.x,
+				y: to.y
+			}, 1);
+			const end = boxAnchor(to, {
+				x: from.x,
+				y: from.y
+			}, 6);
+			const fixed = (value) => value.toFixed(1);
+			if (orientation === "horizontal") {
+				const middle = (start.x + end.x) / 2;
+				return {
+					path: `M${fixed(start.x)},${fixed(start.y)} C${fixed(middle)},${fixed(start.y)} ${fixed(middle)},${fixed(end.y)} ${fixed(end.x)},${fixed(end.y)}`,
+					label: {
+						x: middle,
+						y: (start.y + end.y) / 2
+					},
+					end
+				};
+			}
+			if (orientation === "vertical") {
+				const middle = (start.y + end.y) / 2;
+				return {
+					path: `M${fixed(start.x)},${fixed(start.y)} C${fixed(start.x)},${fixed(middle)} ${fixed(end.x)},${fixed(middle)} ${fixed(end.x)},${fixed(end.y)}`,
+					label: {
+						x: (start.x + end.x) / 2,
+						y: middle
+					},
+					end
+				};
+			}
+			return {
+				path: `M${fixed(start.x)},${fixed(start.y)} L${fixed(end.x)},${fixed(end.y)}`,
+				label: {
+					x: (start.x + end.x) / 2,
+					y: (start.y + end.y) / 2
+				},
+				end
+			};
+		}
+		/** Width of the chip drawn behind an edge label so it stays readable over a line. */
+		function edgeLabelWidth(label) {
+			return Math.round(measureText(label, 12)) + 14;
+		}
+		//#endregion
+		//#region \0dsh-css:src/client/visuals/styles/graph.module.css.mjs
+		const css$5 = ".HtX4sa_graphSvg{touch-action:pan-y;max-width:none;display:block;overflow:visible}.HtX4sa_layerBand rect{fill:color-mix(in srgb, var(--lx-label-primary) 3%, transparent);stroke:var(--lx-border-subtle);stroke-width:1px;vector-effect:non-scaling-stroke}.HtX4sa_layerLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-2xs);font-weight:var(--lx-weight-strong);letter-spacing:.02em;opacity:var(--lx-vs-alpha)}.HtX4sa_edgeGroup,.HtX4sa_nodeGroup{cursor:pointer}.HtX4sa_edgeVisible{fill:none;stroke:var(--visual-tone);stroke-opacity:var(--lx-vs-alpha);stroke-width:calc(1.7px + var(--lx-vs-ring) * 1.1px);stroke-linecap:round;vector-effect:non-scaling-stroke;transition:stroke-opacity var(--lx-motion-base) var(--lx-easing), stroke-width var(--lx-motion-base) var(--lx-easing)}.HtX4sa_edgeHit{fill:none;stroke:#0000;stroke-width:14px;pointer-events:stroke;vector-effect:non-scaling-stroke}.HtX4sa_edgeGroup:hover .HtX4sa_edgeVisible,.HtX4sa_edgeGroup:focus-visible .HtX4sa_edgeVisible,.HtX4sa_edgeGroup[data-selected] .HtX4sa_edgeVisible{stroke-opacity:1;stroke-width:3px}.HtX4sa_arrowMarker path{fill:var(--visual-tone);fill-opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel rect{fill:var(--lx-surface-base);stroke:color-mix(in srgb, var(--visual-tone) 26%, var(--lx-border-subtle));stroke-width:1px;vector-effect:non-scaling-stroke;opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel text{fill:var(--lx-label-primary);font-weight:var(--lx-weight-medium);opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel{pointer-events:none;transition:opacity var(--lx-motion-fast) var(--lx-easing)}.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeLabel{opacity:0}.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup:hover .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup:focus-visible .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup[data-selected] .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup[data-visual-state=current] .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup[data-visual-state=related] .HtX4sa_edgeLabel{opacity:1}.HtX4sa_nodeShape{fill:color-mix(in srgb, var(--visual-tone) 12%, var(--lx-surface-base));fill-opacity:var(--lx-vs-alpha);stroke:var(--visual-tone);stroke-opacity:var(--lx-vs-alpha);stroke-width:calc(1.6px + var(--lx-vs-ring) * 1.2px);vector-effect:non-scaling-stroke;transition:fill-opacity var(--lx-motion-base) var(--lx-easing), stroke-opacity var(--lx-motion-base) var(--lx-easing), stroke-width var(--lx-motion-base) var(--lx-easing)}.HtX4sa_nodeRing{fill:none;stroke:var(--visual-tone);stroke-width:2px;stroke-opacity:calc(var(--lx-vs-ring) * .34);vector-effect:non-scaling-stroke;transition:stroke-opacity var(--lx-motion-base) var(--lx-easing)}.HtX4sa_nodeLabel{fill:var(--lx-label-primary);font-weight:var(--lx-weight-medium);opacity:var(--lx-vs-alpha);pointer-events:none}.HtX4sa_nodeGroup[data-visual-state=current] .HtX4sa_nodeLabel,.HtX4sa_nodeGroup[data-visual-state=selected] .HtX4sa_nodeLabel{font-weight:var(--lx-weight-strong)}.HtX4sa_nodeGroup:hover .HtX4sa_nodeShape,.HtX4sa_nodeGroup:focus-visible .HtX4sa_nodeShape,.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeShape{fill:color-mix(in srgb, var(--visual-tone) 22%, var(--lx-surface-base));fill-opacity:1;stroke-opacity:1;stroke-width:2.6px}.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeRing{stroke-opacity:.5}[data-stroke=dashed] .HtX4sa_edgeVisible{stroke-dasharray:9 6}[data-stroke=dotted] .HtX4sa_edgeVisible{stroke-dasharray:2 6}@media (prefers-reduced-motion:reduce){.HtX4sa_edgeVisible,.HtX4sa_edgeLabel,.HtX4sa_nodeShape,.HtX4sa_nodeRing{transition:none}}@media (forced-colors:active){.HtX4sa_nodeShape{fill:canvas;stroke:canvastext}.HtX4sa_edgeVisible{stroke:canvastext}.HtX4sa_nodeGroup[data-visual-state=current] .HtX4sa_nodeShape,.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeShape{fill:highlight}}";
+		const tagId$5 = "@dsh-portable/interactive-learning/graph.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$5) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@dsh-portable/interactive-learning";
+			tag.dataset.pluginCss = tagId$5;
+			tag.textContent = css$5;
+			document.head.appendChild(tag);
+		}
+		var graph_module_css_default = {
+			"arrowMarker": "HtX4sa_arrowMarker",
+			"edgeGroup": "HtX4sa_edgeGroup",
+			"edgeHit": "HtX4sa_edgeHit",
+			"edgeLabel": "HtX4sa_edgeLabel",
+			"edgeVisible": "HtX4sa_edgeVisible",
+			"graphSvg": "HtX4sa_graphSvg",
+			"layerBand": "HtX4sa_layerBand",
+			"layerLabel": "HtX4sa_layerLabel",
+			"nodeGroup": "HtX4sa_nodeGroup",
+			"nodeLabel": "HtX4sa_nodeLabel",
+			"nodeRing": "HtX4sa_nodeRing",
+			"nodeShape": "HtX4sa_nodeShape"
+		};
+		//#endregion
+		//#region src/client/visuals/renderers/NodeLinkRenderer.tsx
+		/**
+		* `node_link`: topologies, trees, dependency and process graphs.
+		*
+		* Three things changed relative to the first implementation, all of them
+		* visible in the five-node decision tree that prompted them.
+		*
+		* 1. Geometry comes from the content (see `layout/graph-layout.ts`) instead of
+		*    a fixed 560×390 canvas with 29px circles, so a small tree is compact and a
+		*    long Chinese label gets a box that fits it.
+		* 2. Emphasis is ranked (see `state/graph-state.ts`) instead of binary, and is
+		*    applied once per mark, so the branch a frame is not about stays readable
+		*    rather than being drawn at a tenth of full strength.
+		* 3. The layer headings, edge labels and node labels are real type at 12–13px,
+		*    not 10px furniture.
+		*/
+		/** Above this, drawing every edge label at once turns the figure into noise. */
+		const DENSE_EDGE_COUNT = 12;
+		const NODE_LINE_HEIGHT = 17;
+		function NodeLinkRenderer({ content, focus }) {
 			const labels = useVisualLabels();
 			const id = (0, react.useId)();
-			const [regionRef, containerWidth] = useContainerWidth();
+			const [viewportRef, containerWidth] = useContainerWidth();
 			const layout = (0, react.useMemo)(() => graphLayout(content, containerWidth), [containerWidth, content]);
+			const emphasis = (0, react.useMemo)(() => graphEmphasis(content, focus), [content, focus]);
 			const [selected, setSelected] = (0, react.useState)();
 			const nodeById = (0, react.useMemo)(() => new Map(content.nodes.map((node) => [node.id, node])), [content.nodes]);
-			const selectNode = (node) => setSelected({
+			const selectNode = (node, tone) => setSelected({
 				id: node.id,
 				label: node.label,
 				detail: node.detail,
-				kind: "node"
+				kind: "node",
+				tone: toneAt(tone)
 			});
-			const selectEdge = (edge) => setSelected({
+			const selectEdge = (edge, tone) => setSelected({
 				id: edge.id,
 				label: edge.label ?? `${nodeById.get(edge.from)?.label ?? edge.from} → ${nodeById.get(edge.to)?.label ?? edge.to}`,
 				detail: edge.detail,
-				kind: "edge"
+				kind: "edge",
+				tone: toneAt(tone)
 			});
 			const summary = labelTemplate(labels.nodeLinkSummary, {
 				nodes: content.nodes.length,
 				edges: content.edges.length
 			});
 			const roving = useRovingFocus((0, react.useMemo)(() => [...content.nodes.map((node) => node.id), ...content.edges.map((edge) => edge.id)], [content.edges, content.nodes]));
+			const denseEdges = content.edges.length > DENSE_EDGE_COUNT;
+			const legendStates = (0, react.useMemo)(() => emphasis.active ? [...new Set([...content.nodes, ...content.edges].map((item) => emphasis.state(item.id)))] : [], [
+				content.edges,
+				content.nodes,
+				emphasis
+			]);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: LearningVisualV4_module_css_default.nodeLinkRenderer,
+				className: shell_module_css_default.rendererStack,
 				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: LearningVisualV4_module_css_default.graphViewport,
-						ref: regionRef,
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(FigureViewport, {
+						viewportRef,
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
 							ref: roving.containerRef,
-							className: LearningVisualV4_module_css_default.graphSvg,
-							width: layout.width,
-							height: layout.height,
+							className: graph_module_css_default.graphSvg,
+							width: layout.renderWidth,
+							height: layout.renderHeight,
 							viewBox: `0 0 ${layout.width} ${layout.height}`,
 							role: "group",
 							"aria-label": summary,
-							"data-dense-edges": content.edges.length > 12 || void 0,
+							"data-dense-edges": denseEdges || void 0,
 							children: [
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("defs", { children: DEFAULT_TONES.map((tone) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("marker", {
 									id: `${id}-arrow-${tone}`,
-									className: LearningVisualV4_module_css_default.arrowMarker,
+									className: graph_module_css_default.arrowMarker,
 									"data-tone": tone,
-									markerWidth: "8",
-									markerHeight: "8",
-									refX: "7",
-									refY: "4",
+									markerWidth: "7",
+									markerHeight: "7",
+									refX: "6",
+									refY: "3.5",
 									orient: "auto",
 									markerUnits: "strokeWidth",
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "M0,0 L8,4 L0,8 z" })
+									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "M0,0 L7,3.5 L0,7 z" })
 								}, tone)) }),
-								content.layout !== "radial" && layout.layers.map((layer, index) => {
-									const first = layer.nodes[0];
-									const position = first === void 0 ? void 0 : layout.positions.get(first.id);
-									if (position === void 0) return null;
-									return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-										className: LearningVisualV4_module_css_default.layerLabel,
-										x: position.x,
-										y: content.layout === "layered" ? 30 : Math.max(22, position.y - 42),
-										textAnchor: "middle",
-										"data-visual-id": layer.id,
-										"data-focus-state": focusState(layer.id, focusedIds),
+								!layout.showHeaders ? null : layout.layers.map((layer, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+									className: graph_module_css_default.layerBand,
+									"data-visual-id": layer.id,
+									"data-visual-state": emphasis.state(layer.id),
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+										x: layer.band.x,
+										y: layer.band.y,
+										width: layer.band.width,
+										height: layer.band.height,
+										rx: "12"
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+										className: graph_module_css_default.layerLabel,
+										x: layer.headerX,
+										y: layer.headerY,
+										textAnchor: layer.headerAnchor,
+										dominantBaseline: "middle",
 										children: layer.label ?? labelTemplate(labels.layerLabel, { index: index + 1 })
-									}, layer.id);
-								}),
+									})]
+								}, layer.id)),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", { children: content.edges.map((edge, edgeIndex) => {
-									const from = layout.positions.get(edge.from);
-									const to = layout.positions.get(edge.to);
+									const from = layout.nodes.get(edge.from);
+									const to = layout.nodes.get(edge.to);
 									if (from === void 0 || to === void 0) return null;
 									const tone = toneAt(edge.tone, edgeIndex);
-									const fromNode = nodeById.get(edge.from);
-									const toNode = nodeById.get(edge.to);
-									const state = relatedFocusState(edge.id, [
-										edge.from,
-										edge.to,
-										fromNode?.group,
-										toNode?.group
-									], focusedIds);
-									const path = edgePath(from, to, content.layout);
-									const labelX = (from.x + to.x) / 2;
-									const labelY = (from.y + to.y) / 2 - 7;
+									const state = emphasis.state(edge.id);
+									const geometry = edgeGeometry(from, to, layout.orientation);
+									const chipWidth = edge.label === void 0 ? 0 : edgeLabelWidth(edge.label);
 									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
-										className: LearningVisualV4_module_css_default.edgeGroup,
+										className: graph_module_css_default.edgeGroup,
 										"data-tone": tone,
 										"data-stroke": edge.stroke ?? "solid",
-										"data-focus-state": state,
-										"data-edge-focused": focusedIds.has(edge.id) || void 0,
+										"data-visual-state": selected?.id === edge.id ? "selected" : state,
 										"data-selected": selected?.id === edge.id || void 0,
 										"data-visual-id": edge.id,
 										role: "button",
-										"aria-label": `${edge.label ?? labels.edgeLabel}: ${labelTemplate(labels.connection, {
+										"aria-label": `${edge.label ?? labels.edgeKind}: ${labelTemplate(labels.connection, {
 											from: nodeById.get(edge.from)?.label ?? edge.from,
 											to: nodeById.get(edge.to)?.label ?? edge.to
 										})}${edge.detail === void 0 ? "" : `. ${edge.detail}`}`,
-										onClick: () => selectEdge(edge),
-										...roving.itemProps(edge.id, () => selectEdge(edge)),
+										onClick: () => selectEdge(edge, tone),
+										...roving.itemProps(edge.id, () => selectEdge(edge, tone)),
 										children: [
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-												className: LearningVisualV4_module_css_default.edgeVisible,
-												d: path,
+												className: graph_module_css_default.edgeVisible,
+												d: geometry.path,
 												markerEnd: edge.directed === true ? `url(#${id}-arrow-${tone})` : void 0
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
-												className: LearningVisualV4_module_css_default.edgeHit,
-												d: path
+												className: graph_module_css_default.edgeHit,
+												d: geometry.path
 											}),
-											edge.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-												className: LearningVisualV4_module_css_default.edgeLabel,
-												x: labelX,
-												y: labelY,
-												textAnchor: "middle",
-												children: edge.label
+											edge.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+												className: graph_module_css_default.edgeLabel,
+												children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+													x: geometry.label.x - chipWidth / 2,
+													y: geometry.label.y - 10,
+													width: chipWidth,
+													height: "20",
+													rx: "10"
+												}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+													x: geometry.label.x,
+													y: geometry.label.y,
+													textAnchor: "middle",
+													dominantBaseline: "middle",
+													fontSize: 12,
+													children: edge.label
+												})]
 											})
 										]
 									}, edge.id);
 								}) }),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", { children: content.nodes.map((node, nodeIndex) => {
-									const position = layout.positions.get(node.id);
-									if (position === void 0) return null;
+									const box = layout.nodes.get(node.id);
+									if (box === void 0) return null;
+									const tone = toneAt(node.tone, nodeIndex);
+									const state = emphasis.state(node.id);
+									const firstLineOffset = -((box.lines.length - 1) * NODE_LINE_HEIGHT) / 2;
 									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
-										className: LearningVisualV4_module_css_default.nodeGroup,
-										"data-tone": toneAt(node.tone, nodeIndex),
-										"data-focus-state": relatedFocusState(node.id, [node.group], focusedIds),
+										className: graph_module_css_default.nodeGroup,
+										"data-tone": tone,
+										"data-visual-state": selected?.id === node.id ? "selected" : state,
 										"data-selected": selected?.id === node.id || void 0,
 										"data-visual-id": node.id,
 										role: "button",
 										"aria-label": `${node.label}${node.detail === void 0 ? "" : `。${node.detail}`}`,
-										transform: `translate(${position.x} ${position.y})`,
-										onClick: () => selectNode(node),
-										...roving.itemProps(node.id, () => selectNode(node)),
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", { r: "29" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-											textAnchor: "middle",
-											dominantBaseline: "middle",
-											children: node.label
-										})]
+										transform: `translate(${box.x} ${box.y})`,
+										onClick: () => selectNode(node, tone),
+										...roving.itemProps(node.id, () => selectNode(node, tone)),
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+												className: graph_module_css_default.nodeRing,
+												x: -box.width / 2 - 5,
+												y: -box.height / 2 - 5,
+												width: box.width + 10,
+												height: box.height + 10,
+												rx: box.cornerRadius + 5
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
+												className: graph_module_css_default.nodeShape,
+												x: -box.width / 2,
+												y: -box.height / 2,
+												width: box.width,
+												height: box.height,
+												rx: box.cornerRadius
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+												className: graph_module_css_default.nodeLabel,
+												textAnchor: "middle",
+												dominantBaseline: "middle",
+												fontSize: 13,
+												children: box.lines.map((line, lineIndex) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("tspan", {
+													x: "0",
+													y: firstLineOffset + lineIndex * NODE_LINE_HEIGHT,
+													children: line
+												}, line + String(lineIndex)))
+											}),
+											!box.truncated ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("title", { children: node.label })
+										]
 									}, node.id);
 								}) })
 							]
 						})
 					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(StateLegend, { states: legendStates }),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: LearningVisualV4_module_css_default.srOnly,
+						className: shell_module_css_default.srOnly,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: summary }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("ul", { children: [content.nodes.map((node) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", { children: node.detail === void 0 ? node.label : `${node.label}: ${node.detail}` }, node.id)), content.edges.map((edge) => {
 							const connection = labelTemplate(labels.connection, {
 								from: nodeById.get(edge.from)?.label ?? edge.from,
@@ -5425,52 +5919,43 @@ window.__ModuleLoader__.load({
 							return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", { children: edge.label === void 0 ? connection : `${connection}, ${edge.label}` }, edge.id);
 						})] })]
 					}),
-					selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: LearningVisualV4_module_css_default.interactionHint,
-						children: labels.nodeLinkInteractionHint
-					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
-						className: LearningVisualV4_module_css_default.detailPanel,
-						"aria-live": "polite",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: selected.kind === "node" ? labels.nodeKind : labels.edgeKind }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: selected.label }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: selected.detail ?? labels.noDetail }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								onClick: () => setSelected(void 0),
-								"aria-label": labels.closeDetail,
-								children: "×"
-							})
-						]
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectionSurface, {
+						hint: labels.nodeLinkInteractionHint,
+						selected,
+						kindLabel: selected?.kind === "edge" ? labels.edgeKind : labels.nodeKind,
+						onClose: () => setSelected(void 0)
 					})
 				]
 			});
 		}
-		function Scene2DRenderer({ content, focusedIds }) {
+		//#endregion
+		//#region src/client/visuals/renderers/Scene2DRenderer.tsx
+		/** `scene_2d`: geometry, vectors, fields and annotated schematics on axes. */
+		function Scene2DRenderer({ content, focus }) {
 			const labels = useVisualLabels();
 			const id = (0, react.useId)();
-			const [regionRef, containerWidth] = useContainerWidth();
-			const geometry = (0, react.useMemo)(() => chartGeometry(containerWidth, SVG_MIN_WIDTH), [containerWidth]);
+			const [viewportRef, containerWidth] = useContainerWidth();
+			const geometry = (0, react.useMemo)(() => chartGeometry(containerWidth), [containerWidth]);
 			const [selected, setSelected] = (0, react.useState)();
 			const xTicks = (0, react.useMemo)(() => ticks(content.xAxis.min, content.xAxis.max), [content.xAxis.max, content.xAxis.min]);
 			const yTicks = (0, react.useMemo)(() => ticks(content.yAxis.min, content.yAxis.max), [content.yAxis.max, content.yAxis.min]);
 			const zeroX = content.xAxis.min <= 0 && content.xAxis.max >= 0 ? scaleX(0, content.xAxis, geometry) : void 0;
 			const zeroY = content.yAxis.min <= 0 && content.yAxis.max >= 0 ? scaleY(0, content.yAxis, geometry) : void 0;
 			const roving = useRovingFocus((0, react.useMemo)(() => content.elements.map((element) => element.id), [content.elements]));
-			const selectElement = (element) => setSelected({
+			const selectElement = (element, tone) => setSelected({
 				id: element.id,
 				label: element.type === "label" ? element.text : element.label ?? labelTemplate(labels.elementFallback, { id: element.id }),
 				detail: element.detail,
-				kind: "element"
+				kind: "element",
+				tone: toneAt(tone)
 			});
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: LearningVisualV4_module_css_default.sceneRenderer,
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: LearningVisualV4_module_css_default.sceneViewport,
-					ref: regionRef,
+				className: shell_module_css_default.rendererStack,
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(FigureViewport, {
+					viewportRef,
 					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
 						ref: roving.containerRef,
-						className: LearningVisualV4_module_css_default.sceneSvg,
+						className: plot_module_css_default.sceneSvg,
 						width: geometry.width,
 						height: geometry.height,
 						viewBox: `0 0 ${geometry.width} ${geometry.height}`,
@@ -5490,7 +5975,7 @@ window.__ModuleLoader__.load({
 								})
 							}), DEFAULT_TONES.map((tone) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("marker", {
 								id: `${id}-scene-arrow-${tone}`,
-								className: LearningVisualV4_module_css_default.arrowMarker,
+								className: plot_module_css_default.arrowMarker,
 								"data-tone": tone,
 								markerWidth: "9",
 								markerHeight: "9",
@@ -5501,52 +5986,52 @@ window.__ModuleLoader__.load({
 								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", { d: "M0,0 L9,4.5 L0,9 z" })
 							}, tone))] }),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
-								className: LearningVisualV4_module_css_default.plotFrame,
+								className: plot_module_css_default.plotFrame,
 								x: geometry.left,
 								y: geometry.top,
 								width: geometry.plotWidth,
 								height: geometry.plotHeight
 							}),
 							content.grid !== true ? null : yTicks.map((value) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-								className: LearningVisualV4_module_css_default.gridLine,
+								className: plot_module_css_default.gridLine,
 								x1: geometry.left,
 								x2: geometry.left + geometry.plotWidth,
 								y1: scaleY(value, content.yAxis, geometry),
 								y2: scaleY(value, content.yAxis, geometry)
 							}, `gy-${String(value)}`)),
 							content.grid !== true ? null : xTicks.map((value) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-								className: LearningVisualV4_module_css_default.gridLine,
+								className: plot_module_css_default.gridLine,
 								x1: scaleX(value, content.xAxis, geometry),
 								x2: scaleX(value, content.xAxis, geometry),
 								y1: geometry.top,
 								y2: geometry.top + geometry.plotHeight
 							}, `gx-${String(value)}`)),
 							zeroX === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-								className: LearningVisualV4_module_css_default.zeroAxis,
+								className: plot_module_css_default.zeroAxis,
 								x1: zeroX,
 								x2: zeroX,
 								y1: geometry.top,
 								y2: geometry.top + geometry.plotHeight
 							}),
 							zeroY === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-								className: LearningVisualV4_module_css_default.zeroAxis,
+								className: plot_module_css_default.zeroAxis,
 								x1: geometry.left,
 								x2: geometry.left + geometry.plotWidth,
 								y1: zeroY,
 								y2: zeroY
 							}),
 							yTicks.map((value) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-								className: LearningVisualV4_module_css_default.tickLabel,
-								x: geometry.left - 10,
+								className: plot_module_css_default.tickLabel,
+								x: geometry.left - 9,
 								y: scaleY(value, content.yAxis, geometry),
 								textAnchor: "end",
 								dominantBaseline: "middle",
 								children: formatNumber(value)
 							}, `yt-${String(value)}`)),
 							xTicks.map((value) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-								className: LearningVisualV4_module_css_default.tickLabel,
+								className: plot_module_css_default.tickLabel,
 								x: scaleX(value, content.xAxis, geometry),
-								y: geometry.top + geometry.plotHeight + 22,
+								y: geometry.top + geometry.plotHeight + 19,
 								textAnchor: "middle",
 								children: formatNumber(value)
 							}, `xt-${String(value)}`)),
@@ -5555,15 +6040,15 @@ window.__ModuleLoader__.load({
 								children: content.elements.map((element, index) => {
 									const tone = toneAt(element.tone, index);
 									const common = {
-										className: LearningVisualV4_module_css_default.sceneElement,
+										className: plot_module_css_default.sceneElement,
 										"data-tone": tone,
-										"data-focus-state": focusState(element.id, focusedIds),
+										"data-visual-state": selected?.id === element.id ? "selected" : elementState(element.id, focus),
 										"data-selected": selected?.id === element.id || void 0,
 										"data-visual-id": element.id,
 										role: "button",
 										"aria-label": `${element.type === "label" ? element.text : element.label ?? element.type}${element.detail === void 0 ? "" : `。${element.detail}`}`,
-										onClick: () => selectElement(element),
-										...roving.itemProps(element.id, () => selectElement(element))
+										onClick: () => selectElement(element, tone),
+										...roving.itemProps(element.id, () => selectElement(element, tone))
 									};
 									if (element.type === "point") {
 										const x = scaleX(element.x, content.xAxis, geometry);
@@ -5571,12 +6056,12 @@ window.__ModuleLoader__.load({
 										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
 											...common,
 											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
-												className: LearningVisualV4_module_css_default.scenePoint,
+												className: plot_module_css_default.scenePoint,
 												cx: x,
 												cy: y,
 												r: element.size ?? 6
 											}), element.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-												className: LearningVisualV4_module_css_default.shapeLabel,
+												className: plot_module_css_default.shapeLabel,
 												x: x + 10,
 												y: y - 10,
 												children: element.label
@@ -5593,7 +6078,7 @@ window.__ModuleLoader__.load({
 											"data-stroke": element.stroke ?? "solid",
 											children: [
 												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-													className: LearningVisualV4_module_css_default.sceneLine,
+													className: plot_module_css_default.sceneLine,
 													x1,
 													y1,
 													x2,
@@ -5601,14 +6086,14 @@ window.__ModuleLoader__.load({
 													markerEnd: element.type === "arrow" ? `url(#${id}-scene-arrow-${tone})` : void 0
 												}),
 												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("line", {
-													className: LearningVisualV4_module_css_default.sceneHit,
+													className: plot_module_css_default.sceneHit,
 													x1,
 													y1,
 													x2,
 													y2
 												}),
 												element.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-													className: LearningVisualV4_module_css_default.shapeLabel,
+													className: plot_module_css_default.shapeLabel,
 													x: (x1 + x2) / 2,
 													y: (y1 + y2) / 2 - 8,
 													textAnchor: "middle",
@@ -5625,13 +6110,13 @@ window.__ModuleLoader__.load({
 										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
 											...common,
 											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ellipse", {
-												className: LearningVisualV4_module_css_default.sceneShape,
+												className: plot_module_css_default.sceneShape,
 												cx,
 												cy,
 												rx,
 												ry
 											}), element.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-												className: LearningVisualV4_module_css_default.shapeLabel,
+												className: plot_module_css_default.shapeLabel,
 												x: cx,
 												y: cy,
 												textAnchor: "middle",
@@ -5648,14 +6133,14 @@ window.__ModuleLoader__.load({
 										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
 											...common,
 											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
-												className: LearningVisualV4_module_css_default.sceneShape,
+												className: plot_module_css_default.sceneShape,
 												x,
 												y,
 												width,
 												height,
 												rx: "3"
 											}), element.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-												className: LearningVisualV4_module_css_default.shapeLabel,
+												className: plot_module_css_default.shapeLabel,
 												x: x + width / 2,
 												y: y + height / 2,
 												textAnchor: "middle",
@@ -5676,10 +6161,10 @@ window.__ModuleLoader__.load({
 										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
 											...common,
 											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("polygon", {
-												className: LearningVisualV4_module_css_default.sceneShape,
+												className: plot_module_css_default.sceneShape,
 												points
 											}), element.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-												className: LearningVisualV4_module_css_default.shapeLabel,
+												className: plot_module_css_default.shapeLabel,
 												x: scaleX(center.x, content.xAxis, geometry),
 												y: scaleY(center.y, content.yAxis, geometry),
 												textAnchor: "middle",
@@ -5691,7 +6176,7 @@ window.__ModuleLoader__.load({
 									if (element.type === "label") return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", {
 										...common,
 										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-											className: LearningVisualV4_module_css_default.sceneText,
+											className: plot_module_css_default.sceneText,
 											x: scaleX(element.x, content.xAxis, geometry),
 											y: scaleY(element.y, content.yAxis, geometry),
 											textAnchor: "middle",
@@ -5703,54 +6188,73 @@ window.__ModuleLoader__.load({
 								})
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-								className: LearningVisualV4_module_css_default.axisLabel,
+								className: plot_module_css_default.axisLabel,
 								x: geometry.left + geometry.plotWidth / 2,
-								y: geometry.height - 7,
+								y: geometry.height - 6,
 								textAnchor: "middle",
 								children: content.xAxis.label ?? "x"
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-								className: LearningVisualV4_module_css_default.axisLabel,
-								x: "16",
+								className: plot_module_css_default.axisLabel,
+								x: "14",
 								y: geometry.top + geometry.plotHeight / 2,
 								textAnchor: "middle",
-								transform: `rotate(-90 16 ${geometry.top + geometry.plotHeight / 2})`,
+								transform: `rotate(-90 14 ${geometry.top + geometry.plotHeight / 2})`,
 								children: content.yAxis.label ?? "y"
 							})
 						]
 					})
-				}), selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-					className: LearningVisualV4_module_css_default.interactionHint,
-					children: labels.sceneInteractionHint
-				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
-					className: LearningVisualV4_module_css_default.detailPanel,
-					"aria-live": "polite",
-					children: [
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.elementKind }),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: selected.label }),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: selected.detail ?? labels.noDetail }),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-							type: "button",
-							onClick: () => setSelected(void 0),
-							"aria-label": labels.closeDetail,
-							children: "×"
-						})
-					]
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectionSurface, {
+					hint: labels.sceneInteractionHint,
+					selected,
+					kindLabel: labels.elementKind,
+					onClose: () => setSelected(void 0)
 				})]
 			});
 		}
-		function RelationRenderer({ content, focusedIds }) {
+		//#endregion
+		//#region \0dsh-css:src/client/visuals/styles/relation.module.css.mjs
+		const css$4 = ".f7pT7W_tableViewport{padding:var(--lx-space-2xs)}.f7pT7W_relationTable{border-spacing:0;border-collapse:separate;table-layout:fixed;width:100%;min-width:460px;color:var(--lx-label-primary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs)}.f7pT7W_relationTable th,.f7pT7W_relationTable td{border-right:1px solid var(--lx-border-subtle);border-bottom:1px solid var(--lx-border-subtle);padding:var(--lx-space-sm) var(--lx-space-md);text-align:center;overflow-wrap:anywhere}.f7pT7W_relationTable tr>:last-child{border-right:0}.f7pT7W_relationTable tbody tr:last-child>*{border-bottom:0}.f7pT7W_relationTable thead th{background:color-mix(in srgb, var(--lx-accent-soft) 30%, transparent);color:var(--lx-label-primary);font-size:var(--lx-text-sm);font-weight:var(--lx-weight-strong)}.f7pT7W_relationTable thead th:first-child,.f7pT7W_relationTable tbody th{width:24%}.f7pT7W_relationTable tbody th{background:var(--lx-surface-sunken);color:var(--lx-label-primary);text-align:left;font-weight:var(--lx-weight-medium)}.f7pT7W_relationTable td{color:var(--lx-label-secondary)}.f7pT7W_relationTable td[data-tone]{color:var(--visual-tone);font-weight:var(--lx-weight-medium)}.f7pT7W_relationTable th[data-visual-state],.f7pT7W_relationTable tr[data-visual-state]>*{opacity:var(--lx-vs-alpha)}.f7pT7W_relationTable th[data-visual-state=current]{box-shadow:inset 0 -3px 0 var(--lx-accent)}.f7pT7W_relationTable tr[data-visual-state=current]>th{box-shadow:inset 3px 0 0 var(--lx-accent)}.f7pT7W_cellButton{appearance:none;border-radius:var(--lx-radius-xs);max-width:100%;padding:var(--lx-space-3xs) var(--lx-space-xs);color:inherit;font:inherit;line-height:inherit;overflow-wrap:anywhere;cursor:pointer;background:0 0;border:1px solid #0000}.f7pT7W_cellButton:hover{border-color:var(--lx-border-default);background:color-mix(in srgb, var(--lx-accent) 8%, transparent)}.f7pT7W_cellButton:active{background:color-mix(in srgb, var(--lx-accent) 14%, transparent)}.f7pT7W_matrixTable td{padding:var(--lx-space-xs)}.f7pT7W_matrixCell{appearance:none;border:1px solid color-mix(in srgb, var(--visual-tone) 28%, var(--lx-border-subtle));border-radius:var(--lx-radius-sm);width:100%;min-height:38px;padding:var(--lx-space-2xs) var(--lx-space-xs);background:color-mix(in srgb, var(--visual-tone) 10%, transparent);color:var(--visual-tone);font:inherit;font-size:var(--lx-text-2xs);opacity:var(--lx-vs-alpha);cursor:pointer}.f7pT7W_matrixCell:hover{border-color:var(--visual-tone);background:color-mix(in srgb, var(--visual-tone) 18%, transparent)}.f7pT7W_matrixCell[data-visual-state=current]{font-weight:var(--lx-weight-strong);border-width:2px}.f7pT7W_emptyCell{color:var(--lx-label-tertiary);font-size:var(--lx-text-md)}.f7pT7W_setMap{gap:var(--lx-space-lg);display:grid}.f7pT7W_setZones{gap:var(--lx-space-md);grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));display:grid}.f7pT7W_setZone{border:1.5px solid color-mix(in srgb, var(--visual-tone) 50%, transparent);border-radius:var(--lx-radius-lg);min-width:0;padding:var(--lx-space-lg);background:color-mix(in srgb, var(--visual-tone) 7%, transparent);opacity:var(--lx-vs-alpha);position:relative}.f7pT7W_setZone[data-visual-state=current]{border-width:2px}.f7pT7W_setZone h4,.f7pT7W_intersections h4{align-items:center;gap:var(--lx-space-sm);margin:0 0 var(--lx-space-sm);color:var(--lx-label-primary);font-size:var(--lx-text-sm);font-weight:var(--lx-weight-strong);line-height:var(--lx-leading-sm);display:flex}.f7pT7W_setZone h4>span{border-radius:var(--lx-radius-circle);background:var(--visual-tone);flex:none;width:8px;height:8px}.f7pT7W_setZone>div{gap:var(--lx-space-xs);flex-wrap:wrap;align-content:flex-start;min-height:34px;display:flex}.f7pT7W_setItem{border-color:color-mix(in srgb, var(--visual-tone) 28%, var(--lx-border-subtle));border-radius:var(--lx-radius-pill);background:color-mix(in srgb, var(--visual-tone) 10%, var(--lx-surface-base));opacity:var(--lx-vs-alpha)}.f7pT7W_emptySet{color:var(--lx-label-tertiary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-2xs);align-self:center}.f7pT7W_intersections{border:1px dashed var(--lx-border-strong);border-radius:var(--lx-radius-lg);padding:var(--lx-space-md)}.f7pT7W_intersections>div{gap:var(--lx-space-sm);grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr));display:grid}.f7pT7W_intersectionItem{gap:var(--lx-space-3xs);padding:var(--lx-space-xs) var(--lx-space-sm);text-align:left;opacity:var(--lx-vs-alpha);justify-items:start;display:grid}.f7pT7W_intersectionItem strong{color:var(--lx-label-primary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-2xs)}.f7pT7W_intersectionItem span{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro)}@container f7pT7W_learning-visual-v4 (width<=560px){.f7pT7W_relationTable{min-width:420px}}";
+		const tagId$4 = "@dsh-portable/interactive-learning/relation.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$4) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@dsh-portable/interactive-learning";
+			tag.dataset.pluginCss = tagId$4;
+			tag.textContent = css$4;
+			document.head.appendChild(tag);
+		}
+		var relation_module_css_default = {
+			"cellButton": "f7pT7W_cellButton",
+			"emptyCell": "f7pT7W_emptyCell",
+			"emptySet": "f7pT7W_emptySet",
+			"intersectionItem": "f7pT7W_intersectionItem",
+			"intersections": "f7pT7W_intersections",
+			"learning-visual-v4": "f7pT7W_learning-visual-v4",
+			"matrixCell": "f7pT7W_matrixCell",
+			"matrixTable": "f7pT7W_matrixTable",
+			"relationTable": "f7pT7W_relationTable",
+			"setItem": "f7pT7W_setItem",
+			"setMap": "f7pT7W_setMap",
+			"setZone": "f7pT7W_setZone",
+			"setZones": "f7pT7W_setZones",
+			"tableViewport": "f7pT7W_tableViewport"
+		};
+		//#endregion
+		//#region src/client/visuals/renderers/RelationRenderer.tsx
+		/** `relation`: comparison tables, pairwise matrices and set membership. */
+		function RelationRenderer({ content, focus }) {
 			const labels = useVisualLabels();
 			const [selected, setSelected] = (0, react.useState)();
+			const close = () => setSelected(void 0);
 			if (content.variant === "comparison") return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: LearningVisualV4_module_css_default.relationRenderer,
+				className: shell_module_css_default.rendererStack,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: LearningVisualV4_module_css_default.tableViewport,
+					className: `${shell_module_css_default.viewport} ${relation_module_css_default.tableViewport}`,
 					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("table", {
-						className: LearningVisualV4_module_css_default.relationTable,
+						className: relation_module_css_default.relationTable,
 						children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("caption", {
-								className: LearningVisualV4_module_css_default.srOnly,
+								className: shell_module_css_default.srOnly,
 								children: labels.comparisonCaption
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("thead", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("tr", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("th", {
@@ -5759,10 +6263,11 @@ window.__ModuleLoader__.load({
 							}), content.subjects.map((subject) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("th", {
 								scope: "col",
 								"data-tone": toneAt(subject.tone),
-								"data-focus-state": focusState(subject.id, focusedIds),
+								"data-visual-state": elementState(subject.id, focus),
 								"data-visual-id": subject.id,
 								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
+									className: relation_module_css_default.cellButton,
 									onClick: () => setSelected({
 										label: subject.label,
 										detail: subject.detail,
@@ -5772,12 +6277,13 @@ window.__ModuleLoader__.load({
 								})
 							}, subject.id))] }) }),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("tbody", { children: content.rows.map((row) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("tr", {
-								"data-focus-state": focusState(row.id, focusedIds),
+								"data-visual-state": elementState(row.id, focus),
 								"data-visual-id": row.id,
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("th", {
 									scope: "row",
 									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 										type: "button",
+										className: relation_module_css_default.cellButton,
 										onClick: () => setSelected({
 											label: row.label,
 											detail: row.detail,
@@ -5795,23 +6301,21 @@ window.__ModuleLoader__.load({
 							}, row.id)) })
 						]
 					})
-				}), selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-					className: LearningVisualV4_module_css_default.interactionHint,
-					children: labels.comparisonInteractionHint
-				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RelationDetail, {
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectionSurface, {
+					hint: labels.comparisonInteractionHint,
 					selected,
-					onClose: () => setSelected(void 0)
+					onClose: close
 				})]
 			});
 			if (content.variant === "matrix") return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: LearningVisualV4_module_css_default.relationRenderer,
+				className: shell_module_css_default.rendererStack,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: LearningVisualV4_module_css_default.tableViewport,
+					className: `${shell_module_css_default.viewport} ${relation_module_css_default.tableViewport}`,
 					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("table", {
-						className: `${LearningVisualV4_module_css_default.relationTable} ${LearningVisualV4_module_css_default.matrixTable}`,
+						className: `${relation_module_css_default.relationTable} ${relation_module_css_default.matrixTable}`,
 						children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("caption", {
-								className: LearningVisualV4_module_css_default.srOnly,
+								className: shell_module_css_default.srOnly,
 								children: labels.matrixCaption
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("thead", { children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("tr", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("th", {
@@ -5819,26 +6323,26 @@ window.__ModuleLoader__.load({
 								children: labels.matrixAxes
 							}), content.columns.map((column) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("th", {
 								scope: "col",
-								"data-focus-state": focusState(column.id, focusedIds),
+								"data-visual-state": elementState(column.id, focus),
 								"data-visual-id": column.id,
 								children: column.label
 							}, column.id))] }) }),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("tbody", { children: content.rows.map((row) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("tr", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("th", {
 								scope: "row",
-								"data-focus-state": focusState(row.id, focusedIds),
+								"data-visual-state": elementState(row.id, focus),
 								"data-visual-id": row.id,
 								children: row.label
 							}), content.columns.map((column) => {
 								const cell = content.cells.find((item) => item.rowId === row.id && item.columnId === column.id);
 								return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("td", { children: cell === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: LearningVisualV4_module_css_default.emptyCell,
+									className: relation_module_css_default.emptyCell,
 									"aria-label": labels.noRelation,
 									children: "·"
 								}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
-									className: LearningVisualV4_module_css_default.matrixCell,
+									className: relation_module_css_default.matrixCell,
 									"data-tone": toneAt(cell.tone),
-									"data-focus-state": focusState(cell.id, focusedIds),
+									"data-visual-state": elementState(cell.id, focus),
 									"data-visual-id": cell.id,
 									onClick: () => setSelected({
 										label: cell.label,
@@ -5850,33 +6354,32 @@ window.__ModuleLoader__.load({
 							})] }, row.id)) })
 						]
 					})
-				}), selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-					className: LearningVisualV4_module_css_default.interactionHint,
-					children: labels.matrixInteractionHint
-				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RelationDetail, {
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectionSurface, {
+					hint: labels.matrixInteractionHint,
 					selected,
-					onClose: () => setSelected(void 0)
+					onClose: close
 				})]
 			});
 			const setById = new Map(content.sets.map((set) => [set.id, set]));
 			const exclusiveItems = (setId) => content.items.filter((item) => item.setIds.length === 1 && item.setIds[0] === setId);
 			const sharedItems = content.items.filter((item) => item.setIds.length !== 1);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: LearningVisualV4_module_css_default.relationRenderer,
+				className: shell_module_css_default.rendererStack,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-					className: LearningVisualV4_module_css_default.setMap,
+					className: relation_module_css_default.setMap,
 					role: "group",
 					"aria-label": labels.setsLabel,
 					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: LearningVisualV4_module_css_default.setZones,
+						className: relation_module_css_default.setZones,
 						children: content.sets.map((set, setIndex) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-							className: LearningVisualV4_module_css_default.setZone,
+							className: relation_module_css_default.setZone,
 							"data-tone": toneAt(set.tone, setIndex),
-							"data-focus-state": focusState(set.id, focusedIds),
+							"data-visual-state": elementState(set.id, focus),
 							"data-visual-id": set.id,
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h4", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { "aria-hidden": "true" }), set.label] }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [exclusiveItems(set.id).map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								"data-focus-state": focusState(item.id, focusedIds),
+								className: `${shell_module_css_default.control} ${relation_module_css_default.setItem}`,
+								"data-visual-state": elementState(item.id, focus),
 								"data-visual-id": item.id,
 								onClick: () => setSelected({
 									label: item.label,
@@ -5885,15 +6388,16 @@ window.__ModuleLoader__.load({
 								}),
 								children: item.label
 							}, item.id)), exclusiveItems(set.id).length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: LearningVisualV4_module_css_default.emptySet,
+								className: relation_module_css_default.emptySet,
 								children: labels.noExclusiveItems
 							}) : null] })]
 						}, set.id))
 					}), sharedItems.length === 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-						className: LearningVisualV4_module_css_default.intersections,
+						className: relation_module_css_default.intersections,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: labels.intersections }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", { children: sharedItems.map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 							type: "button",
-							"data-focus-state": focusState(item.id, focusedIds),
+							className: `${shell_module_css_default.control} ${relation_module_css_default.intersectionItem}`,
+							"data-visual-state": elementState(item.id, focus),
 							"data-visual-id": item.id,
 							onClick: () => setSelected({
 								label: item.label,
@@ -5903,40 +6407,44 @@ window.__ModuleLoader__.load({
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: item.label }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: item.setIds.map((setId) => setById.get(setId)?.label ?? setId).join(" ∩ ") || labels.uncategorized })]
 						}, item.id)) })]
 					})]
-				}), selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-					className: LearningVisualV4_module_css_default.interactionHint,
-					children: labels.setsInteractionHint
-				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RelationDetail, {
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectionSurface, {
+					hint: labels.setsInteractionHint,
 					selected,
-					onClose: () => setSelected(void 0)
+					onClose: close
 				})]
 			});
 		}
-		function RelationDetail({ selected, onClose }) {
-			const labels = useVisualLabels();
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
-				className: LearningVisualV4_module_css_default.detailPanel,
-				"aria-live": "polite",
-				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: selected.kind }),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: selected.label }),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: selected.detail ?? labels.noDetail }),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-						type: "button",
-						onClick: onClose,
-						"aria-label": labels.closeDetail,
-						children: "×"
-					})
-				]
-			});
+		//#endregion
+		//#region \0dsh-css:src/client/visuals/styles/timeline.module.css.mjs
+		const css$3 = ".zYjJda_timelineCanvas{min-width:0;position:relative}.zYjJda_timelineAxis{border-radius:var(--lx-radius-pill);background:var(--lx-border-strong);height:2px;position:absolute;left:66px;right:66px}.zYjJda_timelineAxis:after{border-top:5px solid #0000;border-bottom:5px solid #0000;border-left:8px solid var(--lx-border-strong);content:\"\";position:absolute;top:-4px;right:-2px}.zYjJda_timelineEra,.zYjJda_timelineEvent{appearance:none;border:1px solid color-mix(in srgb, var(--visual-tone) 42%, var(--lx-border-subtle));background:color-mix(in srgb, var(--visual-tone) 9%, var(--lx-surface-base));color:var(--lx-label-primary);font:inherit;opacity:var(--lx-vs-alpha);cursor:pointer;transition:border-color var(--lx-motion-fast) var(--lx-easing), background-color var(--lx-motion-fast) var(--lx-easing)}.zYjJda_timelineEra{z-index:1;border-radius:var(--lx-radius-pill);min-height:24px;padding:var(--lx-space-3xs) var(--lx-space-md);color:var(--visual-tone);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong);line-height:var(--lx-leading-micro);text-overflow:ellipsis;white-space:nowrap;position:absolute;overflow:hidden}.zYjJda_timelineEvent{z-index:2;gap:var(--lx-space-3xs);border-radius:var(--lx-radius-sm);width:128px;min-height:52px;padding:var(--lx-space-xs) var(--lx-space-sm);text-align:left;box-shadow:var(--lx-shadow-sm);display:grid;position:absolute;transform:translate(-50%)}.zYjJda_timelineEvent:before{border:2px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--visual-tone);content:\"\";width:10px;height:10px;position:absolute;left:calc(50% - 6px)}.zYjJda_timelineEvent:after{background:var(--visual-tone);content:\"\";width:1px;height:20px;position:absolute;left:50%}.zYjJda_timelineEvent[data-side=top]:before{bottom:-32px}.zYjJda_timelineEvent[data-side=top]:after{bottom:-22px}.zYjJda_timelineEvent[data-side=bottom]:before{top:-32px}.zYjJda_timelineEvent[data-side=bottom]:after{top:-22px}.zYjJda_timelineEvent>span{color:var(--visual-tone);font-size:var(--lx-text-micro);font-variant-numeric:tabular-nums;font-weight:var(--lx-weight-strong);line-height:var(--lx-leading-micro)}.zYjJda_timelineEvent>strong{color:var(--lx-label-primary);font-size:var(--lx-text-2xs);font-weight:var(--lx-weight-medium);line-height:var(--lx-leading-2xs);text-overflow:ellipsis;overflow:hidden}.zYjJda_timelineEra:hover,.zYjJda_timelineEvent:hover{border-color:var(--visual-tone);background:color-mix(in srgb, var(--visual-tone) 16%, var(--lx-surface-base))}.zYjJda_timelineEra[data-visual-state=current],.zYjJda_timelineEvent[data-visual-state=current]{border-color:var(--visual-tone);box-shadow:0 0 0 3px color-mix(in srgb, var(--visual-tone) 18%, transparent);border-width:2px}.zYjJda_timelineEraChips{gap:var(--lx-space-sm);flex-wrap:wrap;display:flex}.zYjJda_eraChip{border-color:color-mix(in srgb, var(--visual-tone) 42%, var(--lx-border-subtle));border-radius:var(--lx-radius-pill);padding:var(--lx-space-2xs) var(--lx-space-md);background:color-mix(in srgb, var(--visual-tone) 9%, var(--lx-surface-base));opacity:var(--lx-vs-alpha);text-align:left;justify-items:start;gap:0;display:inline-grid}.zYjJda_eraChip strong{color:var(--visual-tone);font-size:var(--lx-text-2xs);font-weight:var(--lx-weight-strong);line-height:var(--lx-leading-2xs)}.zYjJda_eraChip span{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro)}.zYjJda_timelineVertical{padding:var(--lx-space-2xs) 0 var(--lx-space-2xs) var(--lx-space-md);gap:0;margin:0;list-style:none;display:grid}.zYjJda_timelineVertical li{border-left:2px solid color-mix(in srgb, var(--visual-tone) 46%, var(--lx-border-default));padding:0 0 var(--lx-space-lg) var(--lx-space-2xl);opacity:var(--lx-vs-alpha);position:relative}.zYjJda_timelineVertical li:last-child{padding-bottom:0}.zYjJda_timelineVertical li:before{border:2px solid var(--lx-surface-base);border-radius:var(--lx-radius-circle);background:var(--visual-tone);content:\"\";width:9px;height:9px;position:absolute;top:15px;left:-6px}.zYjJda_verticalEvent{gap:var(--lx-space-3xs) var(--lx-space-lg);border-radius:var(--lx-radius-md);width:min(100%,620px);padding:var(--lx-space-sm) var(--lx-space-md);text-align:left;grid-template-columns:minmax(72px,auto) minmax(0,1fr);display:grid}.zYjJda_verticalEvent>span{color:var(--visual-tone);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong)}.zYjJda_verticalEvent>strong{color:var(--lx-label-primary);font-size:var(--lx-text-xs)}.zYjJda_verticalEvent>small{color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-2xs);grid-column:1/-1}.zYjJda_timelineVertical li[data-visual-state=current]{border-left-color:var(--visual-tone);border-left-width:3px}@media (prefers-reduced-motion:reduce){.zYjJda_timelineEra,.zYjJda_timelineEvent{transition:none}}";
+		const tagId$3 = "@dsh-portable/interactive-learning/timeline.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$3) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@dsh-portable/interactive-learning";
+			tag.dataset.pluginCss = tagId$3;
+			tag.textContent = css$3;
+			document.head.appendChild(tag);
 		}
+		var timeline_module_css_default = {
+			"eraChip": "zYjJda_eraChip",
+			"timelineAxis": "zYjJda_timelineAxis",
+			"timelineCanvas": "zYjJda_timelineCanvas",
+			"timelineEra": "zYjJda_timelineEra",
+			"timelineEraChips": "zYjJda_timelineEraChips",
+			"timelineEvent": "zYjJda_timelineEvent",
+			"timelineVertical": "zYjJda_timelineVertical",
+			"verticalEvent": "zYjJda_verticalEvent"
+		};
+		//#endregion
+		//#region src/client/visuals/renderers/TimelineRenderer.tsx
+		/** `timeline`: chronologies, phases and eras, horizontal or vertical. */
 		function timelinePosition(event, index, count) {
 			if (event.position !== void 0) return Math.max(0, Math.min(1, event.position));
 			return count <= 1 ? .5 : index / (count - 1);
 		}
-		function TimelineRenderer({ content, focusedIds }) {
+		function TimelineRenderer({ content, focus }) {
 			const labels = useVisualLabels();
-			const [regionRef, containerWidth] = useContainerWidth();
+			const [viewportRef, containerWidth] = useContainerWidth();
 			const [selected, setSelected] = (0, react.useState)();
 			const eras = content.eras ?? [];
 			const eventIndex = (0, react.useMemo)(() => new Map(content.events.map((event, index) => [event.id, index])), [content.events]);
@@ -5950,19 +6458,20 @@ window.__ModuleLoader__.load({
 				detail: era.detail,
 				kind: labels.timelineEraKind
 			});
-			if ((content.orientation ?? "horizontal") === "vertical") return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: LearningVisualV4_module_css_default.timelineRenderer,
+			if ((content.orientation ?? "horizontal") === "vertical" || containerWidth < 420) return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				className: shell_module_css_default.rendererStack,
 				role: "group",
 				"aria-label": labels.timelineLabel,
 				children: [
 					eras.length === 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						className: LearningVisualV4_module_css_default.timelineEraChips,
+						className: timeline_module_css_default.timelineEraChips,
 						role: "group",
 						"aria-label": labels.timelineEraKind,
 						children: eras.map((era, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 							type: "button",
+							className: `${shell_module_css_default.control} ${timeline_module_css_default.eraChip}`,
 							"data-tone": toneAt(era.tone, index),
-							"data-focus-state": focusState(era.id, focusedIds),
+							"data-visual-state": elementState(era.id, focus),
 							"data-visual-id": era.id,
 							onClick: () => selectEra(era),
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: era.label }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
@@ -5973,13 +6482,14 @@ window.__ModuleLoader__.load({
 						}, era.id))
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ol", {
-						className: LearningVisualV4_module_css_default.timelineVertical,
+						className: timeline_module_css_default.timelineVertical,
 						children: content.events.map((event, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", {
 							"data-tone": toneAt(event.tone, index),
-							"data-focus-state": focusState(event.id, focusedIds),
+							"data-visual-state": elementState(event.id, focus),
 							"data-visual-id": event.id,
 							children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 								type: "button",
+								className: `${shell_module_css_default.control} ${timeline_module_css_default.verticalEvent}`,
 								onClick: () => selectEvent(event),
 								children: [
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: event.time }),
@@ -5989,31 +6499,29 @@ window.__ModuleLoader__.load({
 							})
 						}, event.id))
 					}),
-					selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: LearningVisualV4_module_css_default.interactionHint,
-						children: labels.timelineInteractionHint
-					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RelationDetail, {
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectionSurface, {
+						hint: labels.timelineInteractionHint,
 						selected,
 						onClose: () => setSelected(void 0)
 					})
 				]
 			});
 			const eventCount = content.events.length;
-			const minimumWidth = eventCount <= 4 ? Math.max(360, 144 + Math.max(0, eventCount - 1) * 104) : 144 + Math.max(0, eventCount - 1) * 142;
+			const minimumWidth = 120 + Math.max(0, eventCount - 1) * 136;
 			const width = Math.max(minimumWidth, Math.floor(containerWidth) - 2);
-			const axisY = 72 + Math.min(4, eras.length) * 30;
-			const height = axisY + 142;
-			const inset = 72;
-			const eventX = (event, index) => inset + timelinePosition(event, index, content.events.length) * (width - 144);
+			const axisY = 66 + Math.min(4, eras.length) * 28;
+			const height = axisY + 130;
+			const inset = 66;
+			const eventX = (event, index) => inset + timelinePosition(event, index, content.events.length) * (width - 132);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: LearningVisualV4_module_css_default.timelineRenderer,
+				className: shell_module_css_default.rendererStack,
 				role: "group",
 				"aria-label": labels.timelineLabel,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: LearningVisualV4_module_css_default.timelineViewport,
-					ref: regionRef,
+					className: shell_module_css_default.viewport,
+					ref: viewportRef,
 					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: LearningVisualV4_module_css_default.timelineCanvas,
+						className: timeline_module_css_default.timelineCanvas,
 						style: {
 							width,
 							height
@@ -6026,57 +6534,79 @@ window.__ModuleLoader__.load({
 								const end = eventX(content.events[endIndex], endIndex);
 								return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
-									className: LearningVisualV4_module_css_default.timelineEra,
+									className: timeline_module_css_default.timelineEra,
 									"data-tone": toneAt(era.tone, index),
-									"data-focus-state": focusState(era.id, focusedIds),
+									"data-visual-state": elementState(era.id, focus),
 									"data-visual-id": era.id,
 									style: {
 										left: Math.min(start, end),
-										top: 16 + index % 4 * 30,
-										width: Math.max(42, Math.abs(end - start))
+										top: 14 + index % 4 * 28,
+										width: Math.max(48, Math.abs(end - start))
 									},
 									onClick: () => selectEra(era),
 									children: era.label
 								}, era.id);
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: LearningVisualV4_module_css_default.timelineAxis,
+								className: timeline_module_css_default.timelineAxis,
 								style: { top: axisY },
 								"aria-hidden": "true"
 							}),
 							content.events.map((event, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 								type: "button",
-								className: LearningVisualV4_module_css_default.timelineEvent,
+								className: timeline_module_css_default.timelineEvent,
 								"data-tone": toneAt(event.tone, index),
 								"data-side": index % 2 === 0 ? "top" : "bottom",
-								"data-focus-state": focusState(event.id, focusedIds),
+								"data-visual-state": elementState(event.id, focus),
 								"data-visual-id": event.id,
 								style: {
 									left: eventX(event, index),
-									top: index % 2 === 0 ? axisY - 74 : axisY + 24
+									top: index % 2 === 0 ? axisY - 72 : axisY + 24
 								},
 								onClick: () => selectEvent(event),
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: event.time }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: event.label })]
 							}, event.id))
 						]
 					})
-				}), selected === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-					className: LearningVisualV4_module_css_default.interactionHint,
-					children: labels.timelineInteractionHint
-				}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RelationDetail, {
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(SelectionSurface, {
+					hint: labels.timelineInteractionHint,
 					selected,
 					onClose: () => setSelected(void 0)
 				})]
 			});
 		}
-		function FormulaStepsRenderer({ content, focusedIds }) {
+		//#endregion
+		//#region \0dsh-css:src/client/visuals/styles/formula.module.css.mjs
+		const css$2 = "._8Y0KAW_formulaMeta{justify-content:space-between;align-items:center;gap:var(--lx-space-lg);min-width:0;color:var(--lx-accent);font-size:var(--lx-text-2xs);font-variant-numeric:tabular-nums;font-weight:var(--lx-weight-strong);line-height:var(--lx-leading-2xs);display:flex}._8Y0KAW_formulaMeta code{border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-xs);padding:var(--lx-space-3xs) var(--lx-space-sm);background:var(--lx-surface-sunken);color:var(--lx-label-secondary);font-family:var(--lx-font-mono);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-regular);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}._8Y0KAW_formulaSteps{gap:0;margin:0;padding:0;list-style:none;display:grid}._8Y0KAW_formulaSteps>li{min-width:0;opacity:var(--lx-vs-alpha)}._8Y0KAW_formulaStepCard{gap:var(--lx-space-md);border:1px solid color-mix(in srgb, var(--visual-tone) 30%, var(--lx-border-subtle));border-radius:var(--lx-radius-md);min-width:0;padding:var(--lx-space-md);background:color-mix(in srgb, var(--visual-tone) 6%, transparent);grid-template-columns:30px minmax(0,1fr);align-items:start;display:grid}._8Y0KAW_formulaSteps>li[data-visual-state=current] ._8Y0KAW_formulaStepCard{border-width:2px;border-color:var(--visual-tone)}._8Y0KAW_formulaStepCard>span{border-radius:var(--lx-radius-circle);background:color-mix(in srgb, var(--visual-tone) 16%, transparent);width:28px;height:28px;color:var(--visual-tone);font-size:var(--lx-text-2xs);font-weight:var(--lx-weight-strong);place-items:center;display:grid}._8Y0KAW_formulaStepCard>div{gap:var(--lx-space-2xs);min-width:0;display:grid}._8Y0KAW_formulaExpression{padding:var(--lx-space-sm) 0;color:var(--lx-label-primary);font-size:var(--lx-text-formula);font-weight:var(--lx-weight-medium);line-height:var(--lx-leading-formula);scrollbar-width:thin;overflow:auto hidden}._8Y0KAW_formulaExpression>div{min-width:max-content}._8Y0KAW_formulaExpression .katex-display{text-align:left;margin:2px 0}._8Y0KAW_formulaStepCard strong{color:var(--visual-tone);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-2xs)}._8Y0KAW_formulaStepCard p{color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);margin:0}._8Y0KAW_formulaRule{gap:var(--lx-space-xs) var(--lx-space-md);min-height:44px;padding:var(--lx-space-3xs) var(--lx-space-md);color:var(--lx-label-secondary);font-size:var(--lx-text-2xs);line-height:var(--lx-leading-2xs);grid-template-columns:30px auto minmax(0,1fr);align-items:center;display:grid}._8Y0KAW_formulaRule>span:first-child{color:var(--visual-tone);font-size:var(--lx-text-lg);text-align:center}._8Y0KAW_formulaRule strong{color:var(--visual-tone);font-size:var(--lx-text-micro);letter-spacing:.04em;text-transform:uppercase}._8Y0KAW_formulaUnknown{gap:var(--lx-space-md);padding:var(--lx-space-3xs) var(--lx-space-md);color:var(--lx-label-tertiary);grid-template-columns:30px minmax(0,1fr);align-items:center;display:grid}._8Y0KAW_formulaUnknown>span{text-align:center}._8Y0KAW_formulaUnknown code{border:1px dashed var(--lx-border-default);border-radius:var(--lx-radius-md);min-height:38px;font-size:var(--lx-text-lg);place-items:center;display:grid}._8Y0KAW_formulaConclusion{gap:var(--lx-space-3xs);border-left:3px solid var(--lx-success);border-radius:0 var(--lx-radius-sm) var(--lx-radius-sm) 0;padding:var(--lx-space-sm) var(--lx-space-md);background:color-mix(in srgb, var(--lx-success) 8%, transparent);display:grid}._8Y0KAW_formulaConclusion span{color:var(--lx-success);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong)}._8Y0KAW_formulaConclusion strong{color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-sm)}@container _8Y0KAW_learning-visual-v4 (width<=360px){._8Y0KAW_formulaStepCard{padding:var(--lx-space-sm);grid-template-columns:24px minmax(0,1fr)}._8Y0KAW_formulaStepCard>span{width:23px;height:23px}._8Y0KAW_formulaRule{grid-template-columns:24px minmax(0,1fr)}._8Y0KAW_formulaRule strong,._8Y0KAW_formulaRule>span:last-child{grid-column:2}}";
+		const tagId$2 = "@dsh-portable/interactive-learning/formula.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$2) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@dsh-portable/interactive-learning";
+			tag.dataset.pluginCss = tagId$2;
+			tag.textContent = css$2;
+			document.head.appendChild(tag);
+		}
+		var formula_module_css_default = {
+			"formulaConclusion": "_8Y0KAW_formulaConclusion",
+			"formulaExpression": "_8Y0KAW_formulaExpression",
+			"formulaMeta": "_8Y0KAW_formulaMeta",
+			"formulaRule": "_8Y0KAW_formulaRule",
+			"formulaStepCard": "_8Y0KAW_formulaStepCard",
+			"formulaSteps": "_8Y0KAW_formulaSteps",
+			"formulaUnknown": "_8Y0KAW_formulaUnknown",
+			"learning-visual-v4": "_8Y0KAW_learning-visual-v4"
+		};
+		//#endregion
+		//#region src/client/visuals/renderers/FormulaStepsRenderer.tsx
+		/** `formula_steps`: a derivation revealed one justified transformation at a time. */
+		function FormulaStepsRenderer({ content, focus }) {
 			const labels = useVisualLabels();
 			const [revealedIndex, setRevealedIndex] = (0, react.useState)(0);
 			const lastIndex = content.steps.length - 1;
 			(0, react.useEffect)(() => {
-				const focusedIndex = content.steps.findIndex((step) => focusedIds.has(step.id));
+				const focusedIndex = content.steps.findIndex((step) => focus.currentIds.has(step.id));
 				if (focusedIndex >= 0) setRevealedIndex((current) => Math.max(current, focusedIndex));
-			}, [content.steps, focusedIds]);
+			}, [content.steps, focus.currentIds]);
 			const move = (delta) => setRevealedIndex((current) => Math.max(0, Math.min(lastIndex, current + delta)));
 			const onKeyDown = (event) => {
 				if (event.target !== event.currentTarget) return;
@@ -6095,28 +6625,28 @@ window.__ModuleLoader__.load({
 				}
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: LearningVisualV4_module_css_default.formulaRenderer,
+				className: shell_module_css_default.rendererStack,
 				role: "group",
 				tabIndex: 0,
 				onKeyDown,
 				"aria-label": labels.formulaLabel,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: LearningVisualV4_module_css_default.formulaMeta,
+						className: formula_module_css_default.formulaMeta,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labelTemplate(labels.formulaProgress, {
 							current: revealedIndex + 1,
 							total: content.steps.length
 						}) }), content.notation === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: content.notation })]
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("ol", {
-						className: LearningVisualV4_module_css_default.formulaSteps,
+						className: formula_module_css_default.formulaSteps,
 						"aria-live": "polite",
 						children: content.steps.slice(0, revealedIndex + 1).map((step, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 							"data-tone": toneAt(step.tone, index),
-							"data-focus-state": focusState(step.id, focusedIds),
+							"data-visual-state": elementState(step.id, focus),
 							"data-visual-id": step.id,
 							children: [index === 0 || step.rule === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: LearningVisualV4_module_css_default.formulaRule,
+								className: formula_module_css_default.formulaRule,
 								children: [
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 										"aria-hidden": "true",
@@ -6126,10 +6656,10 @@ window.__ModuleLoader__.load({
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: step.rule })
 								]
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: LearningVisualV4_module_css_default.formulaStepCard,
+								className: formula_module_css_default.formulaStepCard,
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: index + 1 }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-										className: LearningVisualV4_module_css_default.formulaExpression,
+										className: formula_module_css_default.formulaExpression,
 										"aria-label": step.expression,
 										children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, { text: displayMath(step.expression) })
 									}),
@@ -6140,62 +6670,92 @@ window.__ModuleLoader__.load({
 						}, step.id))
 					}),
 					revealedIndex >= lastIndex ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: LearningVisualV4_module_css_default.formulaConclusion,
+						className: formula_module_css_default.formulaConclusion,
 						"aria-live": "polite",
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.formulaConclusion }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: content.conclusion ?? labels.formulaComplete })]
 					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: LearningVisualV4_module_css_default.formulaUnknown,
+						className: formula_module_css_default.formulaUnknown,
 						"aria-hidden": "true",
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "↓" }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: "?" })]
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: LearningVisualV4_module_css_default.formulaActions,
+						className: shell_module_css_default.controlRow,
 						children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
+								className: shell_module_css_default.control,
 								onClick: () => move(-1),
 								disabled: revealedIndex === 0,
 								children: labels.previousStep
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: LearningVisualV4_module_css_default.primaryAction,
+								className: `${shell_module_css_default.control} ${shell_module_css_default.controlPrimary}`,
 								onClick: () => move(1),
 								disabled: revealedIndex >= lastIndex,
 								children: labels.revealNextFormulaStep
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
+								className: shell_module_css_default.control,
 								onClick: () => setRevealedIndex(0),
 								disabled: revealedIndex === 0,
 								children: labels.reset
 							})
 						]
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: LearningVisualV4_module_css_default.interactionHint,
-						children: labels.formulaInteractionHint
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: shell_module_css_default.selectionSlot,
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+							className: shell_module_css_default.interactionHint,
+							children: labels.formulaInteractionHint
+						})
 					})
 				]
 			});
 		}
+		//#endregion
+		//#region \0dsh-css:src/client/visuals/styles/study.module.css.mjs
+		const css$1 = ".ApA5Lq_studySource{gap:var(--lx-space-3xs) var(--lx-space-md);border-left:3px solid var(--lx-accent);border-radius:0 var(--lx-radius-sm) var(--lx-radius-sm) 0;padding:var(--lx-space-sm) var(--lx-space-md);background:color-mix(in srgb, var(--lx-accent-soft) 28%, transparent);grid-template-columns:auto minmax(0,1fr);align-items:baseline;display:grid}.ApA5Lq_studySource>span{color:var(--lx-accent);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong)}.ApA5Lq_studySource>strong{color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-sm)}.ApA5Lq_studySource>p{margin:var(--lx-space-3xs) 0 0;color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);grid-column:1/-1}.ApA5Lq_studySource>p b{margin-right:var(--lx-space-xs);color:var(--lx-label-primary);font-weight:var(--lx-weight-medium)}.ApA5Lq_studyLayout{gap:var(--lx-space-lg);grid-template-columns:minmax(160px,.32fr) minmax(0,1fr);min-width:0;display:grid}.ApA5Lq_studySections{gap:var(--lx-space-xs);flex-direction:column;min-width:0;display:flex}.ApA5Lq_sectionTab{gap:0 var(--lx-space-sm);min-width:0;padding:var(--lx-space-sm);text-align:left;opacity:var(--lx-vs-alpha);grid-template-columns:24px minmax(0,1fr);justify-items:start;display:grid}.ApA5Lq_sectionTab>span{border-radius:var(--lx-radius-circle);background:var(--lx-border-subtle);width:22px;height:22px;color:var(--lx-label-secondary);font-size:var(--lx-text-micro);grid-row:1/3;place-items:center;display:grid}.ApA5Lq_sectionTab>strong{color:var(--lx-label-primary);font-size:var(--lx-text-2xs);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.ApA5Lq_sectionTab>small{color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.ApA5Lq_sectionTab[aria-selected=true]{border-color:var(--lx-accent);background:color-mix(in srgb, var(--lx-accent-soft) 42%, transparent)}.ApA5Lq_sectionTab[aria-selected=true]>span{background:var(--lx-accent);color:var(--lx-label-on-accent)}.ApA5Lq_studySectionPanel{gap:var(--lx-space-md);border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-md);min-width:0;padding:var(--lx-space-lg);background:var(--lx-surface-sunken);flex-direction:column;display:flex}.ApA5Lq_studySectionPanel>header{gap:var(--lx-space-xs);display:grid}.ApA5Lq_studySectionPanel>header span{color:var(--lx-accent);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro)}.ApA5Lq_studySectionPanel>header h4{color:var(--lx-label-primary);font-size:var(--lx-text-base);line-height:var(--lx-leading-base);margin:0}.ApA5Lq_studySectionPanel>header p{color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);margin:0}.ApA5Lq_studyConcepts{gap:var(--lx-space-sm);grid-template-columns:repeat(auto-fit,minmax(min(190px,100%),1fr));display:grid}.ApA5Lq_conceptCard{gap:var(--lx-space-3xs);border-color:color-mix(in srgb, var(--visual-tone) 26%, var(--lx-border-subtle));min-width:0;padding:var(--lx-space-sm) var(--lx-space-md);background:color-mix(in srgb, var(--visual-tone) 6%, var(--lx-surface-base));opacity:var(--lx-vs-alpha);text-align:left;justify-items:start;display:grid}.ApA5Lq_conceptCard>span{color:var(--visual-tone);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong)}.ApA5Lq_conceptCard>strong{color:var(--lx-label-primary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs)}.ApA5Lq_conceptCard>small{gap:var(--lx-space-3xs);color:var(--lx-label-tertiary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro);display:grid}.ApA5Lq_conceptCard>small b{color:var(--lx-label-secondary);font-weight:var(--lx-weight-medium)}.ApA5Lq_conceptCard[data-selected]{border-color:var(--visual-tone);border-width:2px}.ApA5Lq_studyDetail{gap:var(--lx-space-xs) var(--lx-space-md);border:1px solid color-mix(in srgb, var(--lx-accent) 26%, var(--lx-border-subtle));border-left:3px solid var(--lx-accent);border-radius:var(--lx-radius-sm);padding:var(--lx-space-md);background:color-mix(in srgb, var(--lx-accent-soft) 26%, transparent);grid-template-columns:minmax(0,1fr) 28px;display:grid;position:relative}.ApA5Lq_studyDetail>div{gap:var(--lx-space-sm);align-items:baseline;min-width:0;display:flex}.ApA5Lq_studyDetail>div span{color:var(--lx-accent);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong);flex:none}.ApA5Lq_studyDetail>div strong{min-width:0;color:var(--lx-label-primary);font-size:var(--lx-text-sm);overflow-wrap:anywhere}.ApA5Lq_studyDetail>p{color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);grid-column:1;margin:0}.ApA5Lq_studyDetail>dl{gap:var(--lx-space-sm);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro);grid-column:1;margin:0;display:flex}.ApA5Lq_studyDetail dt{color:var(--lx-label-tertiary)}.ApA5Lq_studyDetail dd{color:var(--lx-label-secondary);margin:0}.ApA5Lq_studyDetail>button{grid-area:1/2/4;align-self:start}@container ApA5Lq_learning-visual-v4 (width<=560px){.ApA5Lq_studyLayout{grid-template-columns:1fr}.ApA5Lq_studySections{scrollbar-width:thin;flex-direction:row;padding-bottom:3px;overflow-x:auto}.ApA5Lq_sectionTab{min-width:156px}}";
+		const tagId$1 = "@dsh-portable/interactive-learning/study.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$1) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@dsh-portable/interactive-learning";
+			tag.dataset.pluginCss = tagId$1;
+			tag.textContent = css$1;
+			document.head.appendChild(tag);
+		}
+		var study_module_css_default = {
+			"conceptCard": "ApA5Lq_conceptCard",
+			"learning-visual-v4": "ApA5Lq_learning-visual-v4",
+			"sectionTab": "ApA5Lq_sectionTab",
+			"studyConcepts": "ApA5Lq_studyConcepts",
+			"studyDetail": "ApA5Lq_studyDetail",
+			"studyLayout": "ApA5Lq_studyLayout",
+			"studySectionPanel": "ApA5Lq_studySectionPanel",
+			"studySections": "ApA5Lq_studySections",
+			"studySource": "ApA5Lq_studySource"
+		};
+		//#endregion
+		//#region src/client/visuals/renderers/StudyMapRenderer.tsx
+		/** `study_map`: a navigable overview of supplied source material. */
 		function studyRoleLabel(role, labels) {
 			if (role === "foundation") return labels.roleFoundation;
 			if (role === "core") return labels.roleCore;
 			if (role === "extension") return labels.roleExtension;
 			if (role === "practice") return labels.rolePractice;
 		}
-		function StudyMapRenderer({ content, focusedIds }) {
+		function StudyMapRenderer({ content, focus }) {
 			const labels = useVisualLabels();
 			const id = (0, react.useId)();
 			const conceptById = (0, react.useMemo)(() => new Map(content.concepts.map((concept) => [concept.id, concept])), [content.concepts]);
-			const focusedConcept = content.concepts.find((concept) => focusedIds.has(concept.id));
-			const focusedSection = content.sections.find((section) => focusedIds.has(section.id));
+			const focusedConcept = content.concepts.find((concept) => focus.currentIds.has(concept.id));
+			const focusedSection = content.sections.find((section) => focus.currentIds.has(section.id));
 			const [sectionId, setSectionId] = (0, react.useState)(focusedConcept?.sectionId ?? focusedSection?.id ?? content.sections[0]?.id ?? "");
 			const [selectedConceptId, setSelectedConceptId] = (0, react.useState)(focusedConcept?.id);
 			(0, react.useEffect)(() => {
-				const concept = content.concepts.find((item) => focusedIds.has(item.id));
-				const section = content.sections.find((item) => focusedIds.has(item.id));
+				const concept = content.concepts.find((item) => focus.currentIds.has(item.id));
+				const section = content.sections.find((item) => focus.currentIds.has(item.id));
 				if (concept !== void 0) {
 					setSectionId(concept.sectionId);
 					setSelectedConceptId(concept.id);
@@ -6203,7 +6763,7 @@ window.__ModuleLoader__.load({
 			}, [
 				content.concepts,
 				content.sections,
-				focusedIds
+				focus.currentIds
 			]);
 			const section = content.sections.find((item) => item.id === sectionId) ?? content.sections[0];
 			const concepts = content.concepts.filter((concept) => concept.sectionId === section?.id);
@@ -6223,10 +6783,10 @@ window.__ModuleLoader__.load({
 				}
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: LearningVisualV4_module_css_default.studyRenderer,
+				className: shell_module_css_default.rendererStack,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: LearningVisualV4_module_css_default.studySource,
+						className: study_module_css_default.studySource,
 						children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.studySource }),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: content.sourceLabel }),
@@ -6234,19 +6794,20 @@ window.__ModuleLoader__.load({
 						]
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: LearningVisualV4_module_css_default.studyLayout,
+						className: study_module_css_default.studyLayout,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("nav", {
-							className: LearningVisualV4_module_css_default.studySections,
+							className: study_module_css_default.studySections,
 							role: "tablist",
 							"aria-label": labels.studySections,
 							children: content.sections.map((item, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 								type: "button",
+								className: `${shell_module_css_default.control} ${study_module_css_default.sectionTab}`,
 								role: "tab",
 								id: `${id}-tab-${item.id}`,
 								"aria-controls": `${id}-panel`,
 								tabIndex: item.id === section?.id ? 0 : -1,
 								"aria-selected": item.id === section?.id,
-								"data-focus-state": relatedFocusState(item.id, content.concepts.filter((concept) => concept.sectionId === item.id).map((concept) => concept.id), focusedIds),
+								"data-visual-state": elementState(item.id, focus, content.concepts.filter((concept) => concept.sectionId === item.id).map((concept) => concept.id)),
 								"data-visual-id": item.id,
 								onClick: () => selectSection(item.id),
 								onKeyDown: (event) => sectionKeyDown(event, index),
@@ -6257,22 +6818,23 @@ window.__ModuleLoader__.load({
 								]
 							}, item.id))
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-							className: LearningVisualV4_module_css_default.studySectionPanel,
+							className: study_module_css_default.studySectionPanel,
 							role: "tabpanel",
 							id: `${id}-panel`,
 							"aria-labelledby": section === void 0 ? void 0 : `${id}-tab-${section.id}`,
 							children: [section === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: section.anchor === void 0 ? labels.studySummary : `${labels.studyAnchor} · ${section.anchor}` }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: section.label })] }), section.summary === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: section.summary })] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: LearningVisualV4_module_css_default.studyConcepts,
+								className: study_module_css_default.studyConcepts,
 								role: "group",
 								"aria-label": labels.studyConcepts,
 								children: concepts.map((concept, index) => {
 									const role = studyRoleLabel(concept.role, labels);
-									const prerequisites = (concept.prerequisiteIds ?? []).map((id) => conceptById.get(id)?.label ?? id);
+									const prerequisites = (concept.prerequisiteIds ?? []).map((prerequisiteId) => conceptById.get(prerequisiteId)?.label ?? prerequisiteId);
 									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 										type: "button",
+										className: `${shell_module_css_default.control} ${study_module_css_default.conceptCard}`,
 										"data-tone": toneAt(concept.tone, index),
 										"data-role": concept.role,
-										"data-focus-state": focusState(concept.id, focusedIds),
+										"data-visual-state": concept.id === selectedConceptId ? "selected" : elementState(concept.id, focus),
 										"data-selected": concept.id === selectedConceptId || void 0,
 										"data-visual-id": concept.id,
 										onClick: () => setSelectedConceptId(concept.id),
@@ -6286,27 +6848,58 @@ window.__ModuleLoader__.load({
 							})]
 						})]
 					}),
-					selectedConcept === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: LearningVisualV4_module_css_default.interactionHint,
-						children: labels.studyInteractionHint
-					}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
-						className: LearningVisualV4_module_css_default.studyDetail,
-						"aria-live": "polite",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: studyRoleLabel(selectedConcept.role, labels) ?? labels.studyConcepts }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: selectedConcept.label })] }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: selectedConcept.detail ?? labels.noDetail }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dl", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: labels.prerequisite }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: (selectedConcept.prerequisiteIds ?? []).map((id) => conceptById.get(id)?.label ?? id).join(" → ") || labels.noPrerequisite })] }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								onClick: () => setSelectedConceptId(void 0),
-								"aria-label": labels.closeDetail,
-								children: "×"
-							})
-						]
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: shell_module_css_default.selectionSlot,
+						children: selectedConcept === void 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+							className: shell_module_css_default.interactionHint,
+							children: labels.studyInteractionHint
+						}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
+							className: study_module_css_default.studyDetail,
+							"aria-live": "polite",
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: studyRoleLabel(selectedConcept.role, labels) ?? labels.studyConcepts }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: selectedConcept.label })] }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: selectedConcept.detail ?? labels.noDetail }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("dl", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("dt", { children: labels.prerequisite }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("dd", { children: (selectedConcept.prerequisiteIds ?? []).map((prerequisiteId) => conceptById.get(prerequisiteId)?.label ?? prerequisiteId).join(" → ") || labels.noPrerequisite })] }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									className: `${shell_module_css_default.control} ${shell_module_css_default.closeButton}`,
+									onClick: () => setSelectedConceptId(void 0),
+									"aria-label": labels.closeDetail,
+									children: "×"
+								})
+							]
+						})
 					})
 				]
 			});
 		}
+		//#endregion
+		//#region \0dsh-css:src/client/visuals/styles/recall.module.css.mjs
+		const css = "._4HHZCG_recallToolbar{justify-content:space-between;align-items:baseline;gap:var(--lx-space-xs) var(--lx-space-lg);min-width:0;color:var(--lx-accent);font-size:var(--lx-text-2xs);font-variant-numeric:tabular-nums;font-weight:var(--lx-weight-strong);flex-wrap:wrap;display:flex}._4HHZCG_recallToolbar output{color:var(--lx-label-secondary);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-regular)}._4HHZCG_recallInstructions{color:var(--lx-label-secondary);font-size:var(--lx-text-xs);line-height:var(--lx-leading-xs);margin:0}._4HHZCG_recallCard{gap:var(--lx-space-lg);border:1px solid var(--lx-border-default);border-radius:var(--lx-radius-lg);background:var(--lx-surface-base);min-height:200px;box-shadow:var(--lx-shadow-sm);opacity:var(--lx-vs-alpha);align-content:start;padding:clamp(14px,3cqi,22px);display:grid}._4HHZCG_recallCardHeader{justify-content:space-between;align-items:center;gap:var(--lx-space-lg);display:flex}._4HHZCG_recallCardHeader>span{color:var(--lx-accent);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong);letter-spacing:var(--lx-tracking-eyebrow);text-transform:uppercase}._4HHZCG_recallCardHeader>small{border-radius:var(--lx-radius-pill);padding:var(--lx-space-3xs) var(--lx-space-sm);background:var(--lx-border-subtle);color:var(--lx-label-secondary);font-size:var(--lx-text-micro)}._4HHZCG_recallCardHeader>small[data-status=mastered]{background:color-mix(in srgb, var(--lx-success) 14%, transparent);color:var(--lx-success)}._4HHZCG_recallCardHeader>small[data-status=review]{background:color-mix(in srgb, var(--lx-warn) 14%, transparent);color:var(--lx-warn)}._4HHZCG_recallCard>h4{color:var(--lx-label-primary);font-size:clamp(16px,3.4cqi,20px);font-weight:var(--lx-weight-strong);margin:0;line-height:1.5}._4HHZCG_recallTags{gap:var(--lx-space-xs);flex-wrap:wrap;margin:-3px 0 0;padding:0;list-style:none;display:flex}._4HHZCG_recallTags li{border:1px solid var(--lx-border-subtle);border-radius:var(--lx-radius-pill);padding:var(--lx-space-3xs) var(--lx-space-sm);color:var(--lx-label-secondary);font-size:var(--lx-text-micro);line-height:var(--lx-leading-micro)}._4HHZCG_recallReveal{gap:var(--lx-space-2xs);border-left:3px solid var(--lx-warn);border-radius:0 var(--lx-radius-sm) var(--lx-radius-sm) 0;padding:var(--lx-space-sm) var(--lx-space-md);background:color-mix(in srgb, var(--lx-warn) 8%, transparent);display:grid}._4HHZCG_recallReveal[data-kind=answer]{border-left-color:var(--lx-success);background:color-mix(in srgb, var(--lx-success) 8%, transparent)}._4HHZCG_recallReveal>span{color:var(--lx-warn);font-size:var(--lx-text-micro);font-weight:var(--lx-weight-strong)}._4HHZCG_recallReveal[data-kind=answer]>span{color:var(--lx-success)}._4HHZCG_recallReveal>p{color:var(--lx-label-primary);font-size:var(--lx-text-sm);line-height:var(--lx-leading-sm);margin:0}._4HHZCG_recallRevealButton{justify-self:start;width:max-content;min-width:128px}._4HHZCG_recallRating{align-self:end}._4HHZCG_ratingButton[aria-pressed=true]{border-color:var(--lx-accent);background:color-mix(in srgb, var(--lx-accent-soft) 50%, transparent);color:var(--lx-accent);font-weight:var(--lx-weight-medium)}._4HHZCG_recallNavigation>:last-child{margin-left:auto}@container _4HHZCG_learning-visual-v4 (width<=560px){._4HHZCG_recallNavigation>*{flex:1}._4HHZCG_recallNavigation>:last-child{flex-basis:100%;margin-left:0}._4HHZCG_recallCard{min-height:190px}}@container _4HHZCG_learning-visual-v4 (width<=360px){._4HHZCG_recallToolbar{align-items:flex-start;gap:var(--lx-space-3xs);flex-direction:column}}";
+		const tagId = "@dsh-portable/interactive-learning/recall.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@dsh-portable/interactive-learning";
+			tag.dataset.pluginCss = tagId;
+			tag.textContent = css;
+			document.head.appendChild(tag);
+		}
+		var recall_module_css_default = {
+			"learning-visual-v4": "_4HHZCG_learning-visual-v4",
+			"ratingButton": "_4HHZCG_ratingButton",
+			"recallCard": "_4HHZCG_recallCard",
+			"recallCardHeader": "_4HHZCG_recallCardHeader",
+			"recallInstructions": "_4HHZCG_recallInstructions",
+			"recallNavigation": "_4HHZCG_recallNavigation",
+			"recallRating": "_4HHZCG_recallRating",
+			"recallReveal": "_4HHZCG_recallReveal",
+			"recallRevealButton": "_4HHZCG_recallRevealButton",
+			"recallTags": "_4HHZCG_recallTags",
+			"recallToolbar": "_4HHZCG_recallToolbar"
+		};
+		//#endregion
+		//#region src/client/visuals/renderers/RecallDeckRenderer.tsx
+		/** `recall_deck`: retrieval practice, one card at a time. */
 		function initialRecallState(content, storageKey) {
 			const initial = {
 				index: 0,
@@ -6326,7 +6919,7 @@ window.__ModuleLoader__.load({
 			} catch {}
 			return initial;
 		}
-		function RecallDeckRenderer({ content, focusedIds, storageKey }) {
+		function RecallDeckRenderer({ content, focus, storageKey }) {
 			const labels = useVisualLabels();
 			const initial = (0, react.useMemo)(() => initialRecallState(content, storageKey), [content, storageKey]);
 			const [cardIndex, setCardIndex] = (0, react.useState)(initial.index);
@@ -6335,12 +6928,12 @@ window.__ModuleLoader__.load({
 			const current = content.cards[cardIndex];
 			const followedFocus = (0, react.useRef)(-1);
 			(0, react.useEffect)(() => {
-				const focusedIndex = content.cards.findIndex((card) => focusedIds.has(card.id));
+				const focusedIndex = content.cards.findIndex((card) => focus.currentIds.has(card.id));
 				if (focusedIndex < 0 || focusedIndex === followedFocus.current) return;
 				followedFocus.current = focusedIndex;
 				setCardIndex(focusedIndex);
 				setStage("prompt");
-			}, [content.cards, focusedIds]);
+			}, [content.cards, focus.currentIds]);
 			(0, react.useEffect)(() => {
 				if (storageKey === void 0 || typeof sessionStorage === "undefined") return;
 				try {
@@ -6356,7 +6949,7 @@ window.__ModuleLoader__.load({
 				statuses,
 				storageKey
 			]);
-			if (current === void 0) return null;
+			if (current === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(EmptyFigure, {});
 			const move = (delta) => {
 				setCardIndex((index) => Math.max(0, Math.min(content.cards.length - 1, index + delta)));
 				setStage("prompt");
@@ -6385,14 +6978,14 @@ window.__ModuleLoader__.load({
 				}
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: LearningVisualV4_module_css_default.recallRenderer,
+				className: shell_module_css_default.rendererStack,
 				role: "group",
 				tabIndex: 0,
 				onKeyDown,
 				"aria-label": labels.recallDeckLabel,
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: LearningVisualV4_module_css_default.recallToolbar,
+						className: recall_module_css_default.recallToolbar,
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labelTemplate(labels.recallProgress, {
 							current: cardIndex + 1,
 							total: content.cards.length
@@ -6402,17 +6995,17 @@ window.__ModuleLoader__.load({
 						}) })]
 					}),
 					content.instructions === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: LearningVisualV4_module_css_default.recallInstructions,
+						className: recall_module_css_default.recallInstructions,
 						children: content.instructions
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("article", {
-						className: LearningVisualV4_module_css_default.recallCard,
+						className: recall_module_css_default.recallCard,
 						"data-visual-id": current.id,
-						"data-focus-state": focusState(current.id, focusedIds),
+						"data-visual-state": elementState(current.id, focus),
 						"data-stage": stage,
 						children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: LearningVisualV4_module_css_default.recallCardHeader,
+								className: recall_module_css_default.recallCardHeader,
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.recallPrompt }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("small", {
 									"data-status": status ?? "unrated",
 									children: status === "mastered" ? labels.mastered : status === "review" ? labels.reviewAgain : labels.unrated
@@ -6420,72 +7013,91 @@ window.__ModuleLoader__.load({
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h4", { children: current.prompt }),
 							current.tags === void 0 || current.tags.length === 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("ul", {
-								className: LearningVisualV4_module_css_default.recallTags,
+								className: recall_module_css_default.recallTags,
 								children: current.tags.map((tag) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("li", { children: tag }, tag))
 							}),
 							stage === "prompt" || current.hint === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-								className: LearningVisualV4_module_css_default.recallReveal,
+								className: recall_module_css_default.recallReveal,
 								"data-kind": "hint",
 								"aria-live": "polite",
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.recallHint }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: current.hint })]
 							}),
 							stage !== "answer" ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-								className: LearningVisualV4_module_css_default.recallReveal,
+								className: recall_module_css_default.recallReveal,
 								"data-kind": "answer",
 								"aria-live": "polite",
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: labels.recallAnswer }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", { children: current.answer })]
 							}),
 							stage === "answer" ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: LearningVisualV4_module_css_default.recallRating,
+								className: `${shell_module_css_default.controlRow} ${recall_module_css_default.recallRating}`,
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
+									className: `${shell_module_css_default.control} ${recall_module_css_default.ratingButton}`,
 									"aria-pressed": status === "review",
 									onClick: () => mark("review"),
 									children: labels.reviewAgain
 								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 									type: "button",
+									className: `${shell_module_css_default.control} ${recall_module_css_default.ratingButton}`,
 									"aria-pressed": status === "mastered",
 									onClick: () => mark("mastered"),
 									children: labels.mastered
 								})]
 							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								className: LearningVisualV4_module_css_default.recallRevealButton,
+								className: `${shell_module_css_default.control} ${shell_module_css_default.controlPrimary} ${recall_module_css_default.recallRevealButton}`,
 								onClick: revealNext,
 								children: stage === "prompt" && current.hint !== void 0 ? labels.showHint : labels.showAnswer
 							})
 						]
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						className: LearningVisualV4_module_css_default.recallNavigation,
+						className: `${shell_module_css_default.controlRow} ${recall_module_css_default.recallNavigation}`,
 						children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 								type: "button",
+								className: shell_module_css_default.control,
 								onClick: () => move(-1),
 								disabled: cardIndex === 0,
 								children: ["← ", labels.previousCard]
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 								type: "button",
+								className: shell_module_css_default.control,
 								onClick: () => move(1),
 								disabled: cardIndex >= content.cards.length - 1,
 								children: [labels.nextCard, " →"]
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
+								className: shell_module_css_default.control,
 								onClick: reset,
 								disabled: cardIndex === 0 && stage === "prompt" && Object.keys(statuses).length === 0,
 								children: labels.resetDeck
 							})
 						]
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-						className: LearningVisualV4_module_css_default.interactionHint,
-						children: labels.recallInteractionHint
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						className: shell_module_css_default.selectionSlot,
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+							className: shell_module_css_default.interactionHint,
+							children: labels.recallInteractionHint
+						})
 					})
 				]
 			});
 		}
+		//#endregion
+		//#region src/client/visuals/index.tsx
+		/**
+		* The visual@4 shell: one card, one heading, one optional sequence controller,
+		* one error boundary, and whichever of the eight renderers the payload names.
+		*
+		* The shell owns everything that is not renderer-specific, including the
+		* emphasis a sequence frame produces. Frames earlier than the current one
+		* contribute a `visited` tier, so the controller and the figure agree about
+		* what has already been covered without each renderer re-deriving it.
+		*/
 		const VISUAL_RENDERER_REGISTRY = {
 			plot: PlotRenderer,
 			node_link: NodeLinkRenderer,
@@ -6496,11 +7108,11 @@ window.__ModuleLoader__.load({
 			study_map: StudyMapRenderer,
 			recall_deck: RecallDeckRenderer
 		};
-		function RegisteredVisual({ content, focusedIds, storageKey }) {
+		function RegisteredVisual({ content, focus, storageKey }) {
 			const Renderer = VISUAL_RENDERER_REGISTRY[content.kind];
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(Renderer, {
 				content,
-				focusedIds,
+				focus,
 				storageKey
 			});
 		}
@@ -6509,17 +7121,20 @@ window.__ModuleLoader__.load({
 			const descriptionId = (0, react.useId)();
 			const initialFrameIndex = visual.sequence === void 0 ? 0 : Math.max(0, visual.sequence.frames.findIndex((frame) => frame.id === visual.sequence?.initialFrameId));
 			const [frameIndex, setFrameIndex] = (0, react.useState)(initialFrameIndex);
-			const frame = visual.sequence?.frames[frameIndex];
-			const focusedIds = (0, react.useMemo)(() => new Set(frame?.focusIds ?? []), [frame?.focusIds]);
 			const labels = (0, react.useMemo)(() => ({
 				...DEFAULT_LABELS,
 				...suppliedLabels
 			}), [suppliedLabels]);
+			const focus = (0, react.useMemo)(() => {
+				const frames = visual.sequence?.frames;
+				if (frames === void 0) return visualFocus([]);
+				return visualFocus(frames[frameIndex]?.focusIds ?? [], frames.slice(0, frameIndex).flatMap((frame) => frame.focusIds));
+			}, [frameIndex, visual.sequence]);
 			(0, react.useEffect)(() => setFrameIndex(initialFrameIndex), [initialFrameIndex, visual.sequence]);
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VisualLabelsContext.Provider, {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)(VisualLabelsProvider, {
 				value: labels,
 				children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-					className: LearningVisualV4_module_css_default.visualShell,
+					className: shell_module_css_default.visualShell,
 					...learningScope,
 					"data-learning-visual": visual.content.kind,
 					"data-render-state": "ready",
@@ -6527,10 +7142,10 @@ window.__ModuleLoader__.load({
 					"aria-describedby": visual.description === void 0 ? void 0 : descriptionId,
 					children: [
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
-							className: LearningVisualV4_module_css_default.visualHeader,
+							className: shell_module_css_default.visualHeader,
 							children: [
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: LearningVisualV4_module_css_default.visualEyebrow,
+									className: shell_module_css_default.visualEyebrow,
 									"aria-hidden": "true",
 									children: labels.eyebrow
 								}),
@@ -6554,7 +7169,7 @@ window.__ModuleLoader__.load({
 							labels,
 							children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(RegisteredVisual, {
 								content: visual.content,
-								focusedIds,
+								focus,
 								storageKey
 							})
 						}, `${visual.protocol}:${visual.title}:${visual.content.kind}`)
@@ -6644,7 +7259,14 @@ window.__ModuleLoader__.load({
 			reviewAgain: "visualReviewAgain",
 			unrated: "visualUnrated",
 			recallStatus: "visualRecallStatus",
-			recallInteractionHint: "visualRecallInteractionHint"
+			recallInteractionHint: "visualRecallInteractionHint",
+			stepOfTotal: "visualStepOfTotal",
+			emptyVisual: "visualEmpty",
+			graphLegendLabel: "visualGraphLegendLabel",
+			stateCurrent: "visualStateCurrent",
+			stateRelated: "visualStateRelated",
+			stateContext: "visualStateContext",
+			stateVisited: "visualStateVisited"
 		};
 		function visualLabelsOf(t) {
 			return Object.fromEntries(Object.entries(VISUAL_LABEL_KEYS).map(([label, key]) => [label, t(key)]));
@@ -7190,7 +7812,14 @@ window.__ModuleLoader__.load({
 			visualReviewAgain: "待复习",
 			visualUnrated: "未标记",
 			visualRecallStatus: "掌握 {mastered} · 待复习 {review}",
-			visualRecallInteractionHint: "先在心中回答，再查看提示和答案，最后标记掌握状态。"
+			visualRecallInteractionHint: "先在心中回答，再查看提示和答案，最后标记掌握状态。",
+			visualStepOfTotal: "第 {current} / {total} 步",
+			visualEmpty: "这张图目前没有可显示的内容。",
+			visualGraphLegendLabel: "图形状态说明",
+			visualStateCurrent: "当前重点",
+			visualStateRelated: "相关路径",
+			visualStateContext: "其余结构",
+			visualStateVisited: "已讲过"
 		};
 		const en = {
 			scaffold: "Hint",
@@ -7319,7 +7948,14 @@ window.__ModuleLoader__.load({
 			visualReviewAgain: "Review again",
 			visualUnrated: "Not rated",
 			visualRecallStatus: "{mastered} mastered · {review} to review",
-			visualRecallInteractionHint: "Answer from memory before revealing the hint and answer, then mark your recall."
+			visualRecallInteractionHint: "Answer from memory before revealing the hint and answer, then mark your recall.",
+			visualStepOfTotal: "Step {current} of {total}",
+			visualEmpty: "This figure has nothing to show yet.",
+			visualGraphLegendLabel: "What the emphasis means",
+			visualStateCurrent: "This step",
+			visualStateRelated: "On the path",
+			visualStateContext: "Rest of the structure",
+			visualStateVisited: "Already covered"
 		};
 		//#endregion
 		//#region src/client/index.ts

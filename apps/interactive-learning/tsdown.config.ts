@@ -2,7 +2,7 @@ import { clientBundle } from '../../vendor/deepseek-harness/packages/client/tsdo
 import type { TsdownPlugin } from 'tsdown'
 
 const PACKAGE_ID = '@dsh-portable/interactive-learning'
-const ABSOLUTE_CSS_VIRTUAL_ID = /\\0dsh-css:(?:[A-Za-z]:[\\/]|\/)[^\r\n]*?[\\/]src[\\/]client[\\/]([^\\/\r\n]+\.module\.css\.mjs)/g
+const ABSOLUTE_CSS_VIRTUAL_ID = /\\0dsh-css:(?:[A-Za-z]:[\\/]|\/)[^\r\n]*?[\\/]src[\\/]client[\\/]((?:[^\\/\r\n]+[\\/])*[^\\/\r\n]+\.module\.css\.mjs)/g
 
 /**
  * Rolldown emits virtual module ids in region comments. The shared CSS plugin
@@ -11,7 +11,12 @@ const ABSOLUTE_CSS_VIRTUAL_ID = /\\0dsh-css:(?:[A-Za-z]:[\\/]|\/)[^\r\n]*?[\\/]s
  * generation while retaining a stable, package-relative diagnostic id.
  */
 function sanitizePublishedPath(value: string): string {
-  return value.replace(ABSOLUTE_CSS_VIRTUAL_ID, '\\0dsh-css:src/client/$1')
+  // The captured tail keeps the nested `visuals/styles/` segments, and on a
+  // Windows build still carries backslashes; the published diagnostic id is
+  // normalised so the bundle is byte-identical whichever platform built it.
+  return value.replace(ABSOLUTE_CSS_VIRTUAL_ID, (_match, tail: string) => (
+    `\\0dsh-css:src/client/${tail.replaceAll('\\', '/')}`
+  ))
 }
 
 const pathSanitizer: TsdownPlugin = {
