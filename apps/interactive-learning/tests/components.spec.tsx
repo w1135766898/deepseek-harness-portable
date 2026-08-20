@@ -366,12 +366,18 @@ describe('semantic LearningVisual v4 completed ToolView gallery', () => {
       expect(root?.querySelectorAll('[data-visual-id^="v_"]')).toHaveLength(8)
       const inputNode = root?.querySelector('[data-visual-id="x1"]')
       const hiddenNode = root?.querySelector('[data-visual-id="h1"]')
-      expect(inputNode?.getAttribute('data-focus-state')).toBe('focus')
-      expect(hiddenNode?.getAttribute('data-focus-state')).toBe('dim')
+      // Frame 1 focuses the input layer. The hidden units the inputs feed are
+      // where that signal goes, so they stay legible context rather than being
+      // faded out of the figure.
+      expect(inputNode?.getAttribute('data-visual-state')).toBe('current')
+      expect(hiddenNode?.getAttribute('data-visual-state')).toBe('related')
       fireEvent.click(screen.getByRole('button', { name: en.visualNextStep }))
-      expect(hiddenNode?.getAttribute('data-focus-state')).toBe('focus')
+      expect(hiddenNode?.getAttribute('data-visual-state')).toBe('current')
+      // The layer the previous frame covered is marked as already seen, not dropped.
+      expect(inputNode?.getAttribute('data-visual-state')).toBe('related')
       fireEvent.click(hiddenNode as Element)
       expect(hiddenNode?.getAttribute('data-selected')).toBe('true')
+      expect(hiddenNode?.getAttribute('data-visual-state')).toBe('selected')
       expect(screen.getByText('隐藏单元：加权求和后通过激活函数')).toBeTruthy()
       return
     }

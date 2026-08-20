@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { LearningVisualV4 } from '../src/client/LearningVisualV4.tsx'
+import { LearningVisualV4 } from '../src/client/visuals/index.tsx'
 import { parseLearningVisualV4 } from '../src/protocol.ts'
 import { visualV4Catalog } from './fixtures.ts'
 

@@ -10,30 +10,38 @@
  * Every learning root element carries `data-learning-scope`. Values are layered
  * on the Host's `--dsw-alias-*` aliases so the plugin still follows the app
  * theme; the `--lx-` prefix keeps the plugin's own scale collision-free.
+ *
+ * Host aliases are always read with an inline fallback, including inside
+ * `color-mix()`. A bare `var(--dsw-alias-x)` that the Host has not declared is
+ * the guaranteed-invalid value, which makes the whole `color-mix()` invalid and
+ * silently drops the property in every rule that reads the resulting token. The
+ * browser fixture declares a complete alias set, so that failure only appeared
+ * in Hosts with a partial theme.
  */
 
 [data-learning-scope] {
   /* Type ramp. Seven steps replace the thirteen ad-hoc sizes the surfaces grew
-     independently. 10px is the floor and is reserved for numeric chart
-     furniture; anything a learner reads as prose starts at 12px. */
-  --lx-text-micro: 10px;
-  --lx-leading-micro: 15px;
-  --lx-text-2xs: 11px;
-  --lx-leading-2xs: 16px;
-  --lx-text-xs: 12px;
-  --lx-leading-xs: 18px;
-  --lx-text-sm: 13px;
-  --lx-leading-sm: 20px;
-  --lx-text-base: 14px;
-  --lx-leading-base: 22px;
-  --lx-text-md: 15px;
-  --lx-leading-md: 24px;
-  --lx-text-lg: 17px;
-  --lx-leading-lg: 26px;
-  --lx-text-xl: clamp(17px, 4cqi, 21px);
-  --lx-leading-xl: 1.55;
-  --lx-text-formula: clamp(15px, 3cqi, 19px);
-  --lx-leading-formula: 26px;
+     independently. 11px is the floor and is reserved for numeric or iconographic
+     furniture; anything a learner reads as language starts at 12px, and CJK
+     labels inside figures start at 13px. */
+  --lx-text-micro: 11px;
+  --lx-leading-micro: 16px;
+  --lx-text-2xs: 12px;
+  --lx-leading-2xs: 17px;
+  --lx-text-xs: 13px;
+  --lx-leading-xs: 20px;
+  --lx-text-sm: 14px;
+  --lx-leading-sm: 21px;
+  --lx-text-base: 15px;
+  --lx-leading-base: 23px;
+  --lx-text-md: 16px;
+  --lx-leading-md: 25px;
+  --lx-text-lg: 18px;
+  --lx-leading-lg: 27px;
+  --lx-text-xl: clamp(18px, 4cqi, 22px);
+  --lx-leading-xl: 1.5;
+  --lx-text-formula: clamp(16px, 3cqi, 20px);
+  --lx-leading-formula: 27px;
 
   --lx-weight-regular: 400;
   --lx-weight-medium: 550;
@@ -61,23 +69,30 @@
   --lx-radius-pill: 999px;
   --lx-radius-circle: 50%;
 
-  /* Surfaces and lines, resolved from the Host theme. */
-  --lx-surface-base: var(--dsw-alias-bg-layer-1, Canvas);
-  --lx-surface-card: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 96%, transparent);
-  --lx-surface-raised: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 84%, transparent);
-  --lx-surface-sunken: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 70%, transparent);
-  --lx-surface-accent: color-mix(in srgb, var(--dsw-alias-state-business-tertiary) 30%, transparent);
-  --lx-border-subtle: var(--dsw-alias-border-l1, color-mix(in srgb, var(--lx-label-primary) 10%, transparent));
-  --lx-border-default: var(--dsw-alias-border-l2, color-mix(in srgb, var(--lx-label-primary) 16%, transparent));
-  --lx-border-strong: var(--dsw-alias-border-l3, color-mix(in srgb, var(--lx-label-primary) 24%, transparent));
-  --lx-border-strongest: var(--dsw-alias-border-l4, color-mix(in srgb, var(--lx-label-primary) 34%, transparent));
+  /* Host-resolved primitives. Every one carries its own fallback so a Host that
+     declares only part of the alias set still produces a complete theme. */
+  --lx-host-bg: var(--dsw-alias-bg-layer-1, Canvas);
+  --lx-host-label: var(--dsw-alias-label-primary, CanvasText);
+  --lx-host-accent: var(--dsw-alias-state-business-primary, var(--dsw-alias-brand-primary, #2f73ea));
+  --lx-host-accent-soft: var(--dsw-alias-state-business-tertiary, color-mix(in srgb, var(--lx-host-accent) 14%, transparent));
 
-  --lx-label-primary: var(--dsw-alias-label-primary, CanvasText);
-  --lx-label-secondary: var(--dsw-alias-label-secondary, color-mix(in srgb, var(--lx-label-primary) 72%, transparent));
-  --lx-label-tertiary: var(--dsw-alias-label-tertiary, color-mix(in srgb, var(--lx-label-primary) 52%, transparent));
+  /* Surfaces and lines. */
+  --lx-surface-base: var(--lx-host-bg);
+  --lx-surface-card: color-mix(in srgb, var(--lx-host-bg) 96%, transparent);
+  --lx-surface-raised: color-mix(in srgb, var(--lx-host-bg) 84%, transparent);
+  --lx-surface-sunken: color-mix(in srgb, var(--lx-host-label) 3%, var(--lx-host-bg));
+  --lx-surface-accent: color-mix(in srgb, var(--lx-host-accent-soft) 30%, transparent);
+  --lx-border-subtle: var(--dsw-alias-border-l1, color-mix(in srgb, var(--lx-host-label) 12%, transparent));
+  --lx-border-default: var(--dsw-alias-border-l2, color-mix(in srgb, var(--lx-host-label) 18%, transparent));
+  --lx-border-strong: var(--dsw-alias-border-l3, color-mix(in srgb, var(--lx-host-label) 28%, transparent));
+  --lx-border-strongest: var(--dsw-alias-border-l4, color-mix(in srgb, var(--lx-host-label) 38%, transparent));
+
+  --lx-label-primary: var(--lx-host-label);
+  --lx-label-secondary: var(--dsw-alias-label-secondary, color-mix(in srgb, var(--lx-host-label) 76%, transparent));
+  --lx-label-tertiary: var(--dsw-alias-label-tertiary, color-mix(in srgb, var(--lx-host-label) 58%, transparent));
   --lx-label-on-accent: var(--dsw-alias-label-on-primary, white);
-  --lx-accent: var(--dsw-alias-state-business-primary, var(--dsw-alias-brand-primary, #2f73ea));
-  --lx-accent-soft: var(--dsw-alias-state-business-tertiary, color-mix(in srgb, var(--lx-accent) 12%, transparent));
+  --lx-accent: var(--lx-host-accent);
+  --lx-accent-soft: var(--lx-host-accent-soft);
   --lx-success: var(--dsw-alias-state-success-primary, #2f9e5f);
   --lx-warn: var(--dsw-alias-state-warn-primary, #d1741f);
   --lx-danger: var(--dsw-alias-state-error-primary, #df4f4f);
@@ -89,15 +104,14 @@
      they cannot drift into different borders, radii, padding or elevation. */
   --lx-card-border: 1px solid var(--lx-border-default);
   --lx-card-radius: var(--lx-radius-xl);
-  --lx-card-padding: clamp(16px, 3cqi, 24px);
-  --lx-card-background:
-    linear-gradient(135deg, color-mix(in srgb, var(--lx-accent-soft) 34%, transparent), transparent 42%),
-    var(--lx-surface-card);
+  --lx-card-padding: clamp(14px, 2.6cqi, 20px);
+  --lx-card-background: var(--lx-surface-card);
 
-  /* Elevation. */
-  --lx-shadow-sm: 0 4px 14px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
-  --lx-shadow-md: 0 10px 26px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
-  --lx-shadow-lg: 0 12px 32px color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent);
+  /* Elevation. Restrained: a learning surface sits in a conversation, not on a
+     marketing page. */
+  --lx-shadow-sm: 0 1px 2px color-mix(in srgb, var(--lx-host-label) 7%, transparent);
+  --lx-shadow-md: 0 2px 8px color-mix(in srgb, var(--lx-host-label) 7%, transparent);
+  --lx-shadow-lg: 0 4px 16px color-mix(in srgb, var(--lx-host-label) 6%, transparent);
 
   /* One focus treatment for every focusable element in the plugin. */
   --lx-focus-color: var(--lx-accent);
@@ -105,11 +119,11 @@
   --lx-focus-offset: 3px;
 
   /* Control metrics shared by every button, chip and toggle. */
-  --lx-control-height-sm: 28px;
-  --lx-control-height-md: 32px;
+  --lx-control-height-sm: 30px;
+  --lx-control-height-md: 34px;
   --lx-control-padding-sm: var(--lx-space-2xs) var(--lx-space-md);
   --lx-control-padding-md: var(--lx-space-xs) var(--lx-space-lg);
-  --lx-control-disabled-opacity: 0.4;
+  --lx-control-disabled-opacity: 0.42;
 
   /* Motion. */
   --lx-motion-fast: 140ms;
@@ -123,9 +137,27 @@
   --lx-tone-red: var(--lx-danger);
   --lx-tone-orange: var(--lx-warn);
   --lx-tone-purple: color-mix(in srgb, var(--lx-accent) 58%, var(--lx-danger));
-  --lx-tone-gray: var(--dsw-alias-label-tertiary);
+  --lx-tone-gray: var(--dsw-alias-label-tertiary, color-mix(in srgb, var(--lx-host-label) 58%, transparent));
   --visual-tone: var(--lx-tone-blue);
+
+  /* The emphasis model. One ranked set of roles for every renderer, so a
+     sequence frame raises what it is about instead of erasing everything else.
+     `--lx-vs-alpha` is the strength a mark is drawn at; each stylesheet applies
+     it once, at the mark, so a group opacity can never multiply with a shape's
+     own stroke or fill opacity into near-invisibility. */
+  --lx-vs-alpha: 1;
+  --lx-vs-ring: 0;
+  --lx-vs-lift: 0;
 }
+
+[data-learning-scope] [data-visual-state] { --lx-vs-alpha: 1; --lx-vs-ring: 0; --lx-vs-lift: 0; }
+[data-learning-scope] [data-visual-state="current"] { --lx-vs-alpha: 1; --lx-vs-ring: 1; --lx-vs-lift: 1; }
+[data-learning-scope] [data-visual-state="selected"] { --lx-vs-alpha: 1; --lx-vs-ring: 1; }
+[data-learning-scope] [data-visual-state="related"] { --lx-vs-alpha: 0.92; }
+[data-learning-scope] [data-visual-state="visited"] { --lx-vs-alpha: 0.78; }
+[data-learning-scope] [data-visual-state="context"] { --lx-vs-alpha: 0.62; }
+[data-learning-scope] [data-visual-state="inactive"] { --lx-vs-alpha: 0.55; }
+[data-learning-scope] [data-visual-state="disabled"] { --lx-vs-alpha: 0.38; pointer-events: none; }
 
 /* Tone resolution, shared by every learning surface. */
 [data-learning-scope] [data-tone="blue"] { --visual-tone: var(--lx-tone-blue); }
@@ -149,4 +181,12 @@
     --lx-motion-fast: 0ms;
     --lx-motion-base: 0ms;
   }
+}
+
+/* Forced-colours mode replaces the palette outright. Emphasis then has to come
+   from weight and outline, not from alpha, or every de-emphasised mark collapses
+   onto the single system colour at reduced strength. */
+@media (forced-colors: active) {
+  [data-learning-scope] [data-visual-state] { --lx-vs-alpha: 1; }
+  [data-learning-scope] [data-visual-state="disabled"] { --lx-vs-alpha: 1; }
 }

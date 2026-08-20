@@ -126,6 +126,13 @@ export const zh = {
   visualUnrated: '未标记',
   visualRecallStatus: '掌握 {mastered} · 待复习 {review}',
   visualRecallInteractionHint: '先在心中回答，再查看提示和答案，最后标记掌握状态。',
+  visualStepOfTotal: '第 {current} / {total} 步',
+  visualEmpty: '这张图目前没有可显示的内容。',
+  visualGraphLegendLabel: '图形状态说明',
+  visualStateCurrent: '当前重点',
+  visualStateRelated: '相关路径',
+  visualStateContext: '其余结构',
+  visualStateVisited: '已讲过',
 }
 
 export const en: typeof zh = {
@@ -256,6 +263,13 @@ export const en: typeof zh = {
   visualUnrated: 'Not rated',
   visualRecallStatus: '{mastered} mastered · {review} to review',
   visualRecallInteractionHint: 'Answer from memory before revealing the hint and answer, then mark your recall.',
+  visualStepOfTotal: 'Step {current} of {total}',
+  visualEmpty: 'This figure has nothing to show yet.',
+  visualGraphLegendLabel: 'What the emphasis means',
+  visualStateCurrent: 'This step',
+  visualStateRelated: 'On the path',
+  visualStateContext: 'Rest of the structure',
+  visualStateVisited: 'Already covered',
 }
 
 export type LearningLocaleKey = keyof typeof zh
