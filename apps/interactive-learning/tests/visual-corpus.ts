@@ -104,6 +104,50 @@ const plots = {
   }),
 }
 
+/**
+ * The reported regression case: a small, ordinary decision tree whose first
+ * sequence frame focuses only the root.
+ *
+ * The previous renderer drew this at a fixed 560×390 with 29px circles and
+ * 10px labels, and faded everything the frame did not name to a tenth of full
+ * strength — so the first frame showed one highlighted circle and almost
+ * nothing else. It is exported because both the legibility suite and the
+ * browser gallery need exactly this shape.
+ */
+export const DECISION_TREE_VISUAL = visual('一棵周末安排决策树', {
+  kind: 'node_link',
+  layout: 'layered',
+  groups: [
+    { id: 'root', label: '根节点' },
+    { id: 'internal', label: '内部节点' },
+    { id: 'leaf', label: '叶节点' },
+  ],
+  nodes: [
+    { id: 'weather', label: '天气?', group: 'root', tone: 'blue', detail: '第一个判断条件。' },
+    { id: 'temperature', label: '温度?', group: 'internal', tone: 'blue', detail: '晴天时继续判断温度。' },
+    { id: 'swim', label: '去游泳', group: 'leaf', tone: 'green', detail: '晴且温度高时的结果。' },
+    { id: 'hike', label: '去爬山', group: 'leaf', tone: 'green', detail: '晴但温度低时的结果。' },
+    { id: 'read', label: '在家看书', group: 'leaf', tone: 'orange', detail: '下雨时不再判断温度。' },
+  ],
+  edges: [
+    { id: 'sunny', from: 'weather', to: 'temperature', label: '晴', directed: true },
+    { id: 'rainy', from: 'weather', to: 'read', label: '雨', directed: true },
+    { id: 'hot', from: 'temperature', to: 'swim', label: '高', directed: true },
+    { id: 'mild', from: 'temperature', to: 'hike', label: '低', directed: true },
+  ],
+}, {
+  description: '从根节点出发，沿“晴 → 高”的路径走到叶节点“去游泳”。',
+  sequence: {
+    initialFrameId: 'start',
+    frames: [
+      { id: 'start', label: '从根开始', description: '先问第一个问题：天气？', focusIds: ['weather'] },
+      { id: 'sunny', label: '天气是晴', description: '晴天时还要再判断温度。', focusIds: ['sunny', 'temperature'] },
+      { id: 'hot', label: '温度高', description: '温度高就走到“去游泳”这个叶节点。', focusIds: ['hot', 'swim'] },
+    ],
+  },
+  fallbackMarkdown: '天气? →(晴) 温度? →(高) 去游泳；温度? →(低) 去爬山；天气? →(雨) 在家看书。',
+})
+
 const graphNodes = [
   { id: 'a', label: 'A', group: 'left' },
   { id: 'b', label: 'B', group: 'left' },
@@ -165,6 +209,7 @@ const graphs = {
       { id: 'rp', from: 'r', to: 'p', directed: true },
     ],
   }),
+  decisionTree: DECISION_TREE_VISUAL,
   denseEdges: visual('Dense edge labels', {
     kind: 'node_link',
     layout: 'layered',

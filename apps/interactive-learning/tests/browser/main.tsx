@@ -23,6 +23,7 @@ import {
 } from '../../src/protocol.ts'
 import { encodeLearningCheckpointDetail, learningCheckpointQuestionId } from '../../src/transport.ts'
 import { compareActivity, parameterActivity, processActivity, visualV4Catalog } from '../fixtures.ts'
+import { DECISION_TREE_VISUAL } from '../visual-corpus.ts'
 import './page.css'
 
 const SESSION_ID = 'learning-browser-visual-gallery'
@@ -327,6 +328,10 @@ const emptyRangePlot = {
 
 const visualV4Entries = [
   ...Object.entries(visualV4Catalog),
+  // The reported regression shape: a small decision tree stepped through by a
+  // sequence, which is where a fixed canvas and a global dim opacity showed
+  // worst. Kept in the gallery so it can be inspected in a real browser.
+  ['decisionTree', DECISION_TREE_VISUAL as unknown as LearningVisualV4],
   ['emptyRangePlot', emptyRangePlot],
 ] as Array<[VisualCatalogKey, LearningVisualV4]>
 
