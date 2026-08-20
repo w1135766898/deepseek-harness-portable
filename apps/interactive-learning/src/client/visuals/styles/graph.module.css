@@ -1,0 +1,157 @@
+/**
+ * node_link marks.
+ *
+ * Emphasis is applied once, at the mark, through `--lx-vs-alpha`. Nothing here
+ * sets `opacity` on a group as well, because the previous stylesheet did both —
+ * a `stroke-opacity: 0.48` edge inside an `opacity: 0.2` group was drawn at
+ * roughly a tenth of full strength, which is what made the unfocused branches
+ * of a decision tree disappear.
+ */
+
+.graphSvg {
+  display: block;
+  max-width: none;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+/* A soft band behind a declared group, so the columns read as layers without
+   needing a heavy border. */
+.layerBand rect {
+  fill: color-mix(in srgb, var(--lx-label-primary) 3%, transparent);
+  stroke: var(--lx-border-subtle);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.layerLabel {
+  fill: var(--lx-label-secondary);
+  font-size: var(--lx-text-2xs);
+  font-weight: var(--lx-weight-strong);
+  letter-spacing: 0.02em;
+  opacity: var(--lx-vs-alpha);
+}
+
+.edgeGroup,
+.nodeGroup { cursor: pointer; }
+
+.edgeVisible {
+  fill: none;
+  stroke: var(--visual-tone);
+  stroke-opacity: var(--lx-vs-alpha);
+  stroke-width: calc(1.7px + var(--lx-vs-ring) * 1.1px);
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  transition: stroke-opacity var(--lx-motion-base) var(--lx-easing), stroke-width var(--lx-motion-base) var(--lx-easing);
+}
+
+.edgeHit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  pointer-events: stroke;
+  vector-effect: non-scaling-stroke;
+}
+
+.edgeGroup:hover .edgeVisible,
+.edgeGroup:focus-visible .edgeVisible,
+.edgeGroup[data-selected] .edgeVisible {
+  stroke-opacity: 1;
+  stroke-width: 3px;
+}
+
+.arrowMarker path {
+  fill: var(--visual-tone);
+  fill-opacity: var(--lx-vs-alpha);
+}
+
+/* The label sits on its own chip so it stays legible where it crosses a line. */
+.edgeLabel rect {
+  fill: var(--lx-surface-base);
+  stroke: color-mix(in srgb, var(--visual-tone) 26%, var(--lx-border-subtle));
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  opacity: var(--lx-vs-alpha);
+}
+
+.edgeLabel text {
+  fill: var(--lx-label-primary);
+  font-weight: var(--lx-weight-medium);
+  opacity: var(--lx-vs-alpha);
+}
+
+.edgeLabel {
+  pointer-events: none;
+  transition: opacity var(--lx-motion-fast) var(--lx-easing);
+}
+
+/* A dense graph shows only the labels that are currently meaningful. */
+.graphSvg[data-dense-edges] .edgeLabel { opacity: 0; }
+
+.graphSvg[data-dense-edges] .edgeGroup:hover .edgeLabel,
+.graphSvg[data-dense-edges] .edgeGroup:focus-visible .edgeLabel,
+.graphSvg[data-dense-edges] .edgeGroup[data-selected] .edgeLabel,
+.graphSvg[data-dense-edges] .edgeGroup[data-visual-state="current"] .edgeLabel,
+.graphSvg[data-dense-edges] .edgeGroup[data-visual-state="related"] .edgeLabel { opacity: 1; }
+
+.nodeShape {
+  fill: color-mix(in srgb, var(--visual-tone) 12%, var(--lx-surface-base));
+  fill-opacity: var(--lx-vs-alpha);
+  stroke: var(--visual-tone);
+  stroke-opacity: var(--lx-vs-alpha);
+  stroke-width: calc(1.6px + var(--lx-vs-ring) * 1.2px);
+  vector-effect: non-scaling-stroke;
+  transition:
+    fill-opacity var(--lx-motion-base) var(--lx-easing),
+    stroke-opacity var(--lx-motion-base) var(--lx-easing),
+    stroke-width var(--lx-motion-base) var(--lx-easing);
+}
+
+/* Only the current or selected node carries a halo. It is the emphasis, so the
+   rest of the graph does not have to be removed to produce contrast. */
+.nodeRing {
+  fill: none;
+  stroke: var(--visual-tone);
+  stroke-width: 2;
+  stroke-opacity: calc(var(--lx-vs-ring) * 0.34);
+  vector-effect: non-scaling-stroke;
+  transition: stroke-opacity var(--lx-motion-base) var(--lx-easing);
+}
+
+.nodeLabel {
+  fill: var(--lx-label-primary);
+  font-weight: var(--lx-weight-medium);
+  opacity: var(--lx-vs-alpha);
+  pointer-events: none;
+}
+
+.nodeGroup[data-visual-state="current"] .nodeLabel,
+.nodeGroup[data-visual-state="selected"] .nodeLabel { font-weight: var(--lx-weight-strong); }
+
+.nodeGroup:hover .nodeShape,
+.nodeGroup:focus-visible .nodeShape,
+.nodeGroup[data-selected] .nodeShape {
+  fill: color-mix(in srgb, var(--visual-tone) 22%, var(--lx-surface-base));
+  fill-opacity: 1;
+  stroke-opacity: 1;
+  stroke-width: 2.6px;
+}
+
+.nodeGroup[data-selected] .nodeRing { stroke-opacity: 0.5; }
+
+[data-stroke="dashed"] .edgeVisible { stroke-dasharray: 9 6; }
+[data-stroke="dotted"] .edgeVisible { stroke-dasharray: 2 6; }
+
+@media (prefers-reduced-motion: reduce) {
+  .edgeVisible,
+  .edgeLabel,
+  .nodeShape,
+  .nodeRing { transition: none; }
+}
+
+@media (forced-colors: active) {
+  .nodeShape { fill: Canvas; stroke: CanvasText; }
+  .edgeVisible { stroke: CanvasText; }
+  .nodeGroup[data-visual-state="current"] .nodeShape,
+  .nodeGroup[data-selected] .nodeShape { fill: Highlight; }
+}

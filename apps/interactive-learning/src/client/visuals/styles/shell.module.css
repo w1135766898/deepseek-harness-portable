@@ -1,0 +1,426 @@
+/**
+ * The frame every visual@4 renderer sits in, and the controls all eight share.
+ *
+ * Renderer-specific stylesheets style marks only. Anything a learner reads as
+ * chrome — the card, the heading, the step controller, the selection panel, the
+ * hint line, the buttons — is defined once here so the eight renderers cannot
+ * drift into eight different button shapes and eight different empty states.
+ */
+
+.visualShell {
+  --visual-tone: var(--lx-accent);
+  container-name: learning-visual-v4;
+  container-type: inline-size;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--lx-space-lg);
+  margin: var(--lx-space-sm) 0 var(--lx-space-xl);
+  border: var(--lx-card-border);
+  border-radius: var(--lx-card-radius);
+  padding: var(--lx-card-padding);
+  background: var(--lx-card-background);
+  color: var(--lx-label-primary);
+  box-shadow: var(--lx-shadow-sm);
+}
+
+.visualHeader {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: var(--lx-space-2xs) var(--lx-space-md);
+  align-items: baseline;
+}
+
+.visualEyebrow {
+  flex: none;
+  border-radius: var(--lx-radius-pill);
+  padding: var(--lx-space-3xs) var(--lx-space-sm);
+  background: color-mix(in srgb, var(--lx-accent-soft) 60%, transparent);
+  color: var(--lx-accent);
+  font-size: var(--lx-text-micro);
+  font-weight: var(--lx-weight-strong);
+  letter-spacing: var(--lx-tracking-eyebrow);
+  line-height: var(--lx-leading-micro);
+}
+
+.visualHeader h3 {
+  min-width: 0;
+  flex: 1 1 12ch;
+  margin: 0;
+  font-size: var(--lx-text-lg);
+  font-weight: var(--lx-weight-strong);
+  line-height: var(--lx-leading-lg);
+}
+
+.visualHeader p {
+  flex: 1 1 100%;
+  margin: var(--lx-space-2xs) 0 0;
+  color: var(--lx-label-secondary);
+  font-size: var(--lx-text-sm);
+  line-height: var(--lx-leading-base);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  margin: -1px;
+  border: 0;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.errorFallback {
+  display: grid;
+  gap: var(--lx-space-2xs);
+  border-left: 3px solid var(--lx-danger);
+  padding: var(--lx-space-md) var(--lx-space-lg);
+  background: color-mix(in srgb, var(--lx-danger) 8%, transparent);
+  color: var(--lx-label-secondary);
+  font-size: var(--lx-text-sm);
+  line-height: var(--lx-leading-base);
+}
+
+.errorFallback strong { color: var(--lx-label-error); }
+
+.errorFallback pre {
+  overflow: auto;
+  max-height: 240px;
+  margin: var(--lx-space-xs) 0 0;
+  white-space: pre-wrap;
+  font: inherit;
+}
+
+/* An accepted payload that resolves to nothing to draw says so, rather than
+   leaving a blank frame that reads as a broken renderer. */
+.emptyState {
+  display: grid;
+  gap: var(--lx-space-2xs);
+  border: 1px dashed var(--lx-border-strong);
+  border-radius: var(--lx-radius-lg);
+  padding: var(--lx-space-2xl) var(--lx-space-lg);
+  color: var(--lx-label-secondary);
+  font-size: var(--lx-text-sm);
+  line-height: var(--lx-leading-base);
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------- controls */
+
+.control {
+  display: inline-flex;
+  min-height: var(--lx-control-height-sm);
+  align-items: center;
+  justify-content: center;
+  gap: var(--lx-space-xs);
+  appearance: none;
+  border: 1px solid var(--lx-border-default);
+  border-radius: var(--lx-radius-sm);
+  padding: var(--lx-control-padding-sm);
+  background: var(--lx-surface-base);
+  color: var(--lx-label-primary);
+  font: inherit;
+  font-size: var(--lx-text-2xs);
+  line-height: var(--lx-leading-2xs);
+  cursor: pointer;
+  transition:
+    background-color var(--lx-motion-fast) var(--lx-easing),
+    border-color var(--lx-motion-fast) var(--lx-easing),
+    color var(--lx-motion-fast) var(--lx-easing);
+}
+
+.control:hover:not(:disabled) {
+  border-color: var(--lx-border-strong);
+  background: color-mix(in srgb, var(--lx-accent) 8%, var(--lx-surface-base));
+  color: var(--lx-label-primary);
+}
+
+.control:active:not(:disabled) {
+  border-color: var(--lx-accent);
+  background: color-mix(in srgb, var(--lx-accent) 14%, var(--lx-surface-base));
+}
+
+.control:disabled {
+  border-color: var(--lx-border-subtle);
+  color: var(--lx-label-tertiary);
+  opacity: var(--lx-control-disabled-opacity);
+  cursor: not-allowed;
+}
+
+.controlPrimary {
+  min-height: var(--lx-control-height-md);
+  border-color: var(--lx-accent);
+  background: var(--lx-accent);
+  color: var(--lx-label-on-accent);
+  font-weight: var(--lx-weight-medium);
+}
+
+.controlPrimary:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--lx-accent) 84%, var(--lx-label-primary));
+  background: color-mix(in srgb, var(--lx-accent) 84%, var(--lx-label-primary));
+  color: var(--lx-label-on-accent);
+}
+
+.controlPrimary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--lx-accent) 72%, var(--lx-label-primary));
+}
+
+.controlQuiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--lx-label-secondary);
+}
+
+.controlQuiet:hover:not(:disabled) {
+  border-color: var(--lx-border-default);
+  background: color-mix(in srgb, var(--lx-accent) 7%, transparent);
+}
+
+.controlToned {
+  border-color: color-mix(in srgb, var(--visual-tone) 32%, var(--lx-border-subtle));
+  background: color-mix(in srgb, var(--visual-tone) 9%, var(--lx-surface-base));
+  color: var(--lx-label-primary);
+}
+
+.controlToned:hover:not(:disabled) {
+  border-color: var(--visual-tone);
+  background: color-mix(in srgb, var(--visual-tone) 16%, var(--lx-surface-base));
+}
+
+.controlRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lx-space-sm);
+}
+
+.closeButton {
+  width: 28px;
+  min-height: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--lx-radius-xs);
+  font-size: var(--lx-text-md);
+  line-height: 1;
+}
+
+/* --------------------------------------------------------------- sequence */
+
+.sequence {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--lx-space-sm) var(--lx-space-lg);
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--lx-accent) 26%, var(--lx-border-default));
+  border-radius: var(--lx-radius-lg);
+  padding: var(--lx-space-md) var(--lx-space-lg);
+  background: color-mix(in srgb, var(--lx-accent-soft) 40%, transparent);
+}
+
+.sequenceText {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--lx-space-3xs) var(--lx-space-md);
+  align-items: baseline;
+}
+
+.sequenceText > span {
+  color: var(--lx-accent);
+  font-size: var(--lx-text-micro);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--lx-weight-strong);
+}
+
+.sequenceText strong {
+  min-width: 0;
+  color: var(--lx-label-primary);
+  font-size: var(--lx-text-sm);
+  font-weight: var(--lx-weight-strong);
+  line-height: var(--lx-leading-sm);
+  overflow-wrap: anywhere;
+}
+
+.sequenceText p {
+  grid-column: 1 / -1;
+  margin: var(--lx-space-3xs) 0 0;
+  color: var(--lx-label-secondary);
+  font-size: var(--lx-text-xs);
+  line-height: var(--lx-leading-xs);
+}
+
+.sequenceActions {
+  display: flex;
+  flex: none;
+  gap: var(--lx-space-xs);
+}
+
+.sequenceActions .control { padding: var(--lx-control-padding-md); }
+
+/* The step rail is the link between the controller and the figure: each frame
+   is directly reachable, and the states it paints — done, current, ahead — are
+   the same three the figure paints on its marks. */
+.sequenceRail {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: var(--lx-space-2xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sequenceRail button {
+  display: block;
+  width: 100%;
+  min-width: 18px;
+  height: 5px;
+  appearance: none;
+  border: 0;
+  border-radius: var(--lx-radius-pill);
+  padding: 0;
+  background: color-mix(in srgb, var(--lx-accent) 22%, transparent);
+  cursor: pointer;
+  transition: background-color var(--lx-motion-fast) var(--lx-easing);
+}
+
+.sequenceRail li { flex: 1 1 0; min-width: 18px; }
+.sequenceRail button:hover { background: color-mix(in srgb, var(--lx-accent) 46%, transparent); }
+.sequenceRail button[data-visual-state="visited"] { background: color-mix(in srgb, var(--lx-accent) 58%, transparent); }
+.sequenceRail button[data-visual-state="current"] { background: var(--lx-accent); }
+
+/* ------------------------------------------------------- selection surface */
+
+/* The hint and the detail panel occupy the same slot, so selecting an element
+   never reflows the figure above it. */
+.selectionSlot {
+  display: grid;
+  min-height: var(--lx-control-height-md);
+  align-content: center;
+}
+
+.interactionHint {
+  margin: 0;
+  color: var(--lx-label-secondary);
+  font-size: var(--lx-text-2xs);
+  line-height: var(--lx-leading-2xs);
+}
+
+.detailPanel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 28px;
+  gap: var(--lx-space-3xs) var(--lx-space-sm);
+  align-items: baseline;
+  border: 1px solid color-mix(in srgb, var(--visual-tone) 34%, var(--lx-border-subtle));
+  border-left: 3px solid var(--visual-tone);
+  border-radius: var(--lx-radius-sm);
+  padding: var(--lx-space-sm) var(--lx-space-md);
+  background: color-mix(in srgb, var(--visual-tone) 8%, transparent);
+}
+
+.detailPanel > span {
+  color: var(--visual-tone);
+  font-size: var(--lx-text-micro);
+  font-weight: var(--lx-weight-strong);
+  line-height: var(--lx-leading-xs);
+}
+
+.detailPanel > strong {
+  min-width: 0;
+  color: var(--lx-label-primary);
+  font-size: var(--lx-text-sm);
+  line-height: var(--lx-leading-sm);
+  overflow-wrap: anywhere;
+}
+
+.detailPanel > p {
+  grid-column: 1 / 3;
+  margin: var(--lx-space-3xs) 0 0;
+  color: var(--lx-label-secondary);
+  font-size: var(--lx-text-xs);
+  line-height: var(--lx-leading-xs);
+}
+
+.detailPanel > button {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  align-self: start;
+}
+
+/* ------------------------------------------------------------- figure body */
+
+.rendererStack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--lx-space-lg);
+}
+
+.viewport {
+  position: relative;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  border: 1px solid var(--lx-border-subtle);
+  border-radius: var(--lx-radius-lg);
+  background: var(--lx-surface-sunken);
+  scrollbar-width: thin;
+}
+
+.viewport > svg {
+  display: block;
+  max-width: none;
+  margin: 0 auto;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+/* One legend recipe: the states a figure is currently using, named in words so
+   the meaning never depends on colour alone. */
+.stateLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lx-space-xs) var(--lx-space-lg);
+  margin: 0;
+  color: var(--lx-label-secondary);
+  font-size: var(--lx-text-micro);
+  line-height: var(--lx-leading-micro);
+}
+
+.stateLegend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lx-space-xs);
+}
+
+.stateLegend i {
+  width: 16px;
+  height: 3px;
+  border-radius: var(--lx-radius-pill);
+  background: var(--lx-label-tertiary);
+  opacity: var(--lx-vs-alpha);
+}
+
+.stateLegend > span[data-visual-state="current"] i { height: 5px; background: var(--lx-accent); }
+
+@container learning-visual-v4 (max-width: 560px) {
+  .visualShell { gap: var(--lx-space-md); border-radius: var(--lx-radius-lg); padding: var(--lx-space-lg); }
+  .visualHeader h3 { flex-basis: 100%; font-size: var(--lx-text-md); }
+  .sequence { grid-template-columns: minmax(0, 1fr); }
+  .sequenceActions { justify-content: stretch; }
+  .sequenceActions .control { flex: 1; }
+  .sequenceActions .control:last-child { flex: 0 0 auto; }
+}
+
+@container learning-visual-v4 (max-width: 360px) {
+  .sequenceActions .control > span:not([aria-hidden]) { display: none; }
+  .detailPanel { grid-template-columns: minmax(0, 1fr) 28px; }
+  .detailPanel > span,
+  .detailPanel > strong,
+  .detailPanel > p { grid-column: 1; }
+  .detailPanel > button { grid-column: 2; }
+}
