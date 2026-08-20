@@ -8,6 +8,8 @@ describe('Learning first-turn routing', () => {
     ['Galois theory', 'calibrate'],
     ['学习 LLM', 'calibrate'],
     ['教我机器学习', 'calibrate'],
+    ['Walk me through monads', 'calibrate'],
+    ['Take me through monads', 'calibrate'],
     ['什么是贝叶斯定理？', 'teach-minimum'],
   ] as const)('calibrates an underspecified request: %s', (request, route) => {
     expect(routeLearningRequest(request).route).toBe(route)
@@ -38,5 +40,13 @@ describe('Learning first-turn routing', () => {
     expect(routeLearningRequest('Implement a queue in TypeScript.').intent.intent).toBe('not-learn')
     expect(routeLearningRequest('What is the latest news about queues?').intent.intent).toBe('not-learn')
     expect(routeLearningRequest('What is a queue?').intent.intent).toBe('learn')
+  })
+
+  it('keeps the explicit-learning fallback on calibration when the shape is unknown', () => {
+    expect(routeLearningRequest('Could you walk me through monads in a useful way?')).toMatchObject({
+      route: 'calibrate',
+      reason: 'explicit-learning',
+      intent: { trigger: 'explicit-learning' },
+    })
   })
 })

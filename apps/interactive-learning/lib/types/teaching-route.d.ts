@@ -9,7 +9,7 @@ import { type LearnIntentDecision } from './learn-intent.ts';
 export type LearningRoute = 'calibrate' | 'teach-minimum' | 'overview' | 'direct';
 export interface LearningRouteDecision {
     route: LearningRoute;
-    reason: 'short-learning-request' | 'explicit-beginner' | 'explicit-overview' | 'current-or-contested' | 'specific-goal' | 'definition' | 'bare-concept' | 'confusion-repair' | 'learning-path' | 'resource-creation' | 'direct';
+    reason: 'short-learning-request' | 'explicit-learning' | 'explicit-beginner' | 'explicit-overview' | 'current-or-contested' | 'specific-goal' | 'definition' | 'bare-concept' | 'confusion-repair' | 'learning-path' | 'resource-creation' | 'direct';
     intent: LearnIntentDecision;
 }
 /**

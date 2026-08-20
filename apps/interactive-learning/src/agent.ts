@@ -1,5 +1,6 @@
 /** Model-facing entry mounted only by the `learning` preset. */
 import type { Context } from '@deepseek-ai/cordis'
+import type { UserMessage } from '@deepseek-ai/dsh-llm'
 import {
   defineTool,
   type ParameterPropertySpec,
@@ -36,6 +37,10 @@ import type {
   ObservableLearnerEvent,
 } from './learner-state.ts'
 import { LEARNING_TEACHING_POLICY } from './teaching-policy.ts'
+import {
+  routeLearningRequest,
+  type LearningRouteDecision,
+} from './teaching-route.ts'
 
 export const name = 'interactive-learning-agent'
 export const inject = ['tools', 'systemPrompt', 'learningActivities']
@@ -637,6 +642,32 @@ const VISUAL_CONTENT_SCHEMAS: Record<VisualKind, ValueSchemaSpec> = {
   recall_deck: recallDeckContent,
 }
 
+const LEARNING_TOOL_PREFIX = 'learning_'
+const learningRoutes = new WeakMap<object, LearningRouteDecision>()
+
+function textFromUserMessage(message: UserMessage): string {
+  return message.content
+    .filter(block => block.type === 'text')
+    .map(block => block.text)
+    .join('\n')
+    .trim()
+}
+
+function routeContextText(decision: LearningRouteDecision): string {
+  if (decision.intent.intent === 'not-learn') {
+    return [
+      '## Current turn route',
+      'intent=not-learn; route=direct.',
+      'Treat this as an ordinary task. Do not calibrate, teach, update learner state, or use learning visual/checkpoint tools for this turn.',
+    ].join('\n')
+  }
+  return [
+    '## Current turn route',
+    `intent=learn; trigger=${decision.intent.trigger}; route=${decision.route}; reason=${decision.reason}.`,
+    'Use this as a deterministic first-turn hint; the learner\'s evidence still determines the next teaching move.',
+  ].join('\n')
+}
+
 const visualSelectorOutput = { type: 'object', additionalProperties: false, properties: {
   status: { type: 'string', const: 'selected', required: true },
   kind: { type: 'string', enum: VISUAL_KINDS, required: true },
@@ -770,6 +801,44 @@ function assertSingleCheckpointInModelStep(exec: ToolRunContext): void {
 
 export function apply(ctx: Context): void {
   const services = ctx as LearningAgentContext
+
+  // The route is resolved at the exact boundary where the claimed user input
+  // is known and just before the loop assembles the next model request. A
+  // pre-step listener is too late to change the system prompt, and rejecting
+  // a non-learning turn would incorrectly close it as `blocked`.
+  ctx.on('agent/inbox/claimed', ({ agent, message }) => {
+    if (message.source.kind !== 'user') return
+    const text = textFromUserMessage(message)
+    if (text === '') return
+    learningRoutes.set(agent, routeLearningRequest(text))
+  })
+
+  ctx.on('tools/pre-execute', (execution, next) => {
+    const agent = execution.agent
+    const decision = agent === undefined ? undefined : learningRoutes.get(agent)
+    if (decision?.intent.intent === 'not-learn' && execution.name.startsWith(LEARNING_TOOL_PREFIX)) {
+      return Promise.resolve({ kind: 'deny' as const, reason: 'learning tools are disabled for an ordinary turn' })
+    }
+    return next()
+  })
+
+  // A Learning agent can receive an ordinary task after a teaching turn. Keep
+  // the session and its durable learner state, but make that individual model
+  // request ordinary: remove the learning policy/state and all learning tool
+  // schemas. The registrations remain mounted for a later learning turn.
+  ctx.on('system-prompt/assemble', async (_assembly, context, next) => {
+    const agent = context.agent
+    const decision = agent === undefined ? undefined : learningRoutes.get(agent)
+    const assembly = await next()
+    if (decision?.intent.intent !== 'not-learn') return assembly
+    return {
+      ...assembly,
+      sections: assembly.sections.filter(section => section.name !== 'learning:policy'),
+      contexts: assembly.contexts.filter(context => context.name !== 'learning:learner-state'),
+      tools: assembly.tools.filter(tool => !tool.name.startsWith(LEARNING_TOOL_PREFIX)),
+    }
+  })
+
   services.tools.register(closeParameterRoot(defineTool({
     name: 'learning_visual_select',
     description: 'Use only when a visual will materially clarify one relationship. Select one native kind, state its teaching purpose, and bind it to at least one learner action or paired question; the selected kind-specific learning_visual schema is exposed on the next model step. Do not select a visual for a definition, short fact, or already-clear explanation.',
@@ -951,6 +1020,15 @@ export function apply(ctx: Context): void {
     name: 'learning:policy',
     order: 20,
     text: LEARNING_TEACHING_POLICY,
+  })
+  services.systemPrompt.context({
+    name: 'learning:turn-route',
+    order: 19,
+    text: context => {
+      const agent = context.agent ?? services.agent
+      const decision = agent === undefined ? undefined : learningRoutes.get(agent)
+      return decision === undefined ? '' : routeContextText(decision)
+    },
   })
   services.systemPrompt.context({
     name: 'learning:learner-state',

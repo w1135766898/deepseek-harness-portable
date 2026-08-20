@@ -1,4 +1,4 @@
-import { t as LEARNING_INTENT_POLICY } from "./learn-intent-2ZHr9s9C.js";
+import { n as LEARNING_INTENT_POLICY, t as routeLearningRequest } from "./teaching-route-CSoe_oAq.js";
 import { E as VISUAL_RESULT_PROTOCOL_V4, L as parseLearningVisualV4, c as LEARNING_CHECKPOINT_KINDS, d as LearningProtocolError, f as MATH_BINARY_OPERATORS, i as CHECKPOINT_RESULT_PROTOCOL, j as parseLearningCheckpointV1, p as MATH_UNARY_OPERATORS, r as CHECKPOINT_PROTOCOL, s as LEARNING_CHECKPOINT_EVIDENCE_KINDS, u as LEARNING_VISUAL_STATUSES, w as VISUAL_PROTOCOL_V4 } from "./protocol-D-KGSMae.js";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 //#region lib/types/teaching-policy.js
@@ -1777,6 +1777,23 @@ const VISUAL_CONTENT_SCHEMAS = {
 	study_map: studyMapContent,
 	recall_deck: recallDeckContent
 };
+const LEARNING_TOOL_PREFIX = "learning_";
+const learningRoutes = /* @__PURE__ */ new WeakMap();
+function textFromUserMessage(message) {
+	return message.content.filter((block) => block.type === "text").map((block) => block.text).join("\n").trim();
+}
+function routeContextText(decision) {
+	if (decision.intent.intent === "not-learn") return [
+		"## Current turn route",
+		"intent=not-learn; route=direct.",
+		"Treat this as an ordinary task. Do not calibrate, teach, update learner state, or use learning visual/checkpoint tools for this turn."
+	].join("\n");
+	return [
+		"## Current turn route",
+		`intent=learn; trigger=${decision.intent.trigger}; route=${decision.route}; reason=${decision.reason}.`,
+		"Use this as a deterministic first-turn hint; the learner's evidence still determines the next teaching move."
+	].join("\n");
+}
 const visualSelectorOutput = {
 	type: "object",
 	additionalProperties: false,
@@ -1944,6 +1961,32 @@ function assertSingleCheckpointInModelStep(exec) {
 }
 function apply(ctx) {
 	const services = ctx;
+	ctx.on("agent/inbox/claimed", ({ agent, message }) => {
+		if (message.source.kind !== "user") return;
+		const text = textFromUserMessage(message);
+		if (text === "") return;
+		learningRoutes.set(agent, routeLearningRequest(text));
+	});
+	ctx.on("tools/pre-execute", (execution, next) => {
+		const agent = execution.agent;
+		if ((agent === void 0 ? void 0 : learningRoutes.get(agent))?.intent.intent === "not-learn" && execution.name.startsWith(LEARNING_TOOL_PREFIX)) return Promise.resolve({
+			kind: "deny",
+			reason: "learning tools are disabled for an ordinary turn"
+		});
+		return next();
+	});
+	ctx.on("system-prompt/assemble", async (_assembly, context, next) => {
+		const agent = context.agent;
+		const decision = agent === void 0 ? void 0 : learningRoutes.get(agent);
+		const assembly = await next();
+		if (decision?.intent.intent !== "not-learn") return assembly;
+		return {
+			...assembly,
+			sections: assembly.sections.filter((section) => section.name !== "learning:policy"),
+			contexts: assembly.contexts.filter((context) => context.name !== "learning:learner-state"),
+			tools: assembly.tools.filter((tool) => !tool.name.startsWith(LEARNING_TOOL_PREFIX))
+		};
+	});
 	services.tools.register(closeParameterRoot(defineTool({
 		name: "learning_visual_select",
 		description: "Use only when a visual will materially clarify one relationship. Select one native kind, state its teaching purpose, and bind it to at least one learner action or paired question; the selected kind-specific learning_visual schema is exposed on the next model step. Do not select a visual for a definition, short fact, or already-clear explanation.",
@@ -2149,6 +2192,15 @@ function apply(ctx) {
 		name: "learning:policy",
 		order: 20,
 		text: LEARNING_TEACHING_POLICY
+	});
+	services.systemPrompt.context({
+		name: "learning:turn-route",
+		order: 19,
+		text: (context) => {
+			const agent = context.agent ?? services.agent;
+			const decision = agent === void 0 ? void 0 : learningRoutes.get(agent);
+			return decision === void 0 ? "" : routeContextText(decision);
+		}
 	});
 	services.systemPrompt.context({
 		name: "learning:learner-state",

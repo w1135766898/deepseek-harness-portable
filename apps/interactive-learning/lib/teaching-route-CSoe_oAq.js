@@ -20,7 +20,7 @@ const NEWS_REQUEST = /(?:latest|breaking|today's?|this\s+week|recent\s+update|ne
 const NEWS_CONTENT = /(?:\b(?:news|breaking|current\s+events|what\s+happened)\b|新闻|时事|刚刚发生|最近发生了什么|近期消息)/i;
 const CURRENT_TOPIC = /(?:\b(?:current|right\s+now|today|recent|contested|controversial|debate)\b|当前|现在|如今|争议|有争议|辩论|争论)/i;
 const CURRENT_SURVEY = /(?:\b(?:latest|recent|current)\b|最新|近期).{0,50}(?:survey|overview|summary|综述|概览)/i;
-const EXPLICIT_OVERVIEW = /(?:\b(?:complete|full|comprehensive|structured|direct)\s+(?:overview|survey|summary)|\b(?:overview|survey)\b.*\b(?:directly|without\s+(?:asking|questions)|don['’]?t\s+(?:ask|quiz)|no\s+questions)|(?:完整|全面|结构化).{0,20}(?:overview|survey|summary|概览|综述)|(?:直接讲|不要提问|别提问|不要先问))/i;
+const EXPLICIT_OVERVIEW$1 = /(?:\b(?:complete|full|comprehensive|structured|direct)\s+(?:overview|survey|summary)|\b(?:overview|survey)\b.*\b(?:directly|without\s+(?:asking|questions)|don['’]?t\s+(?:ask|quiz)|no\s+questions)|(?:完整|全面|结构化).{0,20}(?:overview|survey|summary|概览|综述)|(?:直接讲|不要提问|别提问|不要先问))/i;
 const OPINION_JUDGMENT = /(?:do\s+you\s+think|what(?:'s|\s+is)\s+your\s+(?:take|opinion)|honest\s+take|in\s+your\s+opinion|is\s+.+\s+(?:dead|over|still\s+relevant|taken\s+seriously)|was\s+.+\s+really|settle\s+this|你怎么看|你的看法|观点|评价一下|到底是不是|还值得认真对待吗)/i;
 const CONCEPTUAL_QUESTION = /(?:^|\s)(?:why|how|difference\s+between|distinguish|compare|mechanism|cause|what\s+does\s+.+\s+mean)(?:\b|\s|$)|(?:为什么|为何|如何|怎么|区别|对比|机制|原因|含义)/i;
 function normalize(text) {
@@ -58,7 +58,7 @@ function classifyLearnIntent(input) {
 	if (LEARNING_PATH.test(text)) return decision("learn", "learning-path", "the learner asks how concepts or prerequisites should be sequenced");
 	if (DEFINITION.test(text)) return decision("learn", "definition", "definition request");
 	if (CURRENT_TOPIC.test(text)) return decision("learn", "current-topic", "request to understand a current or contested topic");
-	if (EXPLICIT_OVERVIEW.test(text)) return decision("learn", "explicit-overview", "the learner explicitly requests a structured overview");
+	if (EXPLICIT_OVERVIEW$1.test(text)) return decision("learn", "explicit-overview", "the learner explicitly requests a structured overview");
 	if (EXPLICIT_LEARNING.test(text)) return decision("learn", "explicit-learning", "explicit request to learn or understand");
 	if (CONCEPTUAL_QUESTION.test(text)) return decision("learn", "conceptual-question", "question about a mechanism, cause, meaning, or contrast");
 	if (isBareConcept(text)) return decision("learn", "bare-concept", "short concept name implies a request to understand it");
@@ -70,4 +70,104 @@ function isLearnIntent(input) {
 /** Compact standing text; detailed diagnosis and moves stay in references. */
 const LEARNING_INTENT_POLICY = ["Classify the request before teaching: learn intent covers definitions (“what is X”), a bare concept name, persistent confusion (“I always mix these up / can’t remember / 没学会”), conceptual why/how questions, prerequisites, learning paths, and requested study artifacts such as flashcards or a study guide.", "Keep coding/implementation or debugging, translation or rewriting, news/breaking updates, resource recommendations, and opinion or verdict requests on their ordinary task route. A current or contested topic is still learn intent when the user asks for a structured explanation; a latest-news lookup is not."].join(" ");
 //#endregion
-export { isLearnIntent as i, LEARN_INTENT as n, classifyLearnIntent as r, LEARNING_INTENT_POLICY as t };
+//#region lib/types/teaching-route.js
+/**
+* Small, deterministic routing hints for the Learning preset.
+*
+* The model still owns the final wording and teaching judgment. This helper
+* exists so the high-priority ambiguity rule is testable and reusable by
+* canaries without copying prompt prose into another subsystem.
+*/
+const SHORT_LEARNING_REQUEST = /^(?:please\s+)?(?:teach\s+me|help\s+me\s+learn|learn|understand|get\s+to\s+know|walk\s+me\s+through|take\s+me\s+through)\b|^(?:学习|教我|了解|想学)\s*/i;
+const EXPLICIT_BEGINNER = /(?:\b(?:from\s+scratch|from\s+zero|beginner|beginners|intro(?:duction)?|concept(?:ual)?\s+intro)\b|零基础|从零|入门|概念入门)/i;
+const EXPLICIT_OVERVIEW = /\b(?:complete|full|comprehensive|structured|direct)\s+(?:overview|survey|summary)|\b(?:overview|survey)\b.*\b(?:directly|without\s+(?:asking|questions)|don['’]?t\s+(?:ask|quiz)|no\s+questions)|(?:完整|全面|结构化).*(?:概览|综述)|(?:直接讲|不要提问|别提问|不要先问)/i;
+const SPECIFIC_LEARNING_GOAL = /(?:\b(?:why|how|difference|distinguish|compare|debug|apply|predict|explain|derive|implement)\b|练习|区别|为什么|如何|怎么|对比|调试|应用|预测|推导|实现)/i;
+/**
+* Classify only the first-turn shape. It deliberately does not infer a
+* learner level from jargon or topic name.
+*/
+function routeLearningRequest(text) {
+	const normalized = text.replace(/\s+/g, " ").trim();
+	const intent = classifyLearnIntent(normalized);
+	if (intent.intent !== "learn") return {
+		route: "direct",
+		reason: "direct",
+		intent
+	};
+	if (EXPLICIT_OVERVIEW.test(normalized)) return {
+		route: "overview",
+		reason: "explicit-overview",
+		intent
+	};
+	if (intent.trigger === "current-topic") return {
+		route: "overview",
+		reason: "current-or-contested",
+		intent
+	};
+	if (SHORT_LEARNING_REQUEST.test(normalized)) {
+		if (EXPLICIT_BEGINNER.test(normalized)) return {
+			route: "teach-minimum",
+			reason: "explicit-beginner",
+			intent
+		};
+		if (SPECIFIC_LEARNING_GOAL.test(normalized)) return {
+			route: "teach-minimum",
+			reason: "specific-goal",
+			intent
+		};
+		return {
+			route: "calibrate",
+			reason: "short-learning-request",
+			intent
+		};
+	}
+	if (EXPLICIT_BEGINNER.test(normalized)) return {
+		route: "teach-minimum",
+		reason: "explicit-beginner",
+		intent
+	};
+	switch (intent.trigger) {
+		case "definition": return {
+			route: "teach-minimum",
+			reason: "definition",
+			intent
+		};
+		case "bare-concept": return {
+			route: "calibrate",
+			reason: "bare-concept",
+			intent
+		};
+		case "confusion-repair": return {
+			route: "teach-minimum",
+			reason: "confusion-repair",
+			intent
+		};
+		case "learning-path": return {
+			route: "teach-minimum",
+			reason: "learning-path",
+			intent
+		};
+		case "resource-creation": return {
+			route: "direct",
+			reason: "resource-creation",
+			intent
+		};
+	}
+	if (SPECIFIC_LEARNING_GOAL.test(normalized)) return {
+		route: "teach-minimum",
+		reason: "specific-goal",
+		intent
+	};
+	if (intent.trigger === "explicit-learning") return {
+		route: "calibrate",
+		reason: "explicit-learning",
+		intent
+	};
+	return {
+		route: "direct",
+		reason: "direct",
+		intent
+	};
+}
+//#endregion
+export { isLearnIntent as a, classifyLearnIntent as i, LEARNING_INTENT_POLICY as n, LEARN_INTENT as r, routeLearningRequest as t };

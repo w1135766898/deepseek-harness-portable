@@ -21,6 +21,7 @@ export interface LearningRouteDecision {
   route: LearningRoute
   reason:
     | 'short-learning-request'
+    | 'explicit-learning'
     | 'explicit-beginner'
     | 'explicit-overview'
     | 'current-or-contested'
@@ -34,7 +35,7 @@ export interface LearningRouteDecision {
   intent: LearnIntentDecision
 }
 
-const SHORT_LEARNING_REQUEST = /^(?:please\s+)?(?:teach\s+me|help\s+me\s+learn|learn|understand|get\s+to\s+know)\b|^(?:学习|教我|了解|想学)\s*/i
+const SHORT_LEARNING_REQUEST = /^(?:please\s+)?(?:teach\s+me|help\s+me\s+learn|learn|understand|get\s+to\s+know|walk\s+me\s+through|take\s+me\s+through)\b|^(?:学习|教我|了解|想学)\s*/i
 const EXPLICIT_BEGINNER = /(?:\b(?:from\s+scratch|from\s+zero|beginner|beginners|intro(?:duction)?|concept(?:ual)?\s+intro)\b|零基础|从零|入门|概念入门)/i
 const EXPLICIT_OVERVIEW = /\b(?:complete|full|comprehensive|structured|direct)\s+(?:overview|survey|summary)|\b(?:overview|survey)\b.*\b(?:directly|without\s+(?:asking|questions)|don['’]?t\s+(?:ask|quiz)|no\s+questions)|(?:完整|全面|结构化).*(?:概览|综述)|(?:直接讲|不要提问|别提问|不要先问)/i
 const SPECIFIC_LEARNING_GOAL = /(?:\b(?:why|how|difference|distinguish|compare|debug|apply|predict|explain|derive|implement)\b|练习|区别|为什么|如何|怎么|对比|调试|应用|预测|推导|实现)/i
@@ -83,6 +84,9 @@ export function routeLearningRequest(text: string): LearningRouteDecision {
   }
   if (SPECIFIC_LEARNING_GOAL.test(normalized)) {
     return { route: 'teach-minimum', reason: 'specific-goal', intent }
+  }
+  if (intent.trigger === 'explicit-learning') {
+    return { route: 'calibrate', reason: 'explicit-learning', intent }
   }
   return { route: 'direct', reason: 'direct', intent }
 }

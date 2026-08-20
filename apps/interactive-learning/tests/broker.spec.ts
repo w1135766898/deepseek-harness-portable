@@ -158,6 +158,62 @@ describe('LearningActivityBroker compatibility boundary', () => {
 })
 
 describe('non-blocking Learning Agent v4.1', () => {
+  it('applies the deterministic route to the production prompt surface', async () => {
+    const ctx = await setupBroker(false)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(learningAgent)
+    const agent = stubAgent('turn-route')
+    const disposeAgent = ctx.agents.register(agent)
+
+    ctx.emit('agent/inbox/claimed', {
+      agent,
+      message: {
+        id: 'ordinary-route-message',
+        role: 'user',
+        source: { kind: 'user' },
+        content: [{ type: 'text', text: 'Translate this paragraph into Chinese.' }],
+      },
+      turn: 1,
+    } as never)
+    const ordinary = await ctx.systemPrompt.assemble({ scope: agent, agent })
+    expect(ordinary.sections.some(section => section.name === 'learning:policy')).toBe(false)
+    expect(ordinary.contexts.find(context => context.name === 'learning:turn-route')?.text)
+      .toContain('intent=not-learn; route=direct')
+    expect(ordinary.tools.some(tool => tool.name.startsWith('learning_'))).toBe(false)
+    const denied = await ctx.tools.execute({
+      signal: testToolSignal,
+      callId: CallId('ordinary-route-learning-tool'),
+      name: 'learning_visual_select',
+      arguments: {
+        kind: 'plot',
+        purpose: 'This should not run on an ordinary turn.',
+        learnerAction: 'This should not run on an ordinary turn.',
+      },
+      agent,
+    })
+    expect(denied.isError).toBe(true)
+    expect(JSON.stringify(denied.content)).toContain('ordinary turn')
+
+    ctx.emit('agent/inbox/claimed', {
+      agent,
+      message: {
+        id: 'learning-route-message',
+        role: 'user',
+        source: { kind: 'user' },
+        content: [{ type: 'text', text: 'Walk me through monads.' }],
+      },
+      turn: 2,
+    } as never)
+    const learning = await ctx.systemPrompt.assemble({ scope: agent, agent })
+    expect(learning.sections.some(section => section.name === 'learning:policy')).toBe(true)
+    expect(learning.tools.some(tool => tool.name === 'learning_visual_select')).toBe(true)
+    expect(learning.contexts.find(context => context.name === 'learning:turn-route')?.text)
+      .toContain('route=calibrate')
+
+    disposeAgent()
+  })
+
   it('exposes one visual and one optional answer-free checkpoint through closed model schemas', async () => {
     const ctx = await setupBroker(true)
     await ctx.plugin(ToolRuntime)
