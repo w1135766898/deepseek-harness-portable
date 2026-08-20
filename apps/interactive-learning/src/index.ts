@@ -15,6 +15,11 @@ export {
   type PresentLearningGateRequest,
 } from './broker.ts'
 export { LearningActivityBroker as default } from './broker.ts'
+export {
+  routeLearningRequest,
+  type LearningRoute,
+  type LearningRouteDecision,
+} from './teaching-route.ts'
 export type {
   LearningActivityV1,
   LearningActivityV2,
@@ -69,6 +74,10 @@ export {
   type LearnerState,
   type LearnerStateCorrection,
   type LearnerStateEvent,
+  type LearnerPhase,
+  type LearnerNextMove,
+  type LearnerResponseAssessment,
+  type LearnerTeachingMove,
   type LearnerStateSnapshot,
   type LearnerStateSnapshotEvent,
   type ObservableLearnerEvent,

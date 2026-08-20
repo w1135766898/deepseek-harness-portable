@@ -66,6 +66,33 @@ function registerRoot(ctx: Context, agent: Agent): void {
   ctx.agents.register(agent)
 }
 
+async function selectVisual(ctx: Context, kind: string, agent?: Agent, callId = `select-visual-${kind}`): Promise<void> {
+  const result = await ctx.tools.execute({
+    signal: testToolSignal,
+    callId: CallId(callId),
+    name: 'learning_visual_select',
+    arguments: { kind, purpose: `Make the ${kind} relationship concrete.` },
+    ...(agent === undefined ? {} : { agent }),
+  })
+  expect(result.isError, JSON.stringify(result)).toBe(false)
+}
+
+async function selectCheckpoint(ctx: Context, agent: Agent, callId = 'select-checkpoint'): Promise<void> {
+  const result = await ctx.tools.execute({
+    signal: testToolSignal,
+    callId: CallId(callId),
+    name: 'learning_checkpoint_select',
+    arguments: {
+      kind: 'prediction',
+      expectedEvidence: 'prediction',
+      prompt: 'Predict the next queue item and explain why.',
+      purpose: 'The prediction determines whether to explain FIFO or move to transfer.',
+    },
+    agent,
+  })
+  expect(result.isError, JSON.stringify(result)).toBe(false)
+}
+
 function answerFor(
   request: AskUserQuestionRequest,
   status: LearningCheckpointResultV1['status'],
@@ -135,50 +162,42 @@ describe('non-blocking Learning Agent v4.1', () => {
 
     const schemas = ctx.tools.schemas()
     expect(schemas.map(tool => tool.name)).toEqual([
-      'learning_visual',
+      'learning_visual_select',
       'learning_state_update',
-      'learning_checkpoint',
+      'learning_checkpoint_select',
     ])
     expect(JSON.stringify(schemas)).not.toContain('learning_question')
     expect(JSON.stringify(schemas)).not.toContain('learning_reveal')
     expect(JSON.stringify(schemas)).not.toContain('"additionalProperties":true')
-    const parameters = schemas.find(tool => tool.name === 'learning_visual')?.parameters as {
+    const parameters = schemas.find(tool => tool.name === 'learning_visual_select')?.parameters as {
       additionalProperties?: unknown
       properties?: Record<string, unknown>
     }
     expect(parameters.additionalProperties).toBe(false)
-    expect(parameters.properties).toHaveProperty('content')
-    expect(parameters.properties).not.toHaveProperty('series')
-    expect(parameters.properties).not.toHaveProperty('metrics')
-    expect(parameters.properties).not.toHaveProperty('input')
-    expect(parameters.properties).not.toHaveProperty('advance')
-    const serialized = JSON.stringify(parameters.properties?.content)
-    for (const discriminator of [
-      'plot', 'node_link', 'scene_2d', 'relation', 'comparison', 'matrix', 'sets',
-      'timeline', 'formula_steps', 'study_map', 'recall_deck',
-    ]) expect(serialized).toContain(`"const":"${discriminator}"`)
-    const completeSchema = JSON.stringify(schemas.find(tool => tool.name === 'learning_visual'))
-    for (const boundary of [
-      '64 KiB', '1 to 32 characters', '1 to 8 series', '2 to 48 nodes', '1 to 160 edges',
-      '1 to 64 scene elements', '2 to 32 events', '2 to 16 formula steps',
-      '1 to 16 source sections', '1 to 48 concepts', '2 to 32 recall cards',
-      '2 to 12 sequence frames', 'At most 64 unique ids',
-    ]) expect(completeSchema).toContain(boundary)
+    expect(Object.keys(parameters.properties ?? {}).sort()).toEqual(['kind', 'purpose'])
+    expect(JSON.stringify(parameters)).not.toContain('2 to 48 nodes')
 
-    const checkpointSchema = schemas.find(tool => tool.name === 'learning_checkpoint')
+    await selectVisual(ctx, 'node_link')
+    const selectedSchemas = ctx.tools.schemas()
+    expect(selectedSchemas.map(tool => tool.name)).toEqual([
+      'learning_visual_select',
+      'learning_state_update',
+      'learning_checkpoint_select',
+      'learning_visual',
+    ])
+    const completeSchema = JSON.stringify(selectedSchemas.find(tool => tool.name === 'learning_visual'))
+    expect(completeSchema).toContain('2 to 48 nodes')
+    expect(completeSchema).not.toContain('1 to 8 series')
+
+    const checkpointSchema = schemas.find(tool => tool.name === 'learning_checkpoint_select')
     const checkpointParameters = checkpointSchema?.parameters as {
       additionalProperties?: unknown
       properties?: Record<string, unknown>
     }
     expect(checkpointParameters.additionalProperties).toBe(false)
-    expect(Object.keys(checkpointParameters.properties ?? {}).sort()).toEqual([
-      'context', 'expectedEvidence', 'fallbackMarkdown', 'kind', 'options', 'prompt', 'protocol',
-    ])
-    for (const forbidden of ['answer', 'correctAnswer', 'rubric', 'solution', 'futureStep', 'reveal', 'animation', 'continue']) {
-      expect(checkpointParameters.properties).not.toHaveProperty(forbidden)
-    }
-    expect(checkpointSchema?.description).toContain('never call this once per turn')
-    expect(checkpointSchema?.description).toContain('Evaluate it only in the next model step')
+    expect(Object.keys(checkpointParameters.properties ?? {}).sort()).toEqual(['expectedEvidence', 'kind', 'prompt', 'purpose'])
+    expect(JSON.stringify(checkpointParameters)).not.toContain('fallbackMarkdown')
+    expect(checkpointSchema?.description).toContain('not a per-turn ceremony')
     expect(checkpointSchema?.output).toBeUndefined()
 
     const stateSchema = schemas.find(tool => tool.name === 'learning_state_update')
@@ -204,6 +223,7 @@ describe('non-blocking Learning Agent v4.1', () => {
 
     const ready = { protocol: VISUAL_RESULT_PROTOCOL_V4, status: 'ready' }
     for (const [name, visual] of Object.entries(visualV4Catalog)) {
+      await selectVisual(ctx, visual.content.kind, undefined, `select-${name}`)
       const result = await ctx.tools.execute({
         signal: testToolSignal,
         callId: CallId(`visual-${name}`),
@@ -228,6 +248,7 @@ describe('non-blocking Learning Agent v4.1', () => {
       await ctx.plugin(learningAgent)
       const agent = stubAgent(`visual-availability-${String(richClient)}`)
       const disposeAgent = ctx.agents.register(agent)
+      await selectVisual(ctx, 'plot', agent, `select-availability-${String(richClient)}`)
 
       const result = await ctx.tools.execute({
         signal: testToolSignal,
@@ -259,6 +280,7 @@ describe('non-blocking Learning Agent v4.1', () => {
       checkpointCall('checkpoint-b'),
     ])
     registerRoot(ctx, duplicateAgent)
+    await selectCheckpoint(ctx, duplicateAgent, 'select-duplicate-checkpoint')
     const rejected = await ctx.tools.execute({
       signal: testToolSignal,
       callId: CallId('checkpoint-a'),
@@ -271,6 +293,7 @@ describe('non-blocking Learning Agent v4.1', () => {
 
     const replayAgent = stubAgent('replay-step', [checkpointCall('checkpoint-replay')])
     registerRoot(ctx, replayAgent)
+    await selectCheckpoint(ctx, replayAgent, 'select-replay-checkpoint')
     const execute = () => ctx.tools.execute({
       signal: testToolSignal,
       callId: CallId('checkpoint-replay'),
@@ -437,6 +460,7 @@ describe('session-scoped learner-state Host wiring', () => {
       lastMove: 'checkpoint',
     })
 
+    await selectVisual(ctx, 'plot', agent, 'select-state-visual')
     const visual = await ctx.tools.execute({
       signal: testToolSignal,
       callId: CallId('state-visual'),

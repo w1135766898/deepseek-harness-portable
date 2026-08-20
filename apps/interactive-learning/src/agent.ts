@@ -506,95 +506,65 @@ const learnerEvidenceInput = { oneOf: [
   } },
 ] } as const
 
-const learnerStateEvent = { oneOf: [
-  { type: 'object', additionalProperties: false, properties: {
-    type: { type: 'string', const: 'goal_observed', required: true },
-    goal: { type: 'string', required: true },
-    observation: { ...learnerObservation, required: true },
-  } },
-  { type: 'object', additionalProperties: false, properties: {
-    type: { type: 'string', const: 'request_kind_observed', required: true },
-    requestKind: {
-      type: 'string',
-      enum: ['concept', 'procedure', 'topic', 'source-study', 'practice', 'resource', 'direct-task', 'unknown'],
-      required: true,
+// One closed object replaces the old repeated oneOf branches. The reducer still
+// performs the event-specific validation; this compact projection keeps the
+// state tool from re-sending the same observation schema eleven times.
+const learnerStateEvent = { type: 'object', additionalProperties: false, properties: {
+  type: {
+    type: 'string',
+    enum: [
+      'goal_observed', 'request_kind_observed', 'prior_knowledge_observed', 'plan_observed',
+      'plan_step_evidenced', 'gap_observed', 'readiness_observed', 'progress_observed',
+      'urgency_observed', 'assessment_context_observed', 'learner_evidence_observed',
+      'assistant_move_observed', 'source_anchors_observed',
+    ],
+    required: true,
+  },
+  observation: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      id: { type: 'string', required: true },
+      source: {
+        type: 'string',
+        enum: ['learner-message', 'learner-action', 'assistant-output', 'source-material'],
+        required: true,
+      },
+      summary: { type: 'string', required: true },
+      turn: { type: 'integer' },
     },
-    observation: { ...learnerObservation, required: true },
-  } },
-  { type: 'object', additionalProperties: false, properties: {
-    type: { type: 'string', const: 'prior_knowledge_observed', required: true },
-    level: { type: 'string', enum: ['novice', 'intermediate', 'advanced', 'unknown'] },
-    items: { type: 'array', items: { type: 'string' } },
-    mode: { type: 'string', enum: ['append', 'replace'] },
-    observation: { ...learnerObservation, required: true },
-  } },
-  { type: 'object', additionalProperties: false, properties: {
-    type: { type: 'string', const: 'plan_observed', required: true },
-    objective: { type: 'string', required: true, description: 'What the learner is working toward in this session.' },
-    steps: {
-      type: 'array',
-      required: true,
-      description: 'The 1 to 6 ordered moves this route needs; not a syllabus and not a completion checklist.',
-      items: { type: 'object', additionalProperties: false, properties: {
-        id: { type: 'string', required: true },
-        label: { type: 'string', required: true },
-      } },
-    },
-    activeStepId: { type: 'string', description: 'The step being worked on now; defaults to the first.' },
-    observation: { ...learnerObservation, required: true },
-  } },
-  { type: 'object', additionalProperties: false, properties: {
-    type: { type: 'string', const: 'plan_step_evidenced', required: true },
-    stepId: { type: 'string', required: true },
-    observation: { ...learnerObservation, required: true },
-  } },
-  { type: 'object', additionalProperties: false, properties: {
-    type: { type: 'string', const: 'gap_observed', required: true },
-    gap: {
-      type: 'string',
-      enum: ['concept', 'procedure', 'notation', 'task-model', 'prerequisite', 'unknown'],
-      required: true,
-    },
-    misconceptions: { type: 'array', items: { type: 'string' } },
-    misconceptionMode: { type: 'string', enum: ['append', 'replace'] },
-    observation: { ...learnerObservation, required: true },
-  } },
-  { type: 'object', additionalProperties: false, properties: {
-    type: { type: 'string', const: 'readiness_observed', required: true },
-    readiness: { type: 'string', enum: ['can-reason', 'needs-foothold', 'unknown'], required: true },
-    observation: { ...learnerObservation, required: true },
-  } },
-  { type: 'object', additionalProperties: false, properties: {
-    type: { type: 'string', const: 'progress_observed', required: true },
-    progressSignal: {
-      type: 'string',
-      enum: ['progressing', 'impatient', 'stuck', 'shutdown-risk', 'unknown'],
-      required: true,
-    },
-    observation: { ...learnerObservation, required: true },
-  } },
-  { type: 'object', additionalProperties: false, properties: {
-    type: { type: 'string', const: 'urgency_observed', required: true },
-    urgency: { type: 'string', enum: ['none', 'initial-blocker', 'later-pressure', 'unknown'], required: true },
-    observation: { ...learnerObservation, required: true },
-  } },
-  { type: 'object', additionalProperties: false, properties: {
-    type: { type: 'string', const: 'assessment_context_observed', required: true },
-    assessmentContext: { type: 'string', enum: ['self-study', 'graded', 'unknown'], required: true },
-    observation: { ...learnerObservation, required: true },
-  } },
-  { type: 'object', additionalProperties: false, properties: {
-    type: { type: 'string', const: 'learner_evidence_observed', required: true },
-    evidence: { ...learnerEvidenceInput, required: true },
-    observation: { ...learnerObservation, required: true },
-  } },
-  { type: 'object', additionalProperties: false, properties: {
-    type: { type: 'string', const: 'source_anchors_observed', required: true },
-    anchors: { type: 'array', items: { type: 'string' }, required: true },
-    mode: { type: 'string', enum: ['append', 'replace'] },
-    observation: { ...sourceMaterialObservation, required: true },
-  } },
-] } as const
+    required: true,
+    description: 'One concrete session-local observation; never a personality or learning-style label.',
+  },
+  goal: { type: 'string' },
+  requestKind: { type: 'string', enum: ['concept', 'procedure', 'topic', 'source-study', 'practice', 'resource', 'direct-task', 'unknown'] },
+  level: { type: 'string', enum: ['novice', 'intermediate', 'advanced', 'unknown'] },
+  items: { type: 'array', items: { type: 'string' } },
+  mode: { type: 'string', enum: ['append', 'replace'] },
+  objective: { type: 'string' },
+  steps: { type: 'array', items: { type: 'object', additionalProperties: false, properties: {
+    id: { type: 'string', required: true }, label: { type: 'string', required: true },
+  } } },
+  activeStepId: { type: 'string' },
+  stepId: { type: 'string' },
+  gap: { type: 'string', enum: ['concept', 'procedure', 'notation', 'task-model', 'prerequisite', 'unknown'] },
+  misconceptions: { type: 'array', items: { type: 'string' } },
+  misconceptionMode: { type: 'string', enum: ['append', 'replace'] },
+  readiness: { type: 'string', enum: ['can-reason', 'needs-foothold', 'unknown'] },
+  progressSignal: { type: 'string', enum: ['progressing', 'impatient', 'stuck', 'shutdown-risk', 'unknown'] },
+  urgency: { type: 'string', enum: ['none', 'initial-blocker', 'later-pressure', 'unknown'] },
+  assessmentContext: { type: 'string', enum: ['self-study', 'graded', 'unknown'] },
+  evidence: { ...learnerEvidenceInput },
+  move: { type: 'string', enum: ['none', 'explanation', 'example', 'question', 'repair', 'transfer', 'visual', 'checkpoint'] },
+  phase: { type: 'string', enum: ['orient', 'teach', 'practice', 'repair', 'transfer', 'complete'] },
+  explanationSummary: { type: 'string' },
+  question: { type: 'string' },
+  learnerResponseAssessment: { type: 'string', enum: ['correct', 'partial', 'incorrect', 'no-evidence'] },
+  currentMisconception: { type: 'string' },
+  nextMove: { type: 'string', enum: ['calibrate', 'direct', 'explain', 'example', 'question', 'repair', 'transfer', 'complete'] },
+  moveFingerprint: { type: 'string' },
+  anchors: { type: 'array', items: { type: 'string' } },
+} } as const
 
 const learnerStateCorrection = { type: 'object', additionalProperties: false, properties: {
   goal: { oneOf: [{ type: 'string' }, { type: 'null' }] },
@@ -613,9 +583,16 @@ const learnerStateCorrection = { type: 'object', additionalProperties: false, pr
   assessmentContext: { type: 'string', enum: ['self-study', 'graded', 'unknown'] },
   mastery: { type: 'string', enum: ['unseen', 'emerging', 'transfer'] },
   evidence: { type: 'array', items: learnerEvidenceInput },
+  phase: { type: 'string', enum: ['orient', 'teach', 'practice', 'repair', 'transfer', 'complete'] },
+  lastExplanationSummary: { oneOf: [{ type: 'string' }, { type: 'null' }] },
+  lastQuestion: { oneOf: [{ type: 'string' }, { type: 'null' }] },
+  learnerResponseAssessment: { type: 'string', enum: ['correct', 'partial', 'incorrect', 'no-evidence'] },
+  currentMisconception: { oneOf: [{ type: 'string' }, { type: 'null' }] },
+  nextMove: { type: 'string', enum: ['calibrate', 'direct', 'explain', 'example', 'question', 'repair', 'transfer', 'complete'] },
+  moveFingerprint: { oneOf: [{ type: 'string' }, { type: 'null' }] },
   lastMove: {
     type: 'string',
-    enum: ['none', 'visual', 'checkpoint'],
+    enum: ['none', 'explanation', 'example', 'question', 'repair', 'transfer', 'visual', 'checkpoint'],
   },
   sourceAnchors: { type: 'array', items: { type: 'string' } },
 } } as const
@@ -624,6 +601,120 @@ const learnerStateUpdateOutput = { type: 'object', additionalProperties: false, 
   status: { type: 'string', enum: ['updated', 'corrected', 'reset'], required: true },
   revision: { type: 'integer', required: true },
 } } as const
+
+const VISUAL_KINDS = [
+  'plot', 'node_link', 'scene_2d', 'relation', 'timeline', 'formula_steps', 'study_map', 'recall_deck',
+] as const
+type VisualKind = typeof VISUAL_KINDS[number]
+
+const VISUAL_CONTENT_SCHEMAS: Record<VisualKind, ValueSchemaSpec> = {
+  plot: plotContent,
+  node_link: nodeLinkContent,
+  scene_2d: sceneContent,
+  relation: relationContent,
+  timeline: timelineContent,
+  formula_steps: formulaStepsContent,
+  study_map: studyMapContent,
+  recall_deck: recallDeckContent,
+}
+
+const visualSelectorOutput = { type: 'object', additionalProperties: false, properties: {
+  status: { type: 'string', const: 'selected', required: true },
+  kind: { type: 'string', enum: VISUAL_KINDS, required: true },
+} } as const
+
+const visualSelectorParameters = {
+  kind: {
+    type: 'string',
+    enum: VISUAL_KINDS,
+    required: true,
+    description: 'The one native representation that fits the relationship.',
+  },
+  purpose: {
+    type: 'string',
+    required: true,
+    description: 'One sentence naming the learner relationship this visual will make clearer.',
+  },
+} as const
+
+function visualParameters(kind: VisualKind): Record<string, ParameterPropertySpec> {
+  return {
+    protocol: { type: 'string', const: VISUAL_PROTOCOL_V4, required: true },
+    title: { type: 'string', description: 'Concise visible and accessible visual title.', required: true },
+    description: { type: 'string', description: 'Optional one-sentence exploration hint; do not repeat surrounding prose.' },
+    content: required(VISUAL_CONTENT_SCHEMAS[kind]),
+    sequence,
+    fallbackMarkdown: {
+      type: 'string',
+      description: 'Optional concise text equivalent for accessibility or an unavailable renderer.',
+    },
+  }
+}
+
+const visualDescription = (kind: VisualKind): string => [
+  `Render one trusted, non-blocking semantic ${kind} visual selected for the current teaching move.`,
+  'The selection step already chose the representation; now provide exactly that content kind.',
+  'The call completes immediately. Continue with a self-sufficient ordinary-text interpretation and at most one natural question.',
+  'Do not use a visual for a definition, short fact, or already-clear explanation. Keep labels in the learner\'s language and declare every relationship the learner needs to read.',
+  'Hard limits and field-specific payload rules are encoded in this kind-specific schema. Never provide HTML, Markdown diagrams, SVG markup, or JavaScript.',
+].join(' ')
+
+const checkpointSelectorParameters = {
+  kind: { type: 'string', enum: LEARNING_CHECKPOINT_KINDS, required: true },
+  expectedEvidence: { type: 'string', enum: LEARNING_CHECKPOINT_EVIDENCE_KINDS, required: true },
+  prompt: { type: 'string', required: true, description: 'One answer-free prompt for the current teaching move.' },
+  purpose: { type: 'string', required: true, description: 'Why this response will change the next teaching move.' },
+} as const
+
+const checkpointSelectorOutput = { type: 'object', additionalProperties: false, properties: {
+  status: { type: 'string', const: 'selected', required: true },
+  kind: { type: 'string', enum: LEARNING_CHECKPOINT_KINDS, required: true },
+} } as const
+
+const checkpointParameters = {
+  protocol: { type: 'string', const: CHECKPOINT_PROTOCOL, required: true },
+  kind: { type: 'string', enum: LEARNING_CHECKPOINT_KINDS, required: true },
+  prompt: { type: 'string', required: true },
+  context: { type: 'string' },
+  expectedEvidence: { type: 'string', enum: LEARNING_CHECKPOINT_EVIDENCE_KINDS, required: true },
+  options: {
+    type: 'array',
+    items: checkpointOption,
+    description: 'Required only for single_choice; 2 to 8 answer-free options.',
+  },
+  fallbackMarkdown: {
+    type: 'string',
+    required: true,
+    description: 'Self-sufficient ordinary-conversation fallback; never include the answer.',
+  },
+} as const
+
+const checkpointDescription = [
+  'Optionally request one high-value learner contribution when the response materially changes the next teaching move.',
+  'The normal path is ordinary non-blocking conversation; this is not a per-turn ceremony or Continue ritual.',
+  'The selection step already chose the evidence kind. The payload is answer-free: never include a correct answer, rubric, solution, future step, Reveal, animation, or Continue content.',
+  'A skipped, cancelled, unavailable, or failed checkpoint falls back to ordinary conversation without withholding teaching.',
+].join(' ')
+
+type DynamicToolTarget = Pick<ToolRuntime, 'get' | 'register'>
+
+const dynamicVisualDisposers = new WeakMap<object, () => void>()
+const dynamicCheckpointDisposers = new WeakMap<object, () => void>()
+const GLOBAL_DYNAMIC_TOOL_KEY = {}
+
+function dynamicToolTarget(services: LearningAgentContext, exec: ToolRunContext): DynamicToolTarget {
+  const candidate = exec.agent as (ToolRunContext['agent'] & { id?: unknown }) | undefined
+  return typeof candidate?.id === 'string' && candidate.ctx?.tools !== undefined
+    ? candidate.ctx.tools
+    : services.tools
+}
+
+function dynamicToolKey(_services: LearningAgentContext, exec: ToolRunContext): object {
+  const candidate = exec.agent as (ToolRunContext['agent'] & { id?: unknown }) | undefined
+  return typeof candidate?.id === 'string' && candidate.ctx?.tools !== undefined
+    ? candidate
+    : GLOBAL_DYNAMIC_TOOL_KEY
+}
 
 function assertSingleCheckpointInModelStep(exec: ToolRunContext): void {
   const agent = exec.agent
@@ -653,62 +744,64 @@ function assertSingleCheckpointInModelStep(exec: ToolRunContext): void {
 export function apply(ctx: Context): void {
   const services = ctx as LearningAgentContext
   services.tools.register(closeParameterRoot(defineTool({
-    name: 'learning_visual',
-    description: [
-      'Render one trusted, native, non-blocking semantic visual inline in the current teaching response.',
-      'Choose the content kind by the concept itself: plot for quantitative axes; node_link for topology; scene_2d for space; relation for comparisons; timeline for chronology; formula_steps for derivations; study_map for supplied multi-section material; recall_deck for requested active recall.',
-      'Do not call this tool merely because Learning mode is active. A request to recall a formula, definition, or short fact normally needs direct prose, not a chart.',
-      'Never substitute a plot for a requested structure diagram. A fully connected neural layer is node_link with layered groups and all connections, not a sigmoid curve.',
-      'The call completes immediately: after it returns, continue naturally with the interpretation and at most one ordinary conversational question.',
-      'The result reports whether the learner can actually see it. On status ready, refer to the visual normally. On status unavailable this composition rendered nothing, so carry the same explanation in prose and never mention a figure, chart, or diagram the learner cannot see.',
-      'Optional sequence frames highlight ids already declared by the chosen content; they create local step-through exploration without taking over learner input.',
-      'Plot curves use a closed recursive math AST. Metrics must depend only on declared parameters.',
-      'Hard limits: the complete call must stay within 64 KiB; every id is 1 to 32 lowercase-safe characters; keep labels to 120 characters, ordinary detail text to 1000, LaTeX expressions to 500, recall prompts to 1000 and answers to 2000. Array limits are stated on each field and are mandatory.',
-    ].join(' '),
-    parameters: {
-      protocol: { type: 'string', const: VISUAL_PROTOCOL_V4, required: true },
-      title: { type: 'string', description: 'Concise visible and accessible visual title.', required: true },
-      description: { type: 'string', description: 'Optional one-sentence exploration hint; do not repeat surrounding prose.' },
-      content: {
-        oneOf: [
-          plotContent,
-          nodeLinkContent,
-          sceneContent,
-          relationContent,
-          timelineContent,
-          formulaStepsContent,
-          studyMapContent,
-          recallDeckContent,
-        ],
-        required: true,
-        description: 'Exactly one closed native visual content object. Never provide HTML, Markdown diagrams, SVG markup, or JavaScript.',
-      },
-      sequence,
-      fallbackMarkdown: {
-        type: 'string',
-        description: 'Optional concise text equivalent for accessibility or an unavailable renderer; do not use it instead of valid content.',
-      },
-    },
+    name: 'learning_visual_select',
+    description: 'Use only when a visual will materially clarify one relationship. Select one native kind and state its teaching purpose; the selected kind-specific learning_visual schema is exposed on the next model step. Do not select a visual for a definition, short fact, or already-clear explanation.',
+    parameters: visualSelectorParameters,
     output: {
-      schema: { type: 'object', additionalProperties: false, properties: {
-        protocol: { type: 'string', const: VISUAL_RESULT_PROTOCOL_V4, required: true },
-        status: { type: 'string', enum: LEARNING_VISUAL_STATUSES, required: true },
-      } },
+      schema: visualSelectorOutput,
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
-    isConcurrencySafe: () => true,
+    isConcurrencySafe: () => false,
     async execute(args, exec) {
-      parseLearningVisualV4(args)
-      return {
-        protocol: VISUAL_RESULT_PROTOCOL_V4,
-        status: services.learningActivities.recordVisual(exec.agent, String(exec.callId)),
-      } satisfies LearningVisualResultV4
+      const target = dynamicToolTarget(services, exec)
+      const existing = target.get('learning_visual')
+      const targetKey = dynamicToolKey(services, exec)
+      if (existing !== undefined) {
+        // A prior selector may have left a payload tool visible after a model
+        // retry. Re-registering the selected kind must replace it, not collide.
+        dynamicVisualDisposers.get(targetKey)?.()
+        dynamicVisualDisposers.delete(targetKey)
+      }
+      const definition = closeParameterRoot(defineTool({
+        name: 'learning_visual',
+        description: visualDescription(args.kind),
+        parameters: visualParameters(args.kind),
+        output: {
+          schema: { type: 'object', additionalProperties: false, properties: {
+            protocol: { type: 'string', const: VISUAL_RESULT_PROTOCOL_V4, required: true },
+            status: { type: 'string', enum: LEARNING_VISUAL_STATUSES, required: true },
+          } },
+          render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+        },
+        isConcurrencySafe: () => true,
+        async execute(payload, payloadExec) {
+          parseLearningVisualV4(payload)
+          try {
+            return {
+              protocol: VISUAL_RESULT_PROTOCOL_V4,
+              status: services.learningActivities.recordVisual(payloadExec.agent, String(payloadExec.callId)),
+            } satisfies LearningVisualResultV4
+          } finally {
+            queueMicrotask(() => {
+              const key = dynamicToolKey(services, payloadExec)
+              const disposer = dynamicVisualDisposers.get(key)
+              if (disposer !== undefined) {
+                dynamicVisualDisposers.delete(key)
+                disposer()
+              }
+            })
+          }
+        },
+        presentCall: payload => ({
+          card: 'generic',
+          title: typeof payload.title === 'string' ? payload.title : 'Interactive visual',
+          kind: 'other',
+        }),
+      }))
+      const disposer = target.register(definition)
+      dynamicVisualDisposers.set(targetKey, disposer)
+      return { status: 'selected' as const, kind: args.kind }
     },
-    presentCall: args => ({
-      card: 'generic',
-      title: typeof args.title === 'string' ? args.title : 'Interactive visual',
-      kind: 'other',
-    }),
   })))
 
   services.tools.register(closeParameterRoot(defineTool({
@@ -780,46 +873,45 @@ export function apply(ctx: Context): void {
   })))
 
   services.tools.register(closeParameterRoot(defineTool({
-    name: 'learning_checkpoint',
-    description: [
-      'Optionally request one high-value learner contribution when their response materially changes the next teaching move.',
-      'The normal path is ordinary non-blocking conversation; never call this once per turn or as a Continue ritual.',
-      'Use only for a prediction, explanation, contrast, design choice, debugging diagnosis, boundary case, or transfer application.',
-      'The payload is answer-free: never include a correct answer, grading rubric, solution, future step, Reveal, animation, or Continue content.',
-      'Ask only one current-step prompt. A skipped, cancelled, unavailable, or failed checkpoint means continue in ordinary conversation without withholding teaching.',
-      'The result is terminal for this tool call. Evaluate it only in the next model step.',
-    ].join(' '),
-    parameters: {
-      protocol: { type: 'string', const: CHECKPOINT_PROTOCOL, required: true },
-      kind: { type: 'string', enum: LEARNING_CHECKPOINT_KINDS, required: true },
-      prompt: { type: 'string', required: true },
-      context: { type: 'string' },
-      expectedEvidence: { type: 'string', enum: LEARNING_CHECKPOINT_EVIDENCE_KINDS, required: true },
-      options: {
-        type: 'array',
-        items: checkpointOption,
-        description: 'Required only for single_choice; 2 to 8 answer-free options.',
-      },
-      fallbackMarkdown: {
-        type: 'string',
-        required: true,
-        description: 'Self-sufficient ordinary-conversation fallback; never include the answer.',
-      },
-    },
+    name: 'learning_checkpoint_select',
+    description: 'Use only when one learner response will materially change the next teaching move. Select the evidence type, give one answer-free prompt and its purpose; the full learning_checkpoint payload is exposed on the next model step. Ordinary conversation remains the default; this is not a per-turn ceremony.',
+    parameters: checkpointSelectorParameters,
     output: {
-      schema: checkpointOutput,
+      schema: checkpointSelectorOutput,
       render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
     },
     isConcurrencySafe: () => false,
     async execute(args, exec) {
-      const checkpoint = parseLearningCheckpointV1(args)
-      assertSingleCheckpointInModelStep(exec)
-      return await services.learningActivities.presentCheckpoint({
-        checkpoint,
-        agent: exec.agent,
-        signal: exec.signal,
-        callId: String(exec.callId),
-      }) satisfies LearningCheckpointResultV1
+      const target = dynamicToolTarget(services, exec)
+      const targetKey = dynamicToolKey(services, exec)
+      dynamicCheckpointDisposers.get(targetKey)?.()
+      const definition = closeParameterRoot(defineTool({
+        name: 'learning_checkpoint',
+        description: checkpointDescription,
+        parameters: checkpointParameters,
+        output: {
+          schema: checkpointOutput,
+          render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+        },
+        isConcurrencySafe: () => false,
+        async execute(payload, payloadExec) {
+          const checkpoint = parseLearningCheckpointV1(payload)
+          assertSingleCheckpointInModelStep(payloadExec)
+          // Keep this terminal payload callable for an idempotent runtime
+          // replay. The next selector explicitly disposes it before exposing
+          // another checkpoint kind, so the large payload is never part of
+          // the initial Learning catalog.
+          return await services.learningActivities.presentCheckpoint({
+            checkpoint,
+            agent: payloadExec.agent,
+            signal: payloadExec.signal,
+            callId: String(payloadExec.callId),
+          }) satisfies LearningCheckpointResultV1
+        },
+      }))
+      const disposer = target.register(definition)
+      dynamicCheckpointDisposers.set(targetKey, disposer)
+      return { status: 'selected' as const, kind: args.kind }
     },
   })))
 

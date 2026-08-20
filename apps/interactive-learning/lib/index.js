@@ -1,4 +1,4 @@
-import { a as LEARNER_STATE_SESSION_EVENT_TYPE, c as foldLearnerStateSession, d as reduceLearnerState, f as registerLearningSessionEventType, h as serializeLearnerStateSnapshot, i as LEARNER_STATE_PROTOCOL, l as hydrateLearnerStateSnapshot, m as resetLearnerState, n as DEFAULT_TRANSCRIPT_TOKEN_BUDGET, o as createInitialLearnerState, p as renderLearnerStateTranscript, r as LEARNER_STATE_EVENT_PROTOCOL, s as createLearnerStateSnapshotEvent, t as registerInteractiveLearningSessionCompatibility, u as parseLearnerStateSnapshotEvent } from "./bootstrap-DqP8ZWUI.js";
+import { a as LEARNER_STATE_SESSION_EVENT_TYPE, c as foldLearnerStateSession, d as reduceLearnerState, f as registerLearningSessionEventType, h as serializeLearnerStateSnapshot, i as LEARNER_STATE_PROTOCOL, l as hydrateLearnerStateSnapshot, m as resetLearnerState, n as DEFAULT_TRANSCRIPT_TOKEN_BUDGET, o as createInitialLearnerState, p as renderLearnerStateTranscript, r as LEARNER_STATE_EVENT_PROTOCOL, s as createLearnerStateSnapshotEvent, t as registerInteractiveLearningSessionCompatibility, u as parseLearnerStateSnapshotEvent } from "./bootstrap-BJicoai5.js";
 import { A as parseLearningCheckpointResultV1, N as parseLearningResponseV2, O as parseLearningActivity, S as TRANSPORT_PROTOCOL_V2, a as CHECKPOINT_TRANSPORT_PROTOCOL, b as RESPONSE_PROTOCOL_V2, d as LearningProtocolError, i as CHECKPOINT_RESULT_PROTOCOL, j as parseLearningCheckpointV1, k as parseLearningActivityV2, m as MAX_ACTIVITY_BYTES, y as RESPONSE_PROTOCOL } from "./protocol-D-KGSMae.js";
 import { createHash, randomUUID } from "node:crypto";
 import { Service } from "@deepseek-ai/cordis";
@@ -349,7 +349,8 @@ var LearningActivityBroker = class extends Service {
 				id: learnerObservationId("visual", String(agent.session.id), stableCallId),
 				source: "assistant-output",
 				summary: "The assistant rendered one non-blocking semantic visual."
-			}
+			},
+			moveFingerprint: `visual:${stableCallId}`
 		}]);
 		return "ready";
 	}
@@ -394,7 +395,8 @@ var LearningActivityBroker = class extends Service {
 				id: `${observationBase}:move`,
 				source: "assistant-output",
 				summary: `The optional checkpoint ended ${result.status}; continue in ordinary conversation.`
-			}
+			},
+			moveFingerprint: `checkpoint:${request.callId}:${result.status}`
 		});
 		this.recordAutomaticEvents(agent, events);
 	}
@@ -871,8 +873,63 @@ var LearningActivityBroker = class extends Service {
 	}
 };
 //#endregion
+//#region lib/types/teaching-route.js
+/**
+* Small, deterministic routing hints for the Learning preset.
+*
+* The model still owns the final wording and teaching judgment. This helper
+* exists so the high-priority ambiguity rule is testable and reusable by
+* canaries without copying prompt prose into another subsystem.
+*/
+const SHORT_LEARNING_REQUEST = /^(?:please\s+)?(?:teach\s+me|help\s+me\s+learn|learn|understand|get\s+to\s+know)\b|^(?:学习|教我|了解|想学)\s*/i;
+const EXPLICIT_BEGINNER = /(?:\b(?:from\s+scratch|from\s+zero|beginner|beginners|intro(?:duction)?|concept(?:ual)?\s+intro)\b|零基础|从零|入门|概念入门)/i;
+const EXPLICIT_OVERVIEW = /\b(?:complete|full|comprehensive|structured|direct)\s+(?:overview|survey|summary)|\b(?:overview|survey)\b.*\b(?:directly|without\s+(?:asking|questions)|don['’]?t\s+(?:ask|quiz)|no\s+questions)|(?:完整|全面|结构化).*(?:概览|综述)|(?:直接讲|不要提问|别提问|不要先问)/i;
+const CURRENT_OR_CONTESTED = /(?:\b(?:latest|current|recent|today|news|controversial|contested|debate)\b|争议|时事|最新|近期)/i;
+const SPECIFIC_LEARNING_GOAL = /(?:\b(?:why|how|difference|distinguish|compare|debug|apply|predict|explain|derive|implement)\b|练习|区别|为什么|如何|怎么|对比|调试|应用|预测|推导|实现)/i;
+/**
+* Classify only the first-turn shape. It deliberately does not infer a
+* learner level from jargon or topic name.
+*/
+function routeLearningRequest(text) {
+	const normalized = text.replace(/\s+/g, " ").trim();
+	if (EXPLICIT_OVERVIEW.test(normalized)) return {
+		route: "overview",
+		reason: "explicit-overview"
+	};
+	if (CURRENT_OR_CONTESTED.test(normalized)) return {
+		route: "overview",
+		reason: "current-or-contested"
+	};
+	if (SHORT_LEARNING_REQUEST.test(normalized)) {
+		if (EXPLICIT_BEGINNER.test(normalized)) return {
+			route: "teach-minimum",
+			reason: "explicit-beginner"
+		};
+		if (SPECIFIC_LEARNING_GOAL.test(normalized)) return {
+			route: "teach-minimum",
+			reason: "specific-goal"
+		};
+		return {
+			route: "calibrate",
+			reason: "short-learning-request"
+		};
+	}
+	if (EXPLICIT_BEGINNER.test(normalized)) return {
+		route: "teach-minimum",
+		reason: "explicit-beginner"
+	};
+	if (SPECIFIC_LEARNING_GOAL.test(normalized)) return {
+		route: "teach-minimum",
+		reason: "specific-goal"
+	};
+	return {
+		route: "direct",
+		reason: "direct"
+	};
+}
+//#endregion
 //#region lib/types/index.js
 /** Host entry: one non-model-facing Learning Activity broker service. */
 registerInteractiveLearningSessionCompatibility();
 //#endregion
-export { DEFAULT_TRANSCRIPT_TOKEN_BUDGET, LEARNER_STATE_EVENT_PROTOCOL, LEARNER_STATE_PROTOCOL, LEARNER_STATE_SESSION_EVENT_TYPE, LearningActivityBroker, LearningActivityBroker as default, createInitialLearnerState, createLearnerStateSnapshotEvent, foldLearnerStateSession, hydrateLearnerStateSnapshot, parseLearnerStateSnapshotEvent, reduceLearnerState, registerInteractiveLearningSessionCompatibility, registerLearningSessionEventType, renderLearnerStateTranscript, resetLearnerState, serializeLearnerStateSnapshot };
+export { DEFAULT_TRANSCRIPT_TOKEN_BUDGET, LEARNER_STATE_EVENT_PROTOCOL, LEARNER_STATE_PROTOCOL, LEARNER_STATE_SESSION_EVENT_TYPE, LearningActivityBroker, LearningActivityBroker as default, createInitialLearnerState, createLearnerStateSnapshotEvent, foldLearnerStateSession, hydrateLearnerStateSnapshot, parseLearnerStateSnapshotEvent, reduceLearnerState, registerInteractiveLearningSessionCompatibility, registerLearningSessionEventType, renderLearnerStateTranscript, resetLearnerState, routeLearningRequest, serializeLearnerStateSnapshot };

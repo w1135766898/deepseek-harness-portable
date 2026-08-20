@@ -500,6 +500,7 @@ export class LearningActivityBroker extends Service {
         source: 'assistant-output',
         summary: 'The assistant rendered one non-blocking semantic visual.',
       },
+      moveFingerprint: `visual:${stableCallId}`,
     }])
     return 'ready'
   }
@@ -560,6 +561,7 @@ export class LearningActivityBroker extends Service {
         source: 'assistant-output',
         summary: `The optional checkpoint ended ${result.status}; continue in ordinary conversation.`,
       },
+      moveFingerprint: `checkpoint:${request.callId}:${result.status}`,
     })
     this.recordAutomaticEvents(agent, events)
   }

@@ -72,8 +72,37 @@ const MASTERY_VALUES = /* @__PURE__ */ new Set([
 	"emerging",
 	"transfer"
 ]);
+const PHASE_VALUES = /* @__PURE__ */ new Set([
+	"orient",
+	"teach",
+	"practice",
+	"repair",
+	"transfer",
+	"complete"
+]);
+const RESPONSE_ASSESSMENTS = /* @__PURE__ */ new Set([
+	"correct",
+	"partial",
+	"incorrect",
+	"no-evidence"
+]);
+const NEXT_MOVES = /* @__PURE__ */ new Set([
+	"calibrate",
+	"direct",
+	"explain",
+	"example",
+	"question",
+	"repair",
+	"transfer",
+	"complete"
+]);
 const TEACHING_MOVES = /* @__PURE__ */ new Set([
 	"none",
+	"explanation",
+	"example",
+	"question",
+	"repair",
+	"transfer",
 	"visual",
 	"checkpoint"
 ]);
@@ -121,6 +150,10 @@ function normalizeRequiredText(value, label) {
 	const normalized = value.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
 	if (!normalized) throw new TypeError(`${label} must not be empty`);
 	return [...normalized].slice(0, MAX_STORED_TEXT).join("");
+}
+function normalizeOptionalText(value, label) {
+	if (value === null || value === void 0) return value;
+	return normalizeRequiredText(value, label);
 }
 function normalizeSessionId(sessionId) {
 	return normalizeRequiredText(sessionId, "sessionId");
@@ -305,6 +338,13 @@ function createInitialLearnerState(sessionId) {
 		assessmentContext: "unknown",
 		mastery: "unseen",
 		evidence: [],
+		phase: "orient",
+		lastExplanationSummary: null,
+		lastQuestion: null,
+		learnerResponseAssessment: "no-evidence",
+		currentMisconception: null,
+		nextMove: "calibrate",
+		moveFingerprint: null,
 		lastMove: "none",
 		sourceAnchors: [],
 		plan: null,
@@ -340,6 +380,13 @@ function applyCorrection(state, correction, observation) {
 		if (correction.mastery === void 0) next.mastery = evidenceMastery(normalized);
 		next.evidence = boundEvidence(normalized, next.mastery);
 	}
+	if (correction.phase !== void 0) next.phase = assertEnum(correction.phase, PHASE_VALUES, "phase");
+	if (Object.hasOwn(correction, "lastExplanationSummary")) next.lastExplanationSummary = normalizeOptionalText(correction.lastExplanationSummary, "lastExplanationSummary") ?? null;
+	if (Object.hasOwn(correction, "lastQuestion")) next.lastQuestion = normalizeOptionalText(correction.lastQuestion, "lastQuestion") ?? null;
+	if (correction.learnerResponseAssessment !== void 0) next.learnerResponseAssessment = assertEnum(correction.learnerResponseAssessment, RESPONSE_ASSESSMENTS, "learnerResponseAssessment");
+	if (Object.hasOwn(correction, "currentMisconception")) next.currentMisconception = normalizeOptionalText(correction.currentMisconception, "currentMisconception") ?? null;
+	if (correction.nextMove !== void 0) next.nextMove = assertEnum(correction.nextMove, NEXT_MOVES, "nextMove");
+	if (Object.hasOwn(correction, "moveFingerprint")) next.moveFingerprint = normalizeOptionalText(correction.moveFingerprint, "moveFingerprint") ?? null;
 	if (correction.lastMove !== void 0) next.lastMove = assertEnum(correction.lastMove, TEACHING_MOVES, "lastMove");
 	if (correction.sourceAnchors !== void 0) next.sourceAnchors = normalizeStringList(correction.sourceAnchors, 8, "sourceAnchors");
 	return next;
@@ -414,7 +461,10 @@ function reduceLearnerState(state, event) {
 		}
 		case "gap_observed":
 			next.gap = assertEnum(event.gap, GAPS, "gap");
-			if (event.misconceptions !== void 0) next.misconceptions = event.misconceptionMode === "replace" ? normalizeStringList(event.misconceptions, 6, "misconceptions") : appendBoundedUnique(state.misconceptions, event.misconceptions, 6, "misconceptions");
+			if (event.misconceptions !== void 0) {
+				next.misconceptions = event.misconceptionMode === "replace" ? normalizeStringList(event.misconceptions, 6, "misconceptions") : appendBoundedUnique(state.misconceptions, event.misconceptions, 6, "misconceptions");
+				next.currentMisconception = next.misconceptions.at(-1) ?? null;
+			}
 			break;
 		case "readiness_observed":
 			next.readiness = assertEnum(event.readiness, READINESS_VALUES, "readiness");
@@ -423,9 +473,15 @@ function reduceLearnerState(state, event) {
 			break;
 		case "progress_observed":
 			next.progressSignal = assertEnum(event.progressSignal, PROGRESS_SIGNALS, "progressSignal");
-			if (next.progressSignal === "stuck") next.supportLevel = maxSupportLevel(state.supportLevel, 4);
-			else if (next.progressSignal === "shutdown-risk") next.supportLevel = 5;
-			else if (next.progressSignal === "progressing") next.supportLevel = lowerSupportLevel(state.supportLevel);
+			if (next.progressSignal === "stuck") {
+				next.supportLevel = maxSupportLevel(state.supportLevel, 4);
+				next.phase = "repair";
+				next.nextMove = "repair";
+			} else if (next.progressSignal === "shutdown-risk") {
+				next.supportLevel = 5;
+				next.phase = "repair";
+				next.nextMove = "direct";
+			} else if (next.progressSignal === "progressing") next.supportLevel = lowerSupportLevel(state.supportLevel);
 			break;
 		case "urgency_observed":
 			next.urgency = assertEnum(event.urgency, URGENCY_VALUES, "urgency");
@@ -437,6 +493,17 @@ function reduceLearnerState(state, event) {
 			const evidence = normalizeEvidence(event.evidence, observation);
 			next.mastery = masteryFromEvidence(state.mastery, [evidence]);
 			next.evidence = boundEvidence([...state.evidence, evidence], next.mastery);
+			next.learnerResponseAssessment = evidence.correctness === "correct" ? "correct" : evidence.correctness === "incorrect" ? "incorrect" : "no-evidence";
+			if (evidence.correctness === "incorrect") {
+				next.phase = "repair";
+				next.nextMove = "repair";
+			} else if (evidence.correctness === "correct" && evidence.kind === "transfer") {
+				next.phase = next.mastery === "transfer" ? "complete" : "practice";
+				next.nextMove = next.mastery === "transfer" ? "complete" : "transfer";
+			} else if (evidence.correctness === "correct") {
+				next.phase = "practice";
+				next.nextMove = "transfer";
+			}
 			if (isIndependentlyCorrectEvidence(evidence)) next.supportLevel = evidence.kind === "transfer" && evidence.transferContext === "fresh" ? 0 : lowerSupportLevel(state.supportLevel);
 			else {
 				const incorrectStreak = trailingIncorrectEvidence(next.evidence);
@@ -447,6 +514,25 @@ function reduceLearnerState(state, event) {
 		case "assistant_move_observed":
 			if (observation.source !== "assistant-output") throw new TypeError("An assistant move must be observed from assistant output");
 			next.lastMove = assertEnum(event.move, TEACHING_MOVES, "lastMove");
+			if (event.moveFingerprint !== void 0) {
+				const fingerprint = normalizeRequiredText(event.moveFingerprint, "moveFingerprint");
+				if (fingerprint === state.moveFingerprint) throw new TypeError("moveFingerprint must change when the teaching move changes");
+				next.moveFingerprint = fingerprint;
+			}
+			next.phase = event.phase === void 0 ? {
+				explanation: "teach",
+				example: "teach",
+				question: "practice",
+				repair: "repair",
+				transfer: "transfer",
+				visual: "teach",
+				checkpoint: "practice"
+			}[event.move] ?? state.phase : assertEnum(event.phase, PHASE_VALUES, "phase");
+			if (Object.hasOwn(event, "explanationSummary")) next.lastExplanationSummary = normalizeOptionalText(event.explanationSummary, "explanationSummary") ?? null;
+			if (Object.hasOwn(event, "question")) next.lastQuestion = normalizeOptionalText(event.question, "question") ?? null;
+			if (event.learnerResponseAssessment !== void 0) next.learnerResponseAssessment = assertEnum(event.learnerResponseAssessment, RESPONSE_ASSESSMENTS, "learnerResponseAssessment");
+			if (Object.hasOwn(event, "currentMisconception")) next.currentMisconception = normalizeOptionalText(event.currentMisconception, "currentMisconception") ?? null;
+			if (event.nextMove !== void 0) next.nextMove = assertEnum(event.nextMove, NEXT_MOVES, "nextMove");
 			break;
 		case "source_anchors_observed":
 			next.sourceAnchors = event.mode === "replace" ? normalizeStringList(event.anchors, 8, "sourceAnchors") : appendBoundedUnique(state.sourceAnchors, event.anchors, 8, "sourceAnchors");
@@ -494,10 +580,26 @@ const SNAPSHOT_KEYS = [
 	"assessmentContext",
 	"mastery",
 	"evidence",
+	"phase",
+	"lastExplanationSummary",
+	"lastQuestion",
+	"learnerResponseAssessment",
+	"currentMisconception",
+	"nextMove",
+	"moveFingerprint",
 	"lastMove",
 	"sourceAnchors",
 	"plan",
 	"appliedEventIds"
+];
+const TEACHING_MEMORY_KEYS = [
+	"phase",
+	"lastExplanationSummary",
+	"lastQuestion",
+	"learnerResponseAssessment",
+	"currentMisconception",
+	"nextMove",
+	"moveFingerprint"
 ];
 function asRecord(value, label) {
 	if (value === null || typeof value !== "object" || Array.isArray(value)) throw new TypeError(`${label} must be an object`);
@@ -598,7 +700,9 @@ function parseAppliedEventFence(value) {
 */
 function parseLearnerStateSnapshot(value, expectedSessionId) {
 	const record = parseSnapshotInput(value, "learner state snapshot");
-	assertExactKeys(record, SNAPSHOT_KEYS, [], "learner state snapshot");
+	const missingTeachingMemory = TEACHING_MEMORY_KEYS.filter((key) => !Object.hasOwn(record, key));
+	if (missingTeachingMemory.length > 0 && missingTeachingMemory.length < TEACHING_MEMORY_KEYS.length) throw new TypeError(`learner state snapshot is missing required field: ${missingTeachingMemory[0]}`);
+	assertExactKeys(record, SNAPSHOT_KEYS.filter((key) => !TEACHING_MEMORY_KEYS.includes(key)), TEACHING_MEMORY_KEYS, "learner state snapshot");
 	if (record.protocol !== "dsh-learning/learner-state@1") throw new TypeError(`learner state snapshot protocol must be ${LEARNER_STATE_PROTOCOL}`);
 	if (record.tentative !== true) throw new TypeError("learner state snapshot tentative must be true");
 	const sessionId = normalizeSessionId(expectedSessionId);
@@ -622,6 +726,13 @@ function parseLearnerStateSnapshot(value, expectedSessionId) {
 		assessmentContext: assertEnum(strictString(record.assessmentContext, "learner state snapshot assessmentContext"), ASSESSMENT_CONTEXTS, "learner state snapshot assessmentContext"),
 		mastery: assertEnum(strictString(record.mastery, "learner state snapshot mastery"), MASTERY_VALUES, "learner state snapshot mastery"),
 		evidence: parseSnapshotEvidence(record.evidence),
+		phase: assertEnum(strictString(record.phase ?? "orient", "learner state snapshot phase"), PHASE_VALUES, "learner state snapshot phase"),
+		lastExplanationSummary: record.lastExplanationSummary === void 0 || record.lastExplanationSummary === null ? null : strictString(record.lastExplanationSummary, "learner state snapshot lastExplanationSummary"),
+		lastQuestion: record.lastQuestion === void 0 || record.lastQuestion === null ? null : strictString(record.lastQuestion, "learner state snapshot lastQuestion"),
+		learnerResponseAssessment: assertEnum(strictString(record.learnerResponseAssessment ?? "no-evidence", "learner state snapshot learnerResponseAssessment"), RESPONSE_ASSESSMENTS, "learner state snapshot learnerResponseAssessment"),
+		currentMisconception: record.currentMisconception === void 0 || record.currentMisconception === null ? null : strictString(record.currentMisconception, "learner state snapshot currentMisconception"),
+		nextMove: assertEnum(strictString(record.nextMove ?? "calibrate", "learner state snapshot nextMove"), NEXT_MOVES, "learner state snapshot nextMove"),
+		moveFingerprint: record.moveFingerprint === void 0 || record.moveFingerprint === null ? null : strictString(record.moveFingerprint, "learner state snapshot moveFingerprint"),
 		lastMove: assertEnum(strictString(record.lastMove, "learner state snapshot lastMove"), TEACHING_MOVES, "learner state snapshot lastMove"),
 		sourceAnchors: strictStringList(record.sourceAnchors, 8, "learner state snapshot sourceAnchors"),
 		plan: parsePlanSnapshot(record.plan, "learner state snapshot plan"),
@@ -697,6 +808,13 @@ function assertResetSnapshot(snapshot) {
 		"assessmentContext",
 		"mastery",
 		"evidence",
+		"phase",
+		"lastExplanationSummary",
+		"lastQuestion",
+		"learnerResponseAssessment",
+		"currentMisconception",
+		"nextMove",
+		"moveFingerprint",
 		"lastMove",
 		"sourceAnchors",
 		"plan"
@@ -848,6 +966,21 @@ function renderLearnerStateTranscript(state, options = {}) {
 			order: 110,
 			priority: 76,
 			text: `assessment_context: ${state.assessmentContext}`
+		},
+		{
+			order: 125,
+			priority: 92,
+			text: `phase: ${state.phase}`
+		},
+		{
+			order: 130,
+			priority: 90,
+			text: `next_move: ${state.nextMove}`
+		},
+		{
+			order: 135,
+			priority: 88,
+			text: `response_assessment: ${state.learnerResponseAssessment}`
 		}
 	];
 	if (state.priorKnowledge.length) optional.push({
@@ -859,6 +992,26 @@ function renderLearnerStateTranscript(state, options = {}) {
 		order: 60,
 		priority: 80,
 		text: `misconceptions: ${safeList(state.misconceptions)}`
+	});
+	if (state.currentMisconception !== null) optional.push({
+		order: 61,
+		priority: 94,
+		text: `current_misconception: ${safeQuoted(state.currentMisconception, 48)}`
+	});
+	if (state.lastExplanationSummary !== null) optional.push({
+		order: 170,
+		priority: 95,
+		text: `last_explanation: ${safeQuoted(state.lastExplanationSummary, 48)}`
+	});
+	if (state.lastQuestion !== null) optional.push({
+		order: 180,
+		priority: 96,
+		text: `last_question: ${safeQuoted(state.lastQuestion, 48)}`
+	});
+	if (state.moveFingerprint !== null) optional.push({
+		order: 190,
+		priority: 97,
+		text: `move_fingerprint: ${safeQuoted(state.moveFingerprint, 64)}`
 	});
 	state.evidence.slice(-4).forEach((item, index) => {
 		const transferContext = item.kind === "transfer" ? `/${item.transferContext}` : "";

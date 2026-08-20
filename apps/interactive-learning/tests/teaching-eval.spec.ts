@@ -81,16 +81,17 @@ describe('non-blocking teaching behavior evaluation', () => {
     const visualProtocol = readFileSync(join(skillRoot, 'references/visual-protocol.md'), 'utf8')
     const referenceMaterials = readFileSync(join(skillRoot, 'references/reference-materials.md'), 'utf8')
     for (const phrase of [
-      'learning_visual',
-      'ordinary conversation',
-      'at most one focused question',
-      'visual complete immediately',
-      'Never ask the learner to submit visual state',
-      'ask_user_question',
-      'user-owned choice',
-      'two or three broad',
-      'node_link with layered groups and explicit edges',
-      'derivative formula',
+      'Route first',
+      'calibration',
+      'complete/full overview',
+      'Each response makes one cognitive move',
+      'Ask at most one focused learner question',
+      'Never repeat a hint, analogy, question, or explanation fingerprint',
+      'Stop after independent fresh transfer',
+      'Ordinary conversation is the default',
+      'Use a visual only when one relationship is materially clearer',
+      'learning_state_update',
+      'move fingerprint',
     ]) {
       expect(LEARNING_TEACHING_POLICY).toContain(phrase)
     }

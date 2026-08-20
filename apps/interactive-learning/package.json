@@ -75,6 +75,7 @@
     "lib/types/learner-state.d.ts",
     "lib/types/preset.d.ts",
     "lib/types/protocol.d.ts",
+    "lib/types/teaching-route.d.ts",
     "lib/types/index.d.ts.map",
     "lib/types/agent.d.ts.map",
     "lib/types/bootstrap.d.ts.map",
@@ -88,6 +89,7 @@
     "lib/types/learner-state.d.ts.map",
     "lib/types/preset.d.ts.map",
     "lib/types/protocol.d.ts.map",
+    "lib/types/teaching-route.d.ts.map",
     "preset/**/*",
     "README.zh.md"
   ],

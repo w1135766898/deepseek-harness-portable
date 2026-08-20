@@ -9,10 +9,12 @@ schemas and prompts.
 - The package root provides the `learningActivities` Host broker and registers
   the required `learning/state` session-event discriminator before persisted
   Learning sessions can be loaded. It registers no model-visible tools.
-- `./agent` is mounted only by the Learning preset. It registers the immediate
-  `learning_visual`, silent `learning_state_update`, and optional
-  `learning_checkpoint` tools. Its standing policy comes from one canonical
-  TypeScript source rather than being duplicated in the Skill.
+- `./agent` is mounted only by the Learning preset. Its initial model-facing
+  catalog contains the compact `learning_visual_select`, silent
+  `learning_state_update`, and optional `learning_checkpoint_select` tools.
+  A selector exposes only the chosen visual/checkpoint payload schema for the
+  next model step. Its standing policy comes from one canonical TypeScript
+  source rather than being duplicated in the Skill.
 - `./client` renders visuals and optional checkpoints inline. State updates have
   an explicitly empty tool view. V1/V2 activity calls and V3 visuals retain
   read-only replay support.
@@ -27,10 +29,16 @@ learner action, it creates exactly one user-result wait and then terminates.
 
 ## Non-blocking learning flow
 
-1. The assistant explains the missing idea in ordinary prose.
-2. When manipulation is genuinely useful, it calls `learning_visual` once with
-   a safe declarative chart.
-3. While the arguments are still streaming, the tool call's place names the
+1. A short, underspecified `learn X`/`teach me X` request gets one calibration
+   question whose answer changes the route. An explicit beginner/from-zero
+   request starts with one minimum concept immediately; an explicit complete
+   overview or current/contested survey can go directly to exposition.
+2. The assistant explains the missing idea in ordinary prose. When manipulation
+   is genuinely useful, it first calls `learning_visual_select` with one native
+   kind and purpose.
+3. The selected kind-specific `learning_visual` schema is exposed for the next
+   model step; no eight-kind visual catalog is injected into the initial
+   context. While arguments are streaming, the tool call's place names the
    visual being prepared instead of showing a generic wait.
 4. Validation returns `visual-result@4` immediately. No lesson token, pending
    question, submit button, reveal call, or five-minute user wait is created.
@@ -51,8 +59,10 @@ still make sense if a Client cannot render the enhancement.
 
 Learning keeps a small, tentative teaching state for the current session only:
 the learner's immediate goal, demonstrated prior knowledge, current gap or
-misconception, learner-evidence-derived support need, urgency or stuck evidence, assessment context,
-and independently demonstrated evidence including fresh transfer.
+misconception, phase, last explanation/question, learner-response assessment,
+next move, move fingerprint, learner-evidence-derived support need, urgency or
+stuck evidence, assessment context, and independently demonstrated evidence
+including fresh transfer.
 
 The production path is explicit and auditable:
 
@@ -240,10 +250,13 @@ only through the explicitly named `gradeLegacyV2ReplayTranscript` read-only
 replay audit. It is not called by the default V4.1 eval and is not a current
 teaching success criterion.
 
-`tests/model-canary.mts` is a separately labelled, optional real-model smoke for
-one non-blocking visual call. It is not a multi-turn teaching-quality result and
-requires `DSH_CANARY_API_KEY`. Any real-model report must retain its provenance
-and must not be merged with fixture results.
+`tests/model-canary.mts` is a separately labelled, optional two-turn real-model
+canary. It checks calibration for an underspecified learning request, immediate
+minimum teaching after the learner gives level and goal, and the lazy
+selector → kind-specific visual schema → ordinary-text continuation path. It
+is still not a statistical teaching-quality benchmark and requires
+`DSH_CANARY_API_KEY`. Any real-model report must retain its provenance and must
+not be merged with fixture results.
 
 Package-level verification builds the package, scans published JS/maps for
 checkout or drive-letter paths, creates a real tarball, installs it into a clean

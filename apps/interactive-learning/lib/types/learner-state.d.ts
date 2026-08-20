@@ -26,6 +26,9 @@ export type LearnerUrgency = 'none' | 'initial-blocker' | 'later-pressure' | 'un
 export type LearnerSupportLevel = 0 | 1 | 2 | 3 | 4 | 5;
 export type LearnerAssessmentContext = 'self-study' | 'graded' | 'unknown';
 export type LearnerMastery = 'unseen' | 'emerging' | 'transfer';
+export type LearnerPhase = 'orient' | 'teach' | 'practice' | 'repair' | 'transfer' | 'complete';
+export type LearnerResponseAssessment = 'correct' | 'partial' | 'incorrect' | 'no-evidence';
+export type LearnerNextMove = 'calibrate' | 'direct' | 'explain' | 'example' | 'question' | 'repair' | 'transfer' | 'complete';
 /**
  * A step in the session's learning route.
  *
@@ -45,7 +48,7 @@ export interface LearnerPlan {
     objective: string;
     steps: readonly LearnerPlanStep[];
 }
-export type LearnerTeachingMove = 'none' | 'visual' | 'checkpoint';
+export type LearnerTeachingMove = 'none' | 'explanation' | 'example' | 'question' | 'repair' | 'transfer' | 'visual' | 'checkpoint';
 export type LearnerEvidenceKind = 'attempt' | 'prediction' | 'explanation' | 'contrast' | 'transfer' | 'error';
 export type LearnerEvidenceConfidence = 'low' | 'medium' | 'high';
 export type LearnerEvidenceCorrectness = 'correct' | 'incorrect' | 'unknown';
@@ -110,6 +113,15 @@ export interface LearnerState {
     assessmentContext: LearnerAssessmentContext;
     mastery: LearnerMastery;
     evidence: readonly LearnerEvidence[];
+    /** Current stage in the minimal teaching loop, not a lesson counter. */
+    phase: LearnerPhase;
+    lastExplanationSummary: string | null;
+    lastQuestion: string | null;
+    learnerResponseAssessment: LearnerResponseAssessment;
+    currentMisconception: string | null;
+    nextMove: LearnerNextMove;
+    /** Stable semantic identity of the last teaching move; used to avoid repeats. */
+    moveFingerprint: string | null;
     lastMove: LearnerTeachingMove;
     sourceAnchors: readonly string[];
     /** The session's tentative route toward the goal; null when none is warranted. */
@@ -178,6 +190,13 @@ export type LearnerStateEvent = {
 } | {
     type: 'assistant_move_observed';
     move: LearnerTeachingMove;
+    phase?: LearnerPhase;
+    explanationSummary?: string | null;
+    question?: string | null;
+    learnerResponseAssessment?: LearnerResponseAssessment;
+    currentMisconception?: string | null;
+    nextMove?: LearnerNextMove;
+    moveFingerprint?: string;
     observation: ObservableLearnerEvent;
 } | {
     type: 'source_anchors_observed';
@@ -206,6 +225,13 @@ export interface LearnerStateCorrection {
     assessmentContext?: LearnerAssessmentContext;
     mastery?: LearnerMastery;
     evidence?: readonly LearnerEvidenceInput[];
+    phase?: LearnerPhase;
+    lastExplanationSummary?: string | null;
+    lastQuestion?: string | null;
+    learnerResponseAssessment?: LearnerResponseAssessment;
+    currentMisconception?: string | null;
+    nextMove?: LearnerNextMove;
+    moveFingerprint?: string | null;
     lastMove?: LearnerTeachingMove;
     sourceAnchors?: readonly string[];
 }

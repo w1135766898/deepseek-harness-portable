@@ -1,6 +1,13 @@
 /**
- * Manual real-model canary for the semantic, non-blocking V4 learning_visual contract.
- * This is one real-model smoke, not a multi-turn teaching-quality evaluation.
+ * Manual real-model canary for the Learning preset's first-turn routing and
+ * progressive-disclosure teaching loop.
+ *
+ * This is still a small, provider-dependent canary rather than a statistical
+ * teaching-quality benchmark. It deliberately exercises two model turns:
+ *   1. an underspecified "learn X" request must elicit calibration;
+ *   2. after the learner supplies level and goal, the model teaches one
+ *      minimum concept, selects one visual kind, uses its narrowed schema,
+ *      and returns to ordinary prose without another tool call.
  *
  * Required environment:
  *   DSH_CANARY_API_KEY
@@ -24,6 +31,7 @@ import {
   gradeTeachingCandidate,
   type TeachingEvalCandidate,
 } from '../src/eval.ts'
+import { routeLearningRequest } from '../src/teaching-route.ts'
 import {
   VISUAL_RESULT_PROTOCOL_V4,
   parseLearningVisualV4,
@@ -48,6 +56,12 @@ interface ChatResponse {
   error?: { message?: string }
 }
 
+interface ModelToolSchema {
+  name: string
+  description: string
+  parameters: unknown
+}
+
 const apiKey = process.env.DSH_CANARY_API_KEY?.trim()
 if (apiKey === undefined || apiKey === '') throw new Error('DSH_CANARY_API_KEY is required')
 const baseUrl = (process.env.DSH_CANARY_BASE_URL ?? 'https://api.xiaomimimo.com/v1').replace(/\/$/, '')
@@ -70,34 +84,35 @@ await ctx.plugin(SystemPrompt)
 await ctx.plugin(LearningActivityBroker)
 await ctx.plugin(learningAgent)
 
-const schemas = ctx.tools.schemas()
-const expectedToolNames = ['learning_checkpoint', 'learning_state_update', 'learning_visual']
-if (schemas.length !== expectedToolNames.length
-  || expectedToolNames.some(name => !schemas.some(schema => schema.name === name))) {
-  throw new Error(`expected the V4.1 Learning catalog, received ${schemas.map(schema => schema.name).join(', ')}`)
+const visualToolNames = new Set(['learning_visual_select', 'learning_visual'])
+
+function modelTools(): ModelToolSchema[] {
+  return ctx.tools.schemas()
+    .filter(schema => visualToolNames.has(schema.name))
+    .map(schema => ({
+      name: schema.name,
+      description: schema.description,
+      parameters: schema.parameters,
+    }))
 }
-// Keep this canary focused: the real request sees only the visual schema, so a
-// checkpoint cannot turn a single-turn rendering smoke into a user wait.
-const tools = schemas.filter(schema => schema.name === 'learning_visual').map(schema => ({
-  type: 'function' as const,
-  function: { name: schema.name, description: schema.description, parameters: schema.parameters },
-}))
+
+const initialCatalog = modelTools().map(tool => tool.name)
+if (!initialCatalog.includes('learning_visual_select') || initialCatalog.includes('learning_visual')) {
+  throw new Error(`initial Learning catalog must expose only the visual selector, received ${initialCatalog.join(', ')}`)
+}
+
 const assembledPrompt = await ctx.systemPrompt.assemble()
 const renderedPrompt = renderPrompt(assembledPrompt)
 const messages: ChatMessage[] = [
   { role: 'system', content: renderedPrompt },
-  {
-    role: 'user',
-    content: [
-      'Teach me why logistic regression needs a sigmoid instead of a straight line.',
-      'Use learning_visual exactly once to show observed 0/1 points beside a sigmoid curve.',
-      'Include adjustable intercept and slope, and a metric for the decision boundary -intercept/slope.',
-      'After the tool result, continue with a concise ordinary-text interpretation and then finish; do not call another tool.',
-    ].join(' '),
-  },
+  { role: 'user', content: 'Learn logistic regression.' },
 ]
 
 async function nextAssistant(): Promise<ChatMessage> {
+  const tools = modelTools().map(tool => ({
+    type: 'function' as const,
+    function: { name: tool.name, description: tool.description, parameters: tool.parameters },
+  }))
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
@@ -112,6 +127,14 @@ async function nextAssistant(): Promise<ChatMessage> {
   return assistant
 }
 
+function textOf(message: ChatMessage): string {
+  return message.content?.trim() ?? ''
+}
+
+function countQuestionMarks(value: string): number {
+  return [...value].filter(character => character === '?' || character === '？').length
+}
+
 function containsOp(value: unknown, expected: string): boolean {
   if (Array.isArray(value)) return value.some(item => containsOp(item, expected))
   if (typeof value !== 'object' || value === null) return false
@@ -119,13 +142,25 @@ function containsOp(value: unknown, expected: string): boolean {
   return record.op === expected || Object.values(record).some(item => containsOp(item, expected))
 }
 
+function parseToolArguments(call: ToolCall): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(call.function.arguments)
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new TypeError('arguments must be an object')
+    }
+    return parsed as Record<string, unknown>
+  } catch (cause) {
+    throw new Error(`model emitted invalid ${call.function.name} arguments`, { cause })
+  }
+}
+
 function validateCanaryVisual(call: ToolCall): LearningVisualV4 {
   if (call.function.name !== 'learning_visual') {
-    throw new Error(`expected learning_visual, received ${call.function.name}`)
+    throw new Error(`expected learning_visual after the selector, received ${call.function.name}`)
   }
   let visual: LearningVisualV4
   try {
-    visual = parseLearningVisualV4(JSON.parse(call.function.arguments))
+    visual = parseLearningVisualV4(parseToolArguments(call))
   } catch (cause) {
     throw new Error('model emitted an invalid learning_visual payload', { cause })
   }
@@ -145,55 +180,131 @@ function validateCanaryVisual(call: ToolCall): LearningVisualV4 {
   return visual
 }
 
-const first = await nextAssistant()
-const calls = first.tool_calls ?? []
-if (calls.length !== 1) {
-  throw new Error(`expected exactly one learning_visual call, received ${String(calls.length)}`)
+function contentFromResult(result: { content: Array<{ type: string; text?: string }> }): string {
+  return result.content
+    .filter(item => item.type === 'text')
+    .map(item => item.text ?? '')
+    .join('')
 }
-const call = calls[0]!
-const visual = validateCanaryVisual(call)
-messages.push(first)
 
-const result = await ctx.tools.execute({
-  signal: new AbortController().signal,
-  callId: CallId(call.id),
-  name: call.function.name,
-  arguments: visual,
-})
-const expectedResult = { protocol: VISUAL_RESULT_PROTOCOL_V4, status: 'ready' }
-if (result.isError || JSON.stringify(result.value) !== JSON.stringify(expectedResult)) {
-  throw new Error(`learning_visual did not return the immediate ready result: ${JSON.stringify(result)}`)
+const routeDecision = routeLearningRequest('Learn logistic regression.')
+if (routeDecision.route !== 'calibrate') {
+  throw new Error(`route helper regressed: expected calibrate, received ${routeDecision.route}`)
 }
-if (ctx.learningActivities.pendingCount !== 0) {
-  throw new Error('learning_visual incorrectly created a pending user-question wait')
+
+const calibration = await nextAssistant()
+if ((calibration.tool_calls ?? []).length !== 0) {
+  throw new Error('underspecified learning request triggered a tool before calibration')
 }
+if (countQuestionMarks(textOf(calibration)) !== 1) {
+  throw new Error(`underspecified learning request must ask exactly one calibration question: ${textOf(calibration)}`)
+}
+messages.push(calibration)
 messages.push({
-  role: 'tool',
-  tool_call_id: call.id,
-  content: result.content.filter(item => item.type === 'text').map(item => item.text).join(''),
+  role: 'user',
+  content: [
+    'I am a complete beginner and want the minimum concept first.',
+    'Explain why logistic regression uses a sigmoid instead of a straight line.',
+    'Use exactly one plot visual to show observed 0/1 points beside the sigmoid curve, with adjustable intercept and slope and a -intercept/slope decision-boundary metric.',
+    'After the visual result, explain it in concise ordinary text and ask at most one focused question. Do not call learning_state_update in this canary.',
+  ].join(' '),
 })
 
-const followUp = await nextAssistant()
-if ((followUp.tool_calls ?? []).length !== 0) {
-  throw new Error(`expected ordinary text after the ready result, received ${(followUp.tool_calls ?? []).length} extra tool call(s)`)
+let assistant = await nextAssistant()
+messages.push(assistant)
+let selectorCall: ToolCall | undefined
+let visualCall: ToolCall | undefined
+let visual: LearningVisualV4 | undefined
+let visualResult: unknown
+
+for (let step = 0; step < 4; step += 1) {
+  const calls = assistant.tool_calls ?? []
+  if (calls.length === 0) break
+  if (calls.length !== 1) throw new Error(`expected one teaching tool call per model step, received ${String(calls.length)}`)
+  const call = calls[0]!
+  if (call.function.name === 'learning_visual_select') {
+    if (selectorCall !== undefined) throw new Error('model selected more than one visual')
+    selectorCall = call
+    const selection = parseToolArguments(call)
+    if (selection.kind !== 'plot') {
+      throw new Error(`canary model selected ${String(selection.kind)}; expected plot for this relationship`)
+    }
+    const selected = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: CallId(call.id),
+      name: call.function.name,
+      arguments: selection,
+    })
+    if (selected.isError || (selected.value as { status?: unknown } | undefined)?.status !== 'selected') {
+      throw new Error(`learning_visual_select failed: ${JSON.stringify(selected)}`)
+    }
+    messages.push({
+      role: 'tool',
+      tool_call_id: call.id,
+      content: contentFromResult(selected),
+    })
+    const exposed = modelTools().map(tool => tool.name)
+    if (!exposed.includes('learning_visual') || exposed.filter(name => name === 'learning_visual').length !== 1) {
+      throw new Error(`selector did not expose exactly one visual payload schema: ${exposed.join(', ')}`)
+    }
+    assistant = await nextAssistant()
+    messages.push(assistant)
+    continue
+  }
+  if (call.function.name === 'learning_visual') {
+    if (selectorCall === undefined) throw new Error('model called the full visual schema before selecting a kind')
+    if (visualCall !== undefined) throw new Error('model called learning_visual more than once')
+    visualCall = call
+    visual = validateCanaryVisual(call)
+    const result = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: CallId(call.id),
+      name: call.function.name,
+      arguments: parseToolArguments(call),
+    })
+    const expectedResult = { protocol: VISUAL_RESULT_PROTOCOL_V4, status: 'ready' }
+    if (result.isError || JSON.stringify(result.value) !== JSON.stringify(expectedResult)) {
+      throw new Error(`learning_visual did not return the immediate ready result: ${JSON.stringify(result)}`)
+    }
+    if (ctx.learningActivities.pendingCount !== 0) {
+      throw new Error('learning_visual incorrectly created a pending user-question wait')
+    }
+    visualResult = expectedResult
+    messages.push({
+      role: 'tool',
+      tool_call_id: call.id,
+      content: contentFromResult(result),
+    })
+    assistant = await nextAssistant()
+    messages.push(assistant)
+    break
+  }
+  throw new Error(`unexpected canary tool call: ${call.function.name}`)
 }
-if ((followUp.content?.trim() ?? '') === '') {
+
+if (selectorCall === undefined || visualCall === undefined || visual === undefined) {
+  throw new Error('the beginner teaching turn did not complete selector → visual progressive disclosure')
+}
+if ((assistant.tool_calls ?? []).length !== 0) {
+  throw new Error(`expected ordinary text after the ready result, received ${(assistant.tool_calls ?? []).length} extra tool call(s)`)
+}
+if (textOf(assistant) === '') {
   throw new Error('model did not provide the ordinary-text interpretation after the visual')
 }
-messages.push(followUp)
 
 const capture: TeachingEvalCandidate = {
   caseId: 'parameter-relationship',
   activityKind: 'plot',
-  continuation: followUp.content ?? '',
+  continuation: assistant.content ?? '',
   endedSegment: false,
 }
 const teachingScenario = TEACHING_EVAL_CASES.find(item => item.id === capture.caseId)
 if (teachingScenario === undefined) throw new Error('parameter-relationship teaching scenario is missing')
 const teachingVerdict = gradeTeachingCandidate(teachingScenario, capture)
 if (!teachingVerdict.passed) {
-  throw new Error(`real-model smoke failed the deterministic teaching rubric: ${JSON.stringify(teachingVerdict.checks)}`)
+  throw new Error(`real-model canary failed the deterministic teaching rubric: ${JSON.stringify(teachingVerdict.checks)}`)
 }
+
 const capturePath = process.env.DSH_CANARY_CAPTURE_PATH?.trim()
 if (capturePath !== undefined && capturePath !== '') {
   const artifact = {
@@ -203,16 +314,16 @@ if (capturePath !== undefined && capturePath !== '') {
       model,
       capturedAt: new Date().toISOString(),
       promptSha256: createHash('sha256')
-        .update(JSON.stringify(messages.slice(0, 2)), 'utf8')
+        .update(JSON.stringify(messages), 'utf8')
         .digest('hex'),
       grader: 'gradeTeachingCandidate@v4.1',
-      scope: 'single V4 visual smoke; not a multi-turn teaching-quality result',
+      scope: 'two-turn route → minimum teaching → lazy visual schema canary; not a statistical teaching-quality result',
     },
     rawTranscript: messages,
     observedToolExecution: {
-      name: call.function.name,
-      arguments: visual,
-      result: expectedResult,
+      selector: { name: selectorCall.function.name, arguments: parseToolArguments(selectorCall) },
+      visual: { name: visualCall.function.name, arguments: visual },
+      result: visualResult,
       pendingCount: ctx.learningActivities.pendingCount,
     },
   }
@@ -222,13 +333,16 @@ if (capturePath !== undefined && capturePath !== '') {
 console.log(JSON.stringify({
   passed: true,
   evidence: 'real-model-canary',
-  scope: 'single V4 visual smoke; not a multi-turn teaching-quality result',
+  scope: 'two-turn route → minimum teaching → lazy visual schema; not a statistical teaching-quality result',
   model,
-  tool: 'learning_visual',
-  result: expectedResult,
+  route: routeDecision,
+  calibrationQuestion: calibration.content,
+  selector: selectorCall.function.name,
+  visual: visual.content.kind,
+  result: visualResult,
   series: visual.content.kind === 'plot' ? visual.content.series.map(series => series.type) : [],
   metrics: visual.content.kind === 'plot' ? visual.content.metrics?.map(metric => metric.id) : [],
-  followUp: followUp.content,
+  followUp: assistant.content,
   teachingVerdict,
   ...(capturePath === undefined || capturePath === '' ? {} : { capturePath }),
 }, null, 2))
