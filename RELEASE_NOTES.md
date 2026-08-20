@@ -1,10 +1,10 @@
-# DeepSeek Harness Desktop v1.4.0
+# DeepSeek Harness Desktop v1.4.1
 
 [中文](RELEASE_NOTES.zh.md)
 
 Windows x64, macOS Apple Silicon, and Linux x64 desktop release · 2026-08-20
 
-v1.4.0 upgrades the kernel to 0.1.0-rc.8, reworks the Learning interaction and teaching-state flow, and moves `view_image` onto the kernel's native attachment and model services. The Windows x64 artifacts are also rebuilt and verified under the new distribution identity.
+v1.4.1 carries the Learning visual-legibility refactor on the 0.1.0-rc.8 desktop baseline. It makes visual state measurable, keeps focus context readable, and rebuilds the Windows x64 artifacts under the new distribution identity.
 
 ## Learning Mode
 
@@ -12,25 +12,28 @@ v1.4.0 upgrades the kernel to 0.1.0-rc.8, reworks the Learning interaction and t
 - **More natural teaching flow**: ordinary answers remain the default. Non-blocking visuals appear only when they materially help, and understanding checks are reserved for moments that change the next teaching move instead of creating repeated Reveal/Continue steps.
 - **Session-scoped learning routes**: complex goals can keep a tentative route of up to six steps, advanced only by evidence the learner provides. State survives refresh, resume, and message compaction while remaining isolated after reset or session forks.
 - **Reliable visual state**: session updates no longer rewind sequences, collapse revealed recall cards, or resample curves. A composition without the Learning Client now reports the visual as unavailable and falls back to a complete prose explanation.
+- **Measurable visual states**: `overview`, `current`, `related`, `context`, `visited`, `inactive`, `selected`, and `disabled` use explicit strength data. `context` is 0.62, `inactive` is 0.55, and `disabled` is the only intentionally subdued state at 0.38; the value is applied once through `--lx-vs-alpha`.
+- **Readable node-link layout**: CJK-aware measurement and wrapping drive node sizes, columns, and the canvas. Group bands, edge-label backing, rectangle-boundary intersections, responsive centering, a 0.82 fit-to-width floor, and scroll fallback keep dense diagrams legible.
+- **Shared renderer contract**: all eight renderers use the same shell, controls, sequence rail, selection slot, empty state, legend, forced-colors, and reduced-motion primitives, backed by 63 visual-legibility checks.
 
 ## Vision and Kernel
 
-- **Kernel upgrade to rc.8**: the pinned DeepSeek Harness kernel moves from 0.1.0-rc.7 to 0.1.0-rc.8, and the desktop baseline is rebuilt as v1.4.0.
+- **Kernel baseline retained**: the pinned DeepSeek Harness kernel remains 0.1.0-rc.8 while the desktop baseline is rebuilt as v1.4.1.
 - **`view_image` on the native model path**: images are committed through the attachment service and sent to a configured image-capable model over the kernel LLM channel, reusing existing provider credentials, retries, and usage metering instead of maintaining a separate endpoint or API key.
 - **Capability-based model selection**: when no model is pinned, the bridge selects the first catalog route that declares image input; unavailable or explicitly text-only pinned models return actionable configuration guidance.
 
 ## Release & Update Reliability
 
-- **Synchronized release identity**: the bundled release manifest, updater checks, installer filenames, desktop documentation, and release-notes metadata all target v1.4.0.
+- **Synchronized release identity**: the bundled release manifest, updater checks, installer filenames, desktop documentation, and release-notes metadata all target v1.4.1.
 - **Verified artifact refresh**: the Windows ZIP and Setup installer are rebuilt from the current source, re-tested with native addon smoke checks, and accompanied by fresh SHA-256 values.
 - **Existing desktop capabilities retained**: the transparent plugin marketplace, native image attachments, no-console launcher, and overwrite-install recovery remain available.
 
 ## Components
 
-- Distribution: 1.4.0
+- Distribution: 1.4.1
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.0-rc.8 (@deepseek-ai/dsh-web-app)
-- Tag: v1.4.0
+- Tag: v1.4.1
 
 ## Checksums and security
 
