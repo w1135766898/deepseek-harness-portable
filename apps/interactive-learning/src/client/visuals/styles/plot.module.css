@@ -1,0 +1,321 @@
+/** `plot` and the cartesian furniture `scene_2d` shares with it. */
+
+.plotSvg,
+.sceneSvg {
+  display: block;
+  max-width: none;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+.parameterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: var(--lx-space-lg) var(--lx-space-3xl);
+}
+
+.parameter {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: auto 20px var(--lx-leading-micro);
+  gap: var(--lx-space-3xs);
+  cursor: pointer;
+  opacity: var(--lx-vs-alpha);
+}
+
+.parameterHeader {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--lx-space-lg);
+  color: var(--lx-label-secondary);
+  font-size: var(--lx-text-xs);
+  line-height: var(--lx-leading-sm);
+}
+
+.parameterHeader output {
+  color: var(--lx-accent);
+  font-size: var(--lx-text-sm);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--lx-weight-strong);
+}
+
+.parameter input {
+  width: 100%;
+  height: 4px;
+  align-self: center;
+  appearance: none;
+  border-radius: var(--lx-radius-pill);
+  background: linear-gradient(to right, var(--lx-accent) 0 var(--range-progress), var(--lx-border-default) var(--range-progress) 100%);
+  cursor: pointer;
+}
+
+.parameter input::-webkit-slider-runnable-track { height: 4px; background: transparent; }
+.parameter input::-moz-range-track { height: 4px; background: transparent; }
+
+.parameter input::-webkit-slider-thumb {
+  width: 17px;
+  height: 17px;
+  appearance: none;
+  margin-top: -6.5px;
+  border: 3px solid var(--lx-surface-base);
+  border-radius: var(--lx-radius-circle);
+  background: var(--lx-accent);
+  box-shadow: 0 0 0 1px var(--lx-accent);
+}
+
+.parameter input::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border: 3px solid var(--lx-surface-base);
+  border-radius: var(--lx-radius-circle);
+  background: var(--lx-accent);
+  box-shadow: 0 0 0 1px var(--lx-accent);
+}
+
+.parameterEnds {
+  display: flex;
+  justify-content: space-between;
+  color: var(--lx-label-tertiary);
+  font-size: var(--lx-text-micro);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lx-leading-micro);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: var(--lx-space-sm);
+  margin: 0;
+}
+
+.metrics > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--lx-space-3xs);
+  border: 1px solid var(--lx-border-subtle);
+  border-radius: var(--lx-radius-sm);
+  padding: var(--lx-space-sm) var(--lx-space-md);
+  background: var(--lx-surface-sunken);
+  opacity: var(--lx-vs-alpha);
+}
+
+.metrics dt {
+  overflow: hidden;
+  color: var(--lx-label-secondary);
+  font-size: var(--lx-text-micro);
+  line-height: var(--lx-leading-micro);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metrics dd {
+  margin: 0;
+  color: var(--lx-accent);
+  font-size: var(--lx-text-md);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--lx-weight-strong);
+  line-height: var(--lx-leading-base);
+}
+
+.plotFrame {
+  fill: var(--lx-surface-base);
+  stroke: var(--lx-border-default);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.gridLine {
+  stroke: var(--lx-border-subtle);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.zeroAxis {
+  stroke: var(--lx-border-strongest);
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
+
+.tickLabel {
+  fill: var(--lx-label-secondary);
+  font-size: var(--lx-text-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+.axisLabel {
+  fill: var(--lx-label-secondary);
+  font-size: var(--lx-text-2xs);
+  font-weight: var(--lx-weight-medium);
+}
+
+.seriesLine {
+  fill: none;
+  stroke: var(--visual-tone);
+  stroke-opacity: var(--lx-vs-alpha);
+  stroke-width: calc(2.4px + var(--lx-vs-ring) * 0.8px);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  transition: stroke-opacity var(--lx-motion-base) var(--lx-easing);
+}
+
+.seriesPoint,
+.probePoint {
+  fill: var(--visual-tone);
+  fill-opacity: var(--lx-vs-alpha);
+  stroke: var(--lx-surface-base);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.seriesBar {
+  fill: color-mix(in srgb, var(--visual-tone) 70%, transparent);
+  fill-opacity: var(--lx-vs-alpha);
+  stroke: var(--visual-tone);
+  stroke-opacity: var(--lx-vs-alpha);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.probeLine {
+  stroke: var(--lx-label-secondary);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.probeCard {
+  position: sticky;
+  bottom: 9px;
+  left: clamp(80px, var(--probe-x), calc(100% - 150px));
+  z-index: 2;
+  display: grid;
+  width: max-content;
+  max-width: 210px;
+  gap: var(--lx-space-3xs);
+  margin-top: -64px;
+  margin-bottom: 9px;
+  border: 1px solid var(--lx-border-strong);
+  border-radius: var(--lx-radius-sm);
+  padding: var(--lx-space-xs) var(--lx-space-sm);
+  background: var(--lx-surface-base);
+  box-shadow: var(--lx-shadow-md);
+  color: var(--lx-label-secondary);
+  font-size: var(--lx-text-micro);
+  line-height: var(--lx-leading-micro);
+  pointer-events: none;
+}
+
+.probeCard strong { color: var(--lx-label-primary); font-size: var(--lx-text-2xs); }
+.probeCard span::before { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: var(--lx-radius-circle); background: var(--visual-tone); content: ""; }
+
+/* An empty plot explains itself instead of presenting a blank frame. */
+.emptyPlotNotice {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max-content;
+  max-width: min(92%, 320px);
+  transform: translate(-50%, -50%);
+  border: 1px dashed var(--lx-border-strong);
+  border-radius: var(--lx-radius-md);
+  padding: var(--lx-space-sm) var(--lx-space-lg);
+  background: var(--lx-surface-base);
+  color: var(--lx-label-secondary);
+  font-size: var(--lx-text-xs);
+  line-height: var(--lx-leading-xs);
+  text-align: center;
+  pointer-events: none;
+}
+
+.seriesToggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lx-space-sm);
+}
+
+.seriesToggle {
+  border-radius: var(--lx-radius-pill);
+  padding: var(--lx-space-2xs) var(--lx-space-md);
+}
+
+.seriesToggle > span {
+  display: inline-block;
+  width: 18px;
+  height: 0;
+  border-top: 2.5px solid var(--visual-tone);
+}
+
+.seriesToggle[data-series-type="points"] > span { width: 8px; height: 8px; border: 0; border-radius: var(--lx-radius-circle); background: var(--visual-tone); }
+.seriesToggle[data-series-type="bars"] > span { width: 9px; height: 10px; border: 0; border-radius: 1px; background: color-mix(in srgb, var(--visual-tone) 72%, transparent); }
+.seriesToggle[data-stroke="dashed"] > span { border-top-style: dashed; }
+.seriesToggle[data-stroke="dotted"] > span { border-top-style: dotted; }
+
+/* A hidden series stays legible: struck through and quieter, never erased. */
+.seriesToggle[aria-pressed="false"] { color: var(--lx-label-tertiary); text-decoration: line-through; }
+.seriesToggle[aria-pressed="false"] > span { opacity: 0.55; }
+.seriesToggle[data-empty] { border-style: dashed; }
+.seriesToggle[data-empty] > small { color: var(--lx-label-tertiary); font-size: var(--lx-text-micro); }
+
+/* ------------------------------------------------------------- scene_2d */
+
+.sceneElement { cursor: pointer; }
+
+.sceneLine {
+  stroke: var(--visual-tone);
+  stroke-opacity: var(--lx-vs-alpha);
+  stroke-width: calc(2.2px + var(--lx-vs-ring) * 0.8px);
+  vector-effect: non-scaling-stroke;
+}
+
+.sceneHit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  pointer-events: stroke;
+  vector-effect: non-scaling-stroke;
+}
+
+.scenePoint {
+  fill: var(--visual-tone);
+  fill-opacity: var(--lx-vs-alpha);
+  stroke: var(--lx-surface-base);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.sceneShape {
+  fill: color-mix(in srgb, var(--visual-tone) 13%, transparent);
+  fill-opacity: var(--lx-vs-alpha);
+  stroke: var(--visual-tone);
+  stroke-opacity: var(--lx-vs-alpha);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.sceneElement:hover .sceneShape,
+.sceneElement:focus-visible .sceneShape,
+.sceneElement[data-selected] .sceneShape { fill: color-mix(in srgb, var(--visual-tone) 24%, transparent); fill-opacity: 1; stroke-opacity: 1; stroke-width: 3; }
+
+.sceneText,
+.shapeLabel {
+  fill: var(--lx-label-primary);
+  stroke: var(--lx-surface-base);
+  stroke-width: 3px;
+  paint-order: stroke;
+  font-size: var(--lx-text-2xs);
+  font-weight: var(--lx-weight-medium);
+  opacity: var(--lx-vs-alpha);
+  pointer-events: none;
+}
+
+.shapeLabel { fill: var(--visual-tone); }
+
+.arrowMarker path { fill: var(--visual-tone); fill-opacity: var(--lx-vs-alpha); }
+
+@media (prefers-reduced-motion: reduce) {
+  .seriesLine { transition: none; }
+}
