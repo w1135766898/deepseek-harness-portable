@@ -57,6 +57,8 @@ Before first launch, verify the checksum published alongside the artifact. Windo
 - Native sidebar logo and system theme sync, Windows 11 Mica/title-bar styling, native macOS menus, a staged startup splash, and persisted multi-monitor-safe window bounds.
 - Minimal mode uses WSL Bash on Windows and the native `/bin/bash` POSIX PTY on Linux/macOS. Linux sandbox-capable modes use bwrap or fail-closed Landlock according to the upstream policy.
 - Preinstalled, removable plugin marketplace with paginated GitHub search, one-click installation, update management, and agent-facing market tools.
+- Vision Bridge's `view_image` analyzes local PNG, JPEG, WebP, and GIF files through the kernel attachment and model services. It can automatically select a configured image-capable model or pin one in plugin settings, with no separate endpoint or API key.
+- Learning mode provides non-blocking semantic visuals, selective understanding checks, and session-scoped learning routes. Teaching state advances from learner evidence and survives refresh, resume, and message compaction.
 
 ## Latest release
 
@@ -157,6 +159,7 @@ Minimal mode runs the requested shell command unchanged. Recursive `grep` over t
 | [Desktop shell guide](apps/desktop/README.md) | Desktop contributors | Electron behavior, native output layout, tests, and release identity |
 | [Runtime architecture and release gates](docs/runtime-architecture.md) | Runtime and release maintainers | Capability probes, mode contracts, manifests, CI, and signing gates |
 | [Interactive Learning pack](apps/interactive-learning/README.md) | Feature contributors | Protocol boundaries, development workflow, activation, and compatibility |
+| [Vision Bridge](apps/vision-bridge/README.md) | Users and feature contributors | Image-model routing, configuration, failure behavior, and development checks |
 | [Release notes](RELEASE_NOTES.md) | Users and maintainers | User-visible changes and upgrade information |
 
 ## Build and release

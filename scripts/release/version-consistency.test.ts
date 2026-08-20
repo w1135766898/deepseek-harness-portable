@@ -57,7 +57,7 @@ test('the approved product version is synchronized across release metadata and d
     ['apps/desktop/使用说明.en.txt', [`DeepSeek Harness for Win v${approvedReleaseVersion}`]],
     ['RELEASE_NOTES.md', [`DeepSeek Harness Desktop v${approvedReleaseVersion}`, `Distribution: ${approvedReleaseVersion}`, `Tag: v${approvedReleaseVersion}`]],
     ['RELEASE_NOTES.zh.md', [`DeepSeek Harness Desktop v${approvedReleaseVersion}`, `分发：${approvedReleaseVersion}`, `标签：v${approvedReleaseVersion}`]],
-    ['RELEASE_NOTES.bilingual.md', [`DeepSeek Harness for Win v${approvedReleaseVersion}`, `分发：${approvedReleaseVersion}`, `Distribution: ${approvedReleaseVersion}`, `DeepSeek-Harness-${approvedReleaseVersion}-win32-x64.zip`, `DeepSeek-Harness-Setup-${approvedReleaseVersion}-win32-x64.exe`]],
+    ['RELEASE_NOTES.bilingual.md', [`DeepSeek Harness Desktop v${approvedReleaseVersion}`, `分发：${approvedReleaseVersion}`, `Distribution: ${approvedReleaseVersion}`, `DeepSeek-Harness-${approvedReleaseVersion}-win32-x64.zip`, `DeepSeek-Harness-Setup-${approvedReleaseVersion}-win32-x64.exe`]],
     ['SHA256SUMS.txt', [`DeepSeek-Harness-${approvedReleaseVersion}-win32-x64.zip`, `DeepSeek-Harness-Setup-${approvedReleaseVersion}-win32-x64.exe`]],
   ])
   for (const [path, needles] of requiredText) {

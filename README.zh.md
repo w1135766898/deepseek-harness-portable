@@ -57,6 +57,8 @@ DeepSeek Harness Desktop 是 [DeepSeek Harness](https://github.com/deepseek-ai/d
 - 原生侧边栏 Logo 集成桌面菜单、系统主题同步、Windows 11 Mica/标题栏样式、macOS 原生菜单、分阶段启动过渡，以及适配多显示器的窗口状态记忆。
 - 极简模式在 Windows 使用 WSL Bash，在 Linux/macOS 使用原生 `/bin/bash` POSIX PTY；Linux 沙箱模式遵循上游 bwrap/Landlock 失败关闭策略。
 - 预装可移除的插件市场，支持 GitHub 分页搜索、一键安装、插件更新管理和 Agent 市场工具。
+- Vision Bridge 的 `view_image` 复用内核附件与模型服务分析本地 PNG、JPEG、WebP 和 GIF；可自动选择已配置的图片模型，也可在插件设置中固定模型，不需要单独配置端点或 API 密钥。
+- Learning 模式提供非阻塞的语义图示、按需理解检查和会话内学习路线；教学状态依据学习者证据更新，并可随刷新、恢复和消息压缩延续。
 
 ## 最新发布
 
@@ -157,6 +159,7 @@ Smart App Control 可能直接阻止未签名的应用。如果设备已启用�
 | [桌面外壳说明](apps/desktop/README.zh.md) | 桌面端贡献者 | Electron 行为、原生产物目录、测试和发布身份 |
 | [运行时架构与发布门禁](docs/runtime-architecture.md) | Runtime 与发布维护者 | 能力探测、模式契约、Manifest、CI 和签名门禁 |
 | [交互式学习包](apps/interactive-learning/README.zh.md) | 功能贡献者 | 协议边界、开发流程、启用方式和兼容性 |
+| [Vision Bridge](apps/vision-bridge/README.zh.md) | 用户与功能贡献者 | 图片模型路由、配置、失败行为和开发验证 |
 | [发布说明](RELEASE_NOTES.zh.md) | 用户与维护者 | 用户可见变更和升级信息 |
 
 ## 构建与发布

@@ -4,27 +4,53 @@
   "publishedAt": "2026-08-20",
   "sections": [
     {
+      "key": "learning",
+      "titleEn": "Learning Mode",
+      "titleZh": "Learning 模式",
+      "itemsEn": [
+        "Unified Learning UI: teaching visuals and optional understanding checks now share design tokens, card styling, and focus behavior, with keyboard navigation, screen-reader announcements, and structured text alternatives.",
+        "More natural teaching flow: ordinary answers remain the default; non-blocking visuals and understanding checks appear only when they materially help the next teaching move.",
+        "Session-scoped learning routes: complex goals can keep a tentative route of up to six evidence-driven steps that survives refresh, resume, and message compaction.",
+        "Reliable visual state: session updates no longer rewind sequences, collapse revealed recall cards, or resample curves; missing Learning Client support now produces a complete prose fallback."
+      ],
+      "itemsZh": [
+        "统一学习界面：教学图示与可选的理解检查共用设计令牌、卡片样式和焦点规范，并支持键盘浏览、屏幕阅读器读数和结构化文字替代。",
+        "更自然的教学流程：普通回答仍是默认路径；非阻塞图示和理解检查只在确实有助于下一步教学策略时出现。",
+        "会话内学习路线：复杂目标可以维护最多六步、按证据推进的暂定路线，并随刷新、恢复和消息压缩延续。",
+        "可靠的图示状态：会话更新不再导致步骤图回退、回忆卡折叠或曲线重新采样；缺少 Learning Client 时会提供完整文字降级。"
+      ]
+    },
+    {
+      "key": "vision",
+      "titleEn": "Vision and Kernel",
+      "titleZh": "视觉能力与内核",
+      "itemsEn": [
+        "Kernel upgrade to rc.8: the pinned DeepSeek Harness kernel moves from 0.1.0-rc.7 to 0.1.0-rc.8, and the desktop baseline is rebuilt as v1.4.0.",
+        "view_image on the native model path: images use the kernel attachment and LLM services, reusing configured provider credentials, retries, and usage metering.",
+        "Capability-based model selection: the bridge can automatically select a catalog route that declares image input and reports actionable guidance for invalid pinned models."
+      ],
+      "itemsZh": [
+        "内核升级到 rc.8：固定的 DeepSeek Harness 内核从 0.1.0-rc.7 升级到 0.1.0-rc.8，桌面基线随之重建为 v1.4.0。",
+        "view_image 改走原生模型通道：图片使用内核附件与 LLM 服务，沿用已配置的服务商凭据、重试策略和用量计量。",
+        "按能力选择模型：视觉桥接可自动选择模型目录中声明支持图片输入的路由，并为无效的固定模型提供可操作提示。"
+      ]
+    },
+    {
       "key": "improvements",
       "titleEn": "Release & Update Reliability",
       "titleZh": "发布与更新可靠性",
       "itemsEn": [
-        "Kernel upgrade to rc.8: the pinned DeepSeek Harness kernel moves from 0.1.0-rc.7 to 0.1.0-rc.8, and the desktop baseline is rebuilt on it as distribution v1.4.0 with a new Windows x64 portable ZIP and Setup installer.",
-        "Vision Bridge on the native model path: view_image now commits images through the attachment service and calls a configured image-capable model over the kernel LLM channel, reusing your existing provider credentials, retry policy, and usage metering instead of its own endpoint and API key.",
-        "Synchronized release identity: the bundled release manifest, updater checks, installer filenames, desktop documentation, and release-notes metadata all target v1.4.0.",
-        "Verified artifact refresh: the Windows ZIP and Setup installer are rebuilt from the current source, re-tested with native addon smoke checks, and accompanied by fresh SHA-256 values.",
-        "Feature baseline retained: the build keeps the v1.3.3 Learning visuals and native choices, transparent plugin marketplace, native image attachments, no-console launcher, and overwrite-install recovery improvements."
+        "Synchronized release identity: the bundled manifest, updater checks, installer filenames, desktop documentation, and release-notes metadata all target v1.4.0.",
+        "Verified artifact refresh: the Windows ZIP and Setup installer are rebuilt from current source, re-tested with native addon smoke checks, and accompanied by fresh SHA-256 values."
       ],
       "itemsZh": [
-        "内核升级到 rc.8：固定的 DeepSeek Harness 内核从 0.1.0-rc.7 升级到 0.1.0-rc.8，并在其之上将桌面基线重建为 1.4.0，生成新的 Windows x64 便携 ZIP 与 Setup 安装包。",
-        "视觉辅助改走原生模型通道：view_image 现在通过附件服务提交图片，并经内核 LLM 通道调用已配置的图像模型，沿用你现有的服务商凭据、重试策略与用量计量，不再单独维护端点与 API 密钥。",
-        "发布身份同步：内置发布清单、更新器校验、安装器文件名、桌面文档和更新日志元数据统一指向 v1.4.0。",
-        "已验证产物刷新：Windows ZIP 与 Setup 安装包从当前源码重新构建，完成原生插件 smoke 检查，并生成新的 SHA-256 校验值。",
-        "保留既有功能基线：继续保留 v1.3.3 的 Learning 图示与原生选择、透明插件市场、原生图片附件、无控制台启动器和覆盖安装恢复能力。"
+        "发布身份同步：内置清单、更新器校验、安装器文件名、桌面文档和更新日志元数据统一指向 v1.4.0。",
+        "已验证产物刷新：Windows ZIP 与 Setup 安装包从当前源码重新构建，完成原生插件 smoke 检查，并生成新的 SHA-256 校验值。"
       ]
     }
   ],
-  "bodyZh": "## 发布与更新可靠性\n\n- **内核升级到 rc.8**：固定的 DeepSeek Harness 内核从 0.1.0-rc.7 升级到 0.1.0-rc.8，并在其之上将桌面基线重建为 1.4.0，生成新的 Windows x64 便携 ZIP 与 Setup 安装包。\n- **视觉辅助改走原生模型通道**：`view_image` 现在通过附件服务提交图片，并经内核 LLM 通道调用已配置的图像模型，沿用你现有的服务商凭据、重试策略与用量计量，不再单独维护端点与 API 密钥。\n- **发布身份同步**：内置发布清单、更新器校验、安装器文件名、桌面文档和更新日志元数据统一指向 v1.4.0。\n- **已验证产物刷新**：Windows ZIP 与 Setup 安装包从当前源码重新构建，完成原生插件 smoke 检查，并生成新的 SHA-256 校验值。\n- **保留既有功能基线**：继续保留 v1.3.3 的 Learning 图示与原生选择、透明插件市场、原生图片附件、无控制台启动器和覆盖安装恢复能力。",
-  "bodyEn": "## Release & Update Reliability\n\n- **Kernel upgrade to rc.8**: the pinned DeepSeek Harness kernel moves from 0.1.0-rc.7 to 0.1.0-rc.8, and the desktop baseline is rebuilt on it as distribution v1.4.0 with a new Windows x64 portable ZIP and Setup installer.\n- **Vision Bridge on the native model path**: `view_image` now commits images through the attachment service and calls a configured image-capable model over the kernel LLM channel, reusing your existing provider credentials, retry policy, and usage metering instead of its own endpoint and API key.\n- **Synchronized release identity**: the bundled release manifest, updater checks, installer filenames, desktop documentation, and release-notes metadata all target v1.4.0.\n- **Verified artifact refresh**: the Windows ZIP and Setup installer are rebuilt from the current source, re-tested with native addon smoke checks, and accompanied by fresh SHA-256 values.\n- **Feature baseline retained**: the build keeps the v1.3.3 Learning visuals and native choices, transparent plugin marketplace, native image attachments, no-console launcher, and overwrite-install recovery improvements.",
+  "bodyZh": "## Learning 模式\n\n- **统一学习界面**：教学图示与可选的理解检查共用设计令牌、卡片样式和焦点规范，并支持键盘浏览、屏幕阅读器读数和结构化文字替代。\n- **更自然的教学流程**：普通回答仍是默认路径；非阻塞图示和理解检查只在确实有助于下一步教学策略时出现。\n- **会话内学习路线**：复杂目标可以维护最多六步、按证据推进的暂定路线，并随刷新、恢复和消息压缩延续。\n- **可靠的图示状态**：会话更新不再导致步骤图回退、回忆卡折叠或曲线重新采样；缺少 Learning Client 时会提供完整文字降级。\n\n## 视觉能力与内核\n\n- **内核升级到 rc.8**：固定的 DeepSeek Harness 内核从 0.1.0-rc.7 升级到 0.1.0-rc.8，桌面基线随之重建为 v1.4.0。\n- **`view_image` 改走原生模型通道**：图片使用内核附件与 LLM 服务，沿用已配置的服务商凭据、重试策略和用量计量。\n- **按能力选择模型**：视觉桥接可自动选择模型目录中声明支持图片输入的路由，并为无效的固定模型提供可操作提示。\n\n## 发布与更新可靠性\n\n- **发布身份同步**：内置清单、更新器校验、安装器文件名、桌面文档和更新日志元数据统一指向 v1.4.0。\n- **已验证产物刷新**：Windows ZIP 与 Setup 安装包从当前源码重新构建，完成原生插件 smoke 检查，并生成新的 SHA-256 校验值。",
+  "bodyEn": "## Learning Mode\n\n- **Unified Learning UI**: teaching visuals and optional understanding checks now share design tokens, card styling, and focus behavior, with keyboard navigation, screen-reader announcements, and structured text alternatives.\n- **More natural teaching flow**: ordinary answers remain the default; non-blocking visuals and understanding checks appear only when they materially help the next teaching move.\n- **Session-scoped learning routes**: complex goals can keep a tentative route of up to six evidence-driven steps that survives refresh, resume, and message compaction.\n- **Reliable visual state**: session updates no longer rewind sequences, collapse revealed recall cards, or resample curves; missing Learning Client support now produces a complete prose fallback.\n\n## Vision and Kernel\n\n- **Kernel upgrade to rc.8**: the pinned DeepSeek Harness kernel moves from 0.1.0-rc.7 to 0.1.0-rc.8, and the desktop baseline is rebuilt as v1.4.0.\n- **`view_image` on the native model path**: images use the kernel attachment and LLM services, reusing configured provider credentials, retries, and usage metering.\n- **Capability-based model selection**: the bridge can automatically select a catalog route that declares image input and reports actionable guidance for invalid pinned models.\n\n## Release & Update Reliability\n\n- **Synchronized release identity**: the bundled manifest, updater checks, installer filenames, desktop documentation, and release-notes metadata all target v1.4.0.\n- **Verified artifact refresh**: the Windows ZIP and Setup installer are rebuilt from current source, re-tested with native addon smoke checks, and accompanied by fresh SHA-256 values.",
   "history": [
     {
       "version": "1.3.3",
