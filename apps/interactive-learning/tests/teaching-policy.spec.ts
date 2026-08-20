@@ -109,6 +109,18 @@ describe('authoritative Learning teaching policy', () => {
     )
   })
 
+  it('requires a visual whose frames carry the context its subject needs', () => {
+    expectPolicyToCover(
+      'A payload that satisfies the schema can still be unreadable',
+      'do not rely on an id, an index, or a color as the only carrier of meaning',
+      'so a red branch is not read as "the wrong answer" by accident',
+      'Add a sequence only when the idea genuinely has stages',
+      'the first one establishes the whole structure rather than isolating one element',
+      'the parent node, the edge that reaches it, and the target it leads to for a graph',
+      'Never focus a single element whose parents, incoming edge, or surrounding group are left out',
+    )
+  })
+
   it('prioritizes source-grounded study without becoming an automatic summarizer', () => {
     expectPolicyToCover(
       'distinguish a summary or extraction request from a learning request',
