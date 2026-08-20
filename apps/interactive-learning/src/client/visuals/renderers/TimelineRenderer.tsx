@@ -11,6 +11,9 @@ import css from '../styles/timeline.module.css'
 
 type Selection = { label: string; detail?: string; kind: string }
 
+/** Vertical distance from the axis to the top of an upper-row event card. */
+const CARD_OFFSET = 72
+
 function timelinePosition(event: TimelineContent['events'][number], index: number, count: number): number {
   if (event.position !== undefined) return Math.max(0, Math.min(1, event.position))
   return count <= 1 ? 0.5 : index / (count - 1)
@@ -60,7 +63,12 @@ export function TimelineRenderer({ content, focus }: RendererProps<TimelineConte
   const eventCount = content.events.length
   const minimumWidth = 120 + Math.max(0, eventCount - 1) * 136
   const width = Math.max(minimumWidth, Math.floor(containerWidth) - 2)
-  const axisY = 66 + Math.min(4, eras.length) * 28
+  // The era lane is laid out first, then the axis is pushed far enough down
+  // that the upper row of event cards clears it. Deriving the axis from a
+  // constant instead put a two-row era lane underneath the first event card.
+  const eraRows = Math.min(4, eras.length)
+  const eraLaneBottom = eras.length === 0 ? 0 : 14 + (eraRows - 1) * 28 + 26
+  const axisY = Math.max(90, eraLaneBottom + 8 + CARD_OFFSET)
   const height = axisY + 130
   const inset = 66
   const eventX = (event: TimelineContent['events'][number], index: number): number => inset + timelinePosition(event, index, content.events.length) * (width - inset * 2)
@@ -96,7 +104,7 @@ export function TimelineRenderer({ content, focus }: RendererProps<TimelineConte
               data-side={index % 2 === 0 ? 'top' : 'bottom'}
               data-visual-state={elementState(event.id, focus)}
               data-visual-id={event.id}
-              style={{ left: eventX(event, index), top: index % 2 === 0 ? axisY - 72 : axisY + 24 } as CSSProperties}
+              style={{ left: eventX(event, index), top: index % 2 === 0 ? axisY - CARD_OFFSET : axisY + 24 } as CSSProperties}
               onClick={() => selectEvent(event)}
             >
               <span>{event.time}</span><strong>{event.label}</strong>

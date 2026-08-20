@@ -85,14 +85,16 @@
   transition: opacity var(--lx-motion-fast) var(--lx-easing);
 }
 
-/* A dense graph shows only the labels that are currently meaningful. */
+/* A dense graph shows only the labels that are currently meaningful. `related`
+   is deliberately excluded: in a fully connected layer every edge leaving the
+   focused nodes is related, and drawing twelve chips in one column is the same
+   unreadable pile as drawing all twenty. */
 .graphSvg[data-dense-edges] .edgeLabel { opacity: 0; }
 
 .graphSvg[data-dense-edges] .edgeGroup:hover .edgeLabel,
 .graphSvg[data-dense-edges] .edgeGroup:focus-visible .edgeLabel,
 .graphSvg[data-dense-edges] .edgeGroup[data-selected] .edgeLabel,
-.graphSvg[data-dense-edges] .edgeGroup[data-visual-state="current"] .edgeLabel,
-.graphSvg[data-dense-edges] .edgeGroup[data-visual-state="related"] .edgeLabel { opacity: 1; }
+.graphSvg[data-dense-edges] .edgeGroup[data-visual-state="current"] .edgeLabel { opacity: 1; }
 
 .nodeShape {
   fill: color-mix(in srgb, var(--visual-tone) 12%, var(--lx-surface-base));

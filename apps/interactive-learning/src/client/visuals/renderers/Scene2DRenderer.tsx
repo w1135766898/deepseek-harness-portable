@@ -10,6 +10,26 @@ import { chartGeometry, scaleX, scaleY } from '../layout/chart-geometry.ts'
 import shell from '../styles/shell.module.css'
 import css from '../styles/plot.module.css'
 
+/**
+ * Place a segment or arrow label clear of its own line.
+ *
+ * A flat vertical offset drops the label onto whatever else crosses the middle
+ * of the figure — in a parallelogram construction the resultant's label, the
+ * shape's label and a declared text anchor all landed on the same few pixels.
+ * Offsetting along the segment's normal separates them by construction.
+ */
+function segmentLabelAnchor(x1: number, y1: number, x2: number, y2: number): { x: number; y: number } {
+  const length = Math.hypot(x2 - x1, y2 - y1) || 1
+  const normalX = -(y2 - y1) / length
+  const normalY = (x2 - x1) / length
+  // Prefer the side that reads as "above" the line.
+  const direction = normalY > 0 ? -1 : 1
+  return {
+    x: (x1 + x2) / 2 + normalX * 13 * direction,
+    y: (y1 + y2) / 2 + normalY * 13 * direction,
+  }
+}
+
 export function Scene2DRenderer({ content, focus }: RendererProps<Scene2DContent>) {
   const labels = useVisualLabels()
   const id = useId()
@@ -88,7 +108,10 @@ export function Scene2DRenderer({ content, focus }: RendererProps<Scene2DContent
                 const y1 = scaleY(element.y1, content.yAxis, geometry)
                 const x2 = scaleX(element.x2, content.xAxis, geometry)
                 const y2 = scaleY(element.y2, content.yAxis, geometry)
-                return <g key={element.id} {...common} data-stroke={element.stroke ?? 'solid'}><line className={css.sceneLine} x1={x1} y1={y1} x2={x2} y2={y2} markerEnd={element.type === 'arrow' ? `url(#${id}-scene-arrow-${tone})` : undefined} /><line className={css.sceneHit} x1={x1} y1={y1} x2={x2} y2={y2} />{element.label === undefined ? null : <text className={css.shapeLabel} x={(x1 + x2) / 2} y={(y1 + y2) / 2 - 8} textAnchor="middle">{element.label}</text>}</g>
+                return <g key={element.id} {...common} data-stroke={element.stroke ?? 'solid'}><line className={css.sceneLine} x1={x1} y1={y1} x2={x2} y2={y2} markerEnd={element.type === 'arrow' ? `url(#${id}-scene-arrow-${tone})` : undefined} /><line className={css.sceneHit} x1={x1} y1={y1} x2={x2} y2={y2} />{element.label === undefined ? null : (() => {
+                  const anchor = segmentLabelAnchor(x1, y1, x2, y2)
+                  return <text className={css.shapeLabel} x={anchor.x} y={anchor.y} textAnchor="middle" dominantBaseline="middle">{element.label}</text>
+                })()}</g>
               }
               if (element.type === 'circle') {
                 const cx = scaleX(element.cx, content.xAxis, geometry)
@@ -107,7 +130,9 @@ export function Scene2DRenderer({ content, focus }: RendererProps<Scene2DContent
               if (element.type === 'polygon') {
                 const points = element.points.map(point => `${scaleX(point.x, content.xAxis, geometry)},${scaleY(point.y, content.yAxis, geometry)}`).join(' ')
                 const center = element.points.reduce((total, point) => ({ x: total.x + point.x / element.points.length, y: total.y + point.y / element.points.length }), { x: 0, y: 0 })
-                return <g key={element.id} {...common}><polygon className={css.sceneShape} points={points} />{element.label === undefined ? null : <text className={css.shapeLabel} x={scaleX(center.x, content.xAxis, geometry)} y={scaleY(center.y, content.yAxis, geometry)} textAnchor="middle" dominantBaseline="middle">{element.label}</text>}</g>
+                // Below the centroid: any diagonal drawn through the shape passes
+                // straight across it, and its own label would sit on top.
+                return <g key={element.id} {...common}><polygon className={css.sceneShape} points={points} />{element.label === undefined ? null : <text className={css.shapeLabel} x={scaleX(center.x, content.xAxis, geometry)} y={scaleY(center.y, content.yAxis, geometry) + 18} textAnchor="middle" dominantBaseline="middle">{element.label}</text>}</g>
               }
               if (element.type === 'label') return <g key={element.id} {...common}><text className={css.sceneText} x={scaleX(element.x, content.xAxis, geometry)} y={scaleY(element.y, content.yAxis, geometry)} textAnchor="middle" dominantBaseline="middle">{element.text}</text></g>
               return null
