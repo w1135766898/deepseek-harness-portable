@@ -5682,7 +5682,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:src/client/visuals/styles/graph.module.css.mjs
-		const css$5 = ".HtX4sa_graphSvg{touch-action:pan-y;max-width:none;display:block;overflow:visible}.HtX4sa_layerBand rect{fill:color-mix(in srgb, var(--lx-label-primary) 3%, transparent);stroke:var(--lx-border-subtle);stroke-width:1px;vector-effect:non-scaling-stroke}.HtX4sa_layerLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-2xs);font-weight:var(--lx-weight-strong);letter-spacing:.02em;opacity:var(--lx-vs-alpha)}.HtX4sa_edgeGroup,.HtX4sa_nodeGroup{cursor:pointer}.HtX4sa_edgeVisible{fill:none;stroke:var(--visual-tone);stroke-opacity:var(--lx-vs-alpha);stroke-width:calc(1.7px + var(--lx-vs-ring) * 1.1px);stroke-linecap:round;vector-effect:non-scaling-stroke;transition:stroke-opacity var(--lx-motion-base) var(--lx-easing), stroke-width var(--lx-motion-base) var(--lx-easing)}.HtX4sa_edgeHit{fill:none;stroke:#0000;stroke-width:14px;pointer-events:stroke;vector-effect:non-scaling-stroke}.HtX4sa_edgeGroup:hover .HtX4sa_edgeVisible,.HtX4sa_edgeGroup:focus-visible .HtX4sa_edgeVisible,.HtX4sa_edgeGroup[data-selected] .HtX4sa_edgeVisible{stroke-opacity:1;stroke-width:3px}.HtX4sa_arrowMarker path{fill:var(--visual-tone);fill-opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel rect{fill:var(--lx-surface-base);stroke:color-mix(in srgb, var(--visual-tone) 26%, var(--lx-border-subtle));stroke-width:1px;vector-effect:non-scaling-stroke;opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel text{fill:var(--lx-label-primary);font-weight:var(--lx-weight-medium);opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel{pointer-events:none;transition:opacity var(--lx-motion-fast) var(--lx-easing)}.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeLabel{opacity:0}.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup:hover .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup:focus-visible .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup[data-selected] .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup[data-visual-state=current] .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup[data-visual-state=related] .HtX4sa_edgeLabel{opacity:1}.HtX4sa_nodeShape{fill:color-mix(in srgb, var(--visual-tone) 12%, var(--lx-surface-base));fill-opacity:var(--lx-vs-alpha);stroke:var(--visual-tone);stroke-opacity:var(--lx-vs-alpha);stroke-width:calc(1.6px + var(--lx-vs-ring) * 1.2px);vector-effect:non-scaling-stroke;transition:fill-opacity var(--lx-motion-base) var(--lx-easing), stroke-opacity var(--lx-motion-base) var(--lx-easing), stroke-width var(--lx-motion-base) var(--lx-easing)}.HtX4sa_nodeRing{fill:none;stroke:var(--visual-tone);stroke-width:2px;stroke-opacity:calc(var(--lx-vs-ring) * .34);vector-effect:non-scaling-stroke;transition:stroke-opacity var(--lx-motion-base) var(--lx-easing)}.HtX4sa_nodeLabel{fill:var(--lx-label-primary);font-weight:var(--lx-weight-medium);opacity:var(--lx-vs-alpha);pointer-events:none}.HtX4sa_nodeGroup[data-visual-state=current] .HtX4sa_nodeLabel,.HtX4sa_nodeGroup[data-visual-state=selected] .HtX4sa_nodeLabel{font-weight:var(--lx-weight-strong)}.HtX4sa_nodeGroup:hover .HtX4sa_nodeShape,.HtX4sa_nodeGroup:focus-visible .HtX4sa_nodeShape,.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeShape{fill:color-mix(in srgb, var(--visual-tone) 22%, var(--lx-surface-base));fill-opacity:1;stroke-opacity:1;stroke-width:2.6px}.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeRing{stroke-opacity:.5}[data-stroke=dashed] .HtX4sa_edgeVisible{stroke-dasharray:9 6}[data-stroke=dotted] .HtX4sa_edgeVisible{stroke-dasharray:2 6}@media (prefers-reduced-motion:reduce){.HtX4sa_edgeVisible,.HtX4sa_edgeLabel,.HtX4sa_nodeShape,.HtX4sa_nodeRing{transition:none}}@media (forced-colors:active){.HtX4sa_nodeShape{fill:canvas;stroke:canvastext}.HtX4sa_edgeVisible{stroke:canvastext}.HtX4sa_nodeGroup[data-visual-state=current] .HtX4sa_nodeShape,.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeShape{fill:highlight}}";
+		const css$5 = ".HtX4sa_graphSvg{touch-action:pan-y;max-width:none;display:block;overflow:visible}.HtX4sa_layerBand rect{fill:color-mix(in srgb, var(--lx-label-primary) 3%, transparent);stroke:var(--lx-border-subtle);stroke-width:1px;vector-effect:non-scaling-stroke}.HtX4sa_layerLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-2xs);font-weight:var(--lx-weight-strong);letter-spacing:.02em;opacity:var(--lx-vs-alpha)}.HtX4sa_edgeGroup,.HtX4sa_nodeGroup{cursor:pointer}.HtX4sa_edgeVisible{fill:none;stroke:var(--visual-tone);stroke-opacity:var(--lx-vs-alpha);stroke-width:calc(1.7px + var(--lx-vs-ring) * 1.1px);stroke-linecap:round;vector-effect:non-scaling-stroke;transition:stroke-opacity var(--lx-motion-base) var(--lx-easing), stroke-width var(--lx-motion-base) var(--lx-easing)}.HtX4sa_edgeHit{fill:none;stroke:#0000;stroke-width:14px;pointer-events:stroke;vector-effect:non-scaling-stroke}.HtX4sa_edgeGroup:hover .HtX4sa_edgeVisible,.HtX4sa_edgeGroup:focus-visible .HtX4sa_edgeVisible,.HtX4sa_edgeGroup[data-selected] .HtX4sa_edgeVisible{stroke-opacity:1;stroke-width:3px}.HtX4sa_arrowMarker path{fill:var(--visual-tone);fill-opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel rect{fill:var(--lx-surface-base);stroke:color-mix(in srgb, var(--visual-tone) 26%, var(--lx-border-subtle));stroke-width:1px;vector-effect:non-scaling-stroke;opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel text{fill:var(--lx-label-primary);font-weight:var(--lx-weight-medium);opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel{pointer-events:none;transition:opacity var(--lx-motion-fast) var(--lx-easing)}.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeLabel{opacity:0}.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup:hover .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup:focus-visible .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup[data-selected] .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup[data-visual-state=current] .HtX4sa_edgeLabel{opacity:1}.HtX4sa_nodeShape{fill:color-mix(in srgb, var(--visual-tone) 12%, var(--lx-surface-base));fill-opacity:var(--lx-vs-alpha);stroke:var(--visual-tone);stroke-opacity:var(--lx-vs-alpha);stroke-width:calc(1.6px + var(--lx-vs-ring) * 1.2px);vector-effect:non-scaling-stroke;transition:fill-opacity var(--lx-motion-base) var(--lx-easing), stroke-opacity var(--lx-motion-base) var(--lx-easing), stroke-width var(--lx-motion-base) var(--lx-easing)}.HtX4sa_nodeRing{fill:none;stroke:var(--visual-tone);stroke-width:2px;stroke-opacity:calc(var(--lx-vs-ring) * .34);vector-effect:non-scaling-stroke;transition:stroke-opacity var(--lx-motion-base) var(--lx-easing)}.HtX4sa_nodeLabel{fill:var(--lx-label-primary);font-weight:var(--lx-weight-medium);opacity:var(--lx-vs-alpha);pointer-events:none}.HtX4sa_nodeGroup[data-visual-state=current] .HtX4sa_nodeLabel,.HtX4sa_nodeGroup[data-visual-state=selected] .HtX4sa_nodeLabel{font-weight:var(--lx-weight-strong)}.HtX4sa_nodeGroup:hover .HtX4sa_nodeShape,.HtX4sa_nodeGroup:focus-visible .HtX4sa_nodeShape,.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeShape{fill:color-mix(in srgb, var(--visual-tone) 22%, var(--lx-surface-base));fill-opacity:1;stroke-opacity:1;stroke-width:2.6px}.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeRing{stroke-opacity:.5}[data-stroke=dashed] .HtX4sa_edgeVisible{stroke-dasharray:9 6}[data-stroke=dotted] .HtX4sa_edgeVisible{stroke-dasharray:2 6}@media (prefers-reduced-motion:reduce){.HtX4sa_edgeVisible,.HtX4sa_edgeLabel,.HtX4sa_nodeShape,.HtX4sa_nodeRing{transition:none}}@media (forced-colors:active){.HtX4sa_nodeShape{fill:canvas;stroke:canvastext}.HtX4sa_edgeVisible{stroke:canvastext}.HtX4sa_nodeGroup[data-visual-state=current] .HtX4sa_nodeShape,.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeShape{fill:highlight}}";
 		const tagId$5 = "@dsh-portable/interactive-learning/graph.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$5) + "]") === null) {
 			const tag = document.createElement("style");
@@ -5931,6 +5931,24 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region src/client/visuals/renderers/Scene2DRenderer.tsx
 		/** `scene_2d`: geometry, vectors, fields and annotated schematics on axes. */
+		/**
+		* Place a segment or arrow label clear of its own line.
+		*
+		* A flat vertical offset drops the label onto whatever else crosses the middle
+		* of the figure — in a parallelogram construction the resultant's label, the
+		* shape's label and a declared text anchor all landed on the same few pixels.
+		* Offsetting along the segment's normal separates them by construction.
+		*/
+		function segmentLabelAnchor(x1, y1, x2, y2) {
+			const length = Math.hypot(x2 - x1, y2 - y1) || 1;
+			const normalX = -(y2 - y1) / length;
+			const normalY = (x2 - x1) / length;
+			const direction = normalY > 0 ? -1 : 1;
+			return {
+				x: (x1 + x2) / 2 + normalX * 13 * direction,
+				y: (y1 + y2) / 2 + normalY * 13 * direction
+			};
+		}
 		function Scene2DRenderer({ content, focus }) {
 			const labels = useVisualLabels();
 			const id = (0, react.useId)();
@@ -6092,13 +6110,17 @@ window.__ModuleLoader__.load({
 													x2,
 													y2
 												}),
-												element.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-													className: plot_module_css_default.shapeLabel,
-													x: (x1 + x2) / 2,
-													y: (y1 + y2) / 2 - 8,
-													textAnchor: "middle",
-													children: element.label
-												})
+												element.label === void 0 ? null : (() => {
+													const anchor = segmentLabelAnchor(x1, y1, x2, y2);
+													return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
+														className: plot_module_css_default.shapeLabel,
+														x: anchor.x,
+														y: anchor.y,
+														textAnchor: "middle",
+														dominantBaseline: "middle",
+														children: element.label
+													});
+												})()
 											]
 										}, element.id);
 									}
@@ -6166,7 +6188,7 @@ window.__ModuleLoader__.load({
 											}), element.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
 												className: plot_module_css_default.shapeLabel,
 												x: scaleX(center.x, content.xAxis, geometry),
-												y: scaleY(center.y, content.yAxis, geometry),
+												y: scaleY(center.y, content.yAxis, geometry) + 18,
 												textAnchor: "middle",
 												dominantBaseline: "middle",
 												children: element.label
@@ -6438,6 +6460,8 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region src/client/visuals/renderers/TimelineRenderer.tsx
 		/** `timeline`: chronologies, phases and eras, horizontal or vertical. */
+		/** Vertical distance from the axis to the top of an upper-row event card. */
+		const CARD_OFFSET = 72;
 		function timelinePosition(event, index, count) {
 			if (event.position !== void 0) return Math.max(0, Math.min(1, event.position));
 			return count <= 1 ? .5 : index / (count - 1);
@@ -6509,7 +6533,9 @@ window.__ModuleLoader__.load({
 			const eventCount = content.events.length;
 			const minimumWidth = 120 + Math.max(0, eventCount - 1) * 136;
 			const width = Math.max(minimumWidth, Math.floor(containerWidth) - 2);
-			const axisY = 66 + Math.min(4, eras.length) * 28;
+			const eraRows = Math.min(4, eras.length);
+			const eraLaneBottom = eras.length === 0 ? 0 : 14 + (eraRows - 1) * 28 + 26;
+			const axisY = Math.max(90, eraLaneBottom + 8 + CARD_OFFSET);
 			const height = axisY + 130;
 			const inset = 66;
 			const eventX = (event, index) => inset + timelinePosition(event, index, content.events.length) * (width - 132);
@@ -6561,7 +6587,7 @@ window.__ModuleLoader__.load({
 								"data-visual-id": event.id,
 								style: {
 									left: eventX(event, index),
-									top: index % 2 === 0 ? axisY - 72 : axisY + 24
+									top: index % 2 === 0 ? axisY - CARD_OFFSET : axisY + 24
 								},
 								onClick: () => selectEvent(event),
 								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: event.time }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: event.label })]
