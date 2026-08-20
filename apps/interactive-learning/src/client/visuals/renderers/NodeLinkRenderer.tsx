@@ -12,6 +12,10 @@
  *    rather than being drawn at a tenth of full strength.
  * 3. The layer headings, edge labels and node labels are real type at 12–13px,
  *    not 10px furniture.
+ *
+ * Edges are routed and their labels placed in `layout/graph-edges.ts`, which
+ * owns the return lane a backwards edge takes and the search that keeps a chip
+ * off the node boxes and off the other chips.
  */
 import { useId, useMemo, useState } from 'react'
 import { labelTemplate, useVisualLabels } from '../core/labels.ts'
@@ -20,13 +24,9 @@ import { toneAt } from '../core/format.ts'
 import { DEFAULT_TONES, type NodeLinkContent, type RendererProps, type SelectedItem } from '../core/types.ts'
 import { graphEmphasis } from '../state/graph-state.ts'
 import { useContainerWidth, useRovingFocus } from '../state/hooks.ts'
-import {
-  EDGE_LABEL_FONT_SIZE,
-  edgeGeometry,
-  edgeLabelWidth,
-  graphLayout,
-  NODE_FONT_SIZE,
-} from '../layout/graph-layout.ts'
+import { EDGE_LABEL_FONT_SIZE, EDGE_LABEL_LINE_HEIGHT, edgeLabelRadius } from '../layout/edge-labels.ts'
+import { edgeRoutes } from '../layout/graph-edges.ts'
+import { graphLayout, NODE_FONT_SIZE } from '../layout/graph-layout.ts'
 import shell from '../styles/shell.module.css'
 import css from '../styles/graph.module.css'
 
@@ -39,6 +39,7 @@ export function NodeLinkRenderer({ content, focus }: RendererProps<NodeLinkConte
   const id = useId()
   const [viewportRef, containerWidth] = useContainerWidth()
   const layout = useMemo(() => graphLayout(content, containerWidth), [containerWidth, content])
+  const routes = useMemo(() => edgeRoutes(content, layout), [content, layout])
   const emphasis = useMemo(() => graphEmphasis(content, focus), [content, focus])
   const [selected, setSelected] = useState<SelectedItem | undefined>()
   const nodeById = useMemo(() => new Map(content.nodes.map(node => [node.id, node])), [content.nodes])
@@ -110,13 +111,11 @@ export function NodeLinkRenderer({ content, focus }: RendererProps<NodeLinkConte
 
           <g>
             {content.edges.map((edge, edgeIndex) => {
-              const from = layout.nodes.get(edge.from)
-              const to = layout.nodes.get(edge.to)
-              if (from === undefined || to === undefined) return null
+              const route = routes.get(edge.id)
+              if (route === undefined) return null
               const tone = toneAt(edge.tone, edgeIndex)
               const state = emphasis.state(edge.id)
-              const geometry = edgeGeometry(from, to, layout.orientation)
-              const chipWidth = edge.label === undefined ? 0 : edgeLabelWidth(edge.label)
+              const label = route.label
               return (
                 <g
                   key={edge.id}
@@ -126,23 +125,32 @@ export function NodeLinkRenderer({ content, focus }: RendererProps<NodeLinkConte
                   data-visual-state={selected?.id === edge.id ? 'selected' : state}
                   data-selected={selected?.id === edge.id || undefined}
                   data-visual-id={edge.id}
+                  data-crowded={label?.crowded === true || undefined}
                   role="button"
                   aria-label={`${edge.label ?? labels.edgeKind}: ${labelTemplate(labels.connection, { from: nodeById.get(edge.from)?.label ?? edge.from, to: nodeById.get(edge.to)?.label ?? edge.to })}${edge.detail === undefined ? '' : `. ${edge.detail}`}`}
                   onClick={() => selectEdge(edge, tone)}
                   {...roving.itemProps(edge.id, () => selectEdge(edge, tone))}
                 >
-                  <path className={css.edgeVisible} d={geometry.path} markerEnd={edge.directed === true ? `url(#${id}-arrow-${tone})` : undefined} />
-                  <path className={css.edgeHit} d={geometry.path} />
-                  {edge.label === undefined ? null : (
+                  <path className={css.edgeVisible} d={route.path} markerEnd={edge.directed === true ? `url(#${id}-arrow-${tone})` : undefined} />
+                  <path className={css.edgeHit} d={route.path} />
+                  {label === undefined ? null : (
                     <g className={css.edgeLabel}>
                       <rect
-                        x={geometry.label.x - chipWidth / 2}
-                        y={geometry.label.y - 10}
-                        width={chipWidth}
-                        height="20"
-                        rx="10"
+                        x={label.x - label.width / 2}
+                        y={label.y - label.height / 2}
+                        width={label.width}
+                        height={label.height}
+                        rx={edgeLabelRadius(label)}
                       />
-                      <text x={geometry.label.x} y={geometry.label.y} textAnchor="middle" dominantBaseline="middle" fontSize={EDGE_LABEL_FONT_SIZE}>{edge.label}</text>
+                      <text x={label.x} textAnchor="middle" dominantBaseline="middle" fontSize={EDGE_LABEL_FONT_SIZE}>
+                        {label.lines.map((line, lineIndex) => (
+                          <tspan
+                            key={line + String(lineIndex)}
+                            x={label.x}
+                            y={label.y - ((label.lines.length - 1) * EDGE_LABEL_LINE_HEIGHT) / 2 + lineIndex * EDGE_LABEL_LINE_HEIGHT}
+                          >{line}</tspan>
+                        ))}
+                      </text>
                     </g>
                   )}
                 </g>

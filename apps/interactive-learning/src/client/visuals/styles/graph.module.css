@@ -88,13 +88,23 @@
 /* A dense graph shows only the labels that are currently meaningful. `related`
    is deliberately excluded: in a fully connected layer every edge leaving the
    focused nodes is related, and drawing twelve chips in one column is the same
-   unreadable pile as drawing all twenty. */
-.graphSvg[data-dense-edges] .edgeLabel { opacity: 0; }
+   unreadable pile as drawing all twenty.
+
+   `data-crowded` is the same rule applied to one label rather than the whole
+   figure: the router could not find a position for it that clears the boxes and
+   the other labels, so it waits for the moment when it is the only label being
+   asked for. */
+.graphSvg[data-dense-edges] .edgeLabel,
+.edgeGroup[data-crowded] .edgeLabel { opacity: 0; }
 
 .graphSvg[data-dense-edges] .edgeGroup:hover .edgeLabel,
 .graphSvg[data-dense-edges] .edgeGroup:focus-visible .edgeLabel,
 .graphSvg[data-dense-edges] .edgeGroup[data-selected] .edgeLabel,
-.graphSvg[data-dense-edges] .edgeGroup[data-visual-state="current"] .edgeLabel { opacity: 1; }
+.graphSvg[data-dense-edges] .edgeGroup[data-visual-state="current"] .edgeLabel,
+.edgeGroup[data-crowded]:hover .edgeLabel,
+.edgeGroup[data-crowded]:focus-visible .edgeLabel,
+.edgeGroup[data-crowded][data-selected] .edgeLabel,
+.edgeGroup[data-crowded][data-visual-state="current"] .edgeLabel { opacity: 1; }
 
 .nodeShape {
   fill: color-mix(in srgb, var(--visual-tone) 12%, var(--lx-surface-base));

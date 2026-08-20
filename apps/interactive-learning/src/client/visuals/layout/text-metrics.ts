@@ -36,12 +36,7 @@ export interface WrappedLabel {
   truncated: boolean
 }
 
-/**
- * Wrap a label to at most `maxLines`, breaking between CJK characters and at
- * spaces or hyphens for Latin text. The final line is ellipsised rather than
- * clipped, and the untruncated text always remains the accessible name.
- */
-export function wrapLabel(
+function greedyWrap(
   text: string,
   { fontSize, maxWidth, maxLines = 3 }: { fontSize: number; maxWidth: number; maxLines?: number },
 ): WrappedLabel {
@@ -93,4 +88,33 @@ export function wrapLabel(
     width: Math.max(...lines.map(entry => measureText(entry, fontSize))),
     truncated,
   }
+}
+
+/**
+ * Wrap a label to at most `maxLines`, breaking between CJK characters and at
+ * spaces or hyphens for Latin text. The final line is ellipsised rather than
+ * clipped, and the untruncated text always remains the accessible name.
+ *
+ * Filling each line to the limit before starting the next one produces
+ * “算出每个候选词的概” over “率”: a box as wide as the limit for a label that
+ * would read better as two half lines, and — on an edge label — a column gap
+ * opened to hold a width the text does not need. The greedy pass decides how
+ * many lines the label takes; the same pass is then re-run against the average
+ * line width to distribute the text evenly over them.
+ */
+export function wrapLabel(
+  text: string,
+  options: { fontSize: number; maxWidth: number; maxLines?: number },
+): WrappedLabel {
+  const greedy = greedyWrap(text, options)
+  if (greedy.lines.length < 2 || greedy.truncated) return greedy
+  const average = measureText(text.trim(), options.fontSize) / greedy.lines.length
+  // Widen the target in steps: one indivisible character wider than the average
+  // is enough to push a line onto the next one and undo the balance.
+  for (const slack of [1, 1.08, 1.16, 1.24]) {
+    const width = Math.min(options.maxWidth, average * slack + options.fontSize * 0.5)
+    const balanced = greedyWrap(text, { ...options, maxWidth: width })
+    if (!balanced.truncated && balanced.lines.length === greedy.lines.length) return balanced
+  }
+  return greedy
 }

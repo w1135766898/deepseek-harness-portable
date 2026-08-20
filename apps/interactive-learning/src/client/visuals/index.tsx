@@ -106,5 +106,7 @@ export function LearningVisualV4({
 export { DEFAULT_LABELS, type LearningVisualV4Labels } from './core/labels.ts'
 export { VISUAL_STATE_STRENGTH, MINIMUM_LEGIBLE_STRENGTH, elementState, visualFocus, type VisualState } from './state/visual-state.ts'
 export { graphEmphasis } from './state/graph-state.ts'
-export { graphLayout, graphLayers, nodeBox, edgeGeometry } from './layout/graph-layout.ts'
+export { graphLayout, graphLayers, nodeBox } from './layout/graph-layout.ts'
+export { edgeRoutes } from './layout/graph-edges.ts'
+export { edgeLabelBox } from './layout/edge-labels.ts'
 export { measureText, wrapLabel } from './layout/text-metrics.ts'

@@ -148,6 +148,40 @@ export const DECISION_TREE_VISUAL = visual('一棵周末安排决策树', {
   fallbackMarkdown: '天气? →(晴) 温度? →(高) 去游泳；温度? →(低) 去爬山；天气? →(雨) 在家看书。',
 })
 
+/**
+ * The generation loop that produced the second graph failure: long Chinese edge
+ * labels in narrow column gaps, two nodes in one column joined by a labelled
+ * edge, and a feedback arrow running the whole width of the diagram backwards.
+ * Every label collided with a box or with another label.
+ */
+export const GENERATION_LOOP_VISUAL = visual('大语言模型的生成循环：一次只猜下一个词', {
+  kind: 'node_link',
+  layout: 'layered',
+  groups: [
+    { id: 'input', label: '输入：已生成的文本' },
+    { id: 'model', label: '模型：大语言模型' },
+    { id: 'predict', label: '预测：下一个词的概率' },
+    { id: 'append', label: '拼接：接到文本末尾' },
+  ],
+  nodes: [
+    { id: 'text', label: '“今天天气”（已生成的文本）', group: 'input', tone: 'blue' },
+    { id: 'llm', label: '大语言模型', group: 'model', tone: 'purple' },
+    { id: 'probabilities', label: '每个候选词的概率', group: 'predict', tone: 'green' },
+    { id: 'chosen', label: '选概率最高的词：“很”', group: 'predict', tone: 'green' },
+    { id: 'sequence', label: '新序列：“今天天气很”', group: 'append', tone: 'orange' },
+  ],
+  edges: [
+    { id: 'feed', from: 'text', to: 'llm', label: '喂入模型', directed: true },
+    { id: 'score', from: 'llm', to: 'probabilities', label: '算出每个候选词的概率', directed: true },
+    { id: 'pick', from: 'probabilities', to: 'chosen', label: '取概率最高的词', directed: true },
+    { id: 'attach', from: 'chosen', to: 'sequence', label: '拼到文本末尾', directed: true },
+    { id: 'loop', from: 'sequence', to: 'llm', label: '把新序列再喂回去猜下一个词', directed: true, stroke: 'dashed' },
+  ],
+}, {
+  description: '沿箭头看一遍：输入一段文本 → 算出每个候选词的概率 → 选最可能的那个 → 拼回去 → 再猜下一个。',
+  fallbackMarkdown: '文本 →(喂入) 模型 →(概率) 候选词 →(取最大) “很” →(拼接) 新序列 →(回到模型) …',
+})
+
 const graphNodes = [
   { id: 'a', label: 'A', group: 'left' },
   { id: 'b', label: 'B', group: 'left' },
@@ -210,6 +244,7 @@ const graphs = {
     ],
   }),
   decisionTree: DECISION_TREE_VISUAL,
+  generationLoop: GENERATION_LOOP_VISUAL,
   denseEdges: visual('Dense edge labels', {
     kind: 'node_link',
     layout: 'layered',

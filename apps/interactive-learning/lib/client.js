@@ -4031,7 +4031,7 @@ window.__ModuleLoader__.load({
 		function scaleY$1(value, visual, geometry) {
 			return geometry.top + (1 - normalizedPosition$1(value, visual.yAxis.min, visual.yAxis.max)) * geometry.plotHeight;
 		}
-		function curvePath(curve, visual, values, geometry) {
+		function curvePath$1(curve, visual, values, geometry) {
 			const samples = visual.xAxis.samples ?? 128;
 			const commands = [];
 			let drawing = false;
@@ -4085,7 +4085,7 @@ window.__ModuleLoader__.load({
 			const curves = (0, react.useMemo)(() => visual.series.flatMap((series, index) => series.type === "curve" ? [{
 				series,
 				index,
-				path: curvePath(series, visual, values, geometry)
+				path: curvePath$1(series, visual, values, geometry)
 			}] : []), [
 				geometry,
 				values,
@@ -5373,12 +5373,7 @@ window.__ModuleLoader__.load({
 			for (const character of text) width += characterWidth(character, fontSize);
 			return width;
 		}
-		/**
-		* Wrap a label to at most `maxLines`, breaking between CJK characters and at
-		* spaces or hyphens for Latin text. The final line is ellipsised rather than
-		* clipped, and the untruncated text always remains the accessible name.
-		*/
-		function wrapLabel(text, { fontSize, maxWidth, maxLines = 3 }) {
+		function greedyWrap(text, { fontSize, maxWidth, maxLines = 3 }) {
 			const source = text.trim();
 			if (source === "") return {
 				lines: [""],
@@ -5428,6 +5423,57 @@ window.__ModuleLoader__.load({
 				truncated
 			};
 		}
+		/**
+		* Wrap a label to at most `maxLines`, breaking between CJK characters and at
+		* spaces or hyphens for Latin text. The final line is ellipsised rather than
+		* clipped, and the untruncated text always remains the accessible name.
+		*
+		* Filling each line to the limit before starting the next one produces
+		* “算出每个候选词的概” over “率”: a box as wide as the limit for a label that
+		* would read better as two half lines, and — on an edge label — a column gap
+		* opened to hold a width the text does not need. The greedy pass decides how
+		* many lines the label takes; the same pass is then re-run against the average
+		* line width to distribute the text evenly over them.
+		*/
+		function wrapLabel(text, options) {
+			const greedy = greedyWrap(text, options);
+			if (greedy.lines.length < 2 || greedy.truncated) return greedy;
+			const average = measureText(text.trim(), options.fontSize) / greedy.lines.length;
+			for (const slack of [
+				1,
+				1.08,
+				1.16,
+				1.24
+			]) {
+				const width = Math.min(options.maxWidth, average * slack + options.fontSize * .5);
+				const balanced = greedyWrap(text, {
+					...options,
+					maxWidth: width
+				});
+				if (!balanced.truncated && balanced.lines.length === greedy.lines.length) return balanced;
+			}
+			return greedy;
+		}
+		/** Two lines of this width read faster than one long line across a diagram. */
+		const EDGE_LABEL_MAX_WIDTH = 118;
+		const EDGE_LABEL_MAX_LINES = 2;
+		function edgeLabelBox(label) {
+			const wrapped = wrapLabel(label, {
+				fontSize: 12,
+				maxWidth: EDGE_LABEL_MAX_WIDTH,
+				maxLines: EDGE_LABEL_MAX_LINES
+			});
+			return {
+				lines: wrapped.lines,
+				width: Math.round(wrapped.width + 14),
+				height: wrapped.lines.length * 15 + 6,
+				truncated: wrapped.truncated
+			};
+		}
+		/** Corner radius that reads as a capsule for one line and a chip for two. */
+		function edgeLabelRadius(box) {
+			return box.lines.length === 1 ? box.height / 2 : 8;
+		}
 		const NODE_MAX_TEXT_WIDTH = 124;
 		const NODE_MIN_WIDTH = 66;
 		const NODE_MIN_HEIGHT = 36;
@@ -5437,7 +5483,10 @@ window.__ModuleLoader__.load({
 		const SIBLING_GAP = 22;
 		const MAIN_GAP_MIN = 58;
 		const MAIN_GAP_BASE = 78;
-		const MAIN_GAP_MAX = 180;
+		const MAIN_GAP_MAX = 196;
+		/** Distance from the content to the first return lane, and between lanes. */
+		const LANE_GAP = 34;
+		const LANE_STEP = 30;
 		/** Text below this scale stops being comfortably readable, so we scroll instead. */
 		const MINIMUM_FIT_SCALE = .82;
 		/** Group nodes into the bands the layout draws: declared groups, else levels. */
@@ -5459,9 +5508,11 @@ window.__ModuleLoader__.load({
 			}
 			const incoming = new Map(content.nodes.map((node) => [node.id, 0]));
 			const outgoing = new Map(content.nodes.map((node) => [node.id, []]));
+			const parents = new Map(content.nodes.map((node) => [node.id, []]));
 			for (const edge of content.edges) {
 				incoming.set(edge.to, (incoming.get(edge.to) ?? 0) + 1);
 				outgoing.get(edge.from)?.push(edge.to);
+				parents.get(edge.to)?.push(edge.from);
 			}
 			const levels = new Map(content.nodes.map((node) => [node.id, 0]));
 			const queue = content.nodes.filter((node) => (incoming.get(node.id) ?? 0) === 0).map((node) => node.id);
@@ -5476,8 +5527,23 @@ window.__ModuleLoader__.load({
 					if (incoming.get(target) === 0) queue.push(target);
 				}
 			}
-			const fallbackLevel = Math.max(0, ...levels.values());
-			for (const node of content.nodes) if (!visited.has(node.id)) levels.set(node.id, fallbackLevel);
+			for (const node of content.nodes) {
+				if (visited.has(node.id)) continue;
+				const settled = (parents.get(node.id) ?? []).filter((parent) => visited.has(parent));
+				visited.add(node.id);
+				levels.set(node.id, Math.max(0, ...settled.map((parent) => (levels.get(parent) ?? 0) + 1)));
+				const walk = [node.id];
+				while (walk.length > 0) {
+					const current = walk.shift();
+					if (current === void 0) break;
+					for (const target of outgoing.get(current) ?? []) {
+						if (visited.has(target)) continue;
+						visited.add(target);
+						levels.set(target, (levels.get(current) ?? 0) + 1);
+						walk.push(target);
+					}
+				}
+			}
 			const levelCount = Math.max(0, ...levels.values()) + 1;
 			return Array.from({ length: levelCount }, (_, index) => ({
 				id: `layer-${String(index)}`,
@@ -5542,8 +5608,47 @@ window.__ModuleLoader__.load({
 				nodes: positioned,
 				layers: [],
 				orientation: "radial",
-				showHeaders: false
+				showHeaders: false,
+				layerIndex: /* @__PURE__ */ new Map(),
+				feedbackLanes: /* @__PURE__ */ new Map()
 			}, containerWidth);
+		}
+		/**
+		* Reserve the space the edges need before the nodes are placed.
+		*
+		* Without this pass the gaps are constants and the labels are laid on top of
+		* whatever those constants happened to leave over — which is how a five-edge
+		* diagram ended up with every chip across a node box or another chip.
+		*/
+		function planGaps(content, layerIndex, layerCount, vertical) {
+			const mainGaps = Array.from({ length: Math.max(0, layerCount - 1) }, () => 0);
+			const siblingGaps = Array.from({ length: layerCount }, () => SIBLING_GAP);
+			const feedback = [];
+			let laneLabel = 0;
+			for (const edge of content.edges) {
+				const from = layerIndex.get(edge.from);
+				const to = layerIndex.get(edge.to);
+				if (from === void 0 || to === void 0) continue;
+				const box = edge.label === void 0 ? void 0 : edgeLabelBox(edge.label);
+				if (to < from) {
+					feedback.push(edge.id);
+					if (box !== void 0) laneLabel = Math.max(laneLabel, vertical ? box.width : box.height);
+					continue;
+				}
+				if (box === void 0) continue;
+				if (to === from) {
+					siblingGaps[from] = Math.max(siblingGaps[from] ?? SIBLING_GAP, (vertical ? box.width : box.height) + 22);
+					continue;
+				}
+				const gap = Math.min(from, mainGaps.length - 1);
+				if (gap >= 0) mainGaps[gap] = Math.max(mainGaps[gap] ?? 0, (vertical ? box.height : box.width) + 22);
+			}
+			return {
+				mainGaps,
+				siblingGaps,
+				feedback,
+				laneSpace: feedback.length === 0 ? 0 : LANE_GAP + (Math.min(feedback.length, 3) - 1) * LANE_STEP + laneLabel / 2 + 10
+			};
 		}
 		function graphLayout(content, containerWidth) {
 			const boxes = new Map(content.nodes.map((node) => [node.id, nodeBox(node)]));
@@ -5553,30 +5658,38 @@ window.__ModuleLoader__.load({
 			const headerSpace = showHeaders ? HEADER_HEIGHT : 0;
 			const vertical = content.layout === "hierarchy";
 			const positioned = /* @__PURE__ */ new Map();
+			const layerIndex = /* @__PURE__ */ new Map();
+			layers.forEach((layer, index) => {
+				for (const node of layer.nodes) layerIndex.set(node.id, index);
+			});
+			const plan = planGaps(content, layerIndex, layers.length, vertical);
 			const mainExtent = layers.map((layer) => Math.max(...layer.nodes.map((node) => (vertical ? boxes.get(node.id)?.height : boxes.get(node.id)?.width) ?? 0)));
-			const crossExtent = layers.map((layer) => layer.nodes.reduce((total, node, index) => {
+			const crossExtent = layers.map((layer, index) => layer.nodes.reduce((total, node, position) => {
 				const box = boxes.get(node.id);
-				return total + ((vertical ? box?.width : box?.height) ?? 0) + (index === 0 ? 0 : SIBLING_GAP);
+				return total + ((vertical ? box?.width : box?.height) ?? 0) + (position === 0 ? 0 : plan.siblingGaps[index] ?? SIBLING_GAP);
 			}, 0));
 			const crossContent = Math.max(...crossExtent);
 			const mainContent = mainExtent.reduce((total, size) => total + size, 0);
 			const gapCount = Math.max(0, layers.length - 1);
-			let mainGap = vertical ? Math.max(MAIN_GAP_MIN, Math.round(MAIN_GAP_BASE * .72)) : MAIN_GAP_BASE;
-			let width = vertical ? 28 + crossContent : 28 + mainContent + gapCount * mainGap;
+			let mainGap = Math.min(MAIN_GAP_MAX, Math.max(vertical ? Math.max(MAIN_GAP_MIN, Math.round(MAIN_GAP_BASE * .72)) : MAIN_GAP_BASE, ...plan.mainGaps));
+			const mainSpan = (gap) => 28 + mainContent + gapCount * gap;
+			let width = vertical ? 28 + crossContent + plan.laneSpace : mainSpan(mainGap);
 			if (!vertical && gapCount > 0 && width < containerWidth) {
 				mainGap = Math.min(MAIN_GAP_MAX, mainGap + (containerWidth - width) / gapCount);
-				width = 28 + mainContent + gapCount * mainGap;
+				width = mainSpan(mainGap);
 			}
 			if (vertical && width < containerWidth) width = Math.min(containerWidth, width + 28);
-			const height = vertical ? 28 + headerSpace + mainContent + gapCount * mainGap : 28 + headerSpace + crossContent;
+			const height = vertical ? 28 + headerSpace + mainContent + gapCount * mainGap : 28 + headerSpace + crossContent + plan.laneSpace;
+			const mainStart = CANVAS_PADDING + (vertical ? headerSpace : 0);
+			const crossStart = CANVAS_PADDING + (vertical ? 0 : headerSpace);
+			const crossTrack = (vertical ? width : height) - crossStart - CANVAS_PADDING - plan.laneSpace;
 			const bands = [];
-			let mainCursor = CANVAS_PADDING + headerSpace;
-			layers.forEach((layer, layerIndex) => {
-				const mainSize = mainExtent[layerIndex] ?? 0;
-				const crossSize = crossExtent[layerIndex] ?? 0;
-				const crossTrack = vertical ? width : height - headerSpace;
-				const crossOrigin = vertical ? 0 : CANVAS_PADDING + headerSpace;
-				let crossCursor = crossOrigin + Math.max(CANVAS_PADDING - crossOrigin, (crossTrack - crossSize) / 2);
+			let mainCursor = mainStart;
+			layers.forEach((layer, index) => {
+				const mainSize = mainExtent[index] ?? 0;
+				const crossSize = crossExtent[index] ?? 0;
+				const siblingGap = plan.siblingGaps[index] ?? SIBLING_GAP;
+				let crossCursor = crossStart + Math.max(0, (crossTrack - crossSize) / 2);
 				for (const node of layer.nodes) {
 					const box = boxes.get(node.id);
 					if (box === void 0) continue;
@@ -5586,7 +5699,7 @@ window.__ModuleLoader__.load({
 						x: vertical ? crossCursor + crossOwn / 2 : mainCursor + mainSize / 2,
 						y: vertical ? mainCursor + mainSize / 2 : crossCursor + crossOwn / 2
 					});
-					crossCursor += crossOwn + SIBLING_GAP;
+					crossCursor += crossOwn + siblingGap;
 				}
 				bands.push({
 					id: layer.id,
@@ -5602,20 +5715,24 @@ window.__ModuleLoader__.load({
 						height: mainSize + 18
 					} : {
 						x: mainCursor - 11,
-						y: CANVAS_PADDING + headerSpace - 9,
+						y: crossStart - 9,
 						width: mainSize + 22,
-						height: Math.max(0, height - 28 - headerSpace + 18)
+						height: Math.max(0, crossTrack + 18)
 					}
 				});
 				mainCursor += mainSize + mainGap;
 			});
+			const contentEnd = crossStart + crossTrack;
+			const feedbackLanes = new Map(plan.feedback.map((edgeId, index) => [edgeId, contentEnd + LANE_GAP + Math.min(index, 2) * LANE_STEP]));
 			return finish({
 				width: Math.round(width),
 				height: Math.round(height),
 				nodes: positioned,
 				layers: bands,
 				orientation: vertical ? "vertical" : "horizontal",
-				showHeaders
+				showHeaders,
+				layerIndex,
+				feedbackLanes
 			}, containerWidth);
 		}
 		/** Where a straight line towards `towards` leaves the border of `box`. */
@@ -5634,55 +5751,256 @@ window.__ModuleLoader__.load({
 				y: box.y + dy * scale
 			};
 		}
-		/** Route one edge between two boxes, curving along the layout's main axis. */
-		function edgeGeometry(from, to, orientation) {
-			const start = boxAnchor(from, {
+		//#endregion
+		//#region src/client/visuals/layout/graph-edges.ts
+		/** Positions along the curve to try, nearest the middle first. */
+		const SLIDE = [
+			.5,
+			.42,
+			.58,
+			.34,
+			.66
+		];
+		/** Then the same positions lifted off the curve, alternating sides. */
+		const LIFT = [
+			0,
+			-16,
+			16,
+			-30,
+			30
+		];
+		const NODE_CLEARANCE = 5;
+		const LABEL_CLEARANCE = 4;
+		/** Distance the arrowhead needs between the curve's end and the target box. */
+		const ARROW_INSET = 6;
+		const fixed = (value) => value.toFixed(1);
+		function pointOnCurve({ p0, p1, p2, p3 }, t) {
+			const u = 1 - t;
+			const a = u * u * u;
+			const b = 3 * u * u * t;
+			const c = 3 * u * t * t;
+			const d = t * t * t;
+			return {
+				x: a * p0.x + b * p1.x + c * p2.x + d * p3.x,
+				y: a * p0.y + b * p1.y + c * p2.y + d * p3.y
+			};
+		}
+		/** Unit normal of the curve at `t`, used to lift a label clear of its own line. */
+		function normalOnCurve({ p0, p1, p2, p3 }, t) {
+			const u = 1 - t;
+			const x = 3 * u * u * (p1.x - p0.x) + 6 * u * t * (p2.x - p1.x) + 3 * t * t * (p3.x - p2.x);
+			const y = 3 * u * u * (p1.y - p0.y) + 6 * u * t * (p2.y - p1.y) + 3 * t * t * (p3.y - p2.y);
+			const length = Math.hypot(x, y);
+			if (length === 0) return {
+				x: 0,
+				y: -1
+			};
+			return {
+				x: -y / length,
+				y: x / length
+			};
+		}
+		function curvePath(curve) {
+			const { p0, p1, p2, p3 } = curve;
+			return `M${fixed(p0.x)},${fixed(p0.y)} C${fixed(p1.x)},${fixed(p1.y)} ${fixed(p2.x)},${fixed(p2.y)} ${fixed(p3.x)},${fixed(p3.y)}`;
+		}
+		/**
+		* Control coordinate whose curve reaches `lane` at its midpoint.
+		*
+		* A cubic with both controls at L passes through `(a + b) / 8 + 0.75 · L`, so
+		* putting the controls on the lane would leave the arc well short of it.
+		*/
+		function laneControl(a, b, lane) {
+			return (lane - (a + b) / 8) / .75;
+		}
+		function feedbackCurve(from, to, lane, vertical) {
+			if (vertical) {
+				const p0 = {
+					x: from.x + from.width / 2,
+					y: from.y
+				};
+				const p3 = {
+					x: to.x + to.width / 2 + ARROW_INSET,
+					y: to.y
+				};
+				const control = laneControl(p0.x, p3.x, lane);
+				return {
+					p0,
+					p1: {
+						x: control,
+						y: p0.y
+					},
+					p2: {
+						x: control,
+						y: p3.y
+					},
+					p3
+				};
+			}
+			const p0 = {
+				x: from.x,
+				y: from.y + from.height / 2
+			};
+			const p3 = {
+				x: to.x,
+				y: to.y + to.height / 2 + ARROW_INSET
+			};
+			const control = laneControl(p0.y, p3.y, lane);
+			return {
+				p0,
+				p1: {
+					x: p0.x,
+					y: control
+				},
+				p2: {
+					x: p3.x,
+					y: control
+				},
+				p3
+			};
+		}
+		function flowCurve(from, to, orientation) {
+			const p0 = boxAnchor(from, {
 				x: to.x,
 				y: to.y
 			}, 1);
-			const end = boxAnchor(to, {
+			const p3 = boxAnchor(to, {
 				x: from.x,
 				y: from.y
-			}, 6);
-			const fixed = (value) => value.toFixed(1);
+			}, ARROW_INSET);
 			if (orientation === "horizontal") {
-				const middle = (start.x + end.x) / 2;
+				const middle = (p0.x + p3.x) / 2;
 				return {
-					path: `M${fixed(start.x)},${fixed(start.y)} C${fixed(middle)},${fixed(start.y)} ${fixed(middle)},${fixed(end.y)} ${fixed(end.x)},${fixed(end.y)}`,
-					label: {
+					p0,
+					p1: {
 						x: middle,
-						y: (start.y + end.y) / 2
+						y: p0.y
 					},
-					end
+					p2: {
+						x: middle,
+						y: p3.y
+					},
+					p3
 				};
 			}
 			if (orientation === "vertical") {
-				const middle = (start.y + end.y) / 2;
+				const middle = (p0.y + p3.y) / 2;
 				return {
-					path: `M${fixed(start.x)},${fixed(start.y)} C${fixed(start.x)},${fixed(middle)} ${fixed(end.x)},${fixed(middle)} ${fixed(end.x)},${fixed(end.y)}`,
-					label: {
-						x: (start.x + end.x) / 2,
+					p0,
+					p1: {
+						x: p0.x,
 						y: middle
 					},
-					end
+					p2: {
+						x: p3.x,
+						y: middle
+					},
+					p3
 				};
 			}
 			return {
-				path: `M${fixed(start.x)},${fixed(start.y)} L${fixed(end.x)},${fixed(end.y)}`,
-				label: {
-					x: (start.x + end.x) / 2,
-					y: (start.y + end.y) / 2
+				p0,
+				p1: {
+					x: p0.x + (p3.x - p0.x) / 3,
+					y: p0.y + (p3.y - p0.y) / 3
 				},
-				end
+				p2: {
+					x: p0.x + (p3.x - p0.x) * 2 / 3,
+					y: p0.y + (p3.y - p0.y) * 2 / 3
+				},
+				p3
 			};
 		}
-		/** Width of the chip drawn behind an edge label so it stays readable over a line. */
-		function edgeLabelWidth(label) {
-			return Math.round(measureText(label, 12)) + 14;
+		const boxRect = (box) => ({
+			x1: box.x - box.width / 2,
+			y1: box.y - box.height / 2,
+			x2: box.x + box.width / 2,
+			y2: box.y + box.height / 2
+		});
+		const chipRect = (center, box) => ({
+			x1: center.x - box.width / 2,
+			y1: center.y - box.height / 2,
+			x2: center.x + box.width / 2,
+			y2: center.y + box.height / 2
+		});
+		function overlapArea(a, b, margin) {
+			const x = Math.min(a.x2 + margin, b.x2) - Math.max(a.x1 - margin, b.x1);
+			const y = Math.min(a.y2 + margin, b.y2) - Math.max(a.y1 - margin, b.y1);
+			return x <= 0 || y <= 0 ? 0 : x * y;
+		}
+		/** How far a chip at this position sticks out of the canvas. */
+		function outsideCanvas(rect, layout) {
+			return Math.max(0, -rect.x1) + Math.max(0, rect.x2 - layout.width) + Math.max(0, -rect.y1) + Math.max(0, rect.y2 - layout.height);
+		}
+		function placeLabel(curve, box, layout, nodes, placed) {
+			let fallback;
+			for (const lift of LIFT) for (const slide of SLIDE) {
+				const base = pointOnCurve(curve, slide);
+				const normal = lift === 0 ? {
+					x: 0,
+					y: 0
+				} : normalOnCurve(curve, slide);
+				const point = {
+					x: base.x + normal.x * lift,
+					y: base.y + normal.y * lift
+				};
+				const rect = chipRect(point, box);
+				let cost = outsideCanvas(rect, layout) * 4;
+				for (const node of nodes) cost += overlapArea(rect, node, NODE_CLEARANCE);
+				for (const other of placed) cost += overlapArea(rect, other, LABEL_CLEARANCE);
+				if (cost === 0) return {
+					...box,
+					x: point.x,
+					y: point.y,
+					crowded: false
+				};
+				if (fallback === void 0 || cost < fallback.cost) fallback = {
+					point,
+					cost
+				};
+			}
+			const point = fallback?.point ?? pointOnCurve(curve, .5);
+			return {
+				...box,
+				x: point.x,
+				y: point.y,
+				crowded: true
+			};
+		}
+		/**
+		* Route every edge and place every label, in one pass so that each label knows
+		* about the ones already placed.
+		*/
+		function edgeRoutes(content, layout) {
+			const routes = /* @__PURE__ */ new Map();
+			const nodes = [...layout.nodes.values()].map(boxRect);
+			const placed = [];
+			const vertical = layout.orientation === "vertical";
+			for (const edge of content.edges) {
+				const from = layout.nodes.get(edge.from);
+				const to = layout.nodes.get(edge.to);
+				if (from === void 0 || to === void 0) continue;
+				const lane = layout.feedbackLanes.get(edge.id);
+				const curve = lane === void 0 ? flowCurve(from, to, layout.orientation) : feedbackCurve(from, to, lane, vertical);
+				const route = {
+					path: curvePath(curve),
+					end: curve.p3
+				};
+				if (edge.label !== void 0) {
+					const label = placeLabel(curve, edgeLabelBox(edge.label), layout, nodes, placed);
+					route.label = label;
+					if (!label.crowded) placed.push(chipRect({
+						x: label.x,
+						y: label.y
+					}, label));
+				}
+				routes.set(edge.id, route);
+			}
+			return routes;
 		}
 		//#endregion
 		//#region \0dsh-css:src/client/visuals/styles/graph.module.css.mjs
-		const css$5 = ".HtX4sa_graphSvg{touch-action:pan-y;max-width:none;display:block;overflow:visible}.HtX4sa_layerBand rect{fill:color-mix(in srgb, var(--lx-label-primary) 3%, transparent);stroke:var(--lx-border-subtle);stroke-width:1px;vector-effect:non-scaling-stroke}.HtX4sa_layerLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-2xs);font-weight:var(--lx-weight-strong);letter-spacing:.02em;opacity:var(--lx-vs-alpha)}.HtX4sa_edgeGroup,.HtX4sa_nodeGroup{cursor:pointer}.HtX4sa_edgeVisible{fill:none;stroke:var(--visual-tone);stroke-opacity:var(--lx-vs-alpha);stroke-width:calc(1.7px + var(--lx-vs-ring) * 1.1px);stroke-linecap:round;vector-effect:non-scaling-stroke;transition:stroke-opacity var(--lx-motion-base) var(--lx-easing), stroke-width var(--lx-motion-base) var(--lx-easing)}.HtX4sa_edgeHit{fill:none;stroke:#0000;stroke-width:14px;pointer-events:stroke;vector-effect:non-scaling-stroke}.HtX4sa_edgeGroup:hover .HtX4sa_edgeVisible,.HtX4sa_edgeGroup:focus-visible .HtX4sa_edgeVisible,.HtX4sa_edgeGroup[data-selected] .HtX4sa_edgeVisible{stroke-opacity:1;stroke-width:3px}.HtX4sa_arrowMarker path{fill:var(--visual-tone);fill-opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel rect{fill:var(--lx-surface-base);stroke:color-mix(in srgb, var(--visual-tone) 26%, var(--lx-border-subtle));stroke-width:1px;vector-effect:non-scaling-stroke;opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel text{fill:var(--lx-label-primary);font-weight:var(--lx-weight-medium);opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel{pointer-events:none;transition:opacity var(--lx-motion-fast) var(--lx-easing)}.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeLabel{opacity:0}.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup:hover .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup:focus-visible .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup[data-selected] .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup[data-visual-state=current] .HtX4sa_edgeLabel{opacity:1}.HtX4sa_nodeShape{fill:color-mix(in srgb, var(--visual-tone) 12%, var(--lx-surface-base));fill-opacity:var(--lx-vs-alpha);stroke:var(--visual-tone);stroke-opacity:var(--lx-vs-alpha);stroke-width:calc(1.6px + var(--lx-vs-ring) * 1.2px);vector-effect:non-scaling-stroke;transition:fill-opacity var(--lx-motion-base) var(--lx-easing), stroke-opacity var(--lx-motion-base) var(--lx-easing), stroke-width var(--lx-motion-base) var(--lx-easing)}.HtX4sa_nodeRing{fill:none;stroke:var(--visual-tone);stroke-width:2px;stroke-opacity:calc(var(--lx-vs-ring) * .34);vector-effect:non-scaling-stroke;transition:stroke-opacity var(--lx-motion-base) var(--lx-easing)}.HtX4sa_nodeLabel{fill:var(--lx-label-primary);font-weight:var(--lx-weight-medium);opacity:var(--lx-vs-alpha);pointer-events:none}.HtX4sa_nodeGroup[data-visual-state=current] .HtX4sa_nodeLabel,.HtX4sa_nodeGroup[data-visual-state=selected] .HtX4sa_nodeLabel{font-weight:var(--lx-weight-strong)}.HtX4sa_nodeGroup:hover .HtX4sa_nodeShape,.HtX4sa_nodeGroup:focus-visible .HtX4sa_nodeShape,.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeShape{fill:color-mix(in srgb, var(--visual-tone) 22%, var(--lx-surface-base));fill-opacity:1;stroke-opacity:1;stroke-width:2.6px}.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeRing{stroke-opacity:.5}[data-stroke=dashed] .HtX4sa_edgeVisible{stroke-dasharray:9 6}[data-stroke=dotted] .HtX4sa_edgeVisible{stroke-dasharray:2 6}@media (prefers-reduced-motion:reduce){.HtX4sa_edgeVisible,.HtX4sa_edgeLabel,.HtX4sa_nodeShape,.HtX4sa_nodeRing{transition:none}}@media (forced-colors:active){.HtX4sa_nodeShape{fill:canvas;stroke:canvastext}.HtX4sa_edgeVisible{stroke:canvastext}.HtX4sa_nodeGroup[data-visual-state=current] .HtX4sa_nodeShape,.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeShape{fill:highlight}}";
+		const css$5 = ".HtX4sa_graphSvg{touch-action:pan-y;max-width:none;display:block;overflow:visible}.HtX4sa_layerBand rect{fill:color-mix(in srgb, var(--lx-label-primary) 3%, transparent);stroke:var(--lx-border-subtle);stroke-width:1px;vector-effect:non-scaling-stroke}.HtX4sa_layerLabel{fill:var(--lx-label-secondary);font-size:var(--lx-text-2xs);font-weight:var(--lx-weight-strong);letter-spacing:.02em;opacity:var(--lx-vs-alpha)}.HtX4sa_edgeGroup,.HtX4sa_nodeGroup{cursor:pointer}.HtX4sa_edgeVisible{fill:none;stroke:var(--visual-tone);stroke-opacity:var(--lx-vs-alpha);stroke-width:calc(1.7px + var(--lx-vs-ring) * 1.1px);stroke-linecap:round;vector-effect:non-scaling-stroke;transition:stroke-opacity var(--lx-motion-base) var(--lx-easing), stroke-width var(--lx-motion-base) var(--lx-easing)}.HtX4sa_edgeHit{fill:none;stroke:#0000;stroke-width:14px;pointer-events:stroke;vector-effect:non-scaling-stroke}.HtX4sa_edgeGroup:hover .HtX4sa_edgeVisible,.HtX4sa_edgeGroup:focus-visible .HtX4sa_edgeVisible,.HtX4sa_edgeGroup[data-selected] .HtX4sa_edgeVisible{stroke-opacity:1;stroke-width:3px}.HtX4sa_arrowMarker path{fill:var(--visual-tone);fill-opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel rect{fill:var(--lx-surface-base);stroke:color-mix(in srgb, var(--visual-tone) 26%, var(--lx-border-subtle));stroke-width:1px;vector-effect:non-scaling-stroke;opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel text{fill:var(--lx-label-primary);font-weight:var(--lx-weight-medium);opacity:var(--lx-vs-alpha)}.HtX4sa_edgeLabel{pointer-events:none;transition:opacity var(--lx-motion-fast) var(--lx-easing)}.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeLabel,.HtX4sa_edgeGroup[data-crowded] .HtX4sa_edgeLabel{opacity:0}.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup:hover .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup:focus-visible .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup[data-selected] .HtX4sa_edgeLabel,.HtX4sa_graphSvg[data-dense-edges] .HtX4sa_edgeGroup[data-visual-state=current] .HtX4sa_edgeLabel,.HtX4sa_edgeGroup[data-crowded]:hover .HtX4sa_edgeLabel,.HtX4sa_edgeGroup[data-crowded]:focus-visible .HtX4sa_edgeLabel,.HtX4sa_edgeGroup[data-crowded][data-selected] .HtX4sa_edgeLabel,.HtX4sa_edgeGroup[data-crowded][data-visual-state=current] .HtX4sa_edgeLabel{opacity:1}.HtX4sa_nodeShape{fill:color-mix(in srgb, var(--visual-tone) 12%, var(--lx-surface-base));fill-opacity:var(--lx-vs-alpha);stroke:var(--visual-tone);stroke-opacity:var(--lx-vs-alpha);stroke-width:calc(1.6px + var(--lx-vs-ring) * 1.2px);vector-effect:non-scaling-stroke;transition:fill-opacity var(--lx-motion-base) var(--lx-easing), stroke-opacity var(--lx-motion-base) var(--lx-easing), stroke-width var(--lx-motion-base) var(--lx-easing)}.HtX4sa_nodeRing{fill:none;stroke:var(--visual-tone);stroke-width:2px;stroke-opacity:calc(var(--lx-vs-ring) * .34);vector-effect:non-scaling-stroke;transition:stroke-opacity var(--lx-motion-base) var(--lx-easing)}.HtX4sa_nodeLabel{fill:var(--lx-label-primary);font-weight:var(--lx-weight-medium);opacity:var(--lx-vs-alpha);pointer-events:none}.HtX4sa_nodeGroup[data-visual-state=current] .HtX4sa_nodeLabel,.HtX4sa_nodeGroup[data-visual-state=selected] .HtX4sa_nodeLabel{font-weight:var(--lx-weight-strong)}.HtX4sa_nodeGroup:hover .HtX4sa_nodeShape,.HtX4sa_nodeGroup:focus-visible .HtX4sa_nodeShape,.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeShape{fill:color-mix(in srgb, var(--visual-tone) 22%, var(--lx-surface-base));fill-opacity:1;stroke-opacity:1;stroke-width:2.6px}.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeRing{stroke-opacity:.5}[data-stroke=dashed] .HtX4sa_edgeVisible{stroke-dasharray:9 6}[data-stroke=dotted] .HtX4sa_edgeVisible{stroke-dasharray:2 6}@media (prefers-reduced-motion:reduce){.HtX4sa_edgeVisible,.HtX4sa_edgeLabel,.HtX4sa_nodeShape,.HtX4sa_nodeRing{transition:none}}@media (forced-colors:active){.HtX4sa_nodeShape{fill:canvas;stroke:canvastext}.HtX4sa_edgeVisible{stroke:canvastext}.HtX4sa_nodeGroup[data-visual-state=current] .HtX4sa_nodeShape,.HtX4sa_nodeGroup[data-selected] .HtX4sa_nodeShape{fill:highlight}}";
 		const tagId$5 = "@dsh-portable/interactive-learning/graph.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$5) + "]") === null) {
 			const tag = document.createElement("style");
@@ -5721,6 +6039,10 @@ window.__ModuleLoader__.load({
 		*    rather than being drawn at a tenth of full strength.
 		* 3. The layer headings, edge labels and node labels are real type at 12–13px,
 		*    not 10px furniture.
+		*
+		* Edges are routed and their labels placed in `layout/graph-edges.ts`, which
+		* owns the return lane a backwards edge takes and the search that keeps a chip
+		* off the node boxes and off the other chips.
 		*/
 		/** Above this, drawing every edge label at once turns the figure into noise. */
 		const DENSE_EDGE_COUNT = 12;
@@ -5730,6 +6052,7 @@ window.__ModuleLoader__.load({
 			const id = (0, react.useId)();
 			const [viewportRef, containerWidth] = useContainerWidth();
 			const layout = (0, react.useMemo)(() => graphLayout(content, containerWidth), [containerWidth, content]);
+			const routes = (0, react.useMemo)(() => edgeRoutes(content, layout), [content, layout]);
 			const emphasis = (0, react.useMemo)(() => graphEmphasis(content, focus), [content, focus]);
 			const [selected, setSelected] = (0, react.useState)();
 			const nodeById = (0, react.useMemo)(() => new Map(content.nodes.map((node) => [node.id, node])), [content.nodes]);
@@ -5805,13 +6128,11 @@ window.__ModuleLoader__.load({
 									})]
 								}, layer.id)),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("g", { children: content.edges.map((edge, edgeIndex) => {
-									const from = layout.nodes.get(edge.from);
-									const to = layout.nodes.get(edge.to);
-									if (from === void 0 || to === void 0) return null;
+									const route = routes.get(edge.id);
+									if (route === void 0) return null;
 									const tone = toneAt(edge.tone, edgeIndex);
 									const state = emphasis.state(edge.id);
-									const geometry = edgeGeometry(from, to, layout.orientation);
-									const chipWidth = edge.label === void 0 ? 0 : edgeLabelWidth(edge.label);
+									const label = route.label;
 									return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
 										className: graph_module_css_default.edgeGroup,
 										"data-tone": tone,
@@ -5819,6 +6140,7 @@ window.__ModuleLoader__.load({
 										"data-visual-state": selected?.id === edge.id ? "selected" : state,
 										"data-selected": selected?.id === edge.id || void 0,
 										"data-visual-id": edge.id,
+										"data-crowded": label?.crowded === true || void 0,
 										role: "button",
 										"aria-label": `${edge.label ?? labels.edgeKind}: ${labelTemplate(labels.connection, {
 											from: nodeById.get(edge.from)?.label ?? edge.from,
@@ -5829,28 +6151,31 @@ window.__ModuleLoader__.load({
 										children: [
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 												className: graph_module_css_default.edgeVisible,
-												d: geometry.path,
+												d: route.path,
 												markerEnd: edge.directed === true ? `url(#${id}-arrow-${tone})` : void 0
 											}),
 											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
 												className: graph_module_css_default.edgeHit,
-												d: geometry.path
+												d: route.path
 											}),
-											edge.label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
+											label === void 0 ? null : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("g", {
 												className: graph_module_css_default.edgeLabel,
 												children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("rect", {
-													x: geometry.label.x - chipWidth / 2,
-													y: geometry.label.y - 10,
-													width: chipWidth,
-													height: "20",
-													rx: "10"
+													x: label.x - label.width / 2,
+													y: label.y - label.height / 2,
+													width: label.width,
+													height: label.height,
+													rx: edgeLabelRadius(label)
 												}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("text", {
-													x: geometry.label.x,
-													y: geometry.label.y,
+													x: label.x,
 													textAnchor: "middle",
 													dominantBaseline: "middle",
 													fontSize: 12,
-													children: edge.label
+													children: label.lines.map((line, lineIndex) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("tspan", {
+														x: label.x,
+														y: label.y - (label.lines.length - 1) * 15 / 2 + lineIndex * 15,
+														children: line
+													}, line + String(lineIndex)))
 												})]
 											})
 										]
