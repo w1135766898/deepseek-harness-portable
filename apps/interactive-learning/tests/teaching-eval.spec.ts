@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
+  LEARNING_CANARY_MATRIX,
   OFFLINE_REFERENCE_CANDIDATES,
   TEACHING_EVAL_CASES,
   gradeTeachingSuite,
@@ -9,6 +10,28 @@ import {
 import { LEARNING_TEACHING_POLICY } from '../src/teaching-policy.ts'
 
 describe('non-blocking teaching behavior evaluation', () => {
+  it('keeps the real-model canary as a compact behavior matrix', () => {
+    expect(LEARNING_CANARY_MATRIX.map(scenario => scenario.id)).toEqual([
+      'bare-concept',
+      'confusion-repair',
+      'expert-terminology',
+      'current-contested-topic',
+      'initial-deadline',
+      'mid-lesson-impatience',
+      'self-study',
+      'graded-work',
+      'flashcards',
+      'study-guide',
+      'repeated-explanation-and-fresh-transfer',
+    ])
+    expect(LEARNING_CANARY_MATRIX.every(scenario => scenario.expectedIntent === 'learn')).toBe(true)
+    expect(LEARNING_CANARY_MATRIX.find(scenario => scenario.id === 'bare-concept')?.expectedRoute).toBe('calibrate')
+    expect(LEARNING_CANARY_MATRIX.find(scenario => scenario.id === 'current-contested-topic')?.expectedTrigger).toBe('current-topic')
+    expect(LEARNING_CANARY_MATRIX.find(scenario => scenario.id === 'current-contested-topic')?.expectedRoute).toBe('overview')
+    expect(LEARNING_CANARY_MATRIX.find(scenario => scenario.id === 'graded-work')?.responseShape).toBe('graded-boundary')
+    expect(LEARNING_CANARY_MATRIX.find(scenario => scenario.id === 'repeated-explanation-and-fresh-transfer')?.kind).toBe('multi-turn')
+  })
+
   it('covers visual restraint, conversational adaptation, and stopping after transfer', () => {
     expect(TEACHING_EVAL_CASES.map(scenario => scenario.id)).toEqual([
       'simple-fact-no-visual',

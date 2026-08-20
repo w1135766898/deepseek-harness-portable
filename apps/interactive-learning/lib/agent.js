@@ -1,16 +1,20 @@
+import { t as LEARNING_INTENT_POLICY } from "./learn-intent-2ZHr9s9C.js";
 import { E as VISUAL_RESULT_PROTOCOL_V4, L as parseLearningVisualV4, c as LEARNING_CHECKPOINT_KINDS, d as LearningProtocolError, f as MATH_BINARY_OPERATORS, i as CHECKPOINT_RESULT_PROTOCOL, j as parseLearningCheckpointV1, p as MATH_UNARY_OPERATORS, r as CHECKPOINT_PROTOCOL, s as LEARNING_CHECKPOINT_EVIDENCE_KINDS, u as LEARNING_VISUAL_STATUSES, w as VISUAL_PROTOCOL_V4 } from "./protocol-D-KGSMae.js";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 //#region lib/types/teaching-policy.js
 /**
 * Compact standing policy for the Learning preset.
 *
-* Detailed visual and source-material construction rules live in the
-* progressive-disclosure Skill. Keep this string short: it is injected into
-* every Learning request and must leave room for the learner's actual words.
+* Detailed intent, diagnosis, move, integrity, visual, and source-material
+* construction rules live in the progressive-disclosure Skill. Keep this
+* string short: it is injected into every Learning request and must leave
+* room for the learner's actual words.
 */
 const LEARNING_TEACHING_POLICY = [
 	"# DeepSeek Harness Learning Policy",
 	"Optimize for durable capability: the learner should eventually explain, predict, distinguish, debug, or apply the idea without help. Be warm, direct, and concise; match the learner's language and requested depth. Do not prolong lessons, withhold useful answers, or use tools for their own sake.",
+	"## Learn intent",
+	LEARNING_INTENT_POLICY,
 	"## Route first",
 	"Treat a short “learn X”, “teach me X”, or “understand X” request with unknown level and goal as calibration, not as permission to dump a full overview: ask one question whose answer changes the teaching route (for example, whether they want an intuitive introduction, hands-on use, or theory). If the learner says “from zero”, “beginner”, or “concept intro”, teach one minimum concept immediately and do not ask background questions again. Give a structured overview directly only when the learner asks for a complete/full overview, says to answer without questions, or asks for a current or contested-topic survey. A concrete urgent blocker is direct help first. Otherwise, when the goal or exact confusion is clear, start teaching it; do not open with a questionnaire.",
 	"## One-step teaching loop",
@@ -18,7 +22,7 @@ const LEARNING_TEACHING_POLICY = [
 	"Use observable evidence only. Name what the learner actually said or did. For a correct response, preserve the correct part and raise difficulty slightly; for a partial or wrong response, isolate the precise error, add new information, and offer a nearby retry. A concept gap needs the concept; a procedure gap needs a distinct parallel example; a notation gap needs symbols decoded; a prerequisite gap needs the missing rule first.",
 	"Never repeat a hint, analogy, question, or explanation fingerprint. When the learner says “I don’t understand”, shrink the concept or change representation and add new information; do not paraphrase the same move. “I heard it” is not mastery: require an explanation, prediction, or application in a fresh situation.",
 	"Stop after independent fresh transfer. State the concrete evidence and offer, but do not force, a next step. Do not manufacture another question, checkpoint, praise loop, or plan step after transfer. A plan is tentative and never a completion checklist.",
-	"Ordinary conversation is the default. Use a visual only when one relationship is materially clearer by seeing or manipulating it; use a checkpoint only when the learner's response will change the next move. Both are optional and non-blocking. Load the interactive-teaching Skill only for detailed visual or supplied-source construction.",
+	"Ordinary conversation is the default. Use a visual only when one relationship is materially clearer by seeing or manipulating it; use a checkpoint only when the learner's response will change the next move. Both are optional and non-blocking on the ordinary text path. In the move ontology the checkpoint is a reflective pause: the wire-compatible `learning_checkpoint` tool is the sole deliberate user wait, and skip/cancel/failure must return to ordinary conversation without withholding teaching. Load the interactive-teaching Skill only for detailed visual or supplied-source construction.",
 	"Keep academic-integrity limits for observable assessed work only. Never invent facts, citations, source anchors, learner evidence, or confidence; correct mistakes plainly.",
 	"The `learning_state_update` state is tentative and session-local. Update it only after a substantive observable change. Use phase, last explanation/question, learner-response assessment, current misconception, next move, and move fingerprint to choose a different next move; do not narrate these fields to the learner."
 ].join("\n\n");
@@ -1241,6 +1245,7 @@ const learnerEvidenceFields = {
 		type: "string",
 		enum: [
 			"correct",
+			"partial",
 			"incorrect",
 			"unknown"
 		]
@@ -1252,6 +1257,53 @@ const learnerEvidenceFields = {
 			"guided",
 			"unknown"
 		]
+	}
+};
+const failedMove = {
+	type: "object",
+	additionalProperties: false,
+	properties: {
+		move: {
+			type: "string",
+			enum: [
+				"none",
+				"explanation",
+				"example",
+				"question",
+				"guided_discovery",
+				"worked_example",
+				"reflective_pause",
+				"resource",
+				"repair",
+				"transfer",
+				"visual",
+				"checkpoint"
+			],
+			required: true
+		},
+		fingerprint: {
+			type: "string",
+			required: true
+		},
+		failureReason: {
+			type: "string",
+			enum: [
+				"not-understood",
+				"repeated-misconception",
+				"unhelpful-hint",
+				"wrong-representation",
+				"no-progress",
+				"unavailable",
+				"unknown"
+			],
+			required: true
+		},
+		representation: { type: "string" },
+		summary: {
+			type: "string",
+			required: true
+		},
+		turn: { type: "integer" }
 	}
 };
 const learnerEvidenceInput = { oneOf: [{
@@ -1310,6 +1362,7 @@ const learnerStateEvent = {
 				"urgency_observed",
 				"assessment_context_observed",
 				"learner_evidence_observed",
+				"failed_move_observed",
 				"assistant_move_observed",
 				"source_anchors_observed"
 			],
@@ -1448,6 +1501,7 @@ const learnerStateEvent = {
 			]
 		},
 		evidence: { ...learnerEvidenceInput },
+		failedMove: { ...failedMove },
 		move: {
 			type: "string",
 			enum: [
@@ -1455,6 +1509,10 @@ const learnerStateEvent = {
 				"explanation",
 				"example",
 				"question",
+				"guided_discovery",
+				"worked_example",
+				"reflective_pause",
+				"resource",
 				"repair",
 				"transfer",
 				"visual",
@@ -1491,6 +1549,10 @@ const learnerStateEvent = {
 				"direct",
 				"explain",
 				"example",
+				"guided_discovery",
+				"worked_example",
+				"reflective_pause",
+				"resource",
 				"question",
 				"repair",
 				"transfer",
@@ -1608,6 +1670,10 @@ const learnerStateCorrection = {
 			type: "array",
 			items: learnerEvidenceInput
 		},
+		failedMoves: {
+			type: "array",
+			items: failedMove
+		},
 		phase: {
 			type: "string",
 			enum: [
@@ -1638,6 +1704,10 @@ const learnerStateCorrection = {
 				"direct",
 				"explain",
 				"example",
+				"guided_discovery",
+				"worked_example",
+				"reflective_pause",
+				"resource",
 				"question",
 				"repair",
 				"transfer",
@@ -1652,6 +1722,10 @@ const learnerStateCorrection = {
 				"explanation",
 				"example",
 				"question",
+				"guided_discovery",
+				"worked_example",
+				"reflective_pause",
+				"resource",
 				"repair",
 				"transfer",
 				"visual",
@@ -1730,6 +1804,14 @@ const visualSelectorParameters = {
 		type: "string",
 		required: true,
 		description: "One sentence naming the learner relationship this visual will make clearer."
+	},
+	learnerAction: {
+		type: "string",
+		description: "Optional semantic constraint: the one observation or manipulation the learner should make from the visual."
+	},
+	pairedQuestion: {
+		type: "string",
+		description: "Optional semantic constraint: the one focused question paired with the visual."
 	}
 };
 function visualParameters(kind) {
@@ -1834,10 +1916,10 @@ const checkpointParameters = {
 	}
 };
 const checkpointDescription = [
-	"Optionally request one high-value learner contribution when the response materially changes the next teaching move.",
-	"The normal path is ordinary non-blocking conversation; this is not a per-turn ceremony or Continue ritual.",
+	"Optionally request one high-value reflective pause when the learner response materially changes the next teaching move.",
+	"The normal path is ordinary conversation; this wire-compatible checkpoint is the sole deliberate user wait, not a per-turn ceremony or Continue ritual.",
 	"The selection step already chose the evidence kind. The payload is answer-free: never include a correct answer, rubric, solution, future step, Reveal, animation, or Continue content.",
-	"A skipped, cancelled, unavailable, or failed checkpoint falls back to ordinary conversation without withholding teaching."
+	"A skipped, cancelled, unavailable, or failed reflective pause falls back to ordinary conversation without withholding teaching."
 ].join(" ");
 const dynamicVisualDisposers = /* @__PURE__ */ new WeakMap();
 const dynamicCheckpointDisposers = /* @__PURE__ */ new WeakMap();
@@ -1864,7 +1946,7 @@ function apply(ctx) {
 	const services = ctx;
 	services.tools.register(closeParameterRoot(defineTool({
 		name: "learning_visual_select",
-		description: "Use only when a visual will materially clarify one relationship. Select one native kind and state its teaching purpose; the selected kind-specific learning_visual schema is exposed on the next model step. Do not select a visual for a definition, short fact, or already-clear explanation.",
+		description: "Use only when a visual will materially clarify one relationship. Select one native kind, state its teaching purpose, and bind it to at least one learner action or paired question; the selected kind-specific learning_visual schema is exposed on the next model step. Do not select a visual for a definition, short fact, or already-clear explanation.",
 		parameters: visualSelectorParameters,
 		output: {
 			schema: visualSelectorOutput,
@@ -1875,6 +1957,9 @@ function apply(ctx) {
 		},
 		isConcurrencySafe: () => false,
 		async execute(args, exec) {
+			const learnerAction = typeof args.learnerAction === "string" ? args.learnerAction.trim() : "";
+			const pairedQuestion = typeof args.pairedQuestion === "string" ? args.pairedQuestion.trim() : "";
+			if (learnerAction === "" && pairedQuestion === "") throw new TypeError("learning_visual_select requires learnerAction or pairedQuestion");
 			const target = dynamicToolTarget(services, exec);
 			const existing = target.get("learning_visual");
 			const targetKey = dynamicToolKey(services, exec);
@@ -2015,7 +2100,7 @@ function apply(ctx) {
 	})));
 	services.tools.register(closeParameterRoot(defineTool({
 		name: "learning_checkpoint_select",
-		description: "Use only when one learner response will materially change the next teaching move. Select the evidence type, give one answer-free prompt and its purpose; the full learning_checkpoint payload is exposed on the next model step. Ordinary conversation remains the default; this is not a per-turn ceremony.",
+		description: "Use only for a reflective pause when one learner response will materially change the next teaching move. Select the evidence type, give one answer-free prompt and its purpose; the full learning_checkpoint payload is exposed on the next model step. Ordinary conversation remains the default, and this is the sole deliberate user wait—not a per-turn ceremony.",
 		parameters: checkpointSelectorParameters,
 		output: {
 			schema: checkpointSelectorOutput,

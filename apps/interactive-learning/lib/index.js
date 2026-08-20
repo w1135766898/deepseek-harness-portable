@@ -1,4 +1,5 @@
-import { a as LEARNER_STATE_SESSION_EVENT_TYPE, c as foldLearnerStateSession, d as reduceLearnerState, f as registerLearningSessionEventType, h as serializeLearnerStateSnapshot, i as LEARNER_STATE_PROTOCOL, l as hydrateLearnerStateSnapshot, m as resetLearnerState, n as DEFAULT_TRANSCRIPT_TOKEN_BUDGET, o as createInitialLearnerState, p as renderLearnerStateTranscript, r as LEARNER_STATE_EVENT_PROTOCOL, s as createLearnerStateSnapshotEvent, t as registerInteractiveLearningSessionCompatibility, u as parseLearnerStateSnapshotEvent } from "./bootstrap-BJicoai5.js";
+import { a as LEARNER_STATE_SESSION_EVENT_TYPE, c as createLearnerStateSnapshotEvent, d as parseLearnerStateSnapshotEvent, f as reduceLearnerState, g as serializeLearnerStateSnapshot, h as resetLearnerState, i as LEARNER_STATE_PROTOCOL, l as foldLearnerStateSession, m as renderLearnerStateTranscript, n as DEFAULT_TRANSCRIPT_TOKEN_BUDGET, o as MAX_FAILED_MOVES, p as registerLearningSessionEventType, r as LEARNER_STATE_EVENT_PROTOCOL, s as createInitialLearnerState, t as registerInteractiveLearningSessionCompatibility, u as hydrateLearnerStateSnapshot } from "./bootstrap-08JSbmjv.js";
+import { i as isLearnIntent, n as LEARN_INTENT, r as classifyLearnIntent, t as LEARNING_INTENT_POLICY } from "./learn-intent-2ZHr9s9C.js";
 import { A as parseLearningCheckpointResultV1, N as parseLearningResponseV2, O as parseLearningActivity, S as TRANSPORT_PROTOCOL_V2, a as CHECKPOINT_TRANSPORT_PROTOCOL, b as RESPONSE_PROTOCOL_V2, d as LearningProtocolError, i as CHECKPOINT_RESULT_PROTOCOL, j as parseLearningCheckpointV1, k as parseLearningActivityV2, m as MAX_ACTIVITY_BYTES, y as RESPONSE_PROTOCOL } from "./protocol-D-KGSMae.js";
 import { createHash, randomUUID } from "node:crypto";
 import { Service } from "@deepseek-ai/cordis";
@@ -884,7 +885,6 @@ var LearningActivityBroker = class extends Service {
 const SHORT_LEARNING_REQUEST = /^(?:please\s+)?(?:teach\s+me|help\s+me\s+learn|learn|understand|get\s+to\s+know)\b|^(?:学习|教我|了解|想学)\s*/i;
 const EXPLICIT_BEGINNER = /(?:\b(?:from\s+scratch|from\s+zero|beginner|beginners|intro(?:duction)?|concept(?:ual)?\s+intro)\b|零基础|从零|入门|概念入门)/i;
 const EXPLICIT_OVERVIEW = /\b(?:complete|full|comprehensive|structured|direct)\s+(?:overview|survey|summary)|\b(?:overview|survey)\b.*\b(?:directly|without\s+(?:asking|questions)|don['’]?t\s+(?:ask|quiz)|no\s+questions)|(?:完整|全面|结构化).*(?:概览|综述)|(?:直接讲|不要提问|别提问|不要先问)/i;
-const CURRENT_OR_CONTESTED = /(?:\b(?:latest|current|recent|today|news|controversial|contested|debate)\b|争议|时事|最新|近期)/i;
 const SPECIFIC_LEARNING_GOAL = /(?:\b(?:why|how|difference|distinguish|compare|debug|apply|predict|explain|derive|implement)\b|练习|区别|为什么|如何|怎么|对比|调试|应用|预测|推导|实现)/i;
 /**
 * Classify only the first-turn shape. It deliberately does not infer a
@@ -892,39 +892,80 @@ const SPECIFIC_LEARNING_GOAL = /(?:\b(?:why|how|difference|distinguish|compare|d
 */
 function routeLearningRequest(text) {
 	const normalized = text.replace(/\s+/g, " ").trim();
+	const intent = classifyLearnIntent(normalized);
+	if (intent.intent !== "learn") return {
+		route: "direct",
+		reason: "direct",
+		intent
+	};
 	if (EXPLICIT_OVERVIEW.test(normalized)) return {
 		route: "overview",
-		reason: "explicit-overview"
+		reason: "explicit-overview",
+		intent
 	};
-	if (CURRENT_OR_CONTESTED.test(normalized)) return {
+	if (intent.trigger === "current-topic") return {
 		route: "overview",
-		reason: "current-or-contested"
+		reason: "current-or-contested",
+		intent
 	};
 	if (SHORT_LEARNING_REQUEST.test(normalized)) {
 		if (EXPLICIT_BEGINNER.test(normalized)) return {
 			route: "teach-minimum",
-			reason: "explicit-beginner"
+			reason: "explicit-beginner",
+			intent
 		};
 		if (SPECIFIC_LEARNING_GOAL.test(normalized)) return {
 			route: "teach-minimum",
-			reason: "specific-goal"
+			reason: "specific-goal",
+			intent
 		};
 		return {
 			route: "calibrate",
-			reason: "short-learning-request"
+			reason: "short-learning-request",
+			intent
 		};
 	}
 	if (EXPLICIT_BEGINNER.test(normalized)) return {
 		route: "teach-minimum",
-		reason: "explicit-beginner"
+		reason: "explicit-beginner",
+		intent
 	};
+	switch (intent.trigger) {
+		case "definition": return {
+			route: "teach-minimum",
+			reason: "definition",
+			intent
+		};
+		case "bare-concept": return {
+			route: "calibrate",
+			reason: "bare-concept",
+			intent
+		};
+		case "confusion-repair": return {
+			route: "teach-minimum",
+			reason: "confusion-repair",
+			intent
+		};
+		case "learning-path": return {
+			route: "teach-minimum",
+			reason: "learning-path",
+			intent
+		};
+		case "resource-creation": return {
+			route: "direct",
+			reason: "resource-creation",
+			intent
+		};
+	}
 	if (SPECIFIC_LEARNING_GOAL.test(normalized)) return {
 		route: "teach-minimum",
-		reason: "specific-goal"
+		reason: "specific-goal",
+		intent
 	};
 	return {
 		route: "direct",
-		reason: "direct"
+		reason: "direct",
+		intent
 	};
 }
 //#endregion
@@ -932,4 +973,4 @@ function routeLearningRequest(text) {
 /** Host entry: one non-model-facing Learning Activity broker service. */
 registerInteractiveLearningSessionCompatibility();
 //#endregion
-export { DEFAULT_TRANSCRIPT_TOKEN_BUDGET, LEARNER_STATE_EVENT_PROTOCOL, LEARNER_STATE_PROTOCOL, LEARNER_STATE_SESSION_EVENT_TYPE, LearningActivityBroker, LearningActivityBroker as default, createInitialLearnerState, createLearnerStateSnapshotEvent, foldLearnerStateSession, hydrateLearnerStateSnapshot, parseLearnerStateSnapshotEvent, reduceLearnerState, registerInteractiveLearningSessionCompatibility, registerLearningSessionEventType, renderLearnerStateTranscript, resetLearnerState, routeLearningRequest, serializeLearnerStateSnapshot };
+export { DEFAULT_TRANSCRIPT_TOKEN_BUDGET, LEARNER_STATE_EVENT_PROTOCOL, LEARNER_STATE_PROTOCOL, LEARNER_STATE_SESSION_EVENT_TYPE, LEARNING_INTENT_POLICY, LEARN_INTENT, LearningActivityBroker, LearningActivityBroker as default, MAX_FAILED_MOVES, classifyLearnIntent, createInitialLearnerState, createLearnerStateSnapshotEvent, foldLearnerStateSession, hydrateLearnerStateSnapshot, isLearnIntent, parseLearnerStateSnapshotEvent, reduceLearnerState, registerInteractiveLearningSessionCompatibility, registerLearningSessionEventType, renderLearnerStateTranscript, resetLearnerState, routeLearningRequest, serializeLearnerStateSnapshot };

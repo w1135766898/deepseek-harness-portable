@@ -18,6 +18,7 @@ export const MAX_PRIOR_KNOWLEDGE = 8
 export const MAX_MISCONCEPTIONS = 6
 export const MAX_SOURCE_ANCHORS = 8
 export const MAX_PLAN_STEPS = 6
+export const MAX_FAILED_MOVES = 6
 export const DEFAULT_TRANSCRIPT_TOKEN_BUDGET = 300
 
 const MAX_STORED_TEXT = 240
@@ -63,7 +64,19 @@ export type LearnerAssessmentContext = 'self-study' | 'graded' | 'unknown'
 export type LearnerMastery = 'unseen' | 'emerging' | 'transfer'
 export type LearnerPhase = 'orient' | 'teach' | 'practice' | 'repair' | 'transfer' | 'complete'
 export type LearnerResponseAssessment = 'correct' | 'partial' | 'incorrect' | 'no-evidence'
-export type LearnerNextMove = 'calibrate' | 'direct' | 'explain' | 'example' | 'question' | 'repair' | 'transfer' | 'complete'
+export type LearnerNextMove =
+  | 'calibrate'
+  | 'direct'
+  | 'explain'
+  | 'example'
+  | 'guided_discovery'
+  | 'worked_example'
+  | 'reflective_pause'
+  | 'resource'
+  | 'question'
+  | 'repair'
+  | 'transfer'
+  | 'complete'
 
 /**
  * A step in the session's learning route.
@@ -92,6 +105,10 @@ export type LearnerTeachingMove =
   | 'explanation'
   | 'example'
   | 'question'
+  | 'guided_discovery'
+  | 'worked_example'
+  | 'reflective_pause'
+  | 'resource'
   | 'repair'
   | 'transfer'
   | 'visual'
@@ -106,10 +123,29 @@ export type LearnerEvidenceKind =
   | 'error'
 
 export type LearnerEvidenceConfidence = 'low' | 'medium' | 'high'
-export type LearnerEvidenceCorrectness = 'correct' | 'incorrect' | 'unknown'
+export type LearnerEvidenceCorrectness = 'correct' | 'partial' | 'incorrect' | 'unknown'
 export type LearnerEvidenceIndependence = 'independent' | 'guided' | 'unknown'
 export type LearnerTransferContext = 'same' | 'fresh' | 'unknown'
 type NonTransferEvidenceKind = Exclude<LearnerEvidenceKind, 'transfer'>
+
+export type LearnerMoveFailureReason =
+  | 'not-understood'
+  | 'repeated-misconception'
+  | 'unhelpful-hint'
+  | 'wrong-representation'
+  | 'no-progress'
+  | 'unavailable'
+  | 'unknown'
+
+export interface LearnerFailedMove {
+  move: LearnerTeachingMove
+  fingerprint: string
+  failureReason: LearnerMoveFailureReason
+  /** Optional plain-language representation, such as “arrival-order analogy”. */
+  representation?: string
+  summary: string
+  turn?: number
+}
 
 export type ObservableEventSource =
   | 'learner-message'
@@ -172,6 +208,8 @@ export interface LearnerState {
   assessmentContext: LearnerAssessmentContext
   mastery: LearnerMastery
   evidence: readonly LearnerEvidence[]
+  /** Bounded history of representations or hints that failed and why. */
+  failedMoves: readonly LearnerFailedMove[]
   /** Current stage in the minimal teaching loop, not a lesson counter. */
   phase: LearnerPhase
   lastExplanationSummary: string | null
@@ -258,6 +296,18 @@ export type LearnerStateEvent =
       observation: ObservableLearnerEvent
     }
   | {
+      type: 'failed_move_observed'
+      failedMove: {
+        move: LearnerTeachingMove
+        fingerprint: string
+        failureReason: LearnerMoveFailureReason
+        representation?: string
+        summary?: string
+        turn?: number
+      }
+      observation: ObservableLearnerEvent
+    }
+  | {
       type: 'assistant_move_observed'
       move: LearnerTeachingMove
       phase?: LearnerPhase
@@ -296,6 +346,7 @@ export interface LearnerStateCorrection {
   assessmentContext?: LearnerAssessmentContext
   mastery?: LearnerMastery
   evidence?: readonly LearnerEvidenceInput[]
+  failedMoves?: readonly LearnerFailedMove[]
   phase?: LearnerPhase
   lastExplanationSummary?: string | null
   lastQuestion?: string | null
@@ -368,10 +419,12 @@ const RESPONSE_ASSESSMENTS: ReadonlySet<string> = new Set<LearnerResponseAssessm
   'correct', 'partial', 'incorrect', 'no-evidence',
 ])
 const NEXT_MOVES: ReadonlySet<string> = new Set<LearnerNextMove>([
-  'calibrate', 'direct', 'explain', 'example', 'question', 'repair', 'transfer', 'complete',
+  'calibrate', 'direct', 'explain', 'example', 'guided_discovery', 'worked_example',
+  'reflective_pause', 'resource', 'question', 'repair', 'transfer', 'complete',
 ])
 const TEACHING_MOVES: ReadonlySet<string> = new Set<LearnerTeachingMove>([
-  'none', 'explanation', 'example', 'question', 'repair', 'transfer', 'visual', 'checkpoint',
+  'none', 'explanation', 'example', 'question', 'guided_discovery', 'worked_example',
+  'reflective_pause', 'resource', 'repair', 'transfer', 'visual', 'checkpoint',
 ])
 const EVIDENCE_KINDS: ReadonlySet<string> = new Set<LearnerEvidenceKind>([
   'attempt', 'prediction', 'explanation', 'contrast', 'transfer', 'error',
@@ -380,13 +433,22 @@ const EVIDENCE_CONFIDENCE: ReadonlySet<string> = new Set<LearnerEvidenceConfiden
   'low', 'medium', 'high',
 ])
 const EVIDENCE_CORRECTNESS: ReadonlySet<string> = new Set<LearnerEvidenceCorrectness>([
-  'correct', 'incorrect', 'unknown',
+  'correct', 'partial', 'incorrect', 'unknown',
 ])
 const EVIDENCE_INDEPENDENCE: ReadonlySet<string> = new Set<LearnerEvidenceIndependence>([
   'independent', 'guided', 'unknown',
 ])
 const TRANSFER_CONTEXTS: ReadonlySet<string> = new Set<LearnerTransferContext>([
   'same', 'fresh', 'unknown',
+])
+const MOVE_FAILURE_REASONS: ReadonlySet<string> = new Set<LearnerMoveFailureReason>([
+  'not-understood',
+  'repeated-misconception',
+  'unhelpful-hint',
+  'wrong-representation',
+  'no-progress',
+  'unavailable',
+  'unknown',
 ])
 const OBSERVABLE_SOURCES: ReadonlySet<string> = new Set<ObservableEventSource>([
   'learner-message', 'learner-action', 'assistant-output', 'source-material', 'user-correction',
@@ -437,6 +499,38 @@ function normalizeSupportLevel(value: number): LearnerSupportLevel {
     throw new TypeError('supportLevel must be an integer from 0 through 5')
   }
   return value as LearnerSupportLevel
+}
+
+function normalizeFailedMove(
+  input: {
+    move: LearnerTeachingMove
+    moveFingerprint: string
+    failureReason: LearnerMoveFailureReason
+    representation?: string
+    summary: string
+    turn?: number
+  },
+  label: string,
+  source?: ObservableLearnerEvent,
+): LearnerFailedMove {
+  const turn = input.turn ?? source?.turn
+  if (turn !== undefined && (!Number.isSafeInteger(turn) || turn < 0)) {
+    throw new TypeError(`${label}.turn must be a non-negative integer`)
+  }
+  return Object.freeze({
+    move: assertEnum(input.move, TEACHING_MOVES, `${label}.move`),
+    fingerprint: normalizeRequiredText(input.moveFingerprint, `${label}.fingerprint`),
+    failureReason: assertEnum(input.failureReason, MOVE_FAILURE_REASONS, `${label}.failureReason`),
+    ...(input.representation === undefined
+      ? {}
+      : { representation: normalizeRequiredText(input.representation, `${label}.representation`) }),
+    summary: normalizeRequiredText(input.summary, `${label}.summary`),
+    ...(turn === undefined ? {} : { turn }),
+  })
+}
+
+function boundFailedMoves(values: readonly LearnerFailedMove[]): readonly LearnerFailedMove[] {
+  return Object.freeze(values.slice(-MAX_FAILED_MOVES).map(item => Object.freeze({ ...item })))
 }
 
 function maxSupportLevel(
@@ -531,6 +625,7 @@ function freezeState(state: LearnerState): LearnerState {
     priorKnowledge: Object.freeze([...state.priorKnowledge]),
     misconceptions: Object.freeze([...state.misconceptions]),
     evidence: freezeEvidence(state.evidence),
+    failedMoves: boundFailedMoves(state.failedMoves),
     sourceAnchors: Object.freeze([...state.sourceAnchors]),
     plan: state.plan === null ? null : Object.freeze({
       objective: state.plan.objective,
@@ -674,6 +769,7 @@ export function createInitialLearnerState(sessionId: string): LearnerState {
     assessmentContext: 'unknown',
     mastery: 'unseen',
     evidence: [],
+    failedMoves: [],
     phase: 'orient',
     lastExplanationSummary: null,
     lastQuestion: null,
@@ -745,6 +841,16 @@ function applyCorrection(
       next.mastery = evidenceMastery(normalized)
     }
     next.evidence = boundEvidence(normalized, next.mastery)
+  }
+  if (correction.failedMoves !== undefined) {
+    next.failedMoves = boundFailedMoves(correction.failedMoves.map((item, index) => normalizeFailedMove({
+      move: item.move,
+      moveFingerprint: item.fingerprint,
+      failureReason: item.failureReason,
+      representation: item.representation,
+      summary: item.summary,
+      turn: item.turn,
+    }, `failedMoves[${String(index)}]`)))
   }
   if (correction.phase !== undefined) {
     next.phase = assertEnum(correction.phase, PHASE_VALUES, 'phase')
@@ -929,12 +1035,17 @@ export function reduceLearnerState(state: LearnerState, event: LearnerStateEvent
       next.evidence = boundEvidence([...state.evidence, evidence], next.mastery)
       next.learnerResponseAssessment = evidence.correctness === 'correct'
         ? 'correct'
+        : evidence.correctness === 'partial'
+          ? 'partial'
         : evidence.correctness === 'incorrect'
           ? 'incorrect'
           : 'no-evidence'
       if (evidence.correctness === 'incorrect') {
         next.phase = 'repair'
         next.nextMove = 'repair'
+      } else if (evidence.correctness === 'partial') {
+        next.phase = 'practice'
+        next.nextMove = 'guided_discovery'
       } else if (evidence.correctness === 'correct' && evidence.kind === 'transfer') {
         next.phase = next.mastery === 'transfer' ? 'complete' : 'practice'
         next.nextMove = next.mastery === 'transfer' ? 'complete' : 'transfer'
@@ -957,6 +1068,20 @@ export function reduceLearnerState(state: LearnerState, event: LearnerStateEvent
       }
       break
     }
+    case 'failed_move_observed': {
+      const failed = normalizeFailedMove({
+        move: event.failedMove.move,
+        moveFingerprint: event.failedMove.fingerprint,
+        failureReason: event.failedMove.failureReason,
+        representation: event.failedMove.representation,
+        summary: event.failedMove.summary ?? observation.summary,
+        turn: event.failedMove.turn,
+      }, 'failedMove', observation)
+      next.failedMoves = boundFailedMoves([...state.failedMoves, failed])
+      next.nextMove = 'repair'
+      next.phase = 'repair'
+      break
+    }
     case 'assistant_move_observed':
       if (observation.source !== 'assistant-output') {
         throw new TypeError('An assistant move must be observed from assistant output')
@@ -972,6 +1097,10 @@ export function reduceLearnerState(state: LearnerState, event: LearnerStateEvent
       const movePhase: Partial<Record<LearnerTeachingMove, LearnerPhase>> = {
         explanation: 'teach',
         example: 'teach',
+        guided_discovery: 'practice',
+        worked_example: 'teach',
+        reflective_pause: 'practice',
+        resource: 'teach',
         question: 'practice',
         repair: 'repair',
         transfer: 'transfer',
@@ -1056,6 +1185,7 @@ const SNAPSHOT_KEYS = [
   'assessmentContext',
   'mastery',
   'evidence',
+  'failedMoves',
   'phase',
   'lastExplanationSummary',
   'lastQuestion',
@@ -1077,6 +1207,7 @@ const TEACHING_MEMORY_KEYS = [
   'nextMove',
   'moveFingerprint',
 ] as const
+const OPTIONAL_MEMORY_KEYS = [...TEACHING_MEMORY_KEYS, 'failedMoves'] as const
 
 function asRecord(value: unknown, label: string): Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
@@ -1198,6 +1329,36 @@ function parseSnapshotEvidence(value: unknown): readonly LearnerEvidence[] {
   }))
 }
 
+function parseSnapshotFailedMoves(value: unknown): readonly LearnerFailedMove[] {
+  if (!Array.isArray(value)) throw new TypeError('learner state snapshot failedMoves must be an array')
+  if (value.length > MAX_FAILED_MOVES) {
+    throw new TypeError(`learner state snapshot failedMoves exceeds its item limit of ${MAX_FAILED_MOVES}`)
+  }
+  const parsed = value.map((item, index) => {
+    const record = asRecord(item, `learner state snapshot failedMoves[${String(index)}]`)
+    assertExactKeys(
+      record,
+      ['move', 'fingerprint', 'failureReason', 'summary'],
+      ['representation', 'turn'],
+      `learner state snapshot failedMoves[${String(index)}]`,
+    )
+    const turn = record.turn === undefined
+      ? undefined
+      : strictNonNegativeInteger(record.turn, `learner state snapshot failedMoves[${String(index)}].turn`)
+    return normalizeFailedMove({
+      move: strictString(record.move, `learner state snapshot failedMoves[${String(index)}].move`) as LearnerTeachingMove,
+      moveFingerprint: strictString(record.fingerprint, `learner state snapshot failedMoves[${String(index)}].fingerprint`),
+      failureReason: strictString(record.failureReason, `learner state snapshot failedMoves[${String(index)}].failureReason`) as LearnerMoveFailureReason,
+      ...(record.representation === undefined
+        ? {}
+        : { representation: strictString(record.representation, `learner state snapshot failedMoves[${String(index)}].representation`) }),
+      summary: strictString(record.summary, `learner state snapshot failedMoves[${String(index)}].summary`),
+      ...(turn === undefined ? {} : { turn }),
+    }, `learner state snapshot failedMoves[${String(index)}]`)
+  })
+  return boundFailedMoves(parsed)
+}
+
 function parseAppliedEventFence(value: unknown): readonly AppliedLearnerStateEvent[] {
   if (!Array.isArray(value)) throw new TypeError('learner state snapshot appliedEventIds must be an array')
   if (value.length > MAX_APPLIED_EVENT_IDS) {
@@ -1239,12 +1400,12 @@ export function parseLearnerStateSnapshot(value: unknown, expectedSessionId: str
     throw new TypeError(`learner state snapshot is missing required field: ${missingTeachingMemory[0]}`)
   }
   const requiredSnapshotKeys = SNAPSHOT_KEYS.filter(
-    key => !(TEACHING_MEMORY_KEYS as readonly string[]).includes(key),
+    key => !(OPTIONAL_MEMORY_KEYS as readonly string[]).includes(key),
   )
   assertExactKeys(
     record,
     requiredSnapshotKeys,
-    TEACHING_MEMORY_KEYS,
+    OPTIONAL_MEMORY_KEYS,
     'learner state snapshot',
   )
   if (record.protocol !== LEARNER_STATE_PROTOCOL) {
@@ -1313,6 +1474,7 @@ export function parseLearnerStateSnapshot(value: unknown, expectedSessionId: str
       'learner state snapshot mastery',
     ) as LearnerMastery,
     evidence: parseSnapshotEvidence(record.evidence),
+    failedMoves: record.failedMoves === undefined ? [] : parseSnapshotFailedMoves(record.failedMoves),
     phase: assertEnum(
       strictString(record.phase ?? 'orient', 'learner state snapshot phase'),
       PHASE_VALUES,
@@ -1421,6 +1583,7 @@ function assertResetSnapshot(snapshot: LearnerState): void {
   const pedagogicalKeys = [
     'goal', 'requestKind', 'level', 'priorKnowledge', 'gap', 'misconceptions', 'readiness',
     'progressSignal', 'urgency', 'supportLevel', 'assessmentContext', 'mastery', 'evidence',
+    'failedMoves',
     'phase', 'lastExplanationSummary', 'lastQuestion', 'learnerResponseAssessment',
     'currentMisconception', 'nextMove', 'moveFingerprint',
     'lastMove', 'sourceAnchors', 'plan',
@@ -1599,6 +1762,14 @@ export function renderLearnerStateTranscript(
   if (state.moveFingerprint !== null) {
     optional.push({ order: 190, priority: 97, text: `move_fingerprint: ${safeQuoted(state.moveFingerprint, 64)}` })
   }
+  state.failedMoves.slice(-2).forEach((item, index) => {
+    const representation = item.representation === undefined ? '' : `/${item.representation}`
+    optional.push({
+      order: 192 + index,
+      priority: 99 - index,
+      text: `failed_move: ${item.move}/${item.failureReason}${representation}: ${safeQuoted(item.summary, 36)}`,
+    })
+  })
   const recentEvidence = state.evidence.slice(-4)
   recentEvidence.forEach((item, index) => {
     const transferContext = item.kind === 'transfer' ? `/${item.transferContext}` : ''

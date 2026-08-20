@@ -11,6 +11,7 @@ import { KNOWN_SESSION_EVENT_TYPES } from "@deepseek-ai/dsh-session";
 const LEARNER_STATE_PROTOCOL = "dsh-learning/learner-state@1";
 const LEARNER_STATE_EVENT_PROTOCOL = "dsh-learning/state-event@1";
 const LEARNER_STATE_SESSION_EVENT_TYPE = "learning/state";
+const MAX_FAILED_MOVES = 6;
 const DEFAULT_TRANSCRIPT_TOKEN_BUDGET = 300;
 const MAX_STORED_TEXT = 240;
 /**
@@ -91,6 +92,10 @@ const NEXT_MOVES = /* @__PURE__ */ new Set([
 	"direct",
 	"explain",
 	"example",
+	"guided_discovery",
+	"worked_example",
+	"reflective_pause",
+	"resource",
 	"question",
 	"repair",
 	"transfer",
@@ -101,6 +106,10 @@ const TEACHING_MOVES = /* @__PURE__ */ new Set([
 	"explanation",
 	"example",
 	"question",
+	"guided_discovery",
+	"worked_example",
+	"reflective_pause",
+	"resource",
 	"repair",
 	"transfer",
 	"visual",
@@ -121,6 +130,7 @@ const EVIDENCE_CONFIDENCE = /* @__PURE__ */ new Set([
 ]);
 const EVIDENCE_CORRECTNESS = /* @__PURE__ */ new Set([
 	"correct",
+	"partial",
 	"incorrect",
 	"unknown"
 ]);
@@ -132,6 +142,15 @@ const EVIDENCE_INDEPENDENCE = /* @__PURE__ */ new Set([
 const TRANSFER_CONTEXTS = /* @__PURE__ */ new Set([
 	"same",
 	"fresh",
+	"unknown"
+]);
+const MOVE_FAILURE_REASONS = /* @__PURE__ */ new Set([
+	"not-understood",
+	"repeated-misconception",
+	"unhelpful-hint",
+	"wrong-representation",
+	"no-progress",
+	"unavailable",
 	"unknown"
 ]);
 const OBSERVABLE_SOURCES = /* @__PURE__ */ new Set([
@@ -173,6 +192,21 @@ function appendBoundedUnique(current, additions, limit, label) {
 function normalizeSupportLevel(value) {
 	if (!Number.isInteger(value) || value < 0 || value > 5) throw new TypeError("supportLevel must be an integer from 0 through 5");
 	return value;
+}
+function normalizeFailedMove(input, label, source) {
+	const turn = input.turn ?? source?.turn;
+	if (turn !== void 0 && (!Number.isSafeInteger(turn) || turn < 0)) throw new TypeError(`${label}.turn must be a non-negative integer`);
+	return Object.freeze({
+		move: assertEnum(input.move, TEACHING_MOVES, `${label}.move`),
+		fingerprint: normalizeRequiredText(input.moveFingerprint, `${label}.fingerprint`),
+		failureReason: assertEnum(input.failureReason, MOVE_FAILURE_REASONS, `${label}.failureReason`),
+		...input.representation === void 0 ? {} : { representation: normalizeRequiredText(input.representation, `${label}.representation`) },
+		summary: normalizeRequiredText(input.summary, `${label}.summary`),
+		...turn === void 0 ? {} : { turn }
+	});
+}
+function boundFailedMoves(values) {
+	return Object.freeze(values.slice(-6).map((item) => Object.freeze({ ...item })));
 }
 function maxSupportLevel(current, minimum) {
 	return Math.max(current, minimum);
@@ -238,6 +272,7 @@ function freezeState(state) {
 		priorKnowledge: Object.freeze([...state.priorKnowledge]),
 		misconceptions: Object.freeze([...state.misconceptions]),
 		evidence: freezeEvidence(state.evidence),
+		failedMoves: boundFailedMoves(state.failedMoves),
 		sourceAnchors: Object.freeze([...state.sourceAnchors]),
 		plan: state.plan === null ? null : Object.freeze({
 			objective: state.plan.objective,
@@ -338,6 +373,7 @@ function createInitialLearnerState(sessionId) {
 		assessmentContext: "unknown",
 		mastery: "unseen",
 		evidence: [],
+		failedMoves: [],
 		phase: "orient",
 		lastExplanationSummary: null,
 		lastQuestion: null,
@@ -380,6 +416,14 @@ function applyCorrection(state, correction, observation) {
 		if (correction.mastery === void 0) next.mastery = evidenceMastery(normalized);
 		next.evidence = boundEvidence(normalized, next.mastery);
 	}
+	if (correction.failedMoves !== void 0) next.failedMoves = boundFailedMoves(correction.failedMoves.map((item, index) => normalizeFailedMove({
+		move: item.move,
+		moveFingerprint: item.fingerprint,
+		failureReason: item.failureReason,
+		representation: item.representation,
+		summary: item.summary,
+		turn: item.turn
+	}, `failedMoves[${String(index)}]`)));
 	if (correction.phase !== void 0) next.phase = assertEnum(correction.phase, PHASE_VALUES, "phase");
 	if (Object.hasOwn(correction, "lastExplanationSummary")) next.lastExplanationSummary = normalizeOptionalText(correction.lastExplanationSummary, "lastExplanationSummary") ?? null;
 	if (Object.hasOwn(correction, "lastQuestion")) next.lastQuestion = normalizeOptionalText(correction.lastQuestion, "lastQuestion") ?? null;
@@ -493,10 +537,13 @@ function reduceLearnerState(state, event) {
 			const evidence = normalizeEvidence(event.evidence, observation);
 			next.mastery = masteryFromEvidence(state.mastery, [evidence]);
 			next.evidence = boundEvidence([...state.evidence, evidence], next.mastery);
-			next.learnerResponseAssessment = evidence.correctness === "correct" ? "correct" : evidence.correctness === "incorrect" ? "incorrect" : "no-evidence";
+			next.learnerResponseAssessment = evidence.correctness === "correct" ? "correct" : evidence.correctness === "partial" ? "partial" : evidence.correctness === "incorrect" ? "incorrect" : "no-evidence";
 			if (evidence.correctness === "incorrect") {
 				next.phase = "repair";
 				next.nextMove = "repair";
+			} else if (evidence.correctness === "partial") {
+				next.phase = "practice";
+				next.nextMove = "guided_discovery";
 			} else if (evidence.correctness === "correct" && evidence.kind === "transfer") {
 				next.phase = next.mastery === "transfer" ? "complete" : "practice";
 				next.nextMove = next.mastery === "transfer" ? "complete" : "transfer";
@@ -511,6 +558,20 @@ function reduceLearnerState(state, event) {
 			}
 			break;
 		}
+		case "failed_move_observed": {
+			const failed = normalizeFailedMove({
+				move: event.failedMove.move,
+				moveFingerprint: event.failedMove.fingerprint,
+				failureReason: event.failedMove.failureReason,
+				representation: event.failedMove.representation,
+				summary: event.failedMove.summary ?? observation.summary,
+				turn: event.failedMove.turn
+			}, "failedMove", observation);
+			next.failedMoves = boundFailedMoves([...state.failedMoves, failed]);
+			next.nextMove = "repair";
+			next.phase = "repair";
+			break;
+		}
 		case "assistant_move_observed":
 			if (observation.source !== "assistant-output") throw new TypeError("An assistant move must be observed from assistant output");
 			next.lastMove = assertEnum(event.move, TEACHING_MOVES, "lastMove");
@@ -522,6 +583,10 @@ function reduceLearnerState(state, event) {
 			next.phase = event.phase === void 0 ? {
 				explanation: "teach",
 				example: "teach",
+				guided_discovery: "practice",
+				worked_example: "teach",
+				reflective_pause: "practice",
+				resource: "teach",
 				question: "practice",
 				repair: "repair",
 				transfer: "transfer",
@@ -580,6 +645,7 @@ const SNAPSHOT_KEYS = [
 	"assessmentContext",
 	"mastery",
 	"evidence",
+	"failedMoves",
 	"phase",
 	"lastExplanationSummary",
 	"lastQuestion",
@@ -601,6 +667,7 @@ const TEACHING_MEMORY_KEYS = [
 	"nextMove",
 	"moveFingerprint"
 ];
+const OPTIONAL_MEMORY_KEYS = [...TEACHING_MEMORY_KEYS, "failedMoves"];
 function asRecord(value, label) {
 	if (value === null || typeof value !== "object" || Array.isArray(value)) throw new TypeError(`${label} must be an object`);
 	return value;
@@ -676,6 +743,28 @@ function parseSnapshotEvidence(value) {
 		};
 	}));
 }
+function parseSnapshotFailedMoves(value) {
+	if (!Array.isArray(value)) throw new TypeError("learner state snapshot failedMoves must be an array");
+	if (value.length > 6) throw new TypeError(`learner state snapshot failedMoves exceeds its item limit of 6`);
+	return boundFailedMoves(value.map((item, index) => {
+		const record = asRecord(item, `learner state snapshot failedMoves[${String(index)}]`);
+		assertExactKeys(record, [
+			"move",
+			"fingerprint",
+			"failureReason",
+			"summary"
+		], ["representation", "turn"], `learner state snapshot failedMoves[${String(index)}]`);
+		const turn = record.turn === void 0 ? void 0 : strictNonNegativeInteger(record.turn, `learner state snapshot failedMoves[${String(index)}].turn`);
+		return normalizeFailedMove({
+			move: strictString(record.move, `learner state snapshot failedMoves[${String(index)}].move`),
+			moveFingerprint: strictString(record.fingerprint, `learner state snapshot failedMoves[${String(index)}].fingerprint`),
+			failureReason: strictString(record.failureReason, `learner state snapshot failedMoves[${String(index)}].failureReason`),
+			...record.representation === void 0 ? {} : { representation: strictString(record.representation, `learner state snapshot failedMoves[${String(index)}].representation`) },
+			summary: strictString(record.summary, `learner state snapshot failedMoves[${String(index)}].summary`),
+			...turn === void 0 ? {} : { turn }
+		}, `learner state snapshot failedMoves[${String(index)}]`);
+	}));
+}
 function parseAppliedEventFence(value) {
 	if (!Array.isArray(value)) throw new TypeError("learner state snapshot appliedEventIds must be an array");
 	if (value.length > 64) throw new TypeError(`learner state snapshot appliedEventIds exceeds its item limit of 64`);
@@ -702,7 +791,7 @@ function parseLearnerStateSnapshot(value, expectedSessionId) {
 	const record = parseSnapshotInput(value, "learner state snapshot");
 	const missingTeachingMemory = TEACHING_MEMORY_KEYS.filter((key) => !Object.hasOwn(record, key));
 	if (missingTeachingMemory.length > 0 && missingTeachingMemory.length < TEACHING_MEMORY_KEYS.length) throw new TypeError(`learner state snapshot is missing required field: ${missingTeachingMemory[0]}`);
-	assertExactKeys(record, SNAPSHOT_KEYS.filter((key) => !TEACHING_MEMORY_KEYS.includes(key)), TEACHING_MEMORY_KEYS, "learner state snapshot");
+	assertExactKeys(record, SNAPSHOT_KEYS.filter((key) => !OPTIONAL_MEMORY_KEYS.includes(key)), OPTIONAL_MEMORY_KEYS, "learner state snapshot");
 	if (record.protocol !== "dsh-learning/learner-state@1") throw new TypeError(`learner state snapshot protocol must be ${LEARNER_STATE_PROTOCOL}`);
 	if (record.tentative !== true) throw new TypeError("learner state snapshot tentative must be true");
 	const sessionId = normalizeSessionId(expectedSessionId);
@@ -726,6 +815,7 @@ function parseLearnerStateSnapshot(value, expectedSessionId) {
 		assessmentContext: assertEnum(strictString(record.assessmentContext, "learner state snapshot assessmentContext"), ASSESSMENT_CONTEXTS, "learner state snapshot assessmentContext"),
 		mastery: assertEnum(strictString(record.mastery, "learner state snapshot mastery"), MASTERY_VALUES, "learner state snapshot mastery"),
 		evidence: parseSnapshotEvidence(record.evidence),
+		failedMoves: record.failedMoves === void 0 ? [] : parseSnapshotFailedMoves(record.failedMoves),
 		phase: assertEnum(strictString(record.phase ?? "orient", "learner state snapshot phase"), PHASE_VALUES, "learner state snapshot phase"),
 		lastExplanationSummary: record.lastExplanationSummary === void 0 || record.lastExplanationSummary === null ? null : strictString(record.lastExplanationSummary, "learner state snapshot lastExplanationSummary"),
 		lastQuestion: record.lastQuestion === void 0 || record.lastQuestion === null ? null : strictString(record.lastQuestion, "learner state snapshot lastQuestion"),
@@ -808,6 +898,7 @@ function assertResetSnapshot(snapshot) {
 		"assessmentContext",
 		"mastery",
 		"evidence",
+		"failedMoves",
 		"phase",
 		"lastExplanationSummary",
 		"lastQuestion",
@@ -1013,6 +1104,14 @@ function renderLearnerStateTranscript(state, options = {}) {
 		priority: 97,
 		text: `move_fingerprint: ${safeQuoted(state.moveFingerprint, 64)}`
 	});
+	state.failedMoves.slice(-2).forEach((item, index) => {
+		const representation = item.representation === void 0 ? "" : `/${item.representation}`;
+		optional.push({
+			order: 192 + index,
+			priority: 99 - index,
+			text: `failed_move: ${item.move}/${item.failureReason}${representation}: ${safeQuoted(item.summary, 36)}`
+		});
+	});
 	state.evidence.slice(-4).forEach((item, index) => {
 		const transferContext = item.kind === "transfer" ? `/${item.transferContext}` : "";
 		optional.push({
@@ -1060,4 +1159,4 @@ function registerInteractiveLearningSessionCompatibility() {
 }
 registerInteractiveLearningSessionCompatibility();
 //#endregion
-export { LEARNER_STATE_SESSION_EVENT_TYPE as a, foldLearnerStateSession as c, reduceLearnerState as d, registerLearningSessionEventType as f, serializeLearnerStateSnapshot as h, LEARNER_STATE_PROTOCOL as i, hydrateLearnerStateSnapshot as l, resetLearnerState as m, DEFAULT_TRANSCRIPT_TOKEN_BUDGET as n, createInitialLearnerState as o, renderLearnerStateTranscript as p, LEARNER_STATE_EVENT_PROTOCOL as r, createLearnerStateSnapshotEvent as s, registerInteractiveLearningSessionCompatibility as t, parseLearnerStateSnapshotEvent as u };
+export { LEARNER_STATE_SESSION_EVENT_TYPE as a, createLearnerStateSnapshotEvent as c, parseLearnerStateSnapshotEvent as d, reduceLearnerState as f, serializeLearnerStateSnapshot as g, resetLearnerState as h, LEARNER_STATE_PROTOCOL as i, foldLearnerStateSession as l, renderLearnerStateTranscript as m, DEFAULT_TRANSCRIPT_TOKEN_BUDGET as n, MAX_FAILED_MOVES as o, registerLearningSessionEventType as p, LEARNER_STATE_EVENT_PROTOCOL as r, createInitialLearnerState as s, registerInteractiveLearningSessionCompatibility as t, hydrateLearnerStateSnapshot as u };

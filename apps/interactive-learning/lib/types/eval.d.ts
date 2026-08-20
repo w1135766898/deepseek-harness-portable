@@ -1,4 +1,22 @@
 import type { LearningVisualV4 } from './protocol.ts';
+import type { LearnIntent, LearnTrigger } from './learn-intent.ts';
+import type { LearningRoute } from './teaching-route.ts';
+/**
+ * Small real-model canary matrix. It is deliberately scenario-level rather
+ * than a second transcript grader: the canary checks routing, one-step
+ * pressure behavior, integrity boundaries, resource requests, and stopping.
+ */
+export interface LearningCanaryScenario {
+    id: string;
+    kind: 'first-turn' | 'multi-turn';
+    prompt: string;
+    followUps?: readonly string[];
+    expectedIntent: LearnIntent;
+    expectedTrigger: LearnTrigger;
+    expectedRoute: LearningRoute;
+    responseShape: 'calibration' | 'repair' | 'expert-calibration' | 'current-overview' | 'urgent-direct' | 'self-study-direct' | 'graded-boundary' | 'flashcards' | 'study-guide' | 'fresh-transfer-stop';
+}
+export declare const LEARNING_CANARY_MATRIX: readonly LearningCanaryScenario[];
 export type TeachingVisualKind = LearningVisualV4['content']['kind'];
 export interface TeachingEvalCase {
     id: string;

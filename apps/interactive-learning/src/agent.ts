@@ -486,9 +486,26 @@ const userCorrectionObservation = { type: 'object', additionalProperties: false,
 const learnerEvidenceFields = {
   summary: { type: 'string', required: true },
   confidence: { type: 'string', enum: ['low', 'medium', 'high'] },
-  correctness: { type: 'string', enum: ['correct', 'incorrect', 'unknown'] },
+  correctness: { type: 'string', enum: ['correct', 'partial', 'incorrect', 'unknown'] },
   independence: { type: 'string', enum: ['independent', 'guided', 'unknown'] },
 } as const
+
+const failedMove = { type: 'object', additionalProperties: false, properties: {
+  move: {
+    type: 'string',
+    enum: ['none', 'explanation', 'example', 'question', 'guided_discovery', 'worked_example', 'reflective_pause', 'resource', 'repair', 'transfer', 'visual', 'checkpoint'],
+    required: true,
+  },
+  fingerprint: { type: 'string', required: true },
+  failureReason: {
+    type: 'string',
+    enum: ['not-understood', 'repeated-misconception', 'unhelpful-hint', 'wrong-representation', 'no-progress', 'unavailable', 'unknown'],
+    required: true,
+  },
+  representation: { type: 'string' },
+  summary: { type: 'string', required: true },
+  turn: { type: 'integer' },
+} } as const
 
 const learnerEvidenceInput = { oneOf: [
   { type: 'object', additionalProperties: false, properties: {
@@ -516,7 +533,7 @@ const learnerStateEvent = { type: 'object', additionalProperties: false, propert
       'goal_observed', 'request_kind_observed', 'prior_knowledge_observed', 'plan_observed',
       'plan_step_evidenced', 'gap_observed', 'readiness_observed', 'progress_observed',
       'urgency_observed', 'assessment_context_observed', 'learner_evidence_observed',
-      'assistant_move_observed', 'source_anchors_observed',
+      'failed_move_observed', 'assistant_move_observed', 'source_anchors_observed',
     ],
     required: true,
   },
@@ -555,13 +572,14 @@ const learnerStateEvent = { type: 'object', additionalProperties: false, propert
   urgency: { type: 'string', enum: ['none', 'initial-blocker', 'later-pressure', 'unknown'] },
   assessmentContext: { type: 'string', enum: ['self-study', 'graded', 'unknown'] },
   evidence: { ...learnerEvidenceInput },
-  move: { type: 'string', enum: ['none', 'explanation', 'example', 'question', 'repair', 'transfer', 'visual', 'checkpoint'] },
+  failedMove: { ...failedMove },
+  move: { type: 'string', enum: ['none', 'explanation', 'example', 'question', 'guided_discovery', 'worked_example', 'reflective_pause', 'resource', 'repair', 'transfer', 'visual', 'checkpoint'] },
   phase: { type: 'string', enum: ['orient', 'teach', 'practice', 'repair', 'transfer', 'complete'] },
   explanationSummary: { type: 'string' },
   question: { type: 'string' },
   learnerResponseAssessment: { type: 'string', enum: ['correct', 'partial', 'incorrect', 'no-evidence'] },
   currentMisconception: { type: 'string' },
-  nextMove: { type: 'string', enum: ['calibrate', 'direct', 'explain', 'example', 'question', 'repair', 'transfer', 'complete'] },
+  nextMove: { type: 'string', enum: ['calibrate', 'direct', 'explain', 'example', 'guided_discovery', 'worked_example', 'reflective_pause', 'resource', 'question', 'repair', 'transfer', 'complete'] },
   moveFingerprint: { type: 'string' },
   anchors: { type: 'array', items: { type: 'string' } },
 } } as const
@@ -583,16 +601,17 @@ const learnerStateCorrection = { type: 'object', additionalProperties: false, pr
   assessmentContext: { type: 'string', enum: ['self-study', 'graded', 'unknown'] },
   mastery: { type: 'string', enum: ['unseen', 'emerging', 'transfer'] },
   evidence: { type: 'array', items: learnerEvidenceInput },
+  failedMoves: { type: 'array', items: failedMove },
   phase: { type: 'string', enum: ['orient', 'teach', 'practice', 'repair', 'transfer', 'complete'] },
   lastExplanationSummary: { oneOf: [{ type: 'string' }, { type: 'null' }] },
   lastQuestion: { oneOf: [{ type: 'string' }, { type: 'null' }] },
   learnerResponseAssessment: { type: 'string', enum: ['correct', 'partial', 'incorrect', 'no-evidence'] },
   currentMisconception: { oneOf: [{ type: 'string' }, { type: 'null' }] },
-  nextMove: { type: 'string', enum: ['calibrate', 'direct', 'explain', 'example', 'question', 'repair', 'transfer', 'complete'] },
+  nextMove: { type: 'string', enum: ['calibrate', 'direct', 'explain', 'example', 'guided_discovery', 'worked_example', 'reflective_pause', 'resource', 'question', 'repair', 'transfer', 'complete'] },
   moveFingerprint: { oneOf: [{ type: 'string' }, { type: 'null' }] },
   lastMove: {
     type: 'string',
-    enum: ['none', 'explanation', 'example', 'question', 'repair', 'transfer', 'visual', 'checkpoint'],
+    enum: ['none', 'explanation', 'example', 'question', 'guided_discovery', 'worked_example', 'reflective_pause', 'resource', 'repair', 'transfer', 'visual', 'checkpoint'],
   },
   sourceAnchors: { type: 'array', items: { type: 'string' } },
 } } as const
@@ -634,6 +653,14 @@ const visualSelectorParameters = {
     type: 'string',
     required: true,
     description: 'One sentence naming the learner relationship this visual will make clearer.',
+  },
+  learnerAction: {
+    type: 'string',
+    description: 'Optional semantic constraint: the one observation or manipulation the learner should make from the visual.',
+  },
+  pairedQuestion: {
+    type: 'string',
+    description: 'Optional semantic constraint: the one focused question paired with the visual.',
   },
 } as const
 
@@ -690,10 +717,10 @@ const checkpointParameters = {
 } as const
 
 const checkpointDescription = [
-  'Optionally request one high-value learner contribution when the response materially changes the next teaching move.',
-  'The normal path is ordinary non-blocking conversation; this is not a per-turn ceremony or Continue ritual.',
+  'Optionally request one high-value reflective pause when the learner response materially changes the next teaching move.',
+  'The normal path is ordinary conversation; this wire-compatible checkpoint is the sole deliberate user wait, not a per-turn ceremony or Continue ritual.',
   'The selection step already chose the evidence kind. The payload is answer-free: never include a correct answer, rubric, solution, future step, Reveal, animation, or Continue content.',
-  'A skipped, cancelled, unavailable, or failed checkpoint falls back to ordinary conversation without withholding teaching.',
+  'A skipped, cancelled, unavailable, or failed reflective pause falls back to ordinary conversation without withholding teaching.',
 ].join(' ')
 
 type DynamicToolTarget = Pick<ToolRuntime, 'get' | 'register'>
@@ -745,7 +772,7 @@ export function apply(ctx: Context): void {
   const services = ctx as LearningAgentContext
   services.tools.register(closeParameterRoot(defineTool({
     name: 'learning_visual_select',
-    description: 'Use only when a visual will materially clarify one relationship. Select one native kind and state its teaching purpose; the selected kind-specific learning_visual schema is exposed on the next model step. Do not select a visual for a definition, short fact, or already-clear explanation.',
+    description: 'Use only when a visual will materially clarify one relationship. Select one native kind, state its teaching purpose, and bind it to at least one learner action or paired question; the selected kind-specific learning_visual schema is exposed on the next model step. Do not select a visual for a definition, short fact, or already-clear explanation.',
     parameters: visualSelectorParameters,
     output: {
       schema: visualSelectorOutput,
@@ -753,6 +780,11 @@ export function apply(ctx: Context): void {
     },
     isConcurrencySafe: () => false,
     async execute(args, exec) {
+      const learnerAction = typeof args.learnerAction === 'string' ? args.learnerAction.trim() : ''
+      const pairedQuestion = typeof args.pairedQuestion === 'string' ? args.pairedQuestion.trim() : ''
+      if (learnerAction === '' && pairedQuestion === '') {
+        throw new TypeError('learning_visual_select requires learnerAction or pairedQuestion')
+      }
       const target = dynamicToolTarget(services, exec)
       const existing = target.get('learning_visual')
       const targetKey = dynamicToolKey(services, exec)
@@ -874,7 +906,7 @@ export function apply(ctx: Context): void {
 
   services.tools.register(closeParameterRoot(defineTool({
     name: 'learning_checkpoint_select',
-    description: 'Use only when one learner response will materially change the next teaching move. Select the evidence type, give one answer-free prompt and its purpose; the full learning_checkpoint payload is exposed on the next model step. Ordinary conversation remains the default; this is not a per-turn ceremony.',
+    description: 'Use only for a reflective pause when one learner response will materially change the next teaching move. Select the evidence type, give one answer-free prompt and its purpose; the full learning_checkpoint payload is exposed on the next model step. Ordinary conversation remains the default, and this is the sole deliberate user wait—not a per-turn ceremony.',
     parameters: checkpointSelectorParameters,
     output: {
       schema: checkpointSelectorOutput,

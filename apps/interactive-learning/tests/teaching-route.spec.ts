@@ -5,8 +5,10 @@ describe('Learning first-turn routing', () => {
   it.each([
     ['Learn LLMs', 'calibrate'],
     ['Teach me LLMs', 'calibrate'],
+    ['Galois theory', 'calibrate'],
     ['学习 LLM', 'calibrate'],
     ['教我机器学习', 'calibrate'],
+    ['什么是贝叶斯定理？', 'teach-minimum'],
   ] as const)('calibrates an underspecified request: %s', (request, route) => {
     expect(routeLearningRequest(request).route).toBe(route)
   })
@@ -17,6 +19,7 @@ describe('Learning first-turn routing', () => {
     ['从零开始教我 LLM', 'teach-minimum'],
     ['学习 LLM 的下一 token 预测', 'teach-minimum'],
     ['Help me understand why attention works', 'teach-minimum'],
+    ['I always confuse precision and recall.', 'teach-minimum'],
   ] as const)('starts the minimum lesson when the route is clear: %s', (request, route) => {
     expect(routeLearningRequest(request).route).toBe(route)
   })
@@ -29,5 +32,11 @@ describe('Learning first-turn routing', () => {
     '给我最新的 LLM 行业综述。',
   ])('allows an overview only when explicitly requested or appropriate: %s', request => {
     expect(routeLearningRequest(request).route).toBe('overview')
+  })
+
+  it('does not confuse exclusions with a learning route', () => {
+    expect(routeLearningRequest('Implement a queue in TypeScript.').intent.intent).toBe('not-learn')
+    expect(routeLearningRequest('What is the latest news about queues?').intent.intent).toBe('not-learn')
+    expect(routeLearningRequest('What is a queue?').intent.intent).toBe('learn')
   })
 })

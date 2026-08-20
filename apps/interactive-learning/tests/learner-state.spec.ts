@@ -412,6 +412,51 @@ describe('LearnerState reducer', () => {
     expect(state.supportLevel).toBe(5)
   })
 
+  it('preserves partial learner evidence without treating it as mastery or failure', () => {
+    const state = reduceLearnerState(createInitialLearnerState('session-partial'), {
+      type: 'learner_evidence_observed',
+      evidence: {
+        kind: 'explanation',
+        summary: 'Explained the direction but omitted the role of the intercept',
+        correctness: 'partial',
+        independence: 'independent',
+      },
+      observation: observation('partial-explanation', 'learner-message'),
+    })
+
+    expect(state.evidence[0]).toMatchObject({ correctness: 'partial' })
+    expect(state.learnerResponseAssessment).toBe('partial')
+    expect(state.mastery).toBe('unseen')
+    expect(state.phase).toBe('practice')
+    expect(state.nextMove).toBe('guided_discovery')
+  })
+
+  it('records why a representation failed so repair can choose a different move', () => {
+    const state = reduceLearnerState(createInitialLearnerState('session-failed-move'), {
+      type: 'failed_move_observed',
+      failedMove: {
+        move: 'guided_discovery',
+        fingerprint: 'sign-question-v1',
+        failureReason: 'unhelpful-hint',
+        representation: 'sign question',
+        summary: 'The learner said the hint still did not show which quantity changes.',
+      },
+      observation: observation('failed-sign-question', 'learner-message'),
+    })
+
+    expect(state.failedMoves).toEqual([expect.objectContaining({
+      move: 'guided_discovery',
+      fingerprint: 'sign-question-v1',
+      failureReason: 'unhelpful-hint',
+      representation: 'sign question',
+    })])
+    expect(state.phase).toBe('repair')
+    expect(state.nextMove).toBe('repair')
+    expect(renderLearnerStateTranscript(state)).toContain('failed_move: guided_discovery/unhelpful-hint/sign question')
+    expect(parseLearnerStateSnapshot(serializeLearnerStateSnapshot(state), 'session-failed-move'))
+      .toEqual(state)
+  })
+
   it('recovers support need stepwise and clears it only on fresh independent transfer', () => {
     let state = createInitialLearnerState('session-recovery')
     state = reduceLearnerState(state, {

@@ -5,6 +5,15 @@ registerInteractiveLearningSessionCompatibility()
 
 export { registerInteractiveLearningSessionCompatibility } from './bootstrap.ts'
 export {
+  LEARN_INTENT,
+  LEARNING_INTENT_POLICY,
+  classifyLearnIntent,
+  isLearnIntent,
+  type LearnIntent,
+  type LearnIntentDecision,
+  type LearnTrigger,
+} from './learn-intent.ts'
+export {
   LearningActivityBroker,
   type LearningStateUpdateRequest,
   type LearningStateUpdateResult,
@@ -58,6 +67,7 @@ export type {
 } from './protocol.ts'
 export {
   DEFAULT_TRANSCRIPT_TOKEN_BUDGET,
+  MAX_FAILED_MOVES,
   LEARNER_STATE_EVENT_PROTOCOL,
   LEARNER_STATE_PROTOCOL,
   LEARNER_STATE_SESSION_EVENT_TYPE,
@@ -78,6 +88,8 @@ export {
   type LearnerNextMove,
   type LearnerResponseAssessment,
   type LearnerTeachingMove,
+  type LearnerFailedMove,
+  type LearnerMoveFailureReason,
   type LearnerStateSnapshot,
   type LearnerStateSnapshotEvent,
   type ObservableLearnerEvent,

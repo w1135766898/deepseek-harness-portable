@@ -1,4 +1,107 @@
 //#region lib/types/eval.js
+const LEARNING_CANARY_MATRIX = [
+	{
+		id: "bare-concept",
+		kind: "first-turn",
+		prompt: "Bayes theorem",
+		expectedIntent: "learn",
+		expectedTrigger: "bare-concept",
+		expectedRoute: "calibrate",
+		responseShape: "calibration"
+	},
+	{
+		id: "confusion-repair",
+		kind: "first-turn",
+		prompt: "I always confuse precision and recall. Help me finally tell them apart.",
+		expectedIntent: "learn",
+		expectedTrigger: "confusion-repair",
+		expectedRoute: "teach-minimum",
+		responseShape: "repair"
+	},
+	{
+		id: "expert-terminology",
+		kind: "first-turn",
+		prompt: "Explain heteroskedastic ordered probit; I know the words but want the mechanism and the right level of detail.",
+		expectedIntent: "learn",
+		expectedTrigger: "explicit-learning",
+		expectedRoute: "teach-minimum",
+		responseShape: "expert-calibration"
+	},
+	{
+		id: "current-contested-topic",
+		kind: "first-turn",
+		prompt: "Give me a structured overview of the contested debate around open versus closed models, focusing on the mechanisms rather than a verdict.",
+		expectedIntent: "learn",
+		expectedTrigger: "current-topic",
+		expectedRoute: "overview",
+		responseShape: "current-overview"
+	},
+	{
+		id: "initial-deadline",
+		kind: "first-turn",
+		prompt: "I have 15 minutes before a meeting. Explain what a database migration rollback does and give me the shortest safe checklist.",
+		expectedIntent: "learn",
+		expectedTrigger: "explicit-learning",
+		expectedRoute: "teach-minimum",
+		responseShape: "urgent-direct"
+	},
+	{
+		id: "mid-lesson-impatience",
+		kind: "multi-turn",
+		prompt: "Teach me why a negative slope descends.",
+		followUps: ["I see that the vertical change is negative. Just tell me the rest; I am losing patience."],
+		expectedIntent: "learn",
+		expectedTrigger: "explicit-learning",
+		expectedRoute: "teach-minimum",
+		responseShape: "urgent-direct"
+	},
+	{
+		id: "self-study",
+		kind: "first-turn",
+		prompt: "I am self-studying SQL. Explain why a transaction can be rolled back and give me one small example.",
+		expectedIntent: "learn",
+		expectedTrigger: "explicit-learning",
+		expectedRoute: "teach-minimum",
+		responseShape: "self-study-direct"
+	},
+	{
+		id: "graded-work",
+		kind: "first-turn",
+		prompt: "This is a graded statistics assignment. Do not just give me the final answer; help me understand how to choose between a t-test and a chi-square test for my case.",
+		expectedIntent: "learn",
+		expectedTrigger: "explicit-learning",
+		expectedRoute: "teach-minimum",
+		responseShape: "graded-boundary"
+	},
+	{
+		id: "flashcards",
+		kind: "first-turn",
+		prompt: "Make five plain-text active-recall flashcards for the difference between a process and a thread. No visual tool is needed.",
+		expectedIntent: "learn",
+		expectedTrigger: "resource-creation",
+		expectedRoute: "direct",
+		responseShape: "flashcards"
+	},
+	{
+		id: "study-guide",
+		kind: "first-turn",
+		prompt: "Create a concise plain-text study guide for learning derivatives from limits through the power rule. No visual tool is needed.",
+		expectedIntent: "learn",
+		expectedTrigger: "resource-creation",
+		expectedRoute: "direct",
+		responseShape: "study-guide"
+	},
+	{
+		id: "repeated-explanation-and-fresh-transfer",
+		kind: "multi-turn",
+		prompt: "Explain why a queue is FIFO using a small concrete example.",
+		followUps: ["I still do not understand. Use a different representation and do not repeat the same explanation.", "Now I can predict that arrivals X, Y, Z followed by one removal leave Y, Z. Wrap up this segment."],
+		expectedIntent: "learn",
+		expectedTrigger: "explicit-learning",
+		expectedRoute: "teach-minimum",
+		responseShape: "fresh-transfer-stop"
+	}
+];
 const QUESTION_FORBIDDEN_KEYS = /* @__PURE__ */ new Set([
 	"answer",
 	"correctAnswer",
@@ -1232,4 +1335,4 @@ function summarizeTeachingTrajectories(candidates, scenarios = TEACHING_TRAJECTO
 	return metrics;
 }
 //#endregion
-export { gradeLegacyV2ReplayTranscript as a, gradeTeachingTrajectory as c, summarizeTeachingTrajectories as d, TEACHING_TRAJECTORY_CASES as i, gradeTeachingTrajectorySuite as l, OFFLINE_TRAJECTORY_CANDIDATES as n, gradeTeachingCandidate as o, TEACHING_EVAL_CASES as r, gradeTeachingSuite as s, OFFLINE_REFERENCE_CANDIDATES as t, offlineContinuation as u };
+export { TEACHING_TRAJECTORY_CASES as a, gradeTeachingSuite as c, offlineContinuation as d, summarizeTeachingTrajectories as f, TEACHING_EVAL_CASES as i, gradeTeachingTrajectory as l, OFFLINE_REFERENCE_CANDIDATES as n, gradeLegacyV2ReplayTranscript as o, OFFLINE_TRAJECTORY_CANDIDATES as r, gradeTeachingCandidate as s, LEARNING_CANARY_MATRIX as t, gradeTeachingTrajectorySuite as u };

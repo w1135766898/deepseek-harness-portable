@@ -8,16 +8,26 @@ standing prompt 保持不变。
 
 - 包根提供 `learningActivities` Host broker，并在加载持久化 Learning 会话前注册
   必需的 `learning/state` session event 类型；它不注册任何模型可见工具。
-- `./agent` 只由 Learning preset 挂载，注册即时完成的 `learning_visual`、静默的
-  `learning_state_update` 和可选的 `learning_checkpoint`。standing policy 只来自
+- `./agent` 只由 Learning preset 挂载，初始模型目录包含紧凑的
+  `learning_visual_select`、静默的 `learning_state_update` 和可选的
+  `learning_checkpoint_select`。standing policy 只来自
   一个规范 TypeScript 源，不再由 Skill 复制维护。
 - `./client` 在对话流中原位渲染 visual 与可选 checkpoint；state update 明确为空
   视图。V1/V2 活动和 V3 visual 仍保留只读回放。
 - `./protocol` 维护封闭、版本化的声明式协议。
 - `preset/learning/skills/interactive-teaching` 按需提供更细的教学判断。
 
-普通对话仍是默认路径。图表是普通回答里的可操作插图，不会接管用户回合。唯一例外
-是模型明确选择的高价值 checkpoint：它只形成一次 user-result wait，然后终止。
+普通对话仍是默认路径。图表是普通回答里的可操作插图，不会接管用户回合。唯一的
+主动等待是 reflective pause：只有当学习者的回答会改变下一教学动作时，才使用兼容
+旧协议命名的 checkpoint 工具，并在一次结果后结束。
+
+## Learn intent 与首轮路由
+
+系统先区分“建立理解”和普通任务，再选择首轮形状。`what is X`、裸概念名、持续
+混淆/没学会、先修知识与学习路径、以及 flashcards/study guide 请求都属于 learn
+intent；编码实现/调试、翻译改写、新闻更新、资源推荐和观点判断留在普通任务路径。
+当前或有争议主题在用户要结构化理解时仍属于 learn intent。裸概念先做一次改变
+路线的校准；定义、明确的混淆和清晰目标直接讲最小必要概念。
 
 ## 非阻塞学习流程
 
@@ -41,8 +51,9 @@ standing prompt 保持不变。
 ## Session-scoped LearnerState
 
 Learning 只为当前 session 保存一份小型、暂定的教学状态：当前目标、已展示的先验、
-误解或缺口、由 learner evidence 推导的支架需求、急迫/真正卡住的证据、评估语境，以及独立完成（含新情境
-迁移）的证据。
+误解或缺口、由 learner evidence 推导的支架需求、急迫/真正卡住的证据、评估语境、
+带表示方式和失败原因的有界 failed-move 历史，以及独立完成（含新情境迁移）的证据。
+learner evidence 可以是 `correct`、`partial`、`incorrect` 或未知；partial 不会被当成掌握。
 
 生产链路是显式且可审计的：
 
@@ -78,7 +89,7 @@ Learning 只为当前 session 保存一份小型、暂定的教学状态：当�
 - 已展示迁移即结束该学习片段，无论路线还剩几步；未走完的路线永远不是继续的理由。
 - reset 会连同路线一起清空。
 
-## 可选 Checkpoint Protocol v1
+## 可选 Reflective Pause（兼容 checkpoint protocol v1）
 
 `dsh-learning/checkpoint@1` 只用于会实质改变下一教学动作的预测、解释、对比、设计选择、
 调试诊断、边界情况或迁移应用。它不是默认输入路径，也不能变成每轮 Continue 仪式。

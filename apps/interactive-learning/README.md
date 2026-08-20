@@ -24,8 +24,21 @@ schemas and prompts.
 
 The ordinary conversation remains the default. A visual is an illustration
 inside a normal assistant response, not a form that owns the user turn. A
-checkpoint is the sole exception: when deliberately selected for a high-value
-learner action, it creates exactly one user-result wait and then terminates.
+reflective pause is the sole deliberate wait: the wire-compatible checkpoint
+tool is used only when the learner's response will change the next move, then
+terminates after one result.
+
+## Learn intent and first-turn route
+
+The Learning preset classifies the request before choosing a teaching route.
+Definitions, bare concept names, persistent confusion or memory failure,
+prerequisites and learning paths, conceptual why/how questions, and requested
+flashcards or study guides are learn intent. Coding or debugging, translation,
+news updates, resource recommendations, and opinion requests stay on their
+ordinary task route. Current or contested topics remain learn intent when the
+user asks for structured understanding. Bare concepts get one route-changing
+calibration question; definitions, clear confusions, and clear goals start the
+minimum useful explanation.
 
 ## Non-blocking learning flow
 
@@ -61,8 +74,9 @@ Learning keeps a small, tentative teaching state for the current session only:
 the learner's immediate goal, demonstrated prior knowledge, current gap or
 misconception, phase, last explanation/question, learner-response assessment,
 next move, move fingerprint, learner-evidence-derived support need, urgency or
-stuck evidence, assessment context, and independently demonstrated evidence
-including fresh transfer.
+stuck evidence, assessment context, bounded failed-move history with its
+representation and reason, and independently demonstrated evidence including
+fresh transfer.
 
 The production path is explicit and auditable:
 
@@ -109,7 +123,7 @@ hypothesis rather than a contract:
   unfinished route is never a reason to continue.
 - A learning-boundary reset clears the route with the rest of the state.
 
-## Optional checkpoint protocol v1
+## Optional reflective pause (wire-compatible checkpoint protocol v1)
 
 `dsh-learning/checkpoint@1` is reserved for a prediction, explanation, contrast,
 design choice, debugging diagnosis, boundary case, or transfer application that

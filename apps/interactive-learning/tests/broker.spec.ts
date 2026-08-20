@@ -71,7 +71,11 @@ async function selectVisual(ctx: Context, kind: string, agent?: Agent, callId = 
     signal: testToolSignal,
     callId: CallId(callId),
     name: 'learning_visual_select',
-    arguments: { kind, purpose: `Make the ${kind} relationship concrete.` },
+    arguments: {
+      kind,
+      purpose: `Make the ${kind} relationship concrete.`,
+      learnerAction: `Inspect the ${kind} relationship and name one change you notice.`,
+    },
     ...(agent === undefined ? {} : { agent }),
   })
   expect(result.isError, JSON.stringify(result)).toBe(false)
@@ -174,8 +178,19 @@ describe('non-blocking Learning Agent v4.1', () => {
       properties?: Record<string, unknown>
     }
     expect(parameters.additionalProperties).toBe(false)
-    expect(Object.keys(parameters.properties ?? {}).sort()).toEqual(['kind', 'purpose'])
+    expect(Object.keys(parameters.properties ?? {}).sort()).toEqual([
+      'kind', 'learnerAction', 'pairedQuestion', 'purpose',
+    ])
     expect(JSON.stringify(parameters)).not.toContain('2 to 48 nodes')
+
+    const missingSemanticConstraint = await ctx.tools.execute({
+      signal: testToolSignal,
+      callId: CallId('select-visual-missing-constraint'),
+      name: 'learning_visual_select',
+      arguments: { kind: 'plot', purpose: 'Show the relationship.' },
+    })
+    expect(missingSemanticConstraint.isError).toBe(true)
+    expect(JSON.stringify(missingSemanticConstraint.content)).toContain('learnerAction or pairedQuestion')
 
     await selectVisual(ctx, 'node_link')
     const selectedSchemas = ctx.tools.schemas()

@@ -6,6 +6,11 @@
  * canaries without copying prompt prose into another subsystem.
  */
 
+import {
+  classifyLearnIntent,
+  type LearnIntentDecision,
+} from './learn-intent.ts'
+
 export type LearningRoute =
   | 'calibrate'
   | 'teach-minimum'
@@ -14,13 +19,24 @@ export type LearningRoute =
 
 export interface LearningRouteDecision {
   route: LearningRoute
-  reason: 'short-learning-request' | 'explicit-beginner' | 'explicit-overview' | 'current-or-contested' | 'specific-goal' | 'direct'
+  reason:
+    | 'short-learning-request'
+    | 'explicit-beginner'
+    | 'explicit-overview'
+    | 'current-or-contested'
+    | 'specific-goal'
+    | 'definition'
+    | 'bare-concept'
+    | 'confusion-repair'
+    | 'learning-path'
+    | 'resource-creation'
+    | 'direct'
+  intent: LearnIntentDecision
 }
 
 const SHORT_LEARNING_REQUEST = /^(?:please\s+)?(?:teach\s+me|help\s+me\s+learn|learn|understand|get\s+to\s+know)\b|^(?:学习|教我|了解|想学)\s*/i
 const EXPLICIT_BEGINNER = /(?:\b(?:from\s+scratch|from\s+zero|beginner|beginners|intro(?:duction)?|concept(?:ual)?\s+intro)\b|零基础|从零|入门|概念入门)/i
 const EXPLICIT_OVERVIEW = /\b(?:complete|full|comprehensive|structured|direct)\s+(?:overview|survey|summary)|\b(?:overview|survey)\b.*\b(?:directly|without\s+(?:asking|questions)|don['’]?t\s+(?:ask|quiz)|no\s+questions)|(?:完整|全面|结构化).*(?:概览|综述)|(?:直接讲|不要提问|别提问|不要先问)/i
-const CURRENT_OR_CONTESTED = /(?:\b(?:latest|current|recent|today|news|controversial|contested|debate)\b|争议|时事|最新|近期)/i
 const SPECIFIC_LEARNING_GOAL = /(?:\b(?:why|how|difference|distinguish|compare|debug|apply|predict|explain|derive|implement)\b|练习|区别|为什么|如何|怎么|对比|调试|应用|预测|推导|实现)/i
 
 /**
@@ -29,26 +45,44 @@ const SPECIFIC_LEARNING_GOAL = /(?:\b(?:why|how|difference|distinguish|compare|d
  */
 export function routeLearningRequest(text: string): LearningRouteDecision {
   const normalized = text.replace(/\s+/g, ' ').trim()
-  if (EXPLICIT_OVERVIEW.test(normalized)) {
-    return { route: 'overview', reason: 'explicit-overview' }
+  const intent = classifyLearnIntent(normalized)
+  if (intent.intent !== 'learn') {
+    return { route: 'direct', reason: 'direct', intent }
   }
-  if (CURRENT_OR_CONTESTED.test(normalized)) {
-    return { route: 'overview', reason: 'current-or-contested' }
+  if (EXPLICIT_OVERVIEW.test(normalized)) {
+    return { route: 'overview', reason: 'explicit-overview', intent }
+  }
+  if (intent.trigger === 'current-topic') {
+    return { route: 'overview', reason: 'current-or-contested', intent }
   }
   if (SHORT_LEARNING_REQUEST.test(normalized)) {
     if (EXPLICIT_BEGINNER.test(normalized)) {
-      return { route: 'teach-minimum', reason: 'explicit-beginner' }
+      return { route: 'teach-minimum', reason: 'explicit-beginner', intent }
     }
     if (SPECIFIC_LEARNING_GOAL.test(normalized)) {
-      return { route: 'teach-minimum', reason: 'specific-goal' }
+      return { route: 'teach-minimum', reason: 'specific-goal', intent }
     }
-    return { route: 'calibrate', reason: 'short-learning-request' }
+    return { route: 'calibrate', reason: 'short-learning-request', intent }
   }
   if (EXPLICIT_BEGINNER.test(normalized)) {
-    return { route: 'teach-minimum', reason: 'explicit-beginner' }
+    return { route: 'teach-minimum', reason: 'explicit-beginner', intent }
+  }
+  switch (intent.trigger) {
+    case 'definition':
+      return { route: 'teach-minimum', reason: 'definition', intent }
+    case 'bare-concept':
+      return { route: 'calibrate', reason: 'bare-concept', intent }
+    case 'confusion-repair':
+      return { route: 'teach-minimum', reason: 'confusion-repair', intent }
+    case 'learning-path':
+      return { route: 'teach-minimum', reason: 'learning-path', intent }
+    case 'resource-creation':
+      return { route: 'direct', reason: 'resource-creation', intent }
+    default:
+      break
   }
   if (SPECIFIC_LEARNING_GOAL.test(normalized)) {
-    return { route: 'teach-minimum', reason: 'specific-goal' }
+    return { route: 'teach-minimum', reason: 'specific-goal', intent }
   }
-  return { route: 'direct', reason: 'direct' }
+  return { route: 'direct', reason: 'direct', intent }
 }
