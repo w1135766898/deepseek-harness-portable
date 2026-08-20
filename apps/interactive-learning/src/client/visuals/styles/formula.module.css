@@ -1,0 +1,137 @@
+/** `formula_steps`: the derivation ladder and its rule connectors. */
+
+.formulaMeta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lx-space-lg);
+  color: var(--lx-accent);
+  font-size: var(--lx-text-2xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--lx-weight-strong);
+  line-height: var(--lx-leading-2xs);
+}
+
+.formulaMeta code {
+  overflow: hidden;
+  border: 1px solid var(--lx-border-subtle);
+  border-radius: var(--lx-radius-xs);
+  padding: var(--lx-space-3xs) var(--lx-space-sm);
+  background: var(--lx-surface-sunken);
+  color: var(--lx-label-secondary);
+  font-family: var(--lx-font-mono);
+  font-size: var(--lx-text-micro);
+  font-weight: var(--lx-weight-regular);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.formulaSteps {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.formulaSteps > li { min-width: 0; opacity: var(--lx-vs-alpha); }
+
+.formulaStepCard {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: var(--lx-space-md);
+  align-items: start;
+  border: 1px solid color-mix(in srgb, var(--visual-tone) 30%, var(--lx-border-subtle));
+  border-radius: var(--lx-radius-md);
+  padding: var(--lx-space-md);
+  background: color-mix(in srgb, var(--visual-tone) 6%, transparent);
+}
+
+.formulaSteps > li[data-visual-state="current"] .formulaStepCard {
+  border-width: 2px;
+  border-color: var(--visual-tone);
+}
+
+.formulaStepCard > span {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: var(--lx-radius-circle);
+  background: color-mix(in srgb, var(--visual-tone) 16%, transparent);
+  color: var(--visual-tone);
+  font-size: var(--lx-text-2xs);
+  font-weight: var(--lx-weight-strong);
+}
+
+.formulaStepCard > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--lx-space-2xs);
+}
+
+.formulaExpression {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--lx-space-sm) 0;
+  color: var(--lx-label-primary);
+  font-size: var(--lx-text-formula);
+  font-weight: var(--lx-weight-medium);
+  line-height: var(--lx-leading-formula);
+  scrollbar-width: thin;
+}
+
+.formulaExpression > div { min-width: max-content; }
+.formulaExpression :global(.katex-display) { margin: 2px 0; text-align: left; }
+
+.formulaStepCard strong { color: var(--visual-tone); font-size: var(--lx-text-2xs); line-height: var(--lx-leading-2xs); }
+.formulaStepCard p { margin: 0; color: var(--lx-label-secondary); font-size: var(--lx-text-xs); line-height: var(--lx-leading-xs); }
+
+.formulaRule {
+  display: grid;
+  min-height: 44px;
+  grid-template-columns: 30px auto minmax(0, 1fr);
+  gap: var(--lx-space-xs) var(--lx-space-md);
+  align-items: center;
+  padding: var(--lx-space-3xs) var(--lx-space-md);
+  color: var(--lx-label-secondary);
+  font-size: var(--lx-text-2xs);
+  line-height: var(--lx-leading-2xs);
+}
+
+.formulaRule > span:first-child { color: var(--visual-tone); font-size: var(--lx-text-lg); text-align: center; }
+.formulaRule strong { color: var(--visual-tone); font-size: var(--lx-text-micro); letter-spacing: 0.04em; text-transform: uppercase; }
+
+.formulaUnknown {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: var(--lx-space-md);
+  align-items: center;
+  padding: var(--lx-space-3xs) var(--lx-space-md);
+  color: var(--lx-label-tertiary);
+}
+
+.formulaUnknown > span { text-align: center; }
+.formulaUnknown code { display: grid; min-height: 38px; place-items: center; border: 1px dashed var(--lx-border-default); border-radius: var(--lx-radius-md); font-size: var(--lx-text-lg); }
+
+.formulaConclusion {
+  display: grid;
+  gap: var(--lx-space-3xs);
+  border-left: 3px solid var(--lx-success);
+  border-radius: 0 var(--lx-radius-sm) var(--lx-radius-sm) 0;
+  padding: var(--lx-space-sm) var(--lx-space-md);
+  background: color-mix(in srgb, var(--lx-success) 8%, transparent);
+}
+
+.formulaConclusion span { color: var(--lx-success); font-size: var(--lx-text-micro); font-weight: var(--lx-weight-strong); }
+.formulaConclusion strong { color: var(--lx-label-primary); font-size: var(--lx-text-sm); line-height: var(--lx-leading-sm); }
+
+@container learning-visual-v4 (max-width: 360px) {
+  .formulaStepCard { grid-template-columns: 24px minmax(0, 1fr); padding: var(--lx-space-sm); }
+  .formulaStepCard > span { width: 23px; height: 23px; }
+  .formulaRule { grid-template-columns: 24px minmax(0, 1fr); }
+  .formulaRule strong { grid-column: 2; }
+  .formulaRule > span:last-child { grid-column: 2; }
+}
