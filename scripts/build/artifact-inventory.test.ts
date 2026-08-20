@@ -22,3 +22,24 @@ test('artifact inventory is sorted, hashed, and excludes its recursive manifest'
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test('artifact inventory rejects Git metadata and repository backups', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-inventory-git-'))
+  try {
+    await mkdir(join(root, '.git'))
+    await writeFile(join(root, '.git', 'HEAD'), 'ref: refs/heads/main\n')
+    await assert.rejects(
+      collectArtifactInventory(root),
+      /forbidden Git metadata: \.git\//,
+    )
+
+    await rm(join(root, '.git'), { recursive: true })
+    await writeFile(join(root, 'repository-backup.data'), '# v2 git bundle\n')
+    await assert.rejects(
+      collectArtifactInventory(root),
+      /forbidden Git bundle: repository-backup\.data/,
+    )
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
