@@ -5,6 +5,11 @@
  */
 import { createSnapshotStore, } from '@deepseek-ai/dsh-client-runtime/client';
 import { describeVisionRoute } from "./vision-route.js";
+/** Field defaults mirroring the host schema, so an unset value renders the same on both sides. */
+const DEFAULTS = {
+    enabled: true,
+    model: '',
+};
 export class VisionCardController {
     scope;
     store;
@@ -18,41 +23,30 @@ export class VisionCardController {
             this.store.set(this.projection());
         });
     }
+    /** Staged edit, then stored value, then the schema default. */
+    field(current, key) {
+        const staged = this.staged[key];
+        if (typeof staged === typeof DEFAULTS[key])
+            return staged;
+        const stored = current[key];
+        if (typeof stored === typeof DEFAULTS[key])
+            return stored;
+        return DEFAULTS[key];
+    }
     projection() {
         const snap = this.scope.getSnapshot();
         const current = (snap.value ?? {});
-        const enabled = typeof this.staged.enabled === 'boolean'
-            ? this.staged.enabled
-            : (current.enabled ?? true);
-        const provider = typeof this.staged.provider === 'string'
-            ? this.staged.provider
-            : (current.provider ?? 'compatible');
-        const model = typeof this.staged.model === 'string'
-            ? this.staged.model
-            : (current.model ?? 'gpt-4o-mini');
-        const baseURL = typeof this.staged.baseURL === 'string'
-            ? this.staged.baseURL
-            : (current.baseURL ?? 'https://api.openai.com/v1');
-        const apiKey = typeof this.staged.apiKey === 'string'
-            ? this.staged.apiKey
-            : '';
-        const prompt = typeof this.staged.prompt === 'string'
-            ? this.staged.prompt
-            : (current.prompt ?? '');
-        const dirty = Object.keys(this.staged).length > 0;
+        const enabled = this.field(current, 'enabled');
+        const model = this.field(current, 'model');
         return {
             available: snap.status === 'ready' || snap.status === 'loading',
             writable: snap.writable,
-            dirty,
+            dirty: Object.keys(this.staged).length > 0,
             saving: this.saving,
             failed: this.failed,
             enabled,
-            provider,
             model,
-            baseURL,
-            apiKey,
-            prompt,
-            route: describeVisionRoute(enabled, baseURL),
+            route: describeVisionRoute(enabled, model),
         };
     }
     edit = (field, value) => {
@@ -60,16 +54,9 @@ export class VisionCardController {
         this.failed = false;
         this.store.set(this.projection());
     };
-    selectProviderPreset = (preset) => {
-        this.staged.provider = preset;
-        if (preset === 'openai') {
-            this.staged.baseURL = 'https://api.openai.com/v1';
-            this.staged.model = 'gpt-4o-mini';
-        }
-        else if (preset === 'ollama') {
-            this.staged.baseURL = 'http://127.0.0.1:11434/v1';
-            this.staged.model = 'llava';
-        }
+    /** Clear the model pin so the host discovers an image-capable model itself. */
+    useAutomaticModel = () => {
+        this.staged.model = '';
         this.failed = false;
         this.store.set(this.projection());
     };
@@ -86,10 +73,6 @@ export class VisionCardController {
         this.store.set(this.projection());
         try {
             for (const [key, value] of Object.entries(this.staged)) {
-                if (key === 'apiKey' && (value === '' || value === undefined)) {
-                    // Do not overwrite secret if user left apiKey blank in edit
-                    continue;
-                }
                 await this.scope.set(key, value);
             }
             this.staged = {};
@@ -110,7 +93,7 @@ export class VisionCardController {
             edit: this.edit,
             save: this.save,
             discard: this.discard,
-            selectProviderPreset: this.selectProviderPreset,
+            useAutomaticModel: this.useAutomaticModel,
         };
     }
 }

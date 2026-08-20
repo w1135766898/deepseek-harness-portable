@@ -1,5 +1,11 @@
 /**
  * Host-side Cordis plugin entrypoint for @dsh-portable/vision-bridge.
+ *
+ * The plugin contributes one thing: an explicit `view_image` tool that analyzes
+ * an image file on disk. Everything underneath it — provider credentials, model
+ * capability, durable image storage, retry and metering — belongs to the kernel
+ * services this plugin injects, so there is no parallel endpoint or secret to
+ * configure here.
  * @module @dsh-portable/vision-bridge
  */
 import z from '@deepseek-ai/schemastery';
@@ -7,53 +13,24 @@ import { defineTool } from '@deepseek-ai/dsh-tools';
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings';
 import { executeViewImage, renderViewImageContent } from "./view-image.js";
 export * from "./types.js";
+export * from "./model-selection.js";
 export const name = 'vision-bridge';
-export const inject = ['tools', 'systemPrompt'];
+export const inject = ['tools', 'systemPrompt', 'attachments', 'llm'];
 export const Config = z.object({
     enabled: z.boolean().default(true),
-    provider: z.string().default('compatible'),
-    model: z.string().default('gpt-4o-mini'),
-    baseURL: z.string().default('https://api.openai.com/v1'),
-    apiKey: z.string().role('secret').default(''),
-    maxImageBytes: z.number().default(20 * 1024 * 1024),
-    timeoutMs: z.number().default(60_000),
-    prompt: z.string().default(''),
+    model: z.string().default(''),
 });
 export const VISION_SETTINGS_NAMESPACE = settingsNamespace('vision');
-const HOOKED = Symbol('vision-bridge-settings-hook');
-function activeSettingsContext(patch) {
-    const contexts = [...patch.owners.values()];
-    const active = contexts.at(-1);
-    if (active === undefined)
-        throw new Error('vision settings API hook has no active owner');
-    return active;
-}
-function releaseSettingsApiPatch(api, patch, owner) {
-    patch.owners.delete(owner);
-    if (patch.owners.size > 0 || api[HOOKED] !== patch)
-        return;
-    if (api.describe === patch.describe)
-        api.describe = patch.rawDescribe;
-    if (api.mutate === patch.mutate)
-        api.mutate = patch.rawMutate;
-    delete api[HOOKED];
-}
-/** Map one redacted settings descriptor to its wire view (matching api-proxy.ts:1929). */
-function toView(descriptor) {
-    return {
-        ns: String(descriptor.ns),
-        schema: descriptor.schema,
-        value: descriptor.value,
-        ...descriptor.base === undefined ? {} : { base: descriptor.base },
-        ...descriptor.user === undefined ? {} : { user: descriptor.user },
-        applies: descriptor.applies,
-        secrets: (descriptor.secrets ?? []).map(secret => ({ path: [...secret.path], set: secret.set })),
-        revision: descriptor.revision,
-    };
-}
+/**
+ * Register the vision bridge on a host context.
+ * @param ctx - the injecting cordis context.
+ * @param config - entry configuration merged under the stored settings.
+ */
 export function apply(ctx, config = {}) {
     const resolved = Config(config);
-    // 1) Bind settings namespace (reads user settings.yaml -> fallback to entry config -> schema default)
+    // Stored user settings win, then the entry config, then the schema default.
+    // The api-proxy already publishes every registered namespace to web clients
+    // and accepts writes for any of them, so registration is the whole wiring.
     let currentConfig = () => resolved;
     installSettingsSection(ctx, VISION_SETTINGS_NAMESPACE, Config, resolved, {
         setSource: thunk => {
@@ -61,81 +38,20 @@ export function apply(ctx, config = {}) {
         },
         onChange: () => { },
     });
-    // rc7 owns pasted/conversation images end-to-end: the attachment store
-    // persists immutable refs and the selected model's inputModalities gates
-    // admission. Vision Bridge deliberately does not replace that durable path.
-    // 2) Hook apiProxy.settings to expose 'vision' to web clients and handle its mutations
-    ctx.inject(['apiProxy', 'settings'], (scopeCtx) => {
-        const settingsApi = scopeCtx.apiProxy.settings;
-        const owner = Symbol('vision-bridge-settings-owner');
-        const existing = settingsApi[HOOKED];
-        if (existing !== undefined) {
-            existing.owners.set(owner, scopeCtx);
-            scopeCtx.effect(() => () => { releaseSettingsApiPatch(settingsApi, existing, owner); }, 'vision-bridge: shared settings API hook owner');
-            return;
-        }
-        const rawDescribe = settingsApi.describe;
-        const rawMutate = settingsApi.mutate;
-        const patch = {
-            owners: new Map([[owner, scopeCtx]]),
-            rawDescribe,
-            rawMutate,
-        };
-        patch.describe = async (request) => {
-            const response = await rawDescribe.call(settingsApi, request);
-            if (!response.result.ok)
-                return response;
-            const namespaces = response.result.value.namespaces;
-            if (namespaces.some(entry => entry.ns === 'vision'))
-                return response;
-            const descriptor = activeSettingsContext(patch).settings
-                .describe({ redactSecrets: true })
-                .find(entry => String(entry.ns) === 'vision');
-            if (descriptor !== undefined)
-                namespaces.push(toView(descriptor));
-            return response;
-        };
-        patch.mutate = async (request) => {
-            const { ns, ops, expectedRevision } = request.payload;
-            if (ns !== 'vision')
-                return rawMutate.call(settingsApi, request);
-            try {
-                const settings = activeSettingsContext(patch).settings;
-                await settings.mutate(VISION_SETTINGS_NAMESPACE, ops, expectedRevision);
-                const updated = settings
-                    .describe({ redactSecrets: true })
-                    .find(entry => String(entry.ns) === 'vision');
-                if (updated === undefined)
-                    throw new Error('vision namespace vanished after write');
-                return {
-                    rpcId: request.rpcId,
-                    result: { ok: true, value: toView(updated) },
-                };
-            }
-            catch (error) {
-                return {
-                    rpcId: request.rpcId,
-                    result: {
-                        ok: false,
-                        error: {
-                            code: 'settings-rejected',
-                            message: error instanceof Error ? error.message : String(error),
-                            details: {},
-                        },
-                    },
-                };
-            }
-        };
-        settingsApi[HOOKED] = patch;
-        settingsApi.describe = patch.describe;
-        settingsApi.mutate = patch.mutate;
-        scopeCtx.effect(() => () => { releaseSettingsApiPatch(settingsApi, patch, owner); }, 'vision-bridge: settings API hook');
-    });
-    // 3) Register global view_image tool on Host level (visible to all agents without modifying presets)
+    // Services are read per call rather than captured: a provider reconfigured
+    // mid-session must be visible to the next invocation.
+    const runtime = {
+        get attachments() {
+            return ctx.attachments;
+        },
+        get llm() {
+            return ctx.llm;
+        },
+    };
     ctx.tools.register(defineTool({
         name: 'view_image',
-        description: 'Inspect and describe an image file using an external vision model. Supports PNG, JPEG, WebP, and GIF images. ' +
-            'Use this tool whenever you need to view screenshots, UI layouts, diagrams, charts, or images on disk.',
+        description: 'Inspect and describe an image file using a configured image-capable model. Supports PNG, JPEG, WebP, and GIF images. '
+            + 'Use this tool whenever you need to view screenshots, UI layouts, diagrams, charts, or images on disk.',
         parameters: {
             path: {
                 type: 'string',
@@ -153,30 +69,35 @@ export function apply(ctx, config = {}) {
                 additionalProperties: false,
                 properties: {
                     text: { type: 'string', required: true },
+                    provider: { type: 'string', required: true },
                     model: { type: 'string', required: true },
                     path: { type: 'string', required: true },
                     bytes: { type: 'number' },
+                    width: { type: 'number' },
+                    height: { type: 'number' },
+                    reason: { type: 'string' },
                     isError: { type: 'boolean' },
                 },
             },
             render: (_args, value) => renderViewImageContent(value),
-            // Persist the result identity needed by a replayed generic tool card.
-            // The model-facing text remains the fallback if this plugin is later
-            // disabled or absent and no presenter is available.
+            // Persist the result identity a replayed generic tool card needs. The
+            // model-facing text remains the fallback when this plugin is later
+            // disabled and no presenter is available.
             presentationMeta: (_args, value) => {
                 const result = value;
                 return {
                     path: result.path,
+                    provider: result.provider,
                     model: result.model,
-                    bytes: result.bytes ?? 0,
+                    bytes: result.bytes,
                     isError: result.isError === true,
                 };
             },
         },
-        timeoutMs: resolved.timeoutMs,
+        timeoutMs: 60_000,
         isConcurrencySafe: () => true,
         async execute(args, exec) {
-            return executeViewImage(args, exec, currentConfig);
+            return executeViewImage(args, exec, currentConfig, runtime);
         },
         presentCall(args) {
             return {
@@ -200,11 +121,11 @@ export function apply(ctx, config = {}) {
             };
         },
     }));
-    // 4) System prompt guidance section
     ctx.systemPrompt.section({
         name: 'tool:view_image',
         order: 150,
-        text: 'Use view_image for image files on disk that need external visual analysis. Images pasted into the conversation use the native rc7 attachment path and the selected image-capable model instead.',
+        text: 'Use view_image for image files on disk that need visual analysis. Images pasted into the conversation '
+            + 'already ride the native attachment path and the selected image-capable model, and need no tool call.',
     });
 }
 //# sourceMappingURL=index.js.map

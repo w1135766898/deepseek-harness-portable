@@ -15,11 +15,7 @@ export interface VisionCardState {
     saving: boolean;
     failed: boolean;
     enabled: boolean;
-    provider: string;
     model: string;
-    baseURL: string;
-    apiKey: string;
-    prompt: string;
     route: VisionRouteSummary;
 }
 export interface VisionCardFace {
@@ -29,7 +25,7 @@ export interface VisionCardFace {
     edit: (field: keyof VisionSettings, value: unknown) => void;
     save: () => Promise<void>;
     discard: () => void;
-    selectProviderPreset: (preset: 'openai' | 'ollama' | 'compatible') => void;
+    useAutomaticModel: () => void;
 }
 export declare class VisionCardController {
     private readonly scope;
@@ -38,9 +34,12 @@ export declare class VisionCardController {
     private saving;
     private failed;
     constructor(scope: SettingsScope<VisionSettings>);
+    /** Staged edit, then stored value, then the schema default. */
+    private field;
     private projection;
     edit: (field: keyof VisionSettings, value: unknown) => void;
-    selectProviderPreset: (preset: "openai" | "ollama" | "compatible") => void;
+    /** Clear the model pin so the host discovers an image-capable model itself. */
+    useAutomaticModel: () => void;
     discard: () => void;
     save: () => Promise<void>;
     inject(): VisionCardFace;

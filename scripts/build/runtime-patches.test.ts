@@ -132,7 +132,6 @@ test('runtime patch layer composes both marketplace host patches in one staging 
     assert.match(client, /data-portable-confirm-install/)
     assert.deepEqual(attestations.map(item => item.id), [
       'directory-picker-electron-ipc',
-      'settings-model-welcome-retry',
       'app-boot-profile-runtime-fallback',
       'portable-session-event-metadata',
       'marketplace-self-update-fallback',

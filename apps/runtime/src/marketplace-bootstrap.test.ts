@@ -93,6 +93,18 @@ test('fresh and upgraded profiles install the bundled marketplace once', () => {
       install: () => { throw new Error('must not reinstall') },
     })
     assert.deepEqual(second, { status: 'already-seeded', enabled: true })
+
+    writeFileSync(join(item.source, 'lib', 'index.js'), 'bundled-v0.3.1\n')
+    const upgraded = ensureMarketplacePreinstalled({
+      profileDir: item.profile,
+      sourceDir: item.source,
+      install: () => { throw new Error('managed upgrades must not invoke pnpm') },
+    })
+    assert.deepEqual(upgraded, { status: 'repaired', enabled: true })
+    assert.equal(
+      readFileSync(join(item.profile, 'node_modules', MARKETPLACE_PACKAGE, 'lib', 'index.js'), 'utf8'),
+      'bundled-v0.3.1\n',
+    )
   } finally {
     rmSync(item.root, { recursive: true, force: true })
   }

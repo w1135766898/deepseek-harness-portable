@@ -133,6 +133,12 @@ async function collectWorkspaceOverrides() {
       if (entry.name !== 'package.json') continue
       const manifest = JSON.parse(await readFile(path, 'utf8'))
       if (typeof manifest.name !== 'string') continue
+      // The portable distribution mirrors this package's manifest into the
+      // pinned kernel tree so the kernel's browser bundling preset can resolve
+      // an out-of-tree package by name (scripts/build/client-manifest-bridge.ts).
+      // A mirror carries no sources, so an override onto it would shadow the
+      // packed tarball this smoke test exists to exercise.
+      if ('_portableManifestBridge' in manifest) continue
       overrides[manifest.name] = `link:${dirname(path).replaceAll('\\', '/')}`
     }
   }

@@ -11,9 +11,6 @@ import {
 } from './patch-manifest.js'
 
 const require = createRequire(import.meta.url)
-const { patchWelcomeNoticeStore } = require('../../patches/dsh-client-ui-settings-models-welcome-store.js') as {
-  patchWelcomeNoticeStore(source: string): string
-}
 const { patchMarketplaceSelfUpdate } = require('../../patches/dsh-plugin-marketplace-self-update.js') as {
   patchMarketplaceSelfUpdate(source: string): string
 }
@@ -104,7 +101,6 @@ async function applyDefinition(
 export async function applyRuntimePatchLayer(options: RuntimePatchOptions): Promise<readonly PatchAttestation[]> {
   const definitions = await loadPatchManifest(resolve(options.root, 'patches/manifest.yml'))
   const directoryPicker = definitionById(definitions, 'directory-picker-electron-ipc')
-  const welcome = definitionById(definitions, 'settings-model-welcome-retry')
   const appBoot = definitionById(definitions, 'app-boot-profile-runtime-fallback')
   const portableSession = definitionById(definitions, 'portable-session-event-metadata')
   const marketplace = definitionById(definitions, 'marketplace-self-update-fallback')
@@ -114,11 +110,6 @@ export async function applyRuntimePatchLayer(options: RuntimePatchOptions): Prom
     applyDefinition(options, directoryPicker, {
       'node_modules/@deepseek-ai/dsh-host-directory-picker-native/lib/index.js': () => directoryIndex,
       'node_modules/@deepseek-ai/dsh-host-directory-picker-native/lib/worker.cjs': patchDirectoryPickerWorker,
-    }),
-    applyDefinition(options, welcome, {
-      'node_modules/@deepseek-ai/dsh-client-ui-settings-models/lib/client.js': source => (
-        source.includes('scheduleRetry(operation)') ? source : patchWelcomeNoticeStore(source)
-      ),
     }),
     applyDefinition(options, appBoot, {
       'node_modules/@deepseek-ai/dsh-app-boot/lib/index.js': patchAppBootProfileRuntimeFallback,

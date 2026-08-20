@@ -1,3 +1,7 @@
+# Normalize repository text files to LF across platforms. Windows command
+# scripts remain CRLF because cmd.exe requires it for parenthesized blocks.
+* text=auto eol=lf
+
 # cmd.exe requires CRLF line endings when parsing parenthesized blocks.
 *.cmd text eol=crlf
 *.bat text eol=crlf

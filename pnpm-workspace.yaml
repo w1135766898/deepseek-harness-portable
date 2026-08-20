@@ -4,6 +4,10 @@ packages:
   - 'vendor/deepseek-harness'
   - 'vendor/deepseek-harness/vendor/*'
   - 'vendor/deepseek-harness/packages/*/*'
+  # Generated manifest mirrors for out-of-tree client plugins; they carry no
+  # sources and must never resolve as workspace projects (see
+  # scripts/build/client-manifest-bridge.ts).
+  - '!vendor/deepseek-harness/packages/portable/*'
   - 'vendor/deepseek-harness/apps/cli'
   - 'vendor/deepseek-harness/apps/web'
   - 'vendor/deepseek-harness/examples'

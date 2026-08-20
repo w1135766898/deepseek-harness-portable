@@ -8,7 +8,7 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync, } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 export const MARKETPLACE_PACKAGE = 'dsh-plugin-marketplace';
-export const MARKETPLACE_SOURCE_COMMIT = 'c8adea1a41c7d1037aa33f44ad6a9b986399a354';
+export const MARKETPLACE_SOURCE_COMMIT = '463e6cb856272018a7f5a76e260a0d1ef5b589e3';
 export const MARKETPLACE_SEED_MARKER = '.dsh-portable-marketplace-v1.json';
 export const MARKETPLACE_RECOVERY_MARKER = '.dsh-portable-marketplace-recovery-v1.json';
 export const MARKETPLACE_RUNTIME_FILES = [
@@ -295,10 +295,10 @@ function quarantineUnavailableMarketplace(profileDir, initial, code, reason) {
 /**
  * Seed the bundled marketplace exactly once for a profile.
  *
- * Existing, loadable dependencies are adopted without changing their version
- * or enabled state. Incomplete dependencies are rebuilt from the bundled
- * source while preserving enabled state. A marker with no dependency is an
- * intentional uninstall and is never repaired automatically.
+ * Existing user-selected dependencies are adopted without changing their
+ * version or enabled state. Distribution-managed copies are refreshed when
+ * the bundled seed changes, while preserving enabled state. A marker with no
+ * dependency is an intentional uninstall and is never repaired automatically.
  */
 export function ensureMarketplacePreinstalled(options) {
     const marker = join(options.profileDir, MARKETPLACE_SEED_MARKER);
@@ -314,8 +314,12 @@ export function ensureMarketplacePreinstalled(options) {
     const recovery = readRecoveryState(options.profileDir);
     const legacySourceDirs = options.legacySourceDirs ?? [];
     const legacyRuntimeLink = initial.dependency && initial.packageReady && isLegacyRuntimeLink(options.profileDir, initial.dependencySpec, legacySourceDirs);
+    const managedDependency = options.sourceDir !== undefined && initial.dependency && isManagedMarketplaceSpec(options.profileDir, initial.dependencySpec, options.sourceDir, legacySourceDirs);
     if (initial.dependency) {
-        if (initial.packageReady && !legacyRuntimeLink) {
+        const installedRoot = join(options.profileDir, 'node_modules', MARKETPLACE_PACKAGE);
+        const managedCopyCurrent = managedDependency
+            && marketplaceRuntimeFilesEqual(installedRoot, options.sourceDir);
+        if (initial.packageReady && !legacyRuntimeLink && (!managedDependency || managedCopyCurrent)) {
             clearRecoveryState(options.profileDir);
             if (!seeded)
                 writeSeedMarker(options.profileDir);
@@ -330,7 +334,6 @@ export function ensureMarketplacePreinstalled(options) {
         return quarantineUnavailableMarketplace(options.profileDir, initial, 'MARKETPLACE_UNAVAILABLE', 'persistent marketplace seed is missing or invalid');
     }
     const desiredEnabled = recovery?.enabled ?? (initial.dependency || initial.enabled ? initial.enabled : true);
-    const managedDependency = initial.dependency && isManagedMarketplaceSpec(options.profileDir, initial.dependencySpec, options.sourceDir, legacySourceDirs);
     if (managedDependency) {
         try {
             repairManagedMarketplace(options.profileDir, options.sourceDir, desiredEnabled);

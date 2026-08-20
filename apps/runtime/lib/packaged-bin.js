@@ -12,8 +12,8 @@
  *   heal its installation fallback, so profile-owned updates take effect.
  *   The legacy single-file runtime keeps resolving from its packaged VFS.
  *
- * After the tree settles, the local URL is polled and (unless `--no-open`)
- * opened in the default browser. All other flags pass through to the web
+ * The server stays in the current shell by default. `--open` explicitly polls
+ * and opens the local URL in the default browser. All other flags pass through to the web
  * app's own flag family (`--host`, `--port`, `--trusted-host`, `--help`).
  *
  * @module @dsh-portable/runtime/packaged-bin
@@ -359,6 +359,7 @@ const REQUIRED_CLIENT_ENTRIES = [
     '@deepseek-ai/dsh-client-runtime',
     '@deepseek-ai/dsh-client-ui-layout',
     '@dsh-portable/interactive-learning',
+    '@dsh-portable/vision-bridge',
 ];
 /**
  * Check the boot graph embedded in the exact index document that the browser
@@ -466,11 +467,12 @@ async function openBrowserWhenReady(ctx) {
                 }
                 else {
                     const body = await apiResponse.json();
-                    if (body.result?.ok && body.result.value?.namespaces?.some(namespace => namespace.ns === 'ui-onboarding')) {
+                    const namespaces = new Set(body.result?.value?.namespaces?.map(namespace => namespace.ns) ?? []);
+                    if (body.result?.ok && namespaces.has('ui-onboarding') && namespaces.has('vision')) {
                         openBrowser(url);
                         return;
                     }
-                    lastReason = body.result?.error?.message ?? 'ui-onboarding namespace is not registered';
+                    lastReason = body.result?.error?.message ?? 'required settings namespaces are not registered';
                 }
             }
         }
@@ -558,7 +560,7 @@ async function main() {
     // without reconstructing or re-quoting them in batch syntax.
     if (args[0]?.toLowerCase() === 'web')
         args.shift();
-    let openBrowser = true;
+    let openBrowser = false;
     const webArgs = [];
     for (const arg of args) {
         if (arg === '--no-open')
@@ -568,6 +570,9 @@ async function main() {
         else
             webArgs.push(arg);
     }
+    // The packaged launcher owns the explicit browser action. Keep the upstream
+    // web profile from opening a second browser (or opening one for Desktop).
+    webArgs.push('--no-open');
     const virtualRuntime = Boolean(process.pkg);
     const presetState = await materializeShippedPresetRoot();
     const composed = composeProfile(presetState.root, virtualRuntime);

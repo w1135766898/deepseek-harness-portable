@@ -7,6 +7,7 @@ import { useState } from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-settings-plugins/client'
 import type { VisionCardFace } from './vision-card-controller.ts'
+import type { VisionRouteKind } from './vision-route.ts'
 import type {} from './locales.ts'
 import css from './VisionCard.module.css'
 
@@ -14,6 +15,13 @@ export type VisionCardProps =
   PropsRuntime<'settings.plugin.item'>
   & PropsLocale<'vision-bridge'>
   & InjectFace<VisionCardFace>
+
+/** Locale key triplet describing one selection state. */
+const ROUTE_COPY = {
+  auto: { badge: 'routeAuto', title: 'routeAutoTitle', hint: 'routeAutoHint' },
+  pinned: { badge: 'routePinned', title: 'routePinnedTitle', hint: 'routePinnedHint' },
+  disabled: { badge: 'routeDisabled', title: 'routeDisabledTitle', hint: 'routeDisabledHint' },
+} as const satisfies Record<VisionRouteKind, { badge: string; title: string; hint: string }>
 
 export function VisionCard(props: VisionCardProps) {
   const [open, setOpen] = useState(false)
@@ -26,27 +34,8 @@ export function VisionCard(props: VisionCardProps) {
   const title = t('cardTitle')
   const desc = t('cardDescription')
   const blocked = !state.dirty || state.saving || !state.writable
-  const routeLabel = t(state.route.kind === 'local'
-    ? 'routeLocal'
-    : state.route.kind === 'remote'
-      ? 'routeRemote'
-      : state.route.kind === 'disabled'
-        ? 'routeDisabled'
-        : 'routeInvalid')
-  const routeTitle = t(state.route.kind === 'local'
-    ? 'routeLocalTitle'
-    : state.route.kind === 'remote'
-      ? 'routeRemoteTitle'
-      : state.route.kind === 'disabled'
-        ? 'routeDisabledTitle'
-        : 'routeInvalidTitle')
-  const routeHint = t(state.route.kind === 'local'
-    ? 'routeLocalHint'
-    : state.route.kind === 'remote'
-      ? 'routeRemoteHint'
-      : state.route.kind === 'disabled'
-        ? 'routeDisabledHint'
-        : 'routeInvalidHint')
+  const copy = ROUTE_COPY[state.route.kind]
+  const selection = state.route.model ?? ''
 
   return (
     <li className={`${css.card} ${open ? css.cardOpen : ''}`}>
@@ -63,7 +52,7 @@ export function VisionCard(props: VisionCardProps) {
         </span>
         {state.dirty && <span className={css.pending}>{t('unsaved')}</span>}
         <span className={`${css.routeBadge} ${css[`route_${state.route.kind}`]}`}>
-          {routeLabel}
+          {t(copy.badge)}
         </span>
         <svg
           className={`${css.chevron} ${open ? css.chevronOpen : ''}`}
@@ -86,13 +75,13 @@ export function VisionCard(props: VisionCardProps) {
 
           <div
             className={`${css.routeSummary} ${css.nativeRoute}`}
-            data-route="native-attachment"
+            data-route="shared-providers"
             role="status"
           >
             <span className={css.routeDot} aria-hidden="true" />
             <span className={css.routeText}>
-              <strong>{t('nativeRouteTitle')}</strong>
-              <span>{t('nativeRouteHint')}</span>
+              <strong>{t('sharedProviderTitle')}</strong>
+              <span>{t('sharedProviderHint')}</span>
             </span>
           </div>
 
@@ -104,13 +93,13 @@ export function VisionCard(props: VisionCardProps) {
           >
             <span className={css.routeDot} aria-hidden="true" />
             <span className={css.routeText}>
-              <strong>{routeTitle}</strong>
-              <span>{routeHint}</span>
-              {state.route.endpoint !== undefined && <code>{state.route.endpoint}</code>}
+              <strong>{t(copy.title)}</strong>
+              <span>{t(copy.hint)}</span>
+              {selection !== '' && <code>{selection}</code>}
             </span>
           </div>
 
-          {/* 1. Enable Switch */}
+          {/* 1. Enable switch */}
           <div className={css.fieldRow}>
             <div>
               <div className={css.label}>{t('enabled')}</div>
@@ -127,36 +116,7 @@ export function VisionCard(props: VisionCardProps) {
             </label>
           </div>
 
-          {/* 2. Provider Preset Selection */}
-          <div className={css.field}>
-            <label className={css.label}>{t('provider')}</label>
-            <select
-              className={css.select}
-              value={state.provider}
-              disabled={!state.writable}
-              onChange={e => props.selectProviderPreset(e.target.value as 'openai' | 'ollama' | 'compatible')}
-            >
-              <option value="compatible">{t('providerCompatible')}</option>
-              <option value="openai">{t('providerOpenAI')}</option>
-              <option value="ollama">{t('providerOllama')}</option>
-            </select>
-          </div>
-
-          {/* 3. Base URL */}
-          <div className={css.field}>
-            <label className={css.label}>{t('baseURL')}</label>
-            <input
-              type="text"
-              className={css.input}
-              value={state.baseURL}
-              disabled={!state.writable}
-              placeholder="https://api.openai.com/v1"
-              onChange={e => props.edit('baseURL', e.target.value)}
-            />
-            <span className={css.hint}>{t('baseURLHint')}</span>
-          </div>
-
-          {/* 4. Model Name */}
+          {/* 2. Model pin (empty = discover an image-capable model) */}
           <div className={css.field}>
             <label className={css.label}>{t('model')}</label>
             <input
@@ -164,40 +124,24 @@ export function VisionCard(props: VisionCardProps) {
               className={css.input}
               value={state.model}
               disabled={!state.writable}
-              placeholder="gpt-4o-mini"
+              placeholder={t('modelPlaceholder')}
               onChange={e => props.edit('model', e.target.value)}
             />
             <span className={css.hint}>{t('modelHint')}</span>
           </div>
 
-          {/* 5. API Key (write-only: the wire never returns the stored secret) */}
-          <div className={css.field}>
-            <label className={css.label}>{t('apiKey')}</label>
-            <input
-              type="password"
-              className={css.input}
-              value={state.apiKey}
+          {state.route.kind === 'pinned' && (
+            <button
+              type="button"
+              className={`${css.btn} ${css.discard}`}
               disabled={!state.writable}
-              placeholder={t('apiKeyHint')}
-              onChange={e => props.edit('apiKey', e.target.value)}
-            />
-            <span className={css.hint}>{t('apiKeyHint')}</span>
-          </div>
+              onClick={props.useAutomaticModel}
+            >
+              {t('useAutomatic')}
+            </button>
+          )}
 
-          {/* 6. Prompt Override (Optional) */}
-          <div className={css.field}>
-            <label className={css.label}>{t('promptOverride')}</label>
-            <textarea
-              className={css.textarea}
-              rows={2}
-              value={state.prompt}
-              disabled={!state.writable}
-              placeholder={t('promptOverrideHint')}
-              onChange={e => props.edit('prompt', e.target.value)}
-            />
-          </div>
-
-          {/* Footer Actions */}
+          {/* Footer actions */}
           <div className={css.footer}>
             {state.failed && (
               <span className={`${css.statusMsg} ${css.error}`}>

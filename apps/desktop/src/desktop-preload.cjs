@@ -66,7 +66,9 @@ contextBridge.exposeInMainWorld('deepSeekDesktop', {
 })
 
 if (!isSplashDocument) {
-  const NATIVE_BRAND_LOGO_SELECTOR = 'svg[viewBox="0 0 182 24"]'
+  // rc7 rendered one combined wordmark; rc8 renders the fish and official
+  // wordmark as sibling SVGs. Either expanded brand remains our menu trigger.
+  const NATIVE_BRAND_LOGO_SELECTOR = 'svg[viewBox="0 0 182 24"], svg[viewBox="26 0 156 24"]'
   const NATIVE_FISH_LOGO_SELECTOR = 'svg[viewBox="0 0 23.16 17.04"]'
   const DESKTOP_MENU_WIDTH = 248
 

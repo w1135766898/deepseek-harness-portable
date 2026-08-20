@@ -11,11 +11,12 @@ function readyUrl(output) {
   return clean.match(/(?:^|\r?\n)dsh web:\s*(http:\/\/127\.0\.0\.1:\d+)/)?.[1]
 }
 
-/** The browser shell cannot activate until its shell and Learning roots exist. */
+/** The browser shell cannot activate until its shell and portable feature roots exist. */
 const REQUIRED_CLIENT_ENTRIES = [
   '@deepseek-ai/dsh-client-runtime',
   '@deepseek-ai/dsh-client-ui-layout',
   '@dsh-portable/interactive-learning',
+  '@dsh-portable/vision-bridge',
 ]
 
 /** Build the settings RPC endpoint without producing a double-slash path. */
@@ -91,11 +92,11 @@ async function waitForOnboardingReady(baseUrl, options = {}) {
   const indexUrl = new URL('/', baseUrl).href
   const deadline = Date.now() + timeoutMs
   let lastReason = 'settings.describe has not completed'
-  let onboardingReady = false
+  let settingsReady = false
   let clientGraphReady = false
   while (Date.now() < deadline) {
     const remainingMs = () => Math.min(1500, Math.max(1, deadline - Date.now()))
-    if (!onboardingReady) {
+    if (!settingsReady) {
       try {
         const response = await fetch(settingsUrl, {
           method: 'POST',
@@ -112,10 +113,11 @@ async function waitForOnboardingReady(baseUrl, options = {}) {
           lastReason = `settings.describe HTTP ${response.status}`
         } else {
           const body = await response.json()
-          if (body?.result?.ok && body.result.value?.namespaces?.some(namespace => namespace.ns === 'ui-onboarding')) {
-            onboardingReady = true
+          const namespaces = new Set(body?.result?.value?.namespaces?.map(namespace => namespace.ns) ?? [])
+          if (body?.result?.ok && namespaces.has('ui-onboarding') && namespaces.has('vision')) {
+            settingsReady = true
           } else {
-            lastReason = body?.result?.error?.message ?? 'ui-onboarding namespace is not registered'
+            lastReason = body?.result?.error?.message ?? 'required settings namespaces are not registered'
           }
         }
       } catch (error) {
@@ -139,7 +141,7 @@ async function waitForOnboardingReady(baseUrl, options = {}) {
         lastReason = error instanceof Error ? error.message : String(error)
       }
     }
-    if (onboardingReady && clientGraphReady) return
+    if (settingsReady && clientGraphReady) return
     await new Promise(resolve => setTimeout(resolve, intervalMs))
   }
   throw new Error(`Host onboarding readiness timed out: ${lastReason}`)

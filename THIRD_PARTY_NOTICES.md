@@ -15,7 +15,7 @@ The Windows distribution additionally ships the following direct runtime compone
 
 | Package | Source | License |
 | --- | --- | --- |
-| `dsh-plugin-marketplace` | [AwesomeHou/dsh-plugin-marketplace@c8adea1](https://github.com/AwesomeHou/dsh-plugin-marketplace/tree/c8adea1a41c7d1037aa33f44ad6a9b986399a354) | MIT |
+| `dsh-plugin-marketplace` | [AwesomeHou/dsh-plugin-marketplace@463e6cb](https://github.com/AwesomeHou/dsh-plugin-marketplace/tree/463e6cb856272018a7f5a76e260a0d1ef5b589e3) | MIT |
 | `pnpm` 11.21.0 | [pnpm/pnpm](https://github.com/pnpm/pnpm) | MIT |
 
 ## Vendored source (`vendor/`)

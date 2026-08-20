@@ -9,6 +9,7 @@ import {
   resolveWorkspaceDependencyClosure,
   type WorkspacePackage,
 } from './dependency-closure.js'
+import { isManifestBridge } from '../build/client-manifest-bridge.js'
 import {
   auditRuntimeWorkspaceLinks,
   repairRuntimeWorkspaceLinks,
@@ -37,7 +38,7 @@ const STATIC_WORKSPACE_ROOTS = [
 ] as const
 
 const EXTERNAL_RUNTIME_ROOTS = {
-  'dsh-plugin-marketplace': 'github:AwesomeHou/dsh-plugin-marketplace#c8adea1a41c7d1037aa33f44ad6a9b986399a354',
+  'dsh-plugin-marketplace': 'github:AwesomeHou/dsh-plugin-marketplace#463e6cb856272018a7f5a76e260a0d1ef5b589e3',
   'js-yaml': '^4.2.0',
   'node-addon-require-builtin': '^0.1.4',
   'pnpm': '11.21.0',
@@ -78,6 +79,9 @@ async function workspacePackages(): Promise<Map<string, WorkspacePackage>> {
   for (const path of paths) {
     const manifest = JSON.parse(await readFile(path, 'utf8')) as Partial<WorkspacePackage>
     if (typeof manifest.name !== 'string' || typeof manifest.version !== 'string') continue
+    // A mirrored manifest restates a package that already lives in this scan;
+    // reading it as a second package would collide with its own source.
+    if (isManifestBridge(manifest)) continue
     const item: WorkspacePackage = {
       name: manifest.name,
       version: manifest.version,

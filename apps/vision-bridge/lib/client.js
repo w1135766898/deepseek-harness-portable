@@ -14,91 +14,65 @@ window.__ModuleLoader__.load({
 		*/
 		const zh = {
 			cardTitle: "视觉辅助 (Vision Bridge)",
-			cardDescription: "外部端点用于 view_image；会话图片使用 rc7 原生附件与当前模型路径",
+			cardDescription: "让 view_image 使用你已配置的图像模型分析磁盘上的图片",
 			enabled: "启用视觉辅助",
-			enabledHint: "此开关只控制 view_image 外部分析；不会接管或删除 rc7 原生会话附件",
-			provider: "服务商预设",
-			providerOpenAI: "OpenAI 官方 (gpt-4o-mini / gpt-4o)",
-			providerOllama: "本地 Ollama (llava / minicpm-v)",
-			providerCompatible: "自定义 OpenAI 兼容接口",
-			model: "模型名称",
-			modelHint: "例如 gemini-3.7-flash, mimo-v2.5, gpt-4o-mini",
-			baseURL: "接口地址 (Base URL)",
-			baseURLHint: "兼容 OpenAI 格式的完整 API 地址",
-			apiKey: "API 密钥",
-			apiKeyHint: "留空表示不修改或无需密钥 (如本地 Ollama)",
-			promptOverride: "系统提示词 (可选)",
-			promptOverrideHint: "自定义发送给视觉模型的提示词指令",
+			enabledHint: "此开关只控制显式的 view_image 工具；不影响会话中粘贴图片的原生附件路径",
+			model: "指定模型 (可选)",
+			modelHint: "留空时自动选用已配置的图像模型；指定后会自动找到它所属的服务商",
+			modelPlaceholder: "留空 = 自动选择支持图像的模型",
+			useAutomatic: "恢复自动选择",
 			save: "保存配置",
 			discard: "放弃修改",
 			unsaved: "未保存",
-			overridden: "已覆盖默认值",
-			reset: "重置",
 			readOnly: "此配置当前处于只读模式",
 			saving: "正在保存...",
 			saveFailed: "保存失败，请检查网络或配置格式",
-			routeLocal: "本机端点",
-			routeRemote: "外部端点",
+			routeAuto: "自动选择",
+			routePinned: "已指定",
 			routeDisabled: "已停用",
-			routeInvalid: "检查地址",
-			nativeRouteTitle: "会话图片：rc7 原生附件路径",
-			nativeRouteHint: "粘贴图片先持久化为不可变 attachment ref，再交给当前支持图片的会话模型；纯文本模型会收到明确的不支持提示。",
-			routeLocalTitle: "view_image：发送到本机服务",
-			routeLocalHint: "只有显式 view_image 调用会把图片和提示词发送到下面的本机端点；若服务继续转发，请以其配置为准。",
-			routeRemoteTitle: "view_image：图片将离开本机",
-			routeRemoteHint: "只有显式 view_image 调用会把图片字节和提示词发送到下面的外部服务。处理敏感图片前，请确认其保留政策。",
+			sharedProviderTitle: "复用「设置 → 模型」的配置",
+			sharedProviderHint: "图片直接走内核附件与 LLM 通道，Vision Bridge 不再另存密钥、接口、提示词或超时参数。",
+			routeAutoTitle: "view_image：自动选择图像模型",
+			routeAutoHint: "调用时从已配置服务商的模型目录中，选用第一个声明支持图像输入的模型。",
+			routePinnedTitle: "view_image：使用指定模型",
+			routePinnedHint: "调用时固定使用下面指定的路由；若该模型明确声明不支持图像输入，调用会给出清晰报错。",
 			routeDisabledTitle: "view_image 当前已停用",
-			routeDisabledHint: "原生会话附件不受影响；只有外部 view_image 分析不可用。",
-			routeInvalidTitle: "接口地址无效",
-			routeInvalidHint: "请输入完整的 http:// 或 https:// Base URL。",
+			routeDisabledHint: "会话中的原生图片附件不受影响；仅显式的 view_image 分析不可用。",
 			collapse: "折叠",
 			expand: "展开"
 		};
 		const en = {
 			cardTitle: "Vision Bridge",
-			cardDescription: "Use an external endpoint for view_image while conversation images stay on the native rc7 attachment/model path",
+			cardDescription: "Let view_image analyze images on disk with the image-capable models you already configured",
 			enabled: "Enable Vision Bridge",
-			enabledHint: "This switch controls only external view_image analysis; it does not intercept or remove native rc7 conversation attachments",
-			provider: "Provider Preset",
-			providerOpenAI: "OpenAI Official (gpt-4o-mini / gpt-4o)",
-			providerOllama: "Local Ollama (llava / minicpm-v)",
-			providerCompatible: "Custom OpenAI Compatible",
-			model: "Model Name",
-			modelHint: "e.g. gemini-3.7-flash, mimo-v2.5, gpt-4o-mini",
-			baseURL: "Base URL",
-			baseURLHint: "OpenAI-compatible completions endpoint base URL",
-			apiKey: "API Key",
-			apiKeyHint: "Leave blank to keep unchanged or if no key required (e.g. Ollama)",
-			promptOverride: "System Prompt (Optional)",
-			promptOverrideHint: "Custom instruction sent to the vision model",
+			enabledHint: "This switch controls only the explicit view_image tool; pasted conversation images keep the native attachment path",
+			model: "Pin a model (optional)",
+			modelHint: "Leave empty for automatic selection; a pinned model is resolved to its configured provider",
+			modelPlaceholder: "Empty = discover an image-capable model",
+			useAutomatic: "Back to automatic selection",
 			save: "Save Changes",
 			discard: "Discard",
 			unsaved: "Unsaved",
-			overridden: "Overridden",
-			reset: "Reset",
 			readOnly: "This configuration is currently read-only",
 			saving: "Saving...",
 			saveFailed: "Failed to save configuration",
-			routeLocal: "Local endpoint",
-			routeRemote: "External endpoint",
+			routeAuto: "Automatic",
+			routePinned: "Pinned",
 			routeDisabled: "Disabled",
-			routeInvalid: "Check address",
-			nativeRouteTitle: "Conversation images: native rc7 attachment path",
-			nativeRouteHint: "Pasted images become immutable attachment refs and are passed to the selected image-capable model; text-only models receive a clear unsupported response.",
-			routeLocalTitle: "view_image: sent to a local service",
-			routeLocalHint: "Only an explicit view_image call sends image bytes and prompts to the local endpoint below. Check that service if it forwards requests.",
-			routeRemoteTitle: "view_image: images leave this device",
-			routeRemoteHint: "Only an explicit view_image call sends image bytes and prompts to the external service below. Review its retention policy first.",
+			sharedProviderTitle: "Uses your Settings → Models configuration",
+			sharedProviderHint: "Images use the kernel attachment and LLM path. Vision Bridge stores no separate key, endpoint, prompt, or timeout.",
+			routeAutoTitle: "view_image: automatic model selection",
+			routeAutoHint: "Each call picks the first model in your configured catalog that declares image input.",
+			routePinnedTitle: "view_image: pinned model",
+			routePinnedHint: "Each call uses the route below. If that model explicitly declares no image input, the call fails with a clear message.",
 			routeDisabledTitle: "view_image is disabled",
-			routeDisabledHint: "Native conversation attachments are unaffected; only external view_image analysis is unavailable.",
-			routeInvalidTitle: "The endpoint address is invalid",
-			routeInvalidHint: "Enter a complete Base URL beginning with http:// or https://.",
+			routeDisabledHint: "Native conversation attachments are unaffected; only explicit view_image analysis is unavailable.",
 			collapse: "Collapse",
 			expand: "Expand"
 		};
 		//#endregion
 		//#region \0dsh-css:C:\Users\Ryan\Desktop\deepseek-harness-portable\apps\vision-bridge\src\client\VisionCard.module.css.mjs
-		const css = ".bICbtG_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;margin-bottom:12px;list-style:none;transition:border-color .16s,background .16s}.bICbtG_card:hover{border-color:var(--dsw-alias-label-dimmed)}.bICbtG_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}.bICbtG_header{appearance:none;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}.bICbtG_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}.bICbtG_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}.bICbtG_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}.bICbtG_description{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.5}.bICbtG_chevron{width:16px;height:16px;color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.bICbtG_chevronOpen{transform:rotate(180deg)}.bICbtG_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.bICbtG_routeBadge{white-space:nowrap;border:1px solid;border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:600;line-height:17px}.bICbtG_route_local{color:var(--dsw-alias-label-success,#15803d)}.bICbtG_route_remote{color:var(--dsw-alias-label-warning,#b45309)}.bICbtG_route_disabled{color:var(--dsw-alias-label-tertiary,#64748b)}.bICbtG_route_invalid{color:var(--dsw-alias-label-error,#dc2626)}.bICbtG_nativeRoute{color:var(--dsw-alias-brand-primary,#2563eb)}.bICbtG_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}.bICbtG_readOnly{color:var(--dsw-alias-label-tertiary);margin:12px 0 0;font-size:12px;line-height:1.5}.bICbtG_routeSummary{background:var(--dsw-alias-bg-layer-3);border:1px solid;border-radius:9px;align-items:flex-start;gap:10px;margin:12px 0 0;padding:10px 12px;display:flex}.bICbtG_routeDot{background:currentColor;border-radius:50%;flex:none;width:8px;height:8px;margin-top:5px}.bICbtG_routeText{flex-direction:column;gap:2px;min-width:0;font-size:12px;line-height:1.5;display:flex}.bICbtG_routeText strong{color:var(--dsw-alias-label-primary);font-size:13px}.bICbtG_routeText span{color:var(--dsw-alias-label-secondary)}.bICbtG_routeText code{text-overflow:ellipsis;white-space:nowrap;color:currentColor;width:fit-content;max-width:100%;overflow:hidden}.bICbtG_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}.bICbtG_field+.bICbtG_field,.bICbtG_fieldRow+.bICbtG_field{border-top:1px solid var(--dsw-alias-border-l2)}.bICbtG_fieldRow{justify-content:space-between;align-items:center;gap:16px;padding:12px 0;display:flex}.bICbtG_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}.bICbtG_hint{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px;line-height:1.5}.bICbtG_input,.bICbtG_select{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);box-sizing:border-box;border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.bICbtG_select{cursor:pointer}.bICbtG_textarea{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);min-height:60px;font:inherit;color:var(--dsw-alias-label-primary);resize:vertical;box-sizing:border-box;border-radius:8px;padding:8px 12px;font-size:13px;line-height:1.5}.bICbtG_input:focus-visible,.bICbtG_select:focus-visible,.bICbtG_textarea:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}.bICbtG_input:disabled,.bICbtG_select:disabled,.bICbtG_textarea:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}.bICbtG_switch{flex:none;width:38px;height:22px;display:inline-block;position:relative}.bICbtG_switch input{opacity:0;width:0;height:0;position:absolute}.bICbtG_slider{cursor:pointer;background-color:var(--dsw-alias-border-l1,#cbd5e1);border-radius:22px;transition:all .16s;position:absolute;inset:0}.bICbtG_slider:before{content:\"\";background-color:var(--dsw-alias-bg-layer-3,#fff);border-radius:50%;width:16px;height:16px;transition:all .16s;position:absolute;bottom:3px;left:3px;box-shadow:0 1px 3px #00000026}.bICbtG_switch input:checked+.bICbtG_slider{background-color:var(--dsw-alias-brand-primary,#3b82f6)}.bICbtG_switch input:checked+.bICbtG_slider:before{transform:translate(16px)}.bICbtG_switch input:disabled+.bICbtG_slider{opacity:.4;cursor:default}.bICbtG_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}.bICbtG_statusMsg,.bICbtG_failed{min-width:0;color:var(--dsw-alias-label-error,#ef4444);flex:1;margin:0;font-size:12px;line-height:1.5}.bICbtG_discard,.bICbtG_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.bICbtG_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}.bICbtG_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.bICbtG_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}.bICbtG_save:hover:not(:disabled){opacity:.9}.bICbtG_discard:disabled,.bICbtG_save:disabled{opacity:.4;cursor:default}.bICbtG_discard:focus-visible,.bICbtG_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}";
+		const css = ".bICbtG_card{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);border-radius:12px;margin-bottom:12px;list-style:none;transition:border-color .16s,background .16s}.bICbtG_card:hover{border-color:var(--dsw-alias-label-dimmed)}.bICbtG_cardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}.bICbtG_header{appearance:none;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}.bICbtG_header:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}.bICbtG_headText{flex-direction:column;flex:1;gap:4px;min-width:0;display:flex}.bICbtG_name{color:var(--dsw-alias-label-primary);font-size:15px;font-weight:600;line-height:1.4}.bICbtG_description{color:var(--dsw-alias-label-tertiary);font-size:13px;line-height:1.5}.bICbtG_chevron{width:16px;height:16px;color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}.bICbtG_chevronOpen{transform:rotate(180deg)}.bICbtG_pending{white-space:nowrap;background:var(--dsw-alias-bg-module-platform);color:var(--dsw-alias-label-secondary);border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:500;line-height:17px}.bICbtG_routeBadge{white-space:nowrap;border:1px solid;border-radius:999px;flex:none;padding:1px 8px;font-size:11px;font-weight:600;line-height:17px}.bICbtG_route_auto{color:var(--dsw-alias-brand-primary,#2563eb)}.bICbtG_route_pinned{color:var(--dsw-alias-label-success,#15803d)}.bICbtG_route_disabled{color:var(--dsw-alias-label-tertiary,#64748b)}.bICbtG_nativeRoute{color:var(--dsw-alias-brand-primary,#2563eb)}.bICbtG_body{border-top:1px solid var(--dsw-alias-border-l2);margin:0 16px;padding-bottom:8px}.bICbtG_readOnly{color:var(--dsw-alias-label-tertiary);margin:12px 0 0;font-size:12px;line-height:1.5}.bICbtG_routeSummary{background:var(--dsw-alias-bg-layer-3);border:1px solid;border-radius:9px;align-items:flex-start;gap:10px;margin:12px 0 0;padding:10px 12px;display:flex}.bICbtG_routeDot{background:currentColor;border-radius:50%;flex:none;width:8px;height:8px;margin-top:5px}.bICbtG_routeText{flex-direction:column;gap:2px;min-width:0;font-size:12px;line-height:1.5;display:flex}.bICbtG_routeText strong{color:var(--dsw-alias-label-primary);font-size:13px}.bICbtG_routeText span{color:var(--dsw-alias-label-secondary)}.bICbtG_routeText code{text-overflow:ellipsis;white-space:nowrap;color:currentColor;width:fit-content;max-width:100%;overflow:hidden}.bICbtG_field{flex-direction:column;gap:6px;padding:12px 0;display:flex}.bICbtG_field+.bICbtG_field,.bICbtG_fieldRow+.bICbtG_field{border-top:1px solid var(--dsw-alias-border-l2)}.bICbtG_fieldRow{justify-content:space-between;align-items:center;gap:16px;padding:12px 0;display:flex}.bICbtG_label{min-width:0;color:var(--dsw-alias-label-primary);flex:1;font-size:13px;font-weight:500;line-height:1.5}.bICbtG_hint{color:var(--dsw-alias-label-tertiary);margin:0;font-size:12px;line-height:1.5}.bICbtG_input{border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-3);height:34px;font:inherit;color:var(--dsw-alias-label-primary);box-sizing:border-box;border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}.bICbtG_input:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}.bICbtG_input:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}.bICbtG_switch{flex:none;width:38px;height:22px;display:inline-block;position:relative}.bICbtG_switch input{opacity:0;width:0;height:0;position:absolute}.bICbtG_slider{cursor:pointer;background-color:var(--dsw-alias-border-l1,#cbd5e1);border-radius:22px;transition:all .16s;position:absolute;inset:0}.bICbtG_slider:before{content:\"\";background-color:var(--dsw-alias-bg-layer-3,#fff);border-radius:50%;width:16px;height:16px;transition:all .16s;position:absolute;bottom:3px;left:3px;box-shadow:0 1px 3px #00000026}.bICbtG_switch input:checked+.bICbtG_slider{background-color:var(--dsw-alias-brand-primary,#3b82f6)}.bICbtG_switch input:checked+.bICbtG_slider:before{transform:translate(16px)}.bICbtG_switch input:disabled+.bICbtG_slider{opacity:.4;cursor:default}.bICbtG_footer{border-top:1px solid var(--dsw-alias-border-l2);justify-content:flex-end;align-items:center;gap:8px;padding:12px 0 4px;display:flex}.bICbtG_statusMsg,.bICbtG_failed{min-width:0;color:var(--dsw-alias-label-error,#ef4444);flex:1;margin:0;font-size:12px;line-height:1.5}.bICbtG_discard,.bICbtG_save{appearance:none;font:inherit;cursor:pointer;border:1px solid #0000;border-radius:8px;padding:5px 14px;font-size:13px;line-height:1.5}.bICbtG_discard{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary);background:0 0}.bICbtG_discard:hover:not(:disabled){color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-dimmed)}.bICbtG_save{background:var(--dsw-alias-label-primary);color:var(--dsw-alias-bg-layer-3)}.bICbtG_save:hover:not(:disabled){opacity:.9}.bICbtG_discard:disabled,.bICbtG_save:disabled{opacity:.4;cursor:default}.bICbtG_discard:focus-visible,.bICbtG_save:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}";
 		const tagId = "@dsh-portable/vision-bridge/VisionCard.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -108,40 +82,37 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var VisionCard_module_css_default = {
-			"route_remote": "bICbtG_route_remote",
-			"cardOpen": "bICbtG_cardOpen",
-			"field": "bICbtG_field",
-			"save": "bICbtG_save",
-			"input": "bICbtG_input",
-			"headText": "bICbtG_headText",
+			"body": "bICbtG_body",
 			"card": "bICbtG_card",
-			"routeBadge": "bICbtG_routeBadge",
-			"textarea": "bICbtG_textarea",
-			"route_disabled": "bICbtG_route_disabled",
+			"cardOpen": "bICbtG_cardOpen",
+			"chevron": "bICbtG_chevron",
+			"chevronOpen": "bICbtG_chevronOpen",
+			"description": "bICbtG_description",
+			"discard": "bICbtG_discard",
+			"failed": "bICbtG_failed",
+			"field": "bICbtG_field",
+			"fieldRow": "bICbtG_fieldRow",
+			"footer": "bICbtG_footer",
+			"headText": "bICbtG_headText",
+			"header": "bICbtG_header",
+			"hint": "bICbtG_hint",
+			"input": "bICbtG_input",
 			"label": "bICbtG_label",
 			"name": "bICbtG_name",
-			"route_local": "bICbtG_route_local",
-			"body": "bICbtG_body",
-			"chevronOpen": "bICbtG_chevronOpen",
-			"pending": "bICbtG_pending",
-			"route_invalid": "bICbtG_route_invalid",
-			"routeSummary": "bICbtG_routeSummary",
-			"chevron": "bICbtG_chevron",
 			"nativeRoute": "bICbtG_nativeRoute",
-			"routeText": "bICbtG_routeText",
-			"fieldRow": "bICbtG_fieldRow",
-			"hint": "bICbtG_hint",
-			"footer": "bICbtG_footer",
-			"select": "bICbtG_select",
-			"statusMsg": "bICbtG_statusMsg",
-			"discard": "bICbtG_discard",
-			"switch": "bICbtG_switch",
-			"header": "bICbtG_header",
-			"failed": "bICbtG_failed",
-			"routeDot": "bICbtG_routeDot",
-			"description": "bICbtG_description",
+			"pending": "bICbtG_pending",
 			"readOnly": "bICbtG_readOnly",
-			"slider": "bICbtG_slider"
+			"routeBadge": "bICbtG_routeBadge",
+			"routeDot": "bICbtG_routeDot",
+			"routeSummary": "bICbtG_routeSummary",
+			"routeText": "bICbtG_routeText",
+			"route_auto": "bICbtG_route_auto",
+			"route_disabled": "bICbtG_route_disabled",
+			"route_pinned": "bICbtG_route_pinned",
+			"save": "bICbtG_save",
+			"slider": "bICbtG_slider",
+			"statusMsg": "bICbtG_statusMsg",
+			"switch": "bICbtG_switch"
 		};
 		//#endregion
 		//#region src/client/VisionCard.tsx
@@ -149,6 +120,24 @@ window.__ModuleLoader__.load({
 		* Visual settings card registered into `settings.plugin.item`.
 		* @module @dsh-portable/vision-bridge/client/VisionCard
 		*/
+		/** Locale key triplet describing one selection state. */
+		const ROUTE_COPY = {
+			auto: {
+				badge: "routeAuto",
+				title: "routeAutoTitle",
+				hint: "routeAutoHint"
+			},
+			pinned: {
+				badge: "routePinned",
+				title: "routePinnedTitle",
+				hint: "routePinnedHint"
+			},
+			disabled: {
+				badge: "routeDisabled",
+				title: "routeDisabledTitle",
+				hint: "routeDisabledHint"
+			}
+		};
 		function VisionCard(props) {
 			const [open, setOpen] = (0, react.useState)(false);
 			const { t } = props;
@@ -157,9 +146,8 @@ window.__ModuleLoader__.load({
 			const title = t("cardTitle");
 			const desc = t("cardDescription");
 			const blocked = !state.dirty || state.saving || !state.writable;
-			const routeLabel = t(state.route.kind === "local" ? "routeLocal" : state.route.kind === "remote" ? "routeRemote" : state.route.kind === "disabled" ? "routeDisabled" : "routeInvalid");
-			const routeTitle = t(state.route.kind === "local" ? "routeLocalTitle" : state.route.kind === "remote" ? "routeRemoteTitle" : state.route.kind === "disabled" ? "routeDisabledTitle" : "routeInvalidTitle");
-			const routeHint = t(state.route.kind === "local" ? "routeLocalHint" : state.route.kind === "remote" ? "routeRemoteHint" : state.route.kind === "disabled" ? "routeDisabledHint" : "routeInvalidHint");
+			const copy = ROUTE_COPY[state.route.kind];
+			const selection = state.route.model ?? "";
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("li", {
 				className: `${VisionCard_module_css_default.card} ${open ? VisionCard_module_css_default.cardOpen : ""}`,
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
@@ -185,7 +173,7 @@ window.__ModuleLoader__.load({
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 							className: `${VisionCard_module_css_default.routeBadge} ${VisionCard_module_css_default[`route_${state.route.kind}`]}`,
-							children: routeLabel
+							children: t(copy.badge)
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("svg", {
 							className: `${VisionCard_module_css_default.chevron} ${open ? VisionCard_module_css_default.chevronOpen : ""}`,
@@ -208,14 +196,14 @@ window.__ModuleLoader__.load({
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: `${VisionCard_module_css_default.routeSummary} ${VisionCard_module_css_default.nativeRoute}`,
-							"data-route": "native-attachment",
+							"data-route": "shared-providers",
 							role: "status",
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 								className: VisionCard_module_css_default.routeDot,
 								"aria-hidden": "true"
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 								className: VisionCard_module_css_default.routeText,
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: t("nativeRouteTitle") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("nativeRouteHint") })]
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: t("sharedProviderTitle") }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t("sharedProviderHint") })]
 							})]
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -229,9 +217,9 @@ window.__ModuleLoader__.load({
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 								className: VisionCard_module_css_default.routeText,
 								children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: routeTitle }),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: routeHint }),
-									state.route.endpoint !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: state.route.endpoint })
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: t(copy.title) }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: t(copy.hint) }),
+									selection !== "" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: selection })
 								]
 							})]
 						}),
@@ -255,53 +243,6 @@ window.__ModuleLoader__.load({
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: VisionCard_module_css_default.field,
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-								className: VisionCard_module_css_default.label,
-								children: t("provider")
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("select", {
-								className: VisionCard_module_css_default.select,
-								value: state.provider,
-								disabled: !state.writable,
-								onChange: (e) => props.selectProviderPreset(e.target.value),
-								children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
-										value: "compatible",
-										children: t("providerCompatible")
-									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
-										value: "openai",
-										children: t("providerOpenAI")
-									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
-										value: "ollama",
-										children: t("providerOllama")
-									})
-								]
-							})]
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: VisionCard_module_css_default.field,
-							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-									className: VisionCard_module_css_default.label,
-									children: t("baseURL")
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-									type: "text",
-									className: VisionCard_module_css_default.input,
-									value: state.baseURL,
-									disabled: !state.writable,
-									placeholder: "https://api.openai.com/v1",
-									onChange: (e) => props.edit("baseURL", e.target.value)
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: VisionCard_module_css_default.hint,
-									children: t("baseURLHint")
-								})
-							]
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: VisionCard_module_css_default.field,
 							children: [
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
 									className: VisionCard_module_css_default.label,
@@ -312,7 +253,7 @@ window.__ModuleLoader__.load({
 									className: VisionCard_module_css_default.input,
 									value: state.model,
 									disabled: !state.writable,
-									placeholder: "gpt-4o-mini",
+									placeholder: t("modelPlaceholder"),
 									onChange: (e) => props.edit("model", e.target.value)
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
@@ -321,40 +262,12 @@ window.__ModuleLoader__.load({
 								})
 							]
 						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: VisionCard_module_css_default.field,
-							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-									className: VisionCard_module_css_default.label,
-									children: t("apiKey")
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
-									type: "password",
-									className: VisionCard_module_css_default.input,
-									value: state.apiKey,
-									disabled: !state.writable,
-									placeholder: t("apiKeyHint"),
-									onChange: (e) => props.edit("apiKey", e.target.value)
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: VisionCard_module_css_default.hint,
-									children: t("apiKeyHint")
-								})
-							]
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: VisionCard_module_css_default.field,
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("label", {
-								className: VisionCard_module_css_default.label,
-								children: t("promptOverride")
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
-								className: VisionCard_module_css_default.textarea,
-								rows: 2,
-								value: state.prompt,
-								disabled: !state.writable,
-								placeholder: t("promptOverrideHint"),
-								onChange: (e) => props.edit("prompt", e.target.value)
-							})]
+						state.route.kind === "pinned" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							className: `${VisionCard_module_css_default.btn} ${VisionCard_module_css_default.discard}`,
+							disabled: !state.writable,
+							onClick: props.useAutomaticModel,
+							children: t("useAutomatic")
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: VisionCard_module_css_default.footer,
@@ -385,26 +298,19 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client/vision-route.ts
-		function isLoopbackHost(hostname) {
-			const normalized = hostname.toLowerCase();
-			return normalized === "localhost" || normalized.endsWith(".localhost") || normalized === "127.0.0.1" || normalized === "::1" || normalized === "[::1]";
-		}
 		/**
-		* Classify the configured endpoint without probing it or exposing credentials.
-		* The summary is deliberately descriptive rather than a readiness claim.
+		* Summarize the configured vision selection.
+		* @param enabled - whether the capability is offered at all.
+		* @param model - configured model id; empty means discover an image-capable one.
 		*/
-		function describeVisionRoute(enabled, baseURL) {
+		function describeVisionRoute(enabled, model) {
 			if (!enabled) return { kind: "disabled" };
-			try {
-				const url = new URL(baseURL.trim());
-				if (url.protocol !== "http:" && url.protocol !== "https:") return { kind: "invalid" };
-				return {
-					kind: isLoopbackHost(url.hostname) ? "local" : "remote",
-					endpoint: url.host
-				};
-			} catch {
-				return { kind: "invalid" };
-			}
+			const pinnedModel = model.trim();
+			if (pinnedModel === "") return { kind: "auto" };
+			return {
+				kind: "pinned",
+				model: pinnedModel
+			};
 		}
 		//#endregion
 		//#region src/client/vision-card-controller.ts
@@ -413,6 +319,11 @@ window.__ModuleLoader__.load({
 		* Connects SettingsScope<VisionSettings> to the React view model.
 		* @module @dsh-portable/vision-bridge/client/vision-card-controller
 		*/
+		/** Field defaults mirroring the host schema, so an unset value renders the same on both sides. */
+		const DEFAULTS = {
+			enabled: true,
+			model: ""
+		};
 		var VisionCardController = class {
 			scope;
 			store;
@@ -426,29 +337,28 @@ window.__ModuleLoader__.load({
 					this.store.set(this.projection());
 				});
 			}
+			/** Staged edit, then stored value, then the schema default. */
+			field(current, key) {
+				const staged = this.staged[key];
+				if (typeof staged === typeof DEFAULTS[key]) return staged;
+				const stored = current[key];
+				if (typeof stored === typeof DEFAULTS[key]) return stored;
+				return DEFAULTS[key];
+			}
 			projection() {
 				const snap = this.scope.getSnapshot();
 				const current = snap.value ?? {};
-				const enabled = typeof this.staged.enabled === "boolean" ? this.staged.enabled : current.enabled ?? true;
-				const provider = typeof this.staged.provider === "string" ? this.staged.provider : current.provider ?? "compatible";
-				const model = typeof this.staged.model === "string" ? this.staged.model : current.model ?? "gpt-4o-mini";
-				const baseURL = typeof this.staged.baseURL === "string" ? this.staged.baseURL : current.baseURL ?? "https://api.openai.com/v1";
-				const apiKey = typeof this.staged.apiKey === "string" ? this.staged.apiKey : "";
-				const prompt = typeof this.staged.prompt === "string" ? this.staged.prompt : current.prompt ?? "";
-				const dirty = Object.keys(this.staged).length > 0;
+				const enabled = this.field(current, "enabled");
+				const model = this.field(current, "model");
 				return {
 					available: snap.status === "ready" || snap.status === "loading",
 					writable: snap.writable,
-					dirty,
+					dirty: Object.keys(this.staged).length > 0,
 					saving: this.saving,
 					failed: this.failed,
 					enabled,
-					provider,
 					model,
-					baseURL,
-					apiKey,
-					prompt,
-					route: describeVisionRoute(enabled, baseURL)
+					route: describeVisionRoute(enabled, model)
 				};
 			}
 			edit = (field, value) => {
@@ -456,15 +366,9 @@ window.__ModuleLoader__.load({
 				this.failed = false;
 				this.store.set(this.projection());
 			};
-			selectProviderPreset = (preset) => {
-				this.staged.provider = preset;
-				if (preset === "openai") {
-					this.staged.baseURL = "https://api.openai.com/v1";
-					this.staged.model = "gpt-4o-mini";
-				} else if (preset === "ollama") {
-					this.staged.baseURL = "http://127.0.0.1:11434/v1";
-					this.staged.model = "llava";
-				}
+			/** Clear the model pin so the host discovers an image-capable model itself. */
+			useAutomaticModel = () => {
+				this.staged.model = "";
 				this.failed = false;
 				this.store.set(this.projection());
 			};
@@ -479,10 +383,7 @@ window.__ModuleLoader__.load({
 				this.failed = false;
 				this.store.set(this.projection());
 				try {
-					for (const [key, value] of Object.entries(this.staged)) {
-						if (key === "apiKey" && (value === "" || value === void 0)) continue;
-						await this.scope.set(key, value);
-					}
+					for (const [key, value] of Object.entries(this.staged)) await this.scope.set(key, value);
 					this.staged = {};
 				} catch (_err) {
 					this.failed = true;
@@ -497,7 +398,7 @@ window.__ModuleLoader__.load({
 					edit: this.edit,
 					save: this.save,
 					discard: this.discard,
-					selectProviderPreset: this.selectProviderPreset
+					useAutomaticModel: this.useAutomaticModel
 				};
 			}
 		};

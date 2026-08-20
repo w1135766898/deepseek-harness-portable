@@ -24,7 +24,7 @@ test('normalizes a trailing listening slash to the exact settings RPC route', ()
   )
 })
 
-test('client readiness requires the Interactive Learning Client row', () => {
+test('client readiness requires the portable feature rows', () => {
   const shellOnly = {
     entries: [
       { id: '@deepseek-ai/dsh-client-runtime', inject: [] },
@@ -36,6 +36,13 @@ test('client readiness requires the Interactive Learning Client row', () => {
     entries: [
       ...shellOnly.entries,
       { id: '@dsh-portable/interactive-learning', inject: ['@deepseek-ai/dsh-client-runtime'] },
+    ],
+  }), false)
+  assert.equal(hasRequiredClientGraph({
+    entries: [
+      ...shellOnly.entries,
+      { id: '@dsh-portable/interactive-learning', inject: ['@deepseek-ai/dsh-client-runtime'] },
+      { id: '@dsh-portable/vision-bridge', inject: ['@deepseek-ai/dsh-client-runtime'] },
     ],
   }), true)
 })
@@ -53,6 +60,7 @@ test('waits for onboarding and the complete client graph instead of trusting the
             { id: '@deepseek-ai/dsh-client-connection', inject: [] },
             { id: '@deepseek-ai/dsh-client-ui-layout', inject: ['@deepseek-ai/dsh-client-runtime'] },
             { id: '@dsh-portable/interactive-learning', inject: ['@deepseek-ai/dsh-client-runtime'] },
+            { id: '@dsh-portable/vision-bridge', inject: ['@deepseek-ai/dsh-client-runtime'] },
           ]
       response.writeHead(200, { 'content-type': 'text/html' })
       response.end(`<html><head><script>window.__DSH_BOOT__ = ${JSON.stringify({ entries })}</script></head></html>`)
@@ -62,7 +70,7 @@ test('waits for onboarding and the complete client graph instead of trusting the
     response.writeHead(200, { 'content-type': 'application/json' })
     response.end(JSON.stringify(settingsAttempts < 3
       ? { result: { ok: true, value: { namespaces: [] } } }
-      : { result: { ok: true, value: { namespaces: [{ ns: 'ui-onboarding' }] } } }))
+      : { result: { ok: true, value: { namespaces: [{ ns: 'ui-onboarding' }, { ns: 'vision' }] } } }))
   })
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
   try {

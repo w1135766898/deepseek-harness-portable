@@ -11,12 +11,6 @@ patches:
         guards:
           - runFolderDialog
           - process.send
-  - id: settings-model-welcome-retry
-    targets: ['*']
-    files:
-      - path: node_modules/@deepseek-ai/dsh-client-ui-settings-models/lib/client.js
-        guards:
-          - WelcomeNoticeStore
   - id: app-boot-profile-runtime-fallback
     targets: ['*']
     files:

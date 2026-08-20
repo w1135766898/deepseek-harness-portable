@@ -1,35 +1,35 @@
-/** Compact, client-only description of where Vision Bridge sends image bytes. */
+/**
+ * Client-only description of which model Vision Bridge will use.
+ *
+ * Image bytes now travel the same providers the deployment already uses for
+ * conversations, so the interesting question is no longer "where does this
+ * endpoint point" but "which configured model answers, and did the operator
+ * choose it or is it discovered". Capability resolution is the host's job; this
+ * summary only reports the selection as configured.
+ * @module @dsh-portable/vision-bridge/client/vision-route
+ */
 
-export type VisionRouteKind = 'disabled' | 'local' | 'remote' | 'invalid'
+/** How the vision model is selected. */
+export type VisionRouteKind = 'disabled' | 'auto' | 'pinned'
 
+/** The configured selection, as the settings card presents it. */
 export interface VisionRouteSummary {
   kind: VisionRouteKind
-  endpoint?: string
-}
-
-function isLoopbackHost(hostname: string): boolean {
-  const normalized = hostname.toLowerCase()
-  return normalized === 'localhost'
-    || normalized.endsWith('.localhost')
-    || normalized === '127.0.0.1'
-    || normalized === '::1'
-    || normalized === '[::1]'
+  /** Pinned model id, when the operator named one. */
+  model?: string
 }
 
 /**
- * Classify the configured endpoint without probing it or exposing credentials.
- * The summary is deliberately descriptive rather than a readiness claim.
+ * Summarize the configured vision selection.
+ * @param enabled - whether the capability is offered at all.
+ * @param model - configured model id; empty means discover an image-capable one.
  */
-export function describeVisionRoute(enabled: boolean, baseURL: string): VisionRouteSummary {
+export function describeVisionRoute(enabled: boolean, model: string): VisionRouteSummary {
   if (!enabled) return { kind: 'disabled' }
-  try {
-    const url = new URL(baseURL.trim())
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return { kind: 'invalid' }
-    return {
-      kind: isLoopbackHost(url.hostname) ? 'local' : 'remote',
-      endpoint: url.host,
-    }
-  } catch {
-    return { kind: 'invalid' }
+  const pinnedModel = model.trim()
+  if (pinnedModel === '') return { kind: 'auto' }
+  return {
+    kind: 'pinned',
+    model: pinnedModel,
   }
 }

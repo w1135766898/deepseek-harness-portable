@@ -1,246 +1,285 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { writeFile, unlink, mkdir, rm } from 'node:fs/promises'
-import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { executeViewImage, mimeTypeForPath, renderViewImageContent } from '../src/view-image.ts'
+import { join } from 'node:path'
+import type { ImageAttachmentLimits, ImageAttachmentRef, SaveImageAttachment } from '@deepseek-ai/dsh-attachment'
+import type { GenerateOptions, LlmModelInfo, StreamChunk } from '@deepseek-ai/dsh-llm'
+import {
+  collectAnalysis,
+  executeViewImage,
+  mediaTypeForPath,
+  renderViewImageContent,
+  visionModelCatalog,
+  type VisionRuntime,
+} from '../src/view-image.ts'
 import type { VisionConfig } from '../src/types.ts'
+
+const LIMITS: ImageAttachmentLimits = {
+  maxImageBytes: 1024 * 1024,
+  maxImagesPerMessage: 4,
+  maxMessageImageBytes: 4 * 1024 * 1024,
+  maxImagePixels: 4096 * 4096,
+  maxImageDimension: 4096,
+  mediaTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
+}
+
+const VISION_MODEL: LlmModelInfo = {
+  provider: 'dashscope',
+  id: 'qwen-vl-max',
+  name: 'Qwen VL Max',
+  inputModalities: ['text', 'image'],
+}
+
+function ref(bytes: number): ImageAttachmentRef {
+  return {
+    attachmentId: 'att-1' as ImageAttachmentRef['attachmentId'],
+    mediaType: 'image/png',
+    bytes,
+    width: 64,
+    height: 48,
+  }
+}
+
+async function* chunks(...items: StreamChunk[]): AsyncIterable<StreamChunk> {
+  for (const item of items) yield item
+}
+
+interface RuntimeOptions {
+  saveImages?: (inputs: readonly SaveImageAttachment[]) => Promise<readonly ImageAttachmentRef[]>
+  stream?: (options: GenerateOptions) => AsyncIterable<StreamChunk>
+  models?: LlmModelInfo[]
+  limits?: ImageAttachmentLimits
+}
+
+/** Record of what the fake runtime was asked to do. */
+interface RuntimeProbe {
+  runtime: VisionRuntime
+  calls: GenerateOptions[]
+  saved: SaveImageAttachment[]
+}
+
+function fakeRuntime(options: RuntimeOptions = {}): RuntimeProbe {
+  const calls: GenerateOptions[] = []
+  const saved: SaveImageAttachment[] = []
+  const models = options.models ?? [VISION_MODEL]
+  const runtime: VisionRuntime = {
+    attachments: {
+      imageLimits: options.limits ?? LIMITS,
+      saveImages: async (inputs) => {
+        saved.push(...inputs)
+        return options.saveImages === undefined
+          ? [ref(inputs[0]?.data.byteLength ?? 0)]
+          : options.saveImages(inputs)
+      },
+    },
+    llm: {
+      listProviders: () => [...new Set(models.map(model => model.provider))].map(id => ({ id, name: id })),
+      listModels: async (provider: string) => models.filter(model => model.provider === provider),
+      stream: (generate: GenerateOptions) => {
+        calls.push(generate)
+        return options.stream === undefined
+          ? chunks({ type: 'text-delta', index: 0, text: 'a red dialog' }, { type: 'finish', reason: { kind: 'stop' } })
+          : options.stream(generate)
+      },
+    },
+  } as VisionRuntime
+  return { runtime, calls, saved }
+}
+
+const baseConfig: Required<VisionConfig> = {
+  enabled: true,
+  model: '',
+}
 
 describe('view-image', () => {
   let testDir: string
   let samplePng: string
   let sampleTxt: string
-
-  const baseConfig: Required<VisionConfig> = {
-    enabled: true,
-    provider: 'compatible',
-    model: 'gpt-4o-mini',
-    baseURL: 'https://api.openai.com/v1',
-    apiKey: 'test-sk-1234567890',
-    maxImageBytes: 1024 * 1024,
-    timeoutMs: 5000,
-    prompt: 'Default test prompt',
-  }
-
-  const stubExec = {
-    signal: new AbortController().signal,
-    agent: {
-      session: { header: { cwd: process.cwd() } },
-    },
-  } as never
+  let stubExec: never
 
   beforeEach(async () => {
-    testDir = join(tmpdir(), `vision-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    testDir = join(tmpdir(), `vision-test-${String(Date.now())}-${Math.random().toString(36).slice(2)}`)
     await mkdir(testDir, { recursive: true })
     samplePng = join(testDir, 'test.png')
     sampleTxt = join(testDir, 'test.txt')
-    await writeFile(samplePng, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) // png magic
+    await writeFile(samplePng, Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
     await writeFile(sampleTxt, 'hello text file')
+    stubExec = {
+      signal: new AbortController().signal,
+      agent: { session: { header: { cwd: testDir } } },
+    } as never
   })
 
   afterEach(async () => {
-    vi.restoreAllMocks()
     await rm(testDir, { recursive: true, force: true })
   })
 
-  it('detects supported image MIME types correctly', () => {
-    expect(mimeTypeForPath('foo.png')).toBe('image/png')
-    expect(mimeTypeForPath('bar.jpg')).toBe('image/jpeg')
-    expect(mimeTypeForPath('baz.jpeg')).toBe('image/jpeg')
-    expect(mimeTypeForPath('pic.webp')).toBe('image/webp')
-    expect(mimeTypeForPath('anim.gif')).toBe('image/gif')
-    expect(mimeTypeForPath('doc.pdf')).toBeUndefined()
-    expect(mimeTypeForPath('code.ts')).toBeUndefined()
+  it('maps supported extensions onto attachment media types', () => {
+    expect(mediaTypeForPath('foo.png')).toBe('image/png')
+    expect(mediaTypeForPath('bar.JPG')).toBe('image/jpeg')
+    expect(mediaTypeForPath('pic.webp')).toBe('image/webp')
+    expect(mediaTypeForPath('anim.gif')).toBe('image/gif')
+    expect(mediaTypeForPath('doc.pdf')).toBeUndefined()
   })
 
-  it('returns clean error if plugin is disabled', async () => {
-    const res = await executeViewImage(
-      { path: samplePng },
+  it('reports a disabled bridge without touching the disk', async () => {
+    const probe = fakeRuntime()
+    const result = await executeViewImage(
+      { path: 'missing.png' },
       stubExec,
       () => ({ ...baseConfig, enabled: false }),
+      probe.runtime,
     )
-    expect(res.isError).toBe(true)
-    expect(res.text).toContain('Vision Bridge is currently disabled')
+    expect(result).toMatchObject({ isError: true, reason: 'VISION_BRIDGE_DISABLED' })
+    expect(probe.saved).toHaveLength(0)
   })
 
-  it('returns clean error if API key is missing for non-ollama provider', async () => {
-    const res = await executeViewImage(
-      { path: samplePng },
-      stubExec,
-      () => ({ ...baseConfig, apiKey: '' }),
-    )
-    expect(res.isError).toBe(true)
-    expect(res.text).toContain('no API key configured')
+  it('rejects an unsupported extension before reading the file', async () => {
+    const probe = fakeRuntime()
+    const result = await executeViewImage({ path: sampleTxt }, stubExec, () => baseConfig, probe.runtime)
+    expect(result).toMatchObject({ isError: true, reason: 'VISION_UNSUPPORTED_MEDIA_TYPE' })
+    expect(probe.saved).toHaveLength(0)
   })
 
-  it('allows missing API key for ollama and omits the Authorization header', async () => {
-    const mockResponse = {
-      choices: [{ message: { content: 'llava sees a cat.' } }],
-    }
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => mockResponse,
-    } as never)
-
-    const res = await executeViewImage(
-      { path: samplePng },
-      stubExec,
-      () => ({ ...baseConfig, provider: 'ollama', apiKey: '' }),
-    )
-
-    expect(res.isError).toBeUndefined()
-    expect(res.text).toBe('llava sees a cat.')
-    const headers = fetchSpy.mock.calls[0]?.[1]?.headers as Record<string, string>
-    expect(headers.Authorization).toBeUndefined()
+  it('resolves a relative path against the session workspace', async () => {
+    const probe = fakeRuntime()
+    const result = await executeViewImage({ path: 'test.png' }, stubExec, () => baseConfig, probe.runtime)
+    expect(result.isError).toBeUndefined()
+    expect(result.path).toBe(samplePng)
   })
 
-  it('resolves relative paths against the session header cwd', async () => {
-    const mockResponse = {
-      choices: [{ message: { content: 'relative path ok.' } }],
-    }
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => mockResponse,
-    } as never)
-    const sessionExec = {
-      signal: new AbortController().signal,
-      agent: {
-        session: { header: { cwd: testDir } },
-      },
-    } as never
-
-    const res = await executeViewImage(
-      { path: 'test.png' },
-      sessionExec,
-      () => baseConfig,
-    )
-
-    expect(res.isError).toBeUndefined()
-    expect(res.path).toBe(join(testDir, 'test.png'))
+  it('reports an unreadable path as a result rather than a throw', async () => {
+    const probe = fakeRuntime()
+    const result = await executeViewImage({ path: 'nope.png' }, stubExec, () => baseConfig, probe.runtime)
+    expect(result).toMatchObject({ isError: true, reason: 'VISION_IMAGE_UNREADABLE' })
   })
 
-  it('refuses unsupported file extensions', async () => {
-    const res = await executeViewImage(
-      { path: sampleTxt },
-      stubExec,
-      () => baseConfig,
-    )
-    expect(res.isError).toBe(true)
-    expect(res.text).toContain('only supports PNG, JPEG, WebP, and GIF')
+  it('enforces the attachment store limit before loading the bytes', async () => {
+    const probe = fakeRuntime({ limits: { ...LIMITS, maxImageBytes: 4 } })
+    const result = await executeViewImage({ path: samplePng }, stubExec, () => baseConfig, probe.runtime)
+    expect(result).toMatchObject({ isError: true, reason: 'VISION_IMAGE_TOO_LARGE', bytes: 8 })
+    expect(probe.saved).toHaveLength(0)
   })
 
-  it('handles missing file gracefully', async () => {
-    const res = await executeViewImage(
-      { path: join(testDir, 'non-existent.png') },
-      stubExec,
-      () => baseConfig,
-    )
-    expect(res.isError).toBe(true)
-    expect(res.text).toContain('Image file not found')
-  })
-
-  it('handles file size limit exceeding', async () => {
-    const res = await executeViewImage(
-      { path: samplePng },
-      stubExec,
-      () => ({ ...baseConfig, maxImageBytes: 4 }),
-    )
-    expect(res.isError).toBe(true)
-    expect(res.text).toContain('exceeds configured limit')
-  })
-
-  it('successfully calls vision API and parses description', async () => {
-    const mockResponse = {
-      choices: [
-        {
-          message: {
-            content: 'This is a valid test image with a red square.',
-          },
-        },
-      ],
-    }
-
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => mockResponse,
-    } as never)
-
-    const res = await executeViewImage(
-      { path: samplePng, prompt: 'What is in this image?' },
-      stubExec,
-      () => baseConfig,
-    )
-
-    expect(fetchSpy).toHaveBeenCalledOnce()
-    const callArgs = fetchSpy.mock.calls[0]
-    expect(callArgs[0]).toBe('https://api.openai.com/v1/chat/completions')
-
-    const body = JSON.parse(callArgs[1]?.body as string)
-    expect(body.model).toBe('gpt-4o-mini')
-    expect(body.messages[1].content[0].text).toBe('What is in this image?')
-    expect(body.messages[1].content[1].image_url.url).toContain('data:image/png;base64,')
-
-    expect(res.isError).toBeUndefined()
-    expect(res.text).toBe('This is a valid test image with a red square.')
-    expect(res.model).toBe('gpt-4o-mini')
-  })
-
-  it('handles HTTP error responses without leaking credentials', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: false,
-      status: 401,
-      text: async () => 'Unauthorized: Invalid authentication key provided.',
-    } as never)
-
-    const res = await executeViewImage(
-      { path: samplePng },
-      stubExec,
-      () => baseConfig,
-    )
-
-    expect(res.isError).toBe(true)
-    expect(res.text).toContain('HTTP 401')
-    expect(res.text).not.toContain('test-sk-1234567890')
-  })
-
-  it('surfaces fetch abort/timeout as a structured error', async () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation((_url, init) => new Promise((_resolve, reject) => {
-      const signal = init?.signal as AbortSignal | undefined
-      signal?.addEventListener('abort', () => {
-        reject(new DOMException('The operation was aborted.', 'AbortError'))
-      })
-    }))
-
-    const res = await executeViewImage(
-      { path: samplePng },
-      stubExec,
-      () => ({ ...baseConfig, timeoutMs: 20 }),
-    )
-
-    expect(res.isError).toBe(true)
-    expect(res.text).toContain('aborted')
-  })
-
-  it('renders content format correctly for model context', () => {
-    const successBlocks = renderViewImageContent({
-      text: 'Visual analysis details',
-      model: 'qwen-vl',
-      path: '/path/to/img.png',
-      bytes: 1024,
+  it('surfaces an attachment admission failure', async () => {
+    const probe = fakeRuntime({
+      saveImages: () => Promise.reject(new Error('image exceeds the pixel bound')),
     })
-    expect(successBlocks).toHaveLength(1)
-    expect(successBlocks[0].type).toBe('text')
-    expect(successBlocks[0].text).toContain('<image_analysis path="/path/to/img.png" model="qwen-vl">')
+    const result = await executeViewImage({ path: samplePng }, stubExec, () => baseConfig, probe.runtime)
+    expect(result).toMatchObject({ isError: true, reason: 'VISION_IMAGE_REJECTED' })
+    expect(result.text).toContain('pixel bound')
+  })
 
-    const errorBlocks = renderViewImageContent({
-      text: 'Error: file not found',
-      model: 'qwen-vl',
-      path: '/path/to/img.png',
+  it('sends the committed reference as an image block on the discovered route', async () => {
+    const probe = fakeRuntime()
+    const result = await executeViewImage(
+      { path: samplePng, prompt: 'Read the error code' },
+      stubExec,
+      () => baseConfig,
+      probe.runtime,
+    )
+    expect(result).toMatchObject({
+      provider: 'dashscope',
+      model: 'qwen-vl-max',
+      text: 'a red dialog',
+      bytes: 8,
+      width: 64,
+      height: 48,
+    })
+    expect(probe.saved[0]).toMatchObject({ mediaType: 'image/png', name: 'test.png' })
+    const call = probe.calls[0]
+    expect(call?.messages[0]?.content).toEqual([
+      { type: 'text', text: 'Read the error code' },
+      { type: 'image', attachment: ref(8) },
+    ])
+  })
+
+  it('reports a route failure without calling the model', async () => {
+    const probe = fakeRuntime({
+      models: [{ provider: 'deepseek', id: 'deepseek-chat', name: 'Chat', inputModalities: ['text'] }],
+    })
+    const result = await executeViewImage({ path: samplePng }, stubExec, () => baseConfig, probe.runtime)
+    expect(result).toMatchObject({ isError: true, reason: 'VISION_MODEL_UNAVAILABLE' })
+    expect(probe.calls).toHaveLength(0)
+  })
+
+  it('turns a terminal stream failure into an error result that keeps the route', async () => {
+    const probe = fakeRuntime({
+      stream: () => chunks({
+        type: 'finish',
+        reason: { kind: 'error', failure: { message: 'provider is down', code: 'PROVIDER_ERROR' } },
+      }),
+    })
+    const result = await executeViewImage({ path: samplePng }, stubExec, () => baseConfig, probe.runtime)
+    expect(result).toMatchObject({ isError: true, reason: 'PROVIDER_ERROR', model: 'qwen-vl-max' })
+    expect(result.text).toContain('provider is down')
+  })
+
+  it('rejects an empty path argument as a caller error', async () => {
+    const probe = fakeRuntime()
+    await expect(executeViewImage({ path: '  ' }, stubExec, () => baseConfig, probe.runtime))
+      .rejects.toThrow(/non-empty string/)
+  })
+})
+
+describe('stream draining', () => {
+  it('assembles interleaved text deltas', async () => {
+    const outcome = await collectAnalysis(chunks(
+      { type: 'block-start', index: 0, blockType: 'text' },
+      { type: 'text-delta', index: 0, text: 'hello ' },
+      { type: 'text-delta', index: 0, text: 'world' },
+      { type: 'finish', reason: { kind: 'stop' } },
+    ))
+    expect(outcome).toEqual({ ok: true, text: 'hello world' })
+  })
+
+  it('treats an abort as a failure carrying the provider code', async () => {
+    const outcome = await collectAnalysis(chunks(
+      { type: 'text-delta', index: 0, text: 'partial' },
+      { type: 'finish', reason: { kind: 'aborted', failure: { message: 'timed out', code: 'ABORTED' } } },
+    ))
+    expect(outcome).toMatchObject({ ok: false, reason: 'ABORTED' })
+  })
+
+  it('reports an empty response rather than returning blank analysis', async () => {
+    const outcome = await collectAnalysis(chunks({ type: 'finish', reason: { kind: 'stop' } }))
+    expect(outcome).toMatchObject({ ok: false, reason: 'VISION_ANALYSIS_EMPTY' })
+  })
+})
+
+describe('catalog assembly', () => {
+  it('skips a provider that cannot list its models', async () => {
+    const catalog = await visionModelCatalog({
+      listProviders: () => [{ id: 'broken', name: 'Broken' }, { id: 'dashscope', name: 'DashScope' }],
+      listModels: async (provider: string) => {
+        if (provider === 'broken') throw new Error('unauthorized')
+        return [VISION_MODEL]
+      },
+      stream: () => chunks(),
+    } as unknown as VisionRuntime['llm'])
+    expect(catalog).toEqual([VISION_MODEL])
+  })
+})
+
+describe('model-facing rendering', () => {
+  it('wraps a successful analysis with its path and model', () => {
+    expect(renderViewImageContent({
+      text: 'a chart',
+      provider: 'dashscope',
+      model: 'qwen-vl-max',
+      path: '/tmp/a.png',
+      bytes: 8,
+    })).toEqual([{ type: 'text', text: '<image_analysis path="/tmp/a.png" model="qwen-vl-max">\na chart\n</image_analysis>' }])
+  })
+
+  it('passes a failure through unwrapped', () => {
+    expect(renderViewImageContent({
+      text: 'Error: nope',
+      provider: '',
+      model: '',
+      path: '/tmp/a.png',
       bytes: 0,
       isError: true,
-    })
-    expect(errorBlocks[0].text).toBe('Error: file not found')
+    })).toEqual([{ type: 'text', text: 'Error: nope' }])
   })
 })

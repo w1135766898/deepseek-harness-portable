@@ -6,7 +6,7 @@
  * @module @dsh-portable/runtime/marketplace-bootstrap
  */
 export declare const MARKETPLACE_PACKAGE = "dsh-plugin-marketplace";
-export declare const MARKETPLACE_SOURCE_COMMIT = "c8adea1a41c7d1037aa33f44ad6a9b986399a354";
+export declare const MARKETPLACE_SOURCE_COMMIT = "463e6cb856272018a7f5a76e260a0d1ef5b589e3";
 export declare const MARKETPLACE_SEED_MARKER = ".dsh-portable-marketplace-v1.json";
 export declare const MARKETPLACE_RECOVERY_MARKER = ".dsh-portable-marketplace-recovery-v1.json";
 export declare const MARKETPLACE_RUNTIME_FILES: readonly ["package.json", "cordis.patch.yml", "lib/index.js", "lib/client.js"];
@@ -47,10 +47,10 @@ export declare function materializeMarketplaceSeed(options: {
 /**
  * Seed the bundled marketplace exactly once for a profile.
  *
- * Existing, loadable dependencies are adopted without changing their version
- * or enabled state. Incomplete dependencies are rebuilt from the bundled
- * source while preserving enabled state. A marker with no dependency is an
- * intentional uninstall and is never repaired automatically.
+ * Existing user-selected dependencies are adopted without changing their
+ * version or enabled state. Distribution-managed copies are refreshed when
+ * the bundled seed changes, while preserving enabled state. A marker with no
+ * dependency is an intentional uninstall and is never repaired automatically.
  */
 export declare function ensureMarketplacePreinstalled(options: MarketplaceBootstrapOptions): MarketplaceBootstrapResult;
 //# sourceMappingURL=marketplace-bootstrap.d.ts.map

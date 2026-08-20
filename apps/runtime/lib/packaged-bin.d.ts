@@ -12,8 +12,8 @@
  *   heal its installation fallback, so profile-owned updates take effect.
  *   The legacy single-file runtime keeps resolving from its packaged VFS.
  *
- * After the tree settles, the local URL is polled and (unless `--no-open`)
- * opened in the default browser. All other flags pass through to the web
+ * The server stays in the current shell by default. `--open` explicitly polls
+ * and opens the local URL in the default browser. All other flags pass through to the web
  * app's own flag family (`--host`, `--port`, `--trusted-host`, `--help`).
  *
  * @module @dsh-portable/runtime/packaged-bin

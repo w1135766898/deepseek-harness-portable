@@ -2,14 +2,104 @@ import z from "@deepseek-ai/schemastery";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { installSettingsSection, settingsNamespace } from "@deepseek-ai/dsh-settings";
 import { readFile, stat } from "node:fs/promises";
-import { extname, isAbsolute, resolve } from "node:path";
+import { basename, extname, isAbsolute, resolve } from "node:path";
+import { createUserMessage } from "@deepseek-ai/dsh-llm";
+//#region lib/types/model-selection.js
+/**
+* Resolve which configured model performs image analysis.
+*
+* The kernel's model catalog is the single source of truth: a route is chosen
+* from the providers the deployment already configured, and capability comes
+* from each entry's declared input modalities rather than from a hand-kept
+* list of model names.
+* @module @dsh-portable/vision-bridge/model-selection
+*/
+/**
+* Whether a catalog entry declares that it accepts image input.
+* @param model - one catalog entry.
+*/
+function declaresImageInput(model) {
+	return model.inputModalities?.includes("image") === true;
+}
+/**
+* Whether a catalog entry declares input modalities that exclude images.
+*
+* An absent `inputModalities` is unknown capability rather than a denial: it
+* never earns an automatic selection, but it must not veto a route the operator
+* pinned deliberately.
+* @param model - one catalog entry.
+*/
+function deniesImageInput(model) {
+	return model.inputModalities !== void 0 && !model.inputModalities.includes("image");
+}
+/**
+* Choose the route that will analyze images.
+*
+* A pinned model is resolved back to its configured provider and honored unless
+* the catalog positively denies image input. Otherwise the first entry
+* declaring image input wins, in catalog order.
+* @param config - the resolved enable/model configuration.
+* @param catalog - every model the configured providers report.
+* @returns the chosen route, or the reason none could be chosen.
+*/
+function selectVisionRoute(config, catalog) {
+	if (!config.enabled) return {
+		ok: false,
+		reason: "VISION_BRIDGE_DISABLED",
+		message: "Vision Bridge is disabled. Enable it in Settings → Plugins before using view_image."
+	};
+	if (config.model !== "") {
+		const pinned = catalog.find((entry) => entry.id === config.model);
+		if (pinned === void 0) return {
+			ok: false,
+			reason: "VISION_MODEL_UNAVAILABLE",
+			message: `Model ${config.model} is not available from a configured provider. Choose a model from Settings → Models.`
+		};
+		if (deniesImageInput(pinned)) return {
+			ok: false,
+			reason: "VISION_MODEL_NOT_IMAGE_CAPABLE",
+			message: `Model ${config.model} does not accept image input. Choose an image-capable model in Settings → Plugins.`
+		};
+		return {
+			ok: true,
+			route: {
+				provider: pinned.provider,
+				model: config.model
+			}
+		};
+	}
+	const discovered = catalog.find((entry) => declaresImageInput(entry));
+	if (discovered === void 0) return {
+		ok: false,
+		reason: "VISION_MODEL_UNAVAILABLE",
+		message: "No configured provider reports an image-capable model. Add one in Settings → Models."
+	};
+	return {
+		ok: true,
+		route: {
+			provider: discovered.provider,
+			model: discovered.id
+		}
+	};
+}
+/** Catalog entries an operator can reasonably pin as the vision route. */
+function imageCapableModels(catalog) {
+	return catalog.filter((entry) => !deniesImageInput(entry));
+}
+//#endregion
 //#region lib/types/view-image.js
 /**
 * Implementation of the `view_image` tool.
-* Reads an image from disk and calls an OpenAI-compatible vision model.
+*
+* Image bytes travel the kernel's own durable path: the attachment store
+* validates and commits them, and the resulting immutable reference rides an
+* `image` content block through `ctx.llm`. That inherits provider
+* configuration, retry policy, token metering, and telemetry instead of
+* restating them here.
 * @module @dsh-portable/vision-bridge/view-image
 */
-const SUPPORTED_MIME_TYPES = {
+/** File extensions the attachment store's version-one image path accepts. */
+const SUPPORTED_MEDIA_TYPES = {
 	".png": "image/png",
 	".jpg": "image/jpeg",
 	".jpeg": "image/jpeg",
@@ -17,173 +107,214 @@ const SUPPORTED_MIME_TYPES = {
 	".gif": "image/gif"
 };
 const DEFAULT_SYSTEM_PROMPT = "You are an expert visual analysis assistant. Carefully inspect the provided image and describe its contents with high accuracy. Extract any visible text, user interface elements, error messages, code blocks, diagrams, chart trends, or technical layouts.";
-/** Return the earliest actionable configuration problem, if any. */
-function visionConfigurationIssue(cfg) {
-	if (!cfg.enabled) return {
-		message: "Vision Bridge is currently disabled. Enable it in Settings → Plugins before using view_image.",
-		reason: "VISION_BRIDGE_DISABLED"
-	};
-	if (cfg.provider !== "ollama" && (!cfg.apiKey || cfg.apiKey.trim().length === 0)) return {
-		message: "Vision Bridge has no API key configured. Add one in Settings → Plugins before using view_image.",
-		reason: "VISION_BRIDGE_NOT_CONFIGURED"
-	};
+const DEFAULT_INSTRUCTION = "Please analyze and describe the contents of this image in detail.";
+const VISION_TIMEOUT_MS = 6e4;
+/**
+* Detect the attachment media type for a path from its extension.
+* @param filePath - path to the candidate image.
+* @returns the media type, or undefined when the extension is not supported.
+*/
+function mediaTypeForPath(filePath) {
+	return SUPPORTED_MEDIA_TYPES[extname(filePath).toLowerCase()];
 }
-/** Analyze validated image bytes through the configured OpenAI-compatible endpoint. */
-async function analyzeImageBytes(input, cfg, signal) {
-	const issue = visionConfigurationIssue(cfg);
-	if (issue !== void 0) return {
-		ok: false,
-		model: cfg.model,
-		...issue
-	};
-	const endpoint = `${cfg.baseURL.replace(/\/+$/, "")}/chat/completions`;
-	const requestPrompt = input.prompt && input.prompt.trim().length > 0 ? input.prompt.trim() : "Please analyze and describe the contents of this image in detail.";
-	const headers = { "Content-Type": "application/json" };
-	if (cfg.apiKey && cfg.apiKey.trim().length > 0) headers.Authorization = `Bearer ${cfg.apiKey.trim()}`;
-	const payload = {
-		model: cfg.model,
-		messages: [{
-			role: "system",
-			content: cfg.prompt && cfg.prompt.trim().length > 0 ? cfg.prompt.trim() : DEFAULT_SYSTEM_PROMPT
-		}, {
-			role: "user",
-			content: [{
-				type: "text",
-				text: requestPrompt
-			}, {
-				type: "image_url",
-				image_url: { url: `data:${input.mediaType};base64,${Buffer.from(input.data).toString("base64")}` }
-			}]
-		}],
-		temperature: .1
-	};
-	const timeoutSignal = AbortSignal.timeout(cfg.timeoutMs);
-	const combinedSignal = signal === void 0 ? timeoutSignal : AbortSignal.any([signal, timeoutSignal]);
-	try {
-		const response = await fetch(endpoint, {
-			method: "POST",
-			headers,
-			body: JSON.stringify(payload),
-			redirect: "error",
-			signal: combinedSignal
-		});
-		if (!response.ok) {
-			const errorText = await response.text().catch(() => "");
-			const truncated = errorText.length > 300 ? `${errorText.slice(0, 300)}...` : errorText;
-			return {
-				ok: false,
-				message: `Vision API call failed with HTTP ${response.status}: ${truncated}`,
-				model: cfg.model,
-				reason: "VISION_ANALYSIS_FAILED"
-			};
-		}
-		const content = (await response.json()).choices?.[0]?.message?.content;
-		if (!content || typeof content !== "string") return {
-			ok: false,
-			message: "Vision API returned an empty or invalid response.",
-			model: cfg.model,
-			reason: "VISION_ANALYSIS_FAILED"
-		};
-		return {
-			ok: true,
-			text: content,
-			model: cfg.model
-		};
-	} catch (error) {
-		return {
-			ok: false,
-			message: `Vision inspection failed: ${error instanceof Error ? error.message : String(error)}`,
-			model: cfg.model,
-			reason: "VISION_ANALYSIS_FAILED"
-		};
+/**
+* Enumerate every model the configured providers report.
+* @param llm - the kernel LLM service.
+* @returns catalog entries in provider order; a provider that cannot list is skipped.
+*/
+async function visionModelCatalog(llm) {
+	const catalog = [];
+	for (const provider of llm.listProviders()) try {
+		catalog.push(...await llm.listModels(provider.id));
+	} catch {
+		continue;
 	}
+	return catalog;
 }
 /**
-* Detect image MIME type from its file extension.
-* @param filePath - Path to the file.
-* @returns MIME string or undefined if not supported.
+* Drain a model stream into the assembled analysis text.
+* @param chunks - the raw chunk stream from `llm.stream`.
+* @returns the assembled text, or the terminal failure the stream reported.
 */
-function mimeTypeForPath(filePath) {
-	const ext = extname(filePath).toLowerCase();
-	return SUPPORTED_MIME_TYPES[ext];
+async function collectAnalysis(chunks) {
+	let text = "";
+	let failed;
+	for await (const chunk of chunks) if (chunk.type === "text-delta") text += chunk.text;
+	else if (chunk.type === "finish" && (chunk.reason.kind === "error" || chunk.reason.kind === "aborted")) failed = {
+		ok: false,
+		message: `Vision analysis failed: ${chunk.reason.failure.message}`,
+		reason: chunk.reason.failure.code
+	};
+	if (failed !== void 0) return failed;
+	if (text.trim().length === 0) return {
+		ok: false,
+		message: "The vision model returned an empty response.",
+		reason: "VISION_ANALYSIS_EMPTY"
+	};
+	return {
+		ok: true,
+		text
+	};
 }
-/**
-* Execute the `view_image` tool logic.
-* @param args - Tool invocation arguments.
-* @param exec - Cordis tool execution context.
-* @param getConfig - Accessor for current resolved vision configuration.
-* @returns Structured result with model-generated image description.
-*/
-async function executeViewImage(args, exec, getConfig) {
-	const cfg = getConfig();
-	const configIssue = visionConfigurationIssue(cfg);
-	if (configIssue !== void 0) return {
-		text: `Error: ${configIssue.message}`,
-		model: cfg.model,
-		path: args.path,
-		bytes: 0,
+/** Build the failure result shape shared by every early return. */
+function failure(input) {
+	return {
+		text: `Error: ${input.message}`,
+		provider: input.route?.provider ?? "",
+		model: input.route?.model ?? "",
+		path: input.path,
+		bytes: input.ref?.bytes ?? input.bytes ?? 0,
+		...input.ref === void 0 ? {} : {
+			width: input.ref.width,
+			height: input.ref.height
+		},
+		reason: input.reason,
 		isError: true
 	};
+}
+/**
+* Analyze one committed image through the configured vision route.
+* @param ref - durable attachment reference for the image.
+* @param instruction - the caller's question about the image.
+* @param cfg - resolved plugin configuration.
+* @param runtime - kernel services.
+* @param signal - cancellation from the tool execution.
+* @returns the assembled analysis, or the route/stream failure.
+*/
+async function analyzeAttachment(ref, instruction, cfg, runtime, signal) {
+	const selection = selectVisionRoute({
+		enabled: cfg.enabled,
+		model: cfg.model
+	}, await visionModelCatalog(runtime.llm));
+	if (!selection.ok) return {
+		ok: false,
+		message: selection.message,
+		reason: selection.reason
+	};
+	const timeout = AbortSignal.timeout(VISION_TIMEOUT_MS);
+	const combined = signal === void 0 ? timeout : AbortSignal.any([signal, timeout]);
+	const message = createUserMessage({
+		content: [{
+			type: "text",
+			text: instruction
+		}, {
+			type: "image",
+			attachment: ref
+		}],
+		source: {
+			kind: "plugin",
+			plugin: "vision-bridge"
+		}
+	});
+	const analysis = await collectAnalysis(runtime.llm.stream({
+		provider: selection.route.provider,
+		model: selection.route.model,
+		messages: [message],
+		system: DEFAULT_SYSTEM_PROMPT,
+		temperature: .1,
+		signal: combined
+	}));
+	return analysis.ok ? {
+		ok: true,
+		text: analysis.text,
+		route: selection.route
+	} : {
+		ok: false,
+		message: analysis.message,
+		reason: analysis.reason,
+		route: selection.route
+	};
+}
+/**
+* Execute the `view_image` tool.
+* @param args - tool invocation arguments.
+* @param exec - tool execution context supplying the session workspace and cancellation.
+* @param getConfig - accessor for the current resolved configuration.
+* @param runtime - kernel services.
+* @returns a structured result; recoverable problems are reported, not thrown.
+*/
+async function executeViewImage(args, exec, getConfig, runtime) {
+	const cfg = getConfig();
 	if (typeof args.path !== "string" || args.path.trim().length === 0) throw new Error("path must be a non-empty string");
+	if (!cfg.enabled) return failure({
+		message: "Vision Bridge is disabled. Enable it in Settings then Plugins before using view_image.",
+		reason: "VISION_BRIDGE_DISABLED",
+		path: args.path
+	});
 	const rawPath = args.path.trim();
 	const workspaceRoot = exec.agent?.session.header.cwd ?? process.cwd();
 	const targetPath = isAbsolute(rawPath) ? rawPath : resolve(workspaceRoot, rawPath);
-	const mime = mimeTypeForPath(targetPath);
-	if (mime === void 0) return {
-		text: `Error: Cannot inspect "${rawPath}": view_image only supports PNG, JPEG, WebP, and GIF images.`,
-		model: cfg.model,
-		path: targetPath,
-		bytes: 0,
-		isError: true
-	};
+	const mediaType = mediaTypeForPath(targetPath);
+	if (mediaType === void 0) return failure({
+		message: `Cannot inspect "${rawPath}": view_image supports PNG, JPEG, WebP, and GIF images.`,
+		reason: "VISION_UNSUPPORTED_MEDIA_TYPE",
+		path: targetPath
+	});
 	let fileStat;
 	try {
 		fileStat = await stat(targetPath);
-	} catch (err) {
-		return {
-			text: `Error: Image file not found at "${targetPath}": ${err instanceof Error ? err.message : String(err)}`,
-			model: cfg.model,
-			path: targetPath,
-			bytes: 0,
-			isError: true
-		};
+	} catch (error) {
+		return failure({
+			message: `Image file not found at "${targetPath}": ${error instanceof Error ? error.message : String(error)}`,
+			reason: "VISION_IMAGE_UNREADABLE",
+			path: targetPath
+		});
 	}
-	if (!fileStat.isFile()) return {
-		text: `Error: Specified path is a directory, not a file: "${targetPath}"`,
-		model: cfg.model,
+	if (!fileStat.isFile()) return failure({
+		message: `Specified path is a directory, not a file: "${targetPath}"`,
+		reason: "VISION_IMAGE_UNREADABLE",
+		path: targetPath
+	});
+	const maxBytes = runtime.attachments.imageLimits.maxImageBytes;
+	if (fileStat.size > maxBytes) return failure({
+		message: `Image file size (${String(fileStat.size)} bytes) exceeds this deployment limit of ${String(maxBytes)} bytes.`,
+		reason: "VISION_IMAGE_TOO_LARGE",
 		path: targetPath,
-		bytes: 0,
-		isError: true
-	};
-	if (fileStat.size > cfg.maxImageBytes) return {
-		text: `Error: Image file size (${fileStat.size} bytes) exceeds configured limit of ${cfg.maxImageBytes} bytes.`,
-		model: cfg.model,
+		bytes: fileStat.size
+	});
+	const data = await readFile(targetPath);
+	let ref;
+	try {
+		const [saved] = await runtime.attachments.saveImages([{
+			data,
+			mediaType,
+			name: basename(targetPath)
+		}]);
+		if (saved === void 0) throw new Error("the attachment store committed no reference");
+		ref = saved;
+	} catch (error) {
+		return failure({
+			message: `Image was rejected by the attachment store: ${error instanceof Error ? error.message : String(error)}`,
+			reason: "VISION_IMAGE_REJECTED",
+			path: targetPath,
+			bytes: data.byteLength
+		});
+	}
+	const instruction = args.prompt !== void 0 && args.prompt.trim().length > 0 ? args.prompt.trim() : DEFAULT_INSTRUCTION;
+	const analysis = await analyzeAttachment(ref, instruction, cfg, runtime, exec.signal);
+	if (!analysis.ok) return failure({
+		message: analysis.message,
+		reason: analysis.reason,
 		path: targetPath,
-		bytes: fileStat.size,
-		isError: true
-	};
-	const buffer = await readFile(targetPath);
-	const analysis = await analyzeImageBytes({
-		data: buffer,
-		mediaType: mime,
-		...args.prompt === void 0 ? {} : { prompt: args.prompt }
-	}, cfg, exec.signal);
-	return analysis.ok ? {
+		ref,
+		...analysis.route === void 0 ? {} : { route: analysis.route }
+	});
+	return {
 		text: analysis.text,
-		model: analysis.model,
+		provider: analysis.route.provider,
+		model: analysis.route.model,
 		path: targetPath,
-		bytes: buffer.length
-	} : {
-		text: analysis.message,
-		model: analysis.model,
-		path: targetPath,
-		bytes: buffer.length,
-		isError: true
+		bytes: ref.bytes,
+		width: ref.width,
+		height: ref.height
 	};
 }
-/** Format output for model context. */
+/**
+* Format the tool result for model context.
+* @param result - the structured tool output.
+*/
 function renderViewImageContent(result) {
-	if (result.isError) return [{
+	if (result.isError === true) return [{
 		type: "text",
 		text: result.text
 	}];
@@ -196,50 +327,31 @@ function renderViewImageContent(result) {
 //#region lib/types/index.js
 /**
 * Host-side Cordis plugin entrypoint for @dsh-portable/vision-bridge.
+*
+* The plugin contributes one thing: an explicit `view_image` tool that analyzes
+* an image file on disk. Everything underneath it — provider credentials, model
+* capability, durable image storage, retry and metering — belongs to the kernel
+* services this plugin injects, so there is no parallel endpoint or secret to
+* configure here.
 * @module @dsh-portable/vision-bridge
 */
 const name = "vision-bridge";
-const inject = ["tools", "systemPrompt"];
+const inject = [
+	"tools",
+	"systemPrompt",
+	"attachments",
+	"llm"
+];
 const Config = z.object({
 	enabled: z.boolean().default(true),
-	provider: z.string().default("compatible"),
-	model: z.string().default("gpt-4o-mini"),
-	baseURL: z.string().default("https://api.openai.com/v1"),
-	apiKey: z.string().role("secret").default(""),
-	maxImageBytes: z.number().default(20971520),
-	timeoutMs: z.number().default(6e4),
-	prompt: z.string().default("")
+	model: z.string().default("")
 });
 const VISION_SETTINGS_NAMESPACE = settingsNamespace("vision");
-const HOOKED = Symbol("vision-bridge-settings-hook");
-function activeSettingsContext(patch) {
-	const active = [...patch.owners.values()].at(-1);
-	if (active === void 0) throw new Error("vision settings API hook has no active owner");
-	return active;
-}
-function releaseSettingsApiPatch(api, patch, owner) {
-	patch.owners.delete(owner);
-	if (patch.owners.size > 0 || api[HOOKED] !== patch) return;
-	if (api.describe === patch.describe) api.describe = patch.rawDescribe;
-	if (api.mutate === patch.mutate) api.mutate = patch.rawMutate;
-	delete api[HOOKED];
-}
-/** Map one redacted settings descriptor to its wire view (matching api-proxy.ts:1929). */
-function toView(descriptor) {
-	return {
-		ns: String(descriptor.ns),
-		schema: descriptor.schema,
-		value: descriptor.value,
-		...descriptor.base === void 0 ? {} : { base: descriptor.base },
-		...descriptor.user === void 0 ? {} : { user: descriptor.user },
-		applies: descriptor.applies,
-		secrets: (descriptor.secrets ?? []).map((secret) => ({
-			path: [...secret.path],
-			set: secret.set
-		})),
-		revision: descriptor.revision
-	};
-}
+/**
+* Register the vision bridge on a host context.
+* @param ctx - the injecting cordis context.
+* @param config - entry configuration merged under the stored settings.
+*/
 function apply(ctx, config = {}) {
 	const resolved = Config(config);
 	let currentConfig = () => resolved;
@@ -249,72 +361,17 @@ function apply(ctx, config = {}) {
 		},
 		onChange: () => {}
 	});
-	ctx.inject(["apiProxy", "settings"], (scopeCtx) => {
-		const settingsApi = scopeCtx.apiProxy.settings;
-		const owner = Symbol("vision-bridge-settings-owner");
-		const existing = settingsApi[HOOKED];
-		if (existing !== void 0) {
-			existing.owners.set(owner, scopeCtx);
-			scopeCtx.effect(() => () => {
-				releaseSettingsApiPatch(settingsApi, existing, owner);
-			}, "vision-bridge: shared settings API hook owner");
-			return;
+	const runtime = {
+		get attachments() {
+			return ctx.attachments;
+		},
+		get llm() {
+			return ctx.llm;
 		}
-		const rawDescribe = settingsApi.describe;
-		const rawMutate = settingsApi.mutate;
-		const patch = {
-			owners: /* @__PURE__ */ new Map([[owner, scopeCtx]]),
-			rawDescribe,
-			rawMutate
-		};
-		patch.describe = async (request) => {
-			const response = await rawDescribe.call(settingsApi, request);
-			if (!response.result.ok) return response;
-			const namespaces = response.result.value.namespaces;
-			if (namespaces.some((entry) => entry.ns === "vision")) return response;
-			const descriptor = activeSettingsContext(patch).settings.describe({ redactSecrets: true }).find((entry) => String(entry.ns) === "vision");
-			if (descriptor !== void 0) namespaces.push(toView(descriptor));
-			return response;
-		};
-		patch.mutate = async (request) => {
-			const { ns, ops, expectedRevision } = request.payload;
-			if (ns !== "vision") return rawMutate.call(settingsApi, request);
-			try {
-				const settings = activeSettingsContext(patch).settings;
-				await settings.mutate(VISION_SETTINGS_NAMESPACE, ops, expectedRevision);
-				const updated = settings.describe({ redactSecrets: true }).find((entry) => String(entry.ns) === "vision");
-				if (updated === void 0) throw new Error("vision namespace vanished after write");
-				return {
-					rpcId: request.rpcId,
-					result: {
-						ok: true,
-						value: toView(updated)
-					}
-				};
-			} catch (error) {
-				return {
-					rpcId: request.rpcId,
-					result: {
-						ok: false,
-						error: {
-							code: "settings-rejected",
-							message: error instanceof Error ? error.message : String(error),
-							details: {}
-						}
-					}
-				};
-			}
-		};
-		settingsApi[HOOKED] = patch;
-		settingsApi.describe = patch.describe;
-		settingsApi.mutate = patch.mutate;
-		scopeCtx.effect(() => () => {
-			releaseSettingsApiPatch(settingsApi, patch, owner);
-		}, "vision-bridge: settings API hook");
-	});
+	};
 	ctx.tools.register(defineTool({
 		name: "view_image",
-		description: "Inspect and describe an image file using an external vision model. Supports PNG, JPEG, WebP, and GIF images. Use this tool whenever you need to view screenshots, UI layouts, diagrams, charts, or images on disk.",
+		description: "Inspect and describe an image file using a configured image-capable model. Supports PNG, JPEG, WebP, and GIF images. Use this tool whenever you need to view screenshots, UI layouts, diagrams, charts, or images on disk.",
 		parameters: {
 			path: {
 				type: "string",
@@ -335,6 +392,10 @@ function apply(ctx, config = {}) {
 						type: "string",
 						required: true
 					},
+					provider: {
+						type: "string",
+						required: true
+					},
 					model: {
 						type: "string",
 						required: true
@@ -344,6 +405,9 @@ function apply(ctx, config = {}) {
 						required: true
 					},
 					bytes: { type: "number" },
+					width: { type: "number" },
+					height: { type: "number" },
+					reason: { type: "string" },
 					isError: { type: "boolean" }
 				}
 			},
@@ -352,16 +416,17 @@ function apply(ctx, config = {}) {
 				const result = value;
 				return {
 					path: result.path,
+					provider: result.provider,
 					model: result.model,
-					bytes: result.bytes ?? 0,
+					bytes: result.bytes,
 					isError: result.isError === true
 				};
 			}
 		},
-		timeoutMs: resolved.timeoutMs,
+		timeoutMs: 6e4,
 		isConcurrencySafe: () => true,
 		async execute(args, exec) {
-			return executeViewImage(args, exec, currentConfig);
+			return executeViewImage(args, exec, currentConfig, runtime);
 		},
 		presentCall(args) {
 			return {
@@ -383,8 +448,8 @@ function apply(ctx, config = {}) {
 	ctx.systemPrompt.section({
 		name: "tool:view_image",
 		order: 150,
-		text: "Use view_image for image files on disk that need external visual analysis. Images pasted into the conversation use the native rc7 attachment path and the selected image-capable model instead."
+		text: "Use view_image for image files on disk that need visual analysis. Images pasted into the conversation already ride the native attachment path and the selected image-capable model, and need no tool call."
 	});
 }
 //#endregion
-export { Config, VISION_SETTINGS_NAMESPACE, apply, inject, name };
+export { Config, VISION_SETTINGS_NAMESPACE, apply, declaresImageInput, deniesImageInput, imageCapableModels, inject, name, selectVisionRoute };
