@@ -1,0 +1,109 @@
+/** `recall_deck`: the retrieval card and its rating controls. */
+
+.recallToolbar {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--lx-space-xs) var(--lx-space-lg);
+  color: var(--lx-accent);
+  font-size: var(--lx-text-2xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--lx-weight-strong);
+}
+
+.recallToolbar output { color: var(--lx-label-secondary); font-size: var(--lx-text-micro); font-weight: var(--lx-weight-regular); }
+
+.recallInstructions {
+  margin: 0;
+  color: var(--lx-label-secondary);
+  font-size: var(--lx-text-xs);
+  line-height: var(--lx-leading-xs);
+}
+
+.recallCard {
+  display: grid;
+  min-height: 200px;
+  gap: var(--lx-space-lg);
+  align-content: start;
+  border: 1px solid var(--lx-border-default);
+  border-radius: var(--lx-radius-lg);
+  padding: clamp(14px, 3cqi, 22px);
+  background: var(--lx-surface-base);
+  box-shadow: var(--lx-shadow-sm);
+  opacity: var(--lx-vs-alpha);
+}
+
+.recallCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--lx-space-lg);
+}
+
+.recallCardHeader > span { color: var(--lx-accent); font-size: var(--lx-text-micro); font-weight: var(--lx-weight-strong); letter-spacing: var(--lx-tracking-eyebrow); text-transform: uppercase; }
+.recallCardHeader > small { border-radius: var(--lx-radius-pill); padding: var(--lx-space-3xs) var(--lx-space-sm); background: var(--lx-border-subtle); color: var(--lx-label-secondary); font-size: var(--lx-text-micro); }
+.recallCardHeader > small[data-status="mastered"] { background: color-mix(in srgb, var(--lx-success) 14%, transparent); color: var(--lx-success); }
+.recallCardHeader > small[data-status="review"] { background: color-mix(in srgb, var(--lx-warn) 14%, transparent); color: var(--lx-warn); }
+
+.recallCard > h4 {
+  margin: 0;
+  color: var(--lx-label-primary);
+  font-size: clamp(16px, 3.4cqi, 20px);
+  font-weight: var(--lx-weight-strong);
+  line-height: 1.5;
+}
+
+.recallTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lx-space-xs);
+  margin: -3px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recallTags li {
+  border: 1px solid var(--lx-border-subtle);
+  border-radius: var(--lx-radius-pill);
+  padding: var(--lx-space-3xs) var(--lx-space-sm);
+  color: var(--lx-label-secondary);
+  font-size: var(--lx-text-micro);
+  line-height: var(--lx-leading-micro);
+}
+
+.recallReveal {
+  display: grid;
+  gap: var(--lx-space-2xs);
+  border-left: 3px solid var(--lx-warn);
+  border-radius: 0 var(--lx-radius-sm) var(--lx-radius-sm) 0;
+  padding: var(--lx-space-sm) var(--lx-space-md);
+  background: color-mix(in srgb, var(--lx-warn) 8%, transparent);
+}
+
+.recallReveal[data-kind="answer"] { border-left-color: var(--lx-success); background: color-mix(in srgb, var(--lx-success) 8%, transparent); }
+.recallReveal > span { color: var(--lx-warn); font-size: var(--lx-text-micro); font-weight: var(--lx-weight-strong); }
+.recallReveal[data-kind="answer"] > span { color: var(--lx-success); }
+.recallReveal > p { margin: 0; color: var(--lx-label-primary); font-size: var(--lx-text-sm); line-height: var(--lx-leading-sm); }
+
+.recallRevealButton { width: max-content; min-width: 128px; justify-self: start; }
+.recallRating { align-self: end; }
+.ratingButton[aria-pressed="true"] {
+  border-color: var(--lx-accent);
+  background: color-mix(in srgb, var(--lx-accent-soft) 50%, transparent);
+  color: var(--lx-accent);
+  font-weight: var(--lx-weight-medium);
+}
+
+.recallNavigation > :last-child { margin-left: auto; }
+
+@container learning-visual-v4 (max-width: 560px) {
+  .recallNavigation > * { flex: 1; }
+  .recallNavigation > :last-child { flex-basis: 100%; margin-left: 0; }
+  .recallCard { min-height: 190px; }
+}
+
+@container learning-visual-v4 (max-width: 360px) {
+  .recallToolbar { align-items: flex-start; flex-direction: column; gap: var(--lx-space-3xs); }
+}
