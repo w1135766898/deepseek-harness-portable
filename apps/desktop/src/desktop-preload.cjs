@@ -915,8 +915,7 @@ if (!isSplashDocument) {
       return
     }
     if (action === 'desktop-about-and-updates') {
-      closeMenu()
-      void openModal({ mode: 'history' })
+      sendMenuAction('release-notes')
       return
     }
     if (action === 'desktop-check-updates') {
