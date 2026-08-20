@@ -12,11 +12,11 @@
  * theme; the `--lx-` prefix keeps the plugin's own scale collision-free.
  *
  * Host aliases are always read with an inline fallback, including inside
- * `color-mix()`. A bare `var(--dsw-alias-x)` that the Host has not declared is
- * the guaranteed-invalid value, which makes the whole `color-mix()` invalid and
- * silently drops the property in every rule that reads the resulting token. The
- * browser fixture declares a complete alias set, so that failure only appeared
- * in Hosts with a partial theme.
+ * `color-mix()`. An alias the Host has not declared, read without a fallback,
+ * resolves to the guaranteed-invalid value: that makes the whole `color-mix()`
+ * invalid and silently drops the property in every rule reading the resulting
+ * token. The browser fixture declares a complete alias set, so that failure
+ * only ever appeared in Hosts with a partial theme.
  */
 
 [data-learning-scope] {

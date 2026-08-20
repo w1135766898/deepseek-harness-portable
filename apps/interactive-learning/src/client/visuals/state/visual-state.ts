@@ -2,9 +2,9 @@
  * The visual state model shared by every visual@4 renderer.
  *
  * The previous model had exactly two states — `focus` and `dim` — and expressed
- * `dim` as `opacity: 0.2` on the whole element. On a node_link diagram that
- * multiplied with the edge's own `stroke-opacity: 0.48`, so an unfocused edge
- * was drawn at roughly 10% alpha and an unfocused node label at 20% of an
+ * `dim` as low opacity on the whole element. On a node_link diagram that
+ * multiplied with the edge's own low alpha, so an unfocused edge was drawn at
+ * roughly 10% alpha and an unfocused node label at 20% of an
  * already tertiary grey. The first frame of a decision tree therefore erased
  * the very branches the learner needed in order to read the highlighted one.
  *

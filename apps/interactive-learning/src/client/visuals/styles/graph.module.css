@@ -3,8 +3,8 @@
  *
  * Emphasis is applied once, at the mark, through `--lx-vs-alpha`. Nothing here
  * sets `opacity` on a group as well, because the previous stylesheet did both —
- * a `stroke-opacity: 0.48` edge inside an `opacity: 0.2` group was drawn at
- * roughly a tenth of full strength, which is what made the unfocused branches
+ * a low-alpha edge inside a low-alpha group was drawn at roughly a tenth of
+ * full strength, which is what made the unfocused branches
  * of a decision tree disappear.
  */
 

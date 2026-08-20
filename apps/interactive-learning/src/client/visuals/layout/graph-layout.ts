@@ -26,12 +26,12 @@ const NODE_PADDING_Y = 10
 const NODE_MIN_WIDTH = 66
 const NODE_MIN_HEIGHT = 36
 const NODE_LINE_HEIGHT = 17
-const CANVAS_PADDING = 18
+const CANVAS_PADDING = 14
 const HEADER_HEIGHT = 28
 const SIBLING_GAP = 22
 const MAIN_GAP_MIN = 58
 const MAIN_GAP_BASE = 78
-const MAIN_GAP_MAX = 148
+const MAIN_GAP_MAX = 180
 /** Text below this scale stops being comfortably readable, so we scroll instead. */
 const MINIMUM_FIT_SCALE = 0.82
 
