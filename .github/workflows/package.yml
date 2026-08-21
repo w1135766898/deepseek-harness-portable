@@ -26,6 +26,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsx scripts/build/client-manifest-bridge.ts
       - run: sudo apt-get update && sudo apt-get install -y musl-tools bubblewrap
       - run: test "$(node -p 'process.platform + "-" + process.arch')" = linux-x64
       - run: pnpm run desktop:package:linux -- --no-cache
@@ -51,6 +52,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsx scripts/build/client-manifest-bridge.ts
       - shell: pwsh
         run: |
           if ((node -p "process.platform + '-' + process.arch") -ne 'win32-x64') { throw 'native win32-x64 runner required' }
@@ -79,6 +81,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsx scripts/build/client-manifest-bridge.ts
       - run: test "$(node -p 'process.platform + "-" + process.arch')" = darwin-arm64
       - run: pnpm run desktop:package:mac -- --no-cache
       - uses: actions/upload-artifact@v4

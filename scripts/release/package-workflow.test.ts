@@ -43,9 +43,13 @@ test('native package jobs upload the exact verified output produced by their pac
     )
 
     const steps = workflow.jobs[target.job]?.steps ?? []
+    const bridgeIndex = steps.findIndex(step => step.run === 'pnpm exec tsx scripts/build/client-manifest-bridge.ts')
     const buildStep = steps.find(step => step.run?.includes(`pnpm run ${target.script}`))
     assert.ok(buildStep, `${target.job} must run ${target.script}`)
     assert.equal(buildStep.run, `pnpm run ${target.script} -- --no-cache`)
+    const buildIndex = steps.indexOf(buildStep)
+    assert.ok(bridgeIndex >= 0, `${target.job} must create the portable client manifest bridge`)
+    assert.ok(buildIndex > bridgeIndex, `${target.job} must create the bridge before packaging`)
 
     const uploadStep = steps.find(step => step.uses === 'actions/upload-artifact@v4')
     assert.ok(uploadStep, `${target.job} must upload its verified artifact bundle`)
