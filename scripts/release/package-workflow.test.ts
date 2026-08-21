@@ -53,3 +53,12 @@ test('native package jobs upload the exact verified output produced by their pac
     assert.equal(uploadStep.with?.['if-no-files-found'], 'error')
   }
 })
+
+test('CI materializes portable client manifests before building the pinned kernel', () => {
+  const workflow = load(readFileSync(resolve(root, '.github', 'workflows', 'verify.yml'), 'utf8')) as Workflow
+  const steps = workflow.jobs['contracts-and-static-gates']?.steps ?? []
+  const bridgeIndex = steps.findIndex(step => step.run === 'pnpm exec tsx scripts/build/client-manifest-bridge.ts')
+  const kernelBuildIndex = steps.findIndex(step => step.run === 'pnpm --filter @deepseek-ai/dsh-root run build')
+  assert.ok(bridgeIndex >= 0, 'verify must create the portable client manifest bridge')
+  assert.ok(kernelBuildIndex > bridgeIndex, 'verify must create the bridge before the pinned kernel build')
+})
