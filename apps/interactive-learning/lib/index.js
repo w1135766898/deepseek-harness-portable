@@ -1,6 +1,6 @@
-import { a as LEARNER_STATE_SESSION_EVENT_TYPE, c as createLearnerStateSnapshotEvent, d as parseLearnerStateSnapshotEvent, f as reduceLearnerState, g as serializeLearnerStateSnapshot, h as resetLearnerState, i as LEARNER_STATE_PROTOCOL, l as foldLearnerStateSession, m as renderLearnerStateTranscript, n as DEFAULT_TRANSCRIPT_TOKEN_BUDGET, o as MAX_FAILED_MOVES, p as registerLearningSessionEventType, r as LEARNER_STATE_EVENT_PROTOCOL, s as createInitialLearnerState, t as registerInteractiveLearningSessionCompatibility, u as hydrateLearnerStateSnapshot } from "./bootstrap-08JSbmjv.js";
-import { a as isLearnIntent, i as classifyLearnIntent, n as LEARNING_INTENT_POLICY, r as LEARN_INTENT, t as routeLearningRequest } from "./teaching-route-CSoe_oAq.js";
-import { A as parseLearningCheckpointResultV1, N as parseLearningResponseV2, O as parseLearningActivity, S as TRANSPORT_PROTOCOL_V2, a as CHECKPOINT_TRANSPORT_PROTOCOL, b as RESPONSE_PROTOCOL_V2, d as LearningProtocolError, i as CHECKPOINT_RESULT_PROTOCOL, j as parseLearningCheckpointV1, k as parseLearningActivityV2, m as MAX_ACTIVITY_BYTES, y as RESPONSE_PROTOCOL } from "./protocol-D-KGSMae.js";
+import { a as LEARNER_STATE_SESSION_EVENT_TYPE, c as createLearnerStateSnapshotEvent, d as parseLearnerStateSnapshotEvent, f as reduceLearnerState, g as serializeLearnerStateSnapshot, h as resetLearnerState, i as LEARNER_STATE_PROTOCOL, l as foldLearnerStateSession, m as renderLearnerStateTranscript, n as DEFAULT_TRANSCRIPT_TOKEN_BUDGET, o as MAX_FAILED_MOVES, p as registerLearningSessionEventType, r as LEARNER_STATE_EVENT_PROTOCOL, s as createInitialLearnerState, t as registerInteractiveLearningSessionCompatibility, u as hydrateLearnerStateSnapshot } from "./bootstrap-BHgqQhEx.js";
+import { a as classifyLearnIntent, i as LEARN_INTENT, n as routeLearningTurn, o as isLearnIntent, r as LEARNING_INTENT_POLICY, s as isLearningBoundary, t as routeLearningRequest } from "./teaching-route-BMSuwJeo.js";
+import { A as parseLearningCheckpointResultV1, N as parseLearningResponseV2, O as parseLearningActivity, S as TRANSPORT_PROTOCOL_V2, a as CHECKPOINT_TRANSPORT_PROTOCOL, b as RESPONSE_PROTOCOL_V2, d as LearningProtocolError, i as CHECKPOINT_RESULT_PROTOCOL, j as parseLearningCheckpointV1, k as parseLearningActivityV2, m as MAX_ACTIVITY_BYTES, y as RESPONSE_PROTOCOL } from "./protocol-UIlmeaAM.js";
 import { createHash, randomUUID } from "node:crypto";
 import { Service } from "@deepseek-ai/cordis";
 import { UserQuestionError } from "@deepseek-ai/dsh-user-questions";
@@ -129,10 +129,18 @@ function snapshotCheckpoint(value) {
 	};
 }
 function normalizeCheckpointResult(result) {
-	if (result.status !== "submitted") return {
+	if (result.status === "skipped") return {
 		protocol: result.protocol,
 		checkpointId: result.checkpointId,
-		status: result.status,
+		status: "skipped",
+		...result.reason === void 0 ? {} : { reason: result.reason },
+		receiptId: result.receiptId
+	};
+	if (result.status === "cancelled") return {
+		protocol: result.protocol,
+		checkpointId: result.checkpointId,
+		status: "cancelled",
+		...result.reason === void 0 ? {} : { reason: result.reason },
 		receiptId: result.receiptId
 	};
 	const response = "text" in result.response ? { text: result.response.text } : "optionId" in result.response ? { optionId: result.response.optionId } : { number: result.response.number };
@@ -142,6 +150,14 @@ function normalizeCheckpointResult(result) {
 		status: "submitted",
 		response,
 		receiptId: result.receiptId
+	};
+}
+function checkpointFallbackResult(checkpointId, outcome) {
+	return {
+		protocol: CHECKPOINT_RESULT_PROTOCOL,
+		checkpointId,
+		...outcome,
+		receiptId: randomUUID()
 	};
 }
 function checkpointFallbackSubmission(checkpoint, checkpointId, custom) {
@@ -389,15 +405,16 @@ var LearningActivityBroker = class extends Service {
 				summary: `The learner submitted the requested ${request.checkpoint.expectedEvidence} response.`
 			}
 		});
+		const outcomeReason = result.status === "submitted" ? void 0 : result.reason;
 		events.push({
 			type: "assistant_move_observed",
 			move: "checkpoint",
 			observation: {
 				id: `${observationBase}:move`,
 				source: "assistant-output",
-				summary: `The optional checkpoint ended ${result.status}; continue in ordinary conversation.`
+				summary: outcomeReason === void 0 ? `The optional checkpoint ended ${result.status}; continue in ordinary conversation.` : `The optional checkpoint ended ${result.status} (${outcomeReason}); continue in ordinary conversation.`
 			},
-			moveFingerprint: `checkpoint:${request.callId}:${result.status}`
+			moveFingerprint: `checkpoint:${request.callId}:${result.status}:${outcomeReason ?? "legacy"}`
 		});
 		this.recordAutomaticEvents(agent, events);
 	}
@@ -447,16 +464,20 @@ var LearningActivityBroker = class extends Service {
 	}
 	async presentCheckpointOnce(request, sessionId, callKey) {
 		const checkpointId = randomUUID();
-		const fallback = (status) => ({
-			protocol: CHECKPOINT_RESULT_PROTOCOL,
-			checkpointId,
-			status,
-			receiptId: randomUUID()
+		const fallback = (outcome) => checkpointFallbackResult(checkpointId, outcome);
+		if (!this.hasRichClient()) return fallback({
+			status: "skipped",
+			reason: "client-unavailable"
 		});
-		if (!this.hasRichClient()) return fallback("skipped");
-		if (request.agent === void 0 || sessionId === "" || callKey === void 0) return fallback("skipped");
+		if (request.agent === void 0 || sessionId === "" || callKey === void 0) return fallback({
+			status: "skipped",
+			reason: "host-unavailable"
+		});
 		const timeoutMs = request.timeoutMs ?? 3e5;
-		if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return fallback("skipped");
+		if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return fallback({
+			status: "skipped",
+			reason: "host-unavailable"
+		});
 		const activeCall = this.pendingCheckpointSessions.get(sessionId);
 		if (activeCall !== void 0 && activeCall !== callKey) throw new LearningProtocolError(["a session may have at most one pending learning checkpoint"]);
 		this.pendingCheckpointSessions.set(sessionId, callKey);
@@ -493,12 +514,7 @@ var LearningActivityBroker = class extends Service {
 			controller.abort(new LearningWaitAbort(state.reason));
 		}, timeoutMs);
 		timer.unref?.();
-		const fallback = (status) => ({
-			protocol: CHECKPOINT_RESULT_PROTOCOL,
-			checkpointId,
-			status,
-			receiptId: randomUUID()
-		});
+		const fallback = (outcome) => checkpointFallbackResult(checkpointId, outcome);
 		try {
 			const ask = this.ctx.userQuestions.ask({
 				questions: [{
@@ -533,18 +549,48 @@ var LearningActivityBroker = class extends Service {
 					checkpointId,
 					checkpoint
 				}));
-				else result = checkpointFallbackSubmission(checkpoint, checkpointId, custom) ?? fallback("skipped");
-			} else result = fallback("skipped");
+				else result = checkpointFallbackSubmission(checkpoint, checkpointId, custom) ?? fallback({
+					status: "skipped",
+					reason: "provider-failure"
+				});
+			} else result = fallback({
+				status: "skipped",
+				reason: "provider-failure"
+			});
 			return this.acceptCheckpointReceipt(request.agent.session, result);
 		} catch (cause) {
 			if (cause instanceof LearningProtocolError) throw cause;
-			if (cause instanceof LearningWaitAbort) return fallback(cause.reason === "client-response-timeout" ? "skipped" : "cancelled");
+			if (cause instanceof LearningWaitAbort) return cause.reason === "client-response-timeout" ? fallback({
+				status: "skipped",
+				reason: "client-response-timeout"
+			}) : fallback({
+				status: "cancelled",
+				reason: cause.reason
+			});
 			const code = cause instanceof UserQuestionError ? cause.code : void 0;
-			if (code === "ASK_CANCELLED") return fallback("cancelled");
-			if (code === "ASK_ABORTED") return fallback((state.reason ?? "session-aborted") === "client-response-timeout" ? "skipped" : "cancelled");
-			if (code === "NO_PROVIDER" || code === "DELEGATED_CALLER" || code === "CALLER_NOT_LIVE") return fallback("skipped");
+			if (code === "ASK_CANCELLED") return fallback({
+				status: "cancelled",
+				reason: "learner-cancelled"
+			});
+			if (code === "ASK_ABORTED") {
+				const reason = state.reason ?? "session-aborted";
+				return reason === "client-response-timeout" ? fallback({
+					status: "skipped",
+					reason: "client-response-timeout"
+				}) : fallback({
+					status: "cancelled",
+					reason
+				});
+			}
+			if (code === "NO_PROVIDER" || code === "DELEGATED_CALLER" || code === "CALLER_NOT_LIVE") return fallback({
+				status: "skipped",
+				reason: "provider-failure"
+			});
 			this.ctx.logger.warn(`learning checkpoint provider failed; continuing ordinary conversation: ${String(cause)}`);
-			return fallback("skipped");
+			return fallback({
+				status: "skipped",
+				reason: "provider-failure"
+			});
 		} finally {
 			clearTimeout(timer);
 			request.signal?.removeEventListener("abort", abortFromSession);
@@ -878,4 +924,4 @@ var LearningActivityBroker = class extends Service {
 /** Host entry: one non-model-facing Learning Activity broker service. */
 registerInteractiveLearningSessionCompatibility();
 //#endregion
-export { DEFAULT_TRANSCRIPT_TOKEN_BUDGET, LEARNER_STATE_EVENT_PROTOCOL, LEARNER_STATE_PROTOCOL, LEARNER_STATE_SESSION_EVENT_TYPE, LEARNING_INTENT_POLICY, LEARN_INTENT, LearningActivityBroker, LearningActivityBroker as default, MAX_FAILED_MOVES, classifyLearnIntent, createInitialLearnerState, createLearnerStateSnapshotEvent, foldLearnerStateSession, hydrateLearnerStateSnapshot, isLearnIntent, parseLearnerStateSnapshotEvent, reduceLearnerState, registerInteractiveLearningSessionCompatibility, registerLearningSessionEventType, renderLearnerStateTranscript, resetLearnerState, routeLearningRequest, serializeLearnerStateSnapshot };
+export { DEFAULT_TRANSCRIPT_TOKEN_BUDGET, LEARNER_STATE_EVENT_PROTOCOL, LEARNER_STATE_PROTOCOL, LEARNER_STATE_SESSION_EVENT_TYPE, LEARNING_INTENT_POLICY, LEARN_INTENT, LearningActivityBroker, LearningActivityBroker as default, MAX_FAILED_MOVES, classifyLearnIntent, createInitialLearnerState, createLearnerStateSnapshotEvent, foldLearnerStateSession, hydrateLearnerStateSnapshot, isLearnIntent, isLearningBoundary, parseLearnerStateSnapshotEvent, reduceLearnerState, registerInteractiveLearningSessionCompatibility, registerLearningSessionEventType, renderLearnerStateTranscript, resetLearnerState, routeLearningRequest, routeLearningTurn, serializeLearnerStateSnapshot };

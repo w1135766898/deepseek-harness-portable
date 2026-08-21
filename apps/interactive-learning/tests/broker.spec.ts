@@ -82,14 +82,15 @@ async function selectVisual(ctx: Context, kind: string, agent?: Agent, callId = 
 }
 
 async function selectCheckpoint(ctx: Context, agent: Agent, callId = 'select-checkpoint'): Promise<void> {
+  const selected = checkpoint()
   const result = await ctx.tools.execute({
     signal: testToolSignal,
     callId: CallId(callId),
     name: 'learning_checkpoint_select',
     arguments: {
-      kind: 'prediction',
-      expectedEvidence: 'prediction',
-      prompt: 'Predict the next queue item and explain why.',
+      kind: selected.kind,
+      expectedEvidence: selected.expectedEvidence,
+      prompt: selected.prompt,
       purpose: 'The prediction determines whether to explain FIFO or move to transfer.',
     },
     agent,
@@ -117,6 +118,7 @@ function answerFor(
         protocol: CHECKPOINT_RESULT_PROTOCOL,
         checkpointId: envelope.checkpointId,
         status,
+        reason: status === 'skipped' ? 'learner-skipped' : 'learner-cancelled',
         receiptId: options.receiptId ?? `receipt-${status}`,
       }
   return { answers: [{ id: question.id, selected: [], custom: JSON.stringify(result) }] }
@@ -211,6 +213,36 @@ describe('non-blocking Learning Agent v4.1', () => {
     expect(learning.contexts.find(context => context.name === 'learning:turn-route')?.text)
       .toContain('route=calibrate')
 
+    ctx.emit('agent/inbox/claimed', {
+      agent,
+      message: {
+        id: 'learning-follow-up-answer',
+        role: 'user',
+        source: { kind: 'user' },
+        content: [{ type: 'text', text: 'A.' }],
+      },
+      turn: 3,
+    } as never)
+    const inherited = await ctx.systemPrompt.assemble({ scope: agent, agent })
+    expect(inherited.sections.some(section => section.name === 'learning:policy')).toBe(true)
+    expect(inherited.contexts.find(context => context.name === 'learning:turn-route')?.text)
+      .toMatch(/route=continue; reason=active-segment/)
+
+    ctx.emit('agent/inbox/claimed', {
+      agent,
+      message: {
+        id: 'ordinary-route-switch',
+        role: 'user',
+        source: { kind: 'user' },
+        content: [{ type: 'text', text: 'Implement a queue in TypeScript.' }],
+      },
+      turn: 4,
+    } as never)
+    const switched = await ctx.systemPrompt.assemble({ scope: agent, agent })
+    expect(switched.sections.some(section => section.name === 'learning:policy')).toBe(false)
+    expect(switched.contexts.find(context => context.name === 'learning:turn-route')?.text)
+      .toContain('intent=not-learn; route=direct')
+
     disposeAgent()
   })
 
@@ -259,6 +291,18 @@ describe('non-blocking Learning Agent v4.1', () => {
     const completeSchema = JSON.stringify(selectedSchemas.find(tool => tool.name === 'learning_visual'))
     expect(completeSchema).toContain('2 to 48 nodes')
     expect(completeSchema).not.toContain('1 to 8 series')
+    expect(completeSchema).toContain('Make the node_link relationship concrete.')
+    expect(completeSchema).toContain('Inspect the node_link relationship and name one change you notice.')
+
+    const checkpointAgent = stubAgent('selected-checkpoint-schema')
+    registerRoot(ctx, checkpointAgent)
+    await selectCheckpoint(ctx, checkpointAgent, 'select-schema-checkpoint')
+    const fullCheckpoint = ctx.tools.schemas({ scope: checkpointAgent })
+      .find(tool => tool.name === 'learning_checkpoint')
+    const fullCheckpointSchema = JSON.stringify(fullCheckpoint)
+    expect(fullCheckpointSchema).toContain('The prediction determines whether to explain FIFO or move to transfer.')
+    expect(fullCheckpointSchema).toContain(`"const":"${checkpoint().prompt}"`)
+    expect(fullCheckpointSchema).toContain('"expectedEvidence":{"type":"string","const":"prediction"')
 
     const checkpointSchema = schemas.find(tool => tool.name === 'learning_checkpoint_select')
     const checkpointParameters = checkpointSchema?.parameters as {
@@ -770,6 +814,7 @@ describe('Learning checkpoint broker', () => {
     expect(first).toMatchObject({
       protocol: CHECKPOINT_RESULT_PROTOCOL,
       status: 'skipped',
+      reason: 'client-unavailable',
     })
     expect(replay).toEqual(first)
     expect(ctx.learningActivities.pendingCount).toBe(0)
@@ -789,6 +834,7 @@ describe('Learning checkpoint broker', () => {
       })
 
       expect(result.status).toBe(status)
+      expect(result.reason).toBe(status === 'skipped' ? 'learner-skipped' : status === 'cancelled' ? 'learner-cancelled' : undefined)
       expect(ask).toHaveBeenCalledTimes(1)
       expect(ask.mock.calls[0]?.[0].questions).toHaveLength(1)
       expect(ctx.learningActivities.pendingCount).toBe(0)
@@ -1029,7 +1075,9 @@ describe('Learning checkpoint broker', () => {
       const pending = ctx.learningActivities.presentCheckpoint(request)
       if (mode === 'abort') controller.abort()
       const terminal = await pending
-      expect(terminal.status).toBe(mode === 'abort' ? 'cancelled' : 'skipped')
+      expect(terminal).toMatchObject(mode === 'abort'
+        ? { status: 'cancelled', reason: 'session-aborted' }
+        : { status: 'skipped', reason: 'client-response-timeout' })
       expect(ctx.learningActivities.pendingCount).toBe(0)
 
       resolveAnswer?.(answerFor(seenRequest!, 'submitted', { receiptId: `late-receipt-${mode}` }))
@@ -1073,7 +1121,7 @@ describe('Learning checkpoint broker', () => {
 
     await ctx.fiber.dispose()
     const terminal = await pending
-    expect(terminal.status).toBe('cancelled')
+    expect(terminal).toMatchObject({ status: 'cancelled', reason: 'session-aborted' })
     expect(broker.pendingCount).toBe(0)
     expect(broker.checkpointCacheSize).toBe(0)
 
@@ -1096,7 +1144,7 @@ describe('Learning checkpoint broker', () => {
 
     await expect(ctx.learningActivities.presentCheckpoint({
       checkpoint: checkpoint(), agent, callId: 'provider-failure-call',
-    })).resolves.toMatchObject({ status: 'skipped' })
+    })).resolves.toMatchObject({ status: 'skipped', reason: 'provider-failure' })
     expect(ctx.learningActivities.pendingCount).toBe(0)
   })
 

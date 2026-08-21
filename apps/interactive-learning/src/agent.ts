@@ -1,5 +1,6 @@
 /** Model-facing entry mounted only by the `learning` preset. */
 import type { Context } from '@deepseek-ai/cordis'
+import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { UserMessage } from '@deepseek-ai/dsh-llm'
 import {
   defineTool,
@@ -24,6 +25,8 @@ import {
   LearningProtocolError,
   parseLearningCheckpointV1,
   parseLearningVisualV4,
+  type LearningCheckpointEvidenceKindV1,
+  type LearningCheckpointKindV1,
   type LearningCheckpointResultV1,
   type LearningVisualResultV4,
 } from './protocol.ts'
@@ -38,8 +41,9 @@ import type {
 } from './learner-state.ts'
 import { LEARNING_TEACHING_POLICY } from './teaching-policy.ts'
 import {
-  routeLearningRequest,
-  type LearningRouteDecision,
+  routeLearningTurn,
+  type LearningRouteSession,
+  type LearningTurnRouteDecision,
 } from './teaching-route.ts'
 
 export const name = 'interactive-learning-agent'
@@ -450,7 +454,21 @@ const checkpointOutput = { oneOf: [
   { type: 'object', additionalProperties: false, properties: {
     protocol: { type: 'string', const: CHECKPOINT_RESULT_PROTOCOL, required: true },
     checkpointId: { type: 'string', required: true },
-    status: { type: 'string', enum: ['skipped', 'cancelled'], required: true },
+    status: { type: 'string', const: 'skipped', required: true },
+    reason: {
+      type: 'string',
+      enum: ['learner-skipped', 'client-unavailable', 'client-response-timeout', 'host-unavailable', 'provider-failure'],
+    },
+    receiptId: { type: 'string', required: true },
+  } },
+  { type: 'object', additionalProperties: false, properties: {
+    protocol: { type: 'string', const: CHECKPOINT_RESULT_PROTOCOL, required: true },
+    checkpointId: { type: 'string', required: true },
+    status: { type: 'string', const: 'cancelled', required: true },
+    reason: {
+      type: 'string',
+      enum: ['learner-cancelled', 'session-aborted', 'plugin-disposed'],
+    },
     receiptId: { type: 'string', required: true },
   } },
 ] } as const
@@ -490,7 +508,11 @@ const userCorrectionObservation = { type: 'object', additionalProperties: false,
 
 const learnerEvidenceFields = {
   summary: { type: 'string', required: true },
-  confidence: { type: 'string', enum: ['low', 'medium', 'high'] },
+  confidence: {
+    type: 'string',
+    enum: ['low', 'medium', 'high'],
+    description: 'Use low for tentative judgments; only medium/high correct independent evidence can support mastery.',
+  },
   correctness: { type: 'string', enum: ['correct', 'partial', 'incorrect', 'unknown'] },
   independence: { type: 'string', enum: ['independent', 'guided', 'unknown'] },
 } as const
@@ -643,7 +665,7 @@ const VISUAL_CONTENT_SCHEMAS: Record<VisualKind, ValueSchemaSpec> = {
 }
 
 const LEARNING_TOOL_PREFIX = 'learning_'
-const learningRoutes = new WeakMap<object, LearningRouteDecision>()
+const learningRoutes = new WeakMap<object, LearningTurnRouteDecision>()
 
 function textFromUserMessage(message: UserMessage): string {
   return message.content
@@ -653,7 +675,7 @@ function textFromUserMessage(message: UserMessage): string {
     .trim()
 }
 
-function routeContextText(decision: LearningRouteDecision): string {
+function routeContextText(decision: LearningTurnRouteDecision): string {
   if (decision.intent.intent === 'not-learn') {
     return [
       '## Current turn route',
@@ -664,8 +686,15 @@ function routeContextText(decision: LearningRouteDecision): string {
   return [
     '## Current turn route',
     `intent=learn; trigger=${decision.intent.trigger}; route=${decision.route}; reason=${decision.reason}.`,
-    'Use this as a deterministic first-turn hint; the learner\'s evidence still determines the next teaching move.',
+    decision.inherited
+      ? 'This turn continues the active learning segment; short answers, confusion, pressure, and ordinary evidence inherit the teaching context.'
+      : 'This turn opens a learning segment; the learner\'s evidence still determines the next teaching move.',
   ].join('\n')
+}
+
+function learningSegmentComplete(services: LearningAgentContext, agent: Agent): boolean {
+  const state = services.learningActivities.learnerState(agent)
+  return state.phase === 'complete' || state.nextMove === 'complete'
 }
 
 const visualSelectorOutput = { type: 'object', additionalProperties: false, properties: {
@@ -695,6 +724,13 @@ const visualSelectorParameters = {
   },
 } as const
 
+interface VisualSelection {
+  kind: VisualKind
+  purpose: string
+  learnerAction?: string
+  pairedQuestion?: string
+}
+
 function visualParameters(kind: VisualKind): Record<string, ParameterPropertySpec> {
   return {
     protocol: { type: 'string', const: VISUAL_PROTOCOL_V4, required: true },
@@ -709,9 +745,12 @@ function visualParameters(kind: VisualKind): Record<string, ParameterPropertySpe
   }
 }
 
-const visualDescription = (kind: VisualKind): string => [
-  `Render one trusted, non-blocking semantic ${kind} visual selected for the current teaching move.`,
+const visualDescription = (selection: VisualSelection): string => [
+  `Render one trusted, non-blocking semantic ${selection.kind} visual selected for the current teaching move.`,
   'The selection step already chose the representation; now provide exactly that content kind.',
+  `Teaching purpose: ${selection.purpose}`,
+  ...(selection.learnerAction === undefined ? [] : [`Learner action: ${selection.learnerAction}`]),
+  ...(selection.pairedQuestion === undefined ? [] : [`Paired question: ${selection.pairedQuestion}`]),
   'The call completes immediately. Continue with a self-sufficient ordinary-text interpretation and at most one natural question.',
   'Do not use a visual for a definition, short fact, or already-clear explanation. Keep labels in the learner\'s language and declare every relationship the learner needs to read.',
   'Hard limits and field-specific payload rules are encoded in this kind-specific schema. Never provide HTML, Markdown diagrams, SVG markup, or JavaScript.',
@@ -729,28 +768,39 @@ const checkpointSelectorOutput = { type: 'object', additionalProperties: false, 
   kind: { type: 'string', enum: LEARNING_CHECKPOINT_KINDS, required: true },
 } } as const
 
-const checkpointParameters = {
-  protocol: { type: 'string', const: CHECKPOINT_PROTOCOL, required: true },
-  kind: { type: 'string', enum: LEARNING_CHECKPOINT_KINDS, required: true },
-  prompt: { type: 'string', required: true },
-  context: { type: 'string' },
-  expectedEvidence: { type: 'string', enum: LEARNING_CHECKPOINT_EVIDENCE_KINDS, required: true },
-  options: {
-    type: 'array',
-    items: checkpointOption,
-    description: 'Required only for single_choice; 2 to 8 answer-free options.',
-  },
-  fallbackMarkdown: {
-    type: 'string',
-    required: true,
-    description: 'Self-sufficient ordinary-conversation fallback; never include the answer.',
-  },
-} as const
+interface CheckpointSelection {
+  kind: LearningCheckpointKindV1
+  expectedEvidence: LearningCheckpointEvidenceKindV1
+  prompt: string
+  purpose: string
+}
 
-const checkpointDescription = [
+function checkpointParametersFor(selection: CheckpointSelection): Record<string, ParameterPropertySpec> {
+  return {
+    protocol: { type: 'string', const: CHECKPOINT_PROTOCOL, required: true },
+    kind: { type: 'string', const: selection.kind, required: true },
+    prompt: { type: 'string', const: selection.prompt, required: true },
+    context: { type: 'string' },
+    expectedEvidence: { type: 'string', const: selection.expectedEvidence, required: true },
+    options: {
+      type: 'array',
+      items: checkpointOption,
+      description: 'Required only for single_choice; 2 to 8 answer-free options.',
+    },
+    fallbackMarkdown: {
+      type: 'string',
+      required: true,
+      description: 'Self-sufficient ordinary-conversation fallback; never include the answer.',
+    },
+  }
+}
+
+const checkpointDescription = (selection: CheckpointSelection): string => [
   'Optionally request one high-value reflective pause when the learner response materially changes the next teaching move.',
+  `Teaching purpose: ${selection.purpose}`,
+  `Expected evidence: ${selection.expectedEvidence}. The answer-free prompt is already fixed by the selection step.`,
   'The normal path is ordinary conversation; this wire-compatible checkpoint is the sole deliberate user wait, not a per-turn ceremony or Continue ritual.',
-  'The selection step already chose the evidence kind. The payload is answer-free: never include a correct answer, rubric, solution, future step, Reveal, animation, or Continue content.',
+  'The payload must preserve the selected prompt and evidence kind; never include a correct answer, rubric, solution, future step, Reveal, animation, or Continue content.',
   'A skipped, cancelled, unavailable, or failed reflective pause falls back to ordinary conversation without withholding teaching.',
 ].join(' ')
 
@@ -759,6 +809,13 @@ type DynamicToolTarget = Pick<ToolRuntime, 'get' | 'register'>
 const dynamicVisualDisposers = new WeakMap<object, () => void>()
 const dynamicCheckpointDisposers = new WeakMap<object, () => void>()
 const GLOBAL_DYNAMIC_TOOL_KEY = {}
+
+function disposeDynamicTeachingTools(key: object): void {
+  dynamicVisualDisposers.get(key)?.()
+  dynamicVisualDisposers.delete(key)
+  dynamicCheckpointDisposers.get(key)?.()
+  dynamicCheckpointDisposers.delete(key)
+}
 
 function dynamicToolTarget(services: LearningAgentContext, exec: ToolRunContext): DynamicToolTarget {
   const candidate = exec.agent as (ToolRunContext['agent'] & { id?: unknown }) | undefined
@@ -808,9 +865,18 @@ export function apply(ctx: Context): void {
   // a non-learning turn would incorrectly close it as `blocked`.
   ctx.on('agent/inbox/claimed', ({ agent, message }) => {
     if (message.source.kind !== 'user') return
+    // A payload schema belongs only to the selector/model loop that exposed it.
+    // A new learner message starts a new decision and retires unfinished work.
+    disposeDynamicTeachingTools(agent)
     const text = textFromUserMessage(message)
     if (text === '') return
-    learningRoutes.set(agent, routeLearningRequest(text))
+    const previous = learningRoutes.get(agent)
+    const session: LearningRouteSession = previous === undefined || previous.segment === 'closed'
+      ? { active: false }
+      : learningSegmentComplete(services, agent)
+        ? { active: false }
+        : { active: true, decision: previous }
+    learningRoutes.set(agent, routeLearningTurn(text, session))
   })
 
   ctx.on('tools/pre-execute', (execution, next) => {
@@ -849,10 +915,18 @@ export function apply(ctx: Context): void {
     },
     isConcurrencySafe: () => false,
     async execute(args, exec) {
+      const purpose = args.purpose.trim()
       const learnerAction = typeof args.learnerAction === 'string' ? args.learnerAction.trim() : ''
       const pairedQuestion = typeof args.pairedQuestion === 'string' ? args.pairedQuestion.trim() : ''
+      if (purpose === '') throw new TypeError('learning_visual_select requires a non-empty purpose')
       if (learnerAction === '' && pairedQuestion === '') {
         throw new TypeError('learning_visual_select requires learnerAction or pairedQuestion')
+      }
+      const selection: VisualSelection = {
+        kind: args.kind,
+        purpose,
+        ...(learnerAction === '' ? {} : { learnerAction }),
+        ...(pairedQuestion === '' ? {} : { pairedQuestion }),
       }
       const target = dynamicToolTarget(services, exec)
       const existing = target.get('learning_visual')
@@ -865,8 +939,8 @@ export function apply(ctx: Context): void {
       }
       const definition = closeParameterRoot(defineTool({
         name: 'learning_visual',
-        description: visualDescription(args.kind),
-        parameters: visualParameters(args.kind),
+        description: visualDescription(selection),
+        parameters: visualParameters(selection.kind),
         output: {
           schema: { type: 'object', additionalProperties: false, properties: {
             protocol: { type: 'string', const: VISUAL_RESULT_PROTOCOL_V4, required: true },
@@ -901,7 +975,7 @@ export function apply(ctx: Context): void {
       }))
       const disposer = target.register(definition)
       dynamicVisualDisposers.set(targetKey, disposer)
-      return { status: 'selected' as const, kind: args.kind }
+      return { status: 'selected' as const, kind: selection.kind }
     },
   })))
 
@@ -983,13 +1057,21 @@ export function apply(ctx: Context): void {
     },
     isConcurrencySafe: () => false,
     async execute(args, exec) {
+      const selection: CheckpointSelection = {
+        kind: args.kind,
+        expectedEvidence: args.expectedEvidence,
+        prompt: args.prompt.trim(),
+        purpose: args.purpose.trim(),
+      }
+      if (selection.prompt === '') throw new TypeError('learning_checkpoint_select requires a non-empty prompt')
+      if (selection.purpose === '') throw new TypeError('learning_checkpoint_select requires a non-empty purpose')
       const target = dynamicToolTarget(services, exec)
       const targetKey = dynamicToolKey(services, exec)
       dynamicCheckpointDisposers.get(targetKey)?.()
       const definition = closeParameterRoot(defineTool({
         name: 'learning_checkpoint',
-        description: checkpointDescription,
-        parameters: checkpointParameters,
+        description: checkpointDescription(selection),
+        parameters: checkpointParametersFor(selection),
         output: {
           schema: checkpointOutput,
           render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
@@ -1012,7 +1094,7 @@ export function apply(ctx: Context): void {
       }))
       const disposer = target.register(definition)
       dynamicCheckpointDisposers.set(targetKey, disposer)
-      return { status: 'selected' as const, kind: args.kind }
+      return { status: 'selected' as const, kind: selection.kind }
     },
   })))
 

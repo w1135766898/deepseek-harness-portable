@@ -10,7 +10,7 @@
 const LEARN_INTENT = "learn";
 const EXPLICIT_LEARNING = /(?:^|\s)(?:please\s+)?(?:teach\s+me|help\s+me\s+(?:learn|understand|grasp)|help\s+me\s+with\s+the\s+concept|learn|understand|explain|walk\s+me\s+through|study|from\s+(?:scratch|zero)|teach)(?:\b|\s|$)|(?:学习|教我|理解|讲解|解释|学会|从零|入门)/i;
 const DEFINITION = /^(?:please\s+)?(?:what\s+is|what's|define|definition\s+of|meaning\s+of)\b|^(?:解释一下|什么是|何谓)/i;
-const CONFUSION_REPAIR = /(?:keep\s+(?:mixing|confusing)|always\s+(?:mix|confuse)|constantly\s+(?:mix|confuse)|can't\s+(?:remember|get|understand)|cannot\s+(?:remember|get|understand)|won't\s+stick|not\s+(?:getting|sticking)|never\s+(?:learned|understood)|总是混淆|老是混淆|记不住|没学会|学不会|搞不懂|分不清|总是弄错)/i;
+const CONFUSION_REPAIR = /(?:keep\s+(?:mixing|confusing)|always\s+(?:mix|confuse)|constantly\s+(?:mix|confuse)|can't\s+(?:remember|get|understand)|cannot\s+(?:remember|get|understand)|still\s+(?:don't|do not|can't|cannot)\s+(?:get|understand|follow|grasp|see)|won't\s+stick|not\s+(?:getting|sticking)|never\s+(?:learned|understood)|(?:i'm|i am)\s+(?:stuck|lost|confused)|no\s+idea|总是混淆|老是混淆|记不住|没学会|学不会|搞不懂|分不清|总是弄错|还是不懂|还是不明白)/i;
 const LEARNING_PATH = /(?:prerequisite|pre-requisite|what\s+(?:should|do)\s+i\s+learn\s+before|what\s+comes\s+before|where\s+do\s+i\s+start|learning\s+path|study\s+path|roadmap|sequence\s+to\s+learn|how\s+to\s+study|先学什么|前置知识|前置条件|学习路径|学习路线|入门顺序|学习顺序|怎么学)/i;
 const RESOURCE_CREATION = /(?:make|create|write|draft|prepare|turn|convert|生成|制作|整理|编写).{0,80}(?:flashcards?|study\s+guide|quiz|outline|review\s+sheet|闪卡|抽认卡|学习指南|复习提纲|测验|知识卡片)/i;
 const RESOURCE_RECOMMENDATION = /(?:recommend|suggest|what\s+should\s+i\s+read|推荐|建议).{0,80}(?:book|course|tutorial|resource|textbook|教材|课程|教程|资料|资源)|\b(?:best|good)\s+(?:book|course|tutorial|resource|textbook)\b|(?:教材|课程|教程|资料|资源)\s*(?:推荐|建议)/i;
@@ -22,7 +22,10 @@ const CURRENT_TOPIC = /(?:\b(?:current|right\s+now|today|recent|contested|contro
 const CURRENT_SURVEY = /(?:\b(?:latest|recent|current)\b|最新|近期).{0,50}(?:survey|overview|summary|综述|概览)/i;
 const EXPLICIT_OVERVIEW$1 = /(?:\b(?:complete|full|comprehensive|structured|direct)\s+(?:overview|survey|summary)|\b(?:overview|survey)\b.*\b(?:directly|without\s+(?:asking|questions)|don['’]?t\s+(?:ask|quiz)|no\s+questions)|(?:完整|全面|结构化).{0,20}(?:overview|survey|summary|概览|综述)|(?:直接讲|不要提问|别提问|不要先问))/i;
 const OPINION_JUDGMENT = /(?:do\s+you\s+think|what(?:'s|\s+is)\s+your\s+(?:take|opinion)|honest\s+take|in\s+your\s+opinion|is\s+.+\s+(?:dead|over|still\s+relevant|taken\s+seriously)|was\s+.+\s+really|settle\s+this|你怎么看|你的看法|观点|评价一下|到底是不是|还值得认真对待吗)/i;
-const CONCEPTUAL_QUESTION = /(?:^|\s)(?:why|how|difference\s+between|distinguish|compare|mechanism|cause|what\s+does\s+.+\s+mean)(?:\b|\s|$)|(?:为什么|为何|如何|怎么|区别|对比|机制|原因|含义)/i;
+const CONCEPTUAL_QUESTION = /(?:^|\s)(?:why|how|what\s+if|suppose|difference\s+between|distinguish|compare|mechanism|cause|what\s+does\s+.+\s+mean)(?:\b|\s|$)|(?:为什么|为何|如何|怎么|如果|假设|区别|对比|机制|原因|含义)/i;
+const LEARNING_RESET = /^(?:reset|start\s+over|restart|new\s+topic|different\s+topic|switch\s+topics?|change\s+topics?|forget\s+(?:that|this)|重新开始|重置|换个话题|换一个主题|从头来)/i;
+const LEARNING_TOPIC_SWITCH = /^(?:let['’]?s|can\s+we|i['’]?d\s+like\s+to|i\s+want\s+to)\s+(?:switch|move|change|start)\b.*\b(?:topic|subject|to)\b/i;
+const LEARNING_ACKNOWLEDGEMENT = /^(?:thanks?|thank\s+you|got\s+it|understood|okay|ok|done|finished|complete|completed|all\s+done|that['’]?s\s+enough|明白了?|懂了|完成了?|结束了?)[.!?]?$/i;
 function normalize(text) {
 	return text.replace(/\s+/g, " ").trim();
 }
@@ -54,6 +57,7 @@ function classifyLearnIntent(input) {
 	if (CURRENT_SURVEY.test(text) && !NEWS_CONTENT.test(text)) return decision("learn", "current-topic", "request for a current structured survey");
 	if (NEWS_REQUEST.test(text)) return decision("not-learn", "news-request", "news or breaking-update request");
 	if (OPINION_JUDGMENT.test(text)) return decision("not-learn", "opinion-judgment", "request for a verdict or personal take");
+	if (LEARNING_ACKNOWLEDGEMENT.test(text)) return decision("not-learn", "unknown", "short acknowledgement is not a new learning request");
 	if (CONFUSION_REPAIR.test(text)) return decision("learn", "confusion-repair", "the learner reports a persistent confusion or memory failure");
 	if (LEARNING_PATH.test(text)) return decision("learn", "learning-path", "the learner asks how concepts or prerequisites should be sequenced");
 	if (DEFINITION.test(text)) return decision("learn", "definition", "definition request");
@@ -66,6 +70,14 @@ function classifyLearnIntent(input) {
 }
 function isLearnIntent(input) {
 	return classifyLearnIntent(input).intent === LEARN_INTENT;
+}
+/** Whether a message explicitly closes or switches away from a learning segment. */
+function isLearningBoundary(input) {
+	const text = normalize(input);
+	if (text === "") return false;
+	if (LEARNING_RESET.test(text) || LEARNING_TOPIC_SWITCH.test(text) || LEARNING_ACKNOWLEDGEMENT.test(text)) return true;
+	const intent = classifyLearnIntent(text);
+	return intent.intent === "not-learn" && intent.trigger !== "unknown";
 }
 /** Compact standing text; detailed diagnosis and moves stay in references. */
 const LEARNING_INTENT_POLICY = ["Classify the request before teaching: learn intent covers definitions (“what is X”), a bare concept name, persistent confusion (“I always mix these up / can’t remember / 没学会”), conceptual why/how questions, prerequisites, learning paths, and requested study artifacts such as flashcards or a study guide.", "Keep coding/implementation or debugging, translation or rewriting, news/breaking updates, resource recommendations, and opinion or verdict requests on their ordinary task route. A current or contested topic is still learn intent when the user asks for a structured explanation; a latest-news lookup is not."].join(" ");
@@ -169,5 +181,26 @@ function routeLearningRequest(text) {
 		intent
 	};
 }
+/**
+* Resolve one claimed user message with the session's current segment in
+* mind. The first-turn classifier remains intentionally narrow; once a
+* learning segment is active, ordinary learner responses inherit its route.
+* Only an explicit non-learning task, reset, or topic switch closes it.
+*/
+function routeLearningTurn(text, session = { active: false }) {
+	const fresh = routeLearningRequest(text);
+	if (session.active && session.decision !== void 0 && !isLearningBoundary(text)) return {
+		...session.decision,
+		route: "continue",
+		reason: "active-segment",
+		inherited: true,
+		segment: "active"
+	};
+	return {
+		...fresh,
+		inherited: false,
+		segment: fresh.intent.intent === "learn" ? "active" : "closed"
+	};
+}
 //#endregion
-export { isLearnIntent as a, classifyLearnIntent as i, LEARNING_INTENT_POLICY as n, LEARN_INTENT as r, routeLearningRequest as t };
+export { classifyLearnIntent as a, LEARN_INTENT as i, routeLearningTurn as n, isLearnIntent as o, LEARNING_INTENT_POLICY as r, isLearningBoundary as s, routeLearningRequest as t };

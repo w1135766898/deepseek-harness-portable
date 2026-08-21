@@ -1,5 +1,5 @@
-import { n as LEARNING_INTENT_POLICY, t as routeLearningRequest } from "./teaching-route-CSoe_oAq.js";
-import { E as VISUAL_RESULT_PROTOCOL_V4, L as parseLearningVisualV4, c as LEARNING_CHECKPOINT_KINDS, d as LearningProtocolError, f as MATH_BINARY_OPERATORS, i as CHECKPOINT_RESULT_PROTOCOL, j as parseLearningCheckpointV1, p as MATH_UNARY_OPERATORS, r as CHECKPOINT_PROTOCOL, s as LEARNING_CHECKPOINT_EVIDENCE_KINDS, u as LEARNING_VISUAL_STATUSES, w as VISUAL_PROTOCOL_V4 } from "./protocol-D-KGSMae.js";
+import { n as routeLearningTurn, r as LEARNING_INTENT_POLICY } from "./teaching-route-BMSuwJeo.js";
+import { E as VISUAL_RESULT_PROTOCOL_V4, L as parseLearningVisualV4, c as LEARNING_CHECKPOINT_KINDS, d as LearningProtocolError, f as MATH_BINARY_OPERATORS, i as CHECKPOINT_RESULT_PROTOCOL, j as parseLearningCheckpointV1, p as MATH_UNARY_OPERATORS, r as CHECKPOINT_PROTOCOL, s as LEARNING_CHECKPOINT_EVIDENCE_KINDS, u as LEARNING_VISUAL_STATUSES, w as VISUAL_PROTOCOL_V4 } from "./protocol-UIlmeaAM.js";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 //#region lib/types/teaching-policy.js
 /**
@@ -22,9 +22,9 @@ const LEARNING_TEACHING_POLICY = [
 	"Use observable evidence only. Name what the learner actually said or did. For a correct response, preserve the correct part and raise difficulty slightly; for a partial or wrong response, isolate the precise error, add new information, and offer a nearby retry. A concept gap needs the concept; a procedure gap needs a distinct parallel example; a notation gap needs symbols decoded; a prerequisite gap needs the missing rule first.",
 	"Never repeat a hint, analogy, question, or explanation fingerprint. When the learner says “I don’t understand”, shrink the concept or change representation and add new information; do not paraphrase the same move. “I heard it” is not mastery: require an explanation, prediction, or application in a fresh situation.",
 	"Stop after independent fresh transfer. State the concrete evidence and offer, but do not force, a next step. Do not manufacture another question, checkpoint, praise loop, or plan step after transfer. A plan is tentative and never a completion checklist.",
-	"Ordinary conversation is the default. Use a visual only when one relationship is materially clearer by seeing or manipulating it; use a checkpoint only when the learner's response will change the next move. Both are optional and non-blocking on the ordinary text path. In the move ontology the checkpoint is a reflective pause: the wire-compatible `learning_checkpoint` tool is the sole deliberate user wait, and skip/cancel/failure must return to ordinary conversation without withholding teaching. Load the interactive-teaching Skill only for detailed visual or supplied-source construction.",
+	"Ordinary conversation is the default. Use a visual only when one relationship is materially clearer by seeing or manipulating it; use a checkpoint only when the learner's response will change the next move. Both are optional and non-blocking on the ordinary text path. In the move ontology the checkpoint is a reflective pause: the wire-compatible `learning_checkpoint` tool is the sole deliberate user wait, and skip/cancel/failure must return to ordinary conversation without withholding teaching. Load the interactive-teaching Skill when detailed diagnosis, pressure, integrity, visual, or supplied-source guidance is needed.",
 	"Keep academic-integrity limits for observable assessed work only. Never invent facts, citations, source anchors, learner evidence, or confidence; correct mistakes plainly.",
-	"The `learning_state_update` state is tentative and session-local. Update it only after a substantive observable change. Use phase, last explanation/question, learner-response assessment, current misconception, next move, and move fingerprint to choose a different next move; do not narrate these fields to the learner."
+	"The `learning_state_update` state is tentative and session-local. Update it only after a substantive observable change. Low-confidence evidence may guide support but cannot establish mastery; only sufficiently confident, correct, independent learner evidence can do so. Use phase, last explanation/question, learner-response assessment, current misconception, next move, and move fingerprint to choose a different next move; do not narrate these fields to the learner."
 ].join("\n\n");
 //#endregion
 //#region lib/types/agent.js
@@ -1157,57 +1157,102 @@ const checkpointResponse = { oneOf: [
 		} }
 	}
 ] };
-const checkpointOutput = { oneOf: [{
-	type: "object",
-	additionalProperties: false,
-	properties: {
-		protocol: {
-			type: "string",
-			const: CHECKPOINT_RESULT_PROTOCOL,
-			required: true
-		},
-		checkpointId: {
-			type: "string",
-			required: true
-		},
-		status: {
-			type: "string",
-			const: "submitted",
-			required: true
-		},
-		response: {
-			...checkpointResponse,
-			required: true
-		},
-		receiptId: {
-			type: "string",
-			required: true
+const checkpointOutput = { oneOf: [
+	{
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			protocol: {
+				type: "string",
+				const: CHECKPOINT_RESULT_PROTOCOL,
+				required: true
+			},
+			checkpointId: {
+				type: "string",
+				required: true
+			},
+			status: {
+				type: "string",
+				const: "submitted",
+				required: true
+			},
+			response: {
+				...checkpointResponse,
+				required: true
+			},
+			receiptId: {
+				type: "string",
+				required: true
+			}
+		}
+	},
+	{
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			protocol: {
+				type: "string",
+				const: CHECKPOINT_RESULT_PROTOCOL,
+				required: true
+			},
+			checkpointId: {
+				type: "string",
+				required: true
+			},
+			status: {
+				type: "string",
+				const: "skipped",
+				required: true
+			},
+			reason: {
+				type: "string",
+				enum: [
+					"learner-skipped",
+					"client-unavailable",
+					"client-response-timeout",
+					"host-unavailable",
+					"provider-failure"
+				]
+			},
+			receiptId: {
+				type: "string",
+				required: true
+			}
+		}
+	},
+	{
+		type: "object",
+		additionalProperties: false,
+		properties: {
+			protocol: {
+				type: "string",
+				const: CHECKPOINT_RESULT_PROTOCOL,
+				required: true
+			},
+			checkpointId: {
+				type: "string",
+				required: true
+			},
+			status: {
+				type: "string",
+				const: "cancelled",
+				required: true
+			},
+			reason: {
+				type: "string",
+				enum: [
+					"learner-cancelled",
+					"session-aborted",
+					"plugin-disposed"
+				]
+			},
+			receiptId: {
+				type: "string",
+				required: true
+			}
 		}
 	}
-}, {
-	type: "object",
-	additionalProperties: false,
-	properties: {
-		protocol: {
-			type: "string",
-			const: CHECKPOINT_RESULT_PROTOCOL,
-			required: true
-		},
-		checkpointId: {
-			type: "string",
-			required: true
-		},
-		status: {
-			type: "string",
-			enum: ["skipped", "cancelled"],
-			required: true
-		},
-		receiptId: {
-			type: "string",
-			required: true
-		}
-	}
-}] };
+] };
 const userCorrectionObservation = {
 	type: "object",
 	additionalProperties: false,
@@ -1239,7 +1284,8 @@ const learnerEvidenceFields = {
 			"low",
 			"medium",
 			"high"
-		]
+		],
+		description: "Use low for tentative judgments; only medium/high correct independent evidence can support mastery."
 	},
 	correctness: {
 		type: "string",
@@ -1791,8 +1837,12 @@ function routeContextText(decision) {
 	return [
 		"## Current turn route",
 		`intent=learn; trigger=${decision.intent.trigger}; route=${decision.route}; reason=${decision.reason}.`,
-		"Use this as a deterministic first-turn hint; the learner's evidence still determines the next teaching move."
+		decision.inherited ? "This turn continues the active learning segment; short answers, confusion, pressure, and ordinary evidence inherit the teaching context." : "This turn opens a learning segment; the learner's evidence still determines the next teaching move."
 	].join("\n");
+}
+function learningSegmentComplete(services, agent) {
+	const state = services.learningActivities.learnerState(agent);
+	return state.phase === "complete" || state.nextMove === "complete";
 }
 const visualSelectorOutput = {
 	type: "object",
@@ -1855,9 +1905,12 @@ function visualParameters(kind) {
 		}
 	};
 }
-const visualDescription = (kind) => [
-	`Render one trusted, non-blocking semantic ${kind} visual selected for the current teaching move.`,
+const visualDescription = (selection) => [
+	`Render one trusted, non-blocking semantic ${selection.kind} visual selected for the current teaching move.`,
 	"The selection step already chose the representation; now provide exactly that content kind.",
+	`Teaching purpose: ${selection.purpose}`,
+	...selection.learnerAction === void 0 ? [] : [`Learner action: ${selection.learnerAction}`],
+	...selection.pairedQuestion === void 0 ? [] : [`Paired question: ${selection.pairedQuestion}`],
 	"The call completes immediately. Continue with a self-sufficient ordinary-text interpretation and at most one natural question.",
 	"Do not use a visual for a definition, short fact, or already-clear explanation. Keep labels in the learner's language and declare every relationship the learner needs to read.",
 	"Hard limits and field-specific payload rules are encoded in this kind-specific schema. Never provide HTML, Markdown diagrams, SVG markup, or JavaScript."
@@ -1900,47 +1953,58 @@ const checkpointSelectorOutput = {
 		}
 	}
 };
-const checkpointParameters = {
-	protocol: {
-		type: "string",
-		const: CHECKPOINT_PROTOCOL,
-		required: true
-	},
-	kind: {
-		type: "string",
-		enum: LEARNING_CHECKPOINT_KINDS,
-		required: true
-	},
-	prompt: {
-		type: "string",
-		required: true
-	},
-	context: { type: "string" },
-	expectedEvidence: {
-		type: "string",
-		enum: LEARNING_CHECKPOINT_EVIDENCE_KINDS,
-		required: true
-	},
-	options: {
-		type: "array",
-		items: checkpointOption,
-		description: "Required only for single_choice; 2 to 8 answer-free options."
-	},
-	fallbackMarkdown: {
-		type: "string",
-		required: true,
-		description: "Self-sufficient ordinary-conversation fallback; never include the answer."
-	}
-};
-const checkpointDescription = [
+function checkpointParametersFor(selection) {
+	return {
+		protocol: {
+			type: "string",
+			const: CHECKPOINT_PROTOCOL,
+			required: true
+		},
+		kind: {
+			type: "string",
+			const: selection.kind,
+			required: true
+		},
+		prompt: {
+			type: "string",
+			const: selection.prompt,
+			required: true
+		},
+		context: { type: "string" },
+		expectedEvidence: {
+			type: "string",
+			const: selection.expectedEvidence,
+			required: true
+		},
+		options: {
+			type: "array",
+			items: checkpointOption,
+			description: "Required only for single_choice; 2 to 8 answer-free options."
+		},
+		fallbackMarkdown: {
+			type: "string",
+			required: true,
+			description: "Self-sufficient ordinary-conversation fallback; never include the answer."
+		}
+	};
+}
+const checkpointDescription = (selection) => [
 	"Optionally request one high-value reflective pause when the learner response materially changes the next teaching move.",
+	`Teaching purpose: ${selection.purpose}`,
+	`Expected evidence: ${selection.expectedEvidence}. The answer-free prompt is already fixed by the selection step.`,
 	"The normal path is ordinary conversation; this wire-compatible checkpoint is the sole deliberate user wait, not a per-turn ceremony or Continue ritual.",
-	"The selection step already chose the evidence kind. The payload is answer-free: never include a correct answer, rubric, solution, future step, Reveal, animation, or Continue content.",
+	"The payload must preserve the selected prompt and evidence kind; never include a correct answer, rubric, solution, future step, Reveal, animation, or Continue content.",
 	"A skipped, cancelled, unavailable, or failed reflective pause falls back to ordinary conversation without withholding teaching."
 ].join(" ");
 const dynamicVisualDisposers = /* @__PURE__ */ new WeakMap();
 const dynamicCheckpointDisposers = /* @__PURE__ */ new WeakMap();
 const GLOBAL_DYNAMIC_TOOL_KEY = {};
+function disposeDynamicTeachingTools(key) {
+	dynamicVisualDisposers.get(key)?.();
+	dynamicVisualDisposers.delete(key);
+	dynamicCheckpointDisposers.get(key)?.();
+	dynamicCheckpointDisposers.delete(key);
+}
 function dynamicToolTarget(services, exec) {
 	const candidate = exec.agent;
 	return typeof candidate?.id === "string" && candidate.ctx?.tools !== void 0 ? candidate.ctx.tools : services.tools;
@@ -1963,9 +2027,15 @@ function apply(ctx) {
 	const services = ctx;
 	ctx.on("agent/inbox/claimed", ({ agent, message }) => {
 		if (message.source.kind !== "user") return;
+		disposeDynamicTeachingTools(agent);
 		const text = textFromUserMessage(message);
 		if (text === "") return;
-		learningRoutes.set(agent, routeLearningRequest(text));
+		const previous = learningRoutes.get(agent);
+		const session = previous === void 0 || previous.segment === "closed" ? { active: false } : learningSegmentComplete(services, agent) ? { active: false } : {
+			active: true,
+			decision: previous
+		};
+		learningRoutes.set(agent, routeLearningTurn(text, session));
 	});
 	ctx.on("tools/pre-execute", (execution, next) => {
 		const agent = execution.agent;
@@ -2000,9 +2070,17 @@ function apply(ctx) {
 		},
 		isConcurrencySafe: () => false,
 		async execute(args, exec) {
+			const purpose = args.purpose.trim();
 			const learnerAction = typeof args.learnerAction === "string" ? args.learnerAction.trim() : "";
 			const pairedQuestion = typeof args.pairedQuestion === "string" ? args.pairedQuestion.trim() : "";
+			if (purpose === "") throw new TypeError("learning_visual_select requires a non-empty purpose");
 			if (learnerAction === "" && pairedQuestion === "") throw new TypeError("learning_visual_select requires learnerAction or pairedQuestion");
+			const selection = {
+				kind: args.kind,
+				purpose,
+				...learnerAction === "" ? {} : { learnerAction },
+				...pairedQuestion === "" ? {} : { pairedQuestion }
+			};
 			const target = dynamicToolTarget(services, exec);
 			const existing = target.get("learning_visual");
 			const targetKey = dynamicToolKey(services, exec);
@@ -2012,8 +2090,8 @@ function apply(ctx) {
 			}
 			const definition = closeParameterRoot(defineTool({
 				name: "learning_visual",
-				description: visualDescription(args.kind),
-				parameters: visualParameters(args.kind),
+				description: visualDescription(selection),
+				parameters: visualParameters(selection.kind),
 				output: {
 					schema: {
 						type: "object",
@@ -2065,7 +2143,7 @@ function apply(ctx) {
 			dynamicVisualDisposers.set(targetKey, disposer);
 			return {
 				status: "selected",
-				kind: args.kind
+				kind: selection.kind
 			};
 		}
 	})));
@@ -2154,13 +2232,21 @@ function apply(ctx) {
 		},
 		isConcurrencySafe: () => false,
 		async execute(args, exec) {
+			const selection = {
+				kind: args.kind,
+				expectedEvidence: args.expectedEvidence,
+				prompt: args.prompt.trim(),
+				purpose: args.purpose.trim()
+			};
+			if (selection.prompt === "") throw new TypeError("learning_checkpoint_select requires a non-empty prompt");
+			if (selection.purpose === "") throw new TypeError("learning_checkpoint_select requires a non-empty purpose");
 			const target = dynamicToolTarget(services, exec);
 			const targetKey = dynamicToolKey(services, exec);
 			dynamicCheckpointDisposers.get(targetKey)?.();
 			const definition = closeParameterRoot(defineTool({
 				name: "learning_checkpoint",
-				description: checkpointDescription,
-				parameters: checkpointParameters,
+				description: checkpointDescription(selection),
+				parameters: checkpointParametersFor(selection),
 				output: {
 					schema: checkpointOutput,
 					render: (_args, value) => [{
@@ -2184,7 +2270,7 @@ function apply(ctx) {
 			dynamicCheckpointDisposers.set(targetKey, disposer);
 			return {
 				status: "selected",
-				kind: args.kind
+				kind: selection.kind
 			};
 		}
 	})));

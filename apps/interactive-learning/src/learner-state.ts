@@ -699,6 +699,9 @@ function isIndependentlyCorrectEvidence(evidence: LearnerEvidence): boolean {
   return (evidence.source === 'learner-message' || evidence.source === 'learner-action')
     && evidence.correctness === 'correct'
     && evidence.independence === 'independent'
+    // Low-confidence evidence remains useful as a tentative learning signal,
+    // but is not strong enough to promote emerging or terminal mastery.
+    && evidence.confidence !== 'low'
     && evidence.kind !== 'error'
 }
 

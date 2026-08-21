@@ -31,9 +31,11 @@ export const INTERACTIVE_LEARNING_PUBLIC_DECLARATION_FILES = [
     'lib/types/eval.d.ts',
     'lib/types/index.d.ts',
     'lib/types/installer.d.ts',
+    'lib/types/learn-intent.d.ts',
     'lib/types/learner-state.d.ts',
     'lib/types/preset.d.ts',
     'lib/types/protocol.d.ts',
+    'lib/types/teaching-route.d.ts',
 ];
 function appInventoryRoot(target) {
     return target.platform === 'darwin' ? 'Contents/Resources/app' : 'runtime/resources/app';

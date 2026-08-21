@@ -16,6 +16,7 @@ describe('learn intent and trigger boundary', () => {
     ['Make me active-recall flashcards for queues.', 'resource-creation'],
     ['Explain the contested debate around open versus closed models.', 'current-topic'],
     ['Why does attention work?', 'conceptual-question'],
+    ['What if C arrives next?', 'conceptual-question'],
     ['为什么负斜率会向下？', 'conceptual-question'],
   ] as const)('recognizes %s as %s', (request, trigger) => {
     expect(classifyLearnIntent(request)).toMatchObject({ intent: 'learn', trigger })

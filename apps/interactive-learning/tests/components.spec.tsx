@@ -707,6 +707,7 @@ describe('learning_checkpoint client gate and replay', () => {
       checkpointId: harness.checkpointId,
       receiptId: `receipt_${harness.waitId}`,
       status,
+      reason: status === 'skipped' ? 'learner-skipped' : 'learner-cancelled',
     })
     await waitFor(() => expect(sessionStorage.getItem(`dsh-learning/checkpoint@1:${harness.waitId}`)).toBeNull())
   })

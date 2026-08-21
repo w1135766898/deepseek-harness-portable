@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { routeLearningRequest } from '../src/teaching-route.ts'
+import { routeLearningRequest, routeLearningTurn } from '../src/teaching-route.ts'
 
 describe('Learning first-turn routing', () => {
   it.each([
@@ -48,5 +48,44 @@ describe('Learning first-turn routing', () => {
       reason: 'explicit-learning',
       intent: { trigger: 'explicit-learning' },
     })
+  })
+
+  it('inherits short answers, confusion, pressure, and what-if follow-ups', () => {
+    const first = routeLearningTurn('Teach me queues.')
+    expect(first).toMatchObject({ segment: 'active', inherited: false, route: 'calibrate' })
+
+    for (const text of [
+      'A.',
+      'I still don\'t get it.',
+      'Just tell me; I am running out of patience.',
+      'What if C arrives next?',
+    ]) {
+      expect(routeLearningTurn(text, { active: true, decision: first })).toMatchObject({
+        segment: 'active',
+        inherited: true,
+        route: 'continue',
+        reason: 'active-segment',
+      })
+    }
+  })
+
+  it.each([
+    'Translate this paragraph into Chinese.',
+    'Implement a queue in TypeScript.',
+  ])('closes an active segment for an explicit task switch: %s', text => {
+    const first = routeLearningTurn('Teach me queues.')
+    expect(routeLearningTurn(text, { active: true, decision: first })).toMatchObject({
+      segment: 'closed',
+      inherited: false,
+      intent: { intent: 'not-learn' },
+    })
+  })
+
+  it('lets a short acknowledgement close an active segment without reopening it', () => {
+    const first = routeLearningTurn('Teach me queues.')
+    const active = routeLearningTurn("That's enough.", { active: true, decision: first })
+    const completed = routeLearningTurn('Got it.', { active: false })
+    expect(active).toMatchObject({ segment: 'closed', inherited: false, route: 'direct' })
+    expect(completed).toMatchObject({ segment: 'closed', inherited: false, route: 'direct' })
   })
 })

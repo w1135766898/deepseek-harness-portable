@@ -221,6 +221,27 @@ export type LearningCheckpointResponseV1 =
   | { optionId: string }
   | { number: number }
 
+/**
+ * Why a non-submitted checkpoint ended.  The field is optional on v1 result
+ * records so older persisted receipts remain readable; new Host/Client
+ * receipts should always provide it.
+ */
+export type LearningCheckpointSkippedReasonV1 =
+  | 'learner-skipped'
+  | 'client-unavailable'
+  | 'client-response-timeout'
+  | 'host-unavailable'
+  | 'provider-failure'
+
+export type LearningCheckpointCancelledReasonV1 =
+  | 'learner-cancelled'
+  | 'session-aborted'
+  | 'plugin-disposed'
+
+export type LearningCheckpointOutcomeReasonV1 =
+  | LearningCheckpointSkippedReasonV1
+  | LearningCheckpointCancelledReasonV1
+
 interface LearningCheckpointResultBaseV1 {
   protocol: typeof CHECKPOINT_RESULT_PROTOCOL
   checkpointId: string
@@ -234,10 +255,14 @@ export interface LearningCheckpointSubmittedResultV1 extends LearningCheckpointR
 
 export interface LearningCheckpointSkippedResultV1 extends LearningCheckpointResultBaseV1 {
   status: 'skipped'
+  /** Optional only for backwards-compatible replay of pre-reason receipts. */
+  reason?: LearningCheckpointSkippedReasonV1
 }
 
 export interface LearningCheckpointCancelledResultV1 extends LearningCheckpointResultBaseV1 {
   status: 'cancelled'
+  /** Optional only for backwards-compatible replay of pre-reason receipts. */
+  reason?: LearningCheckpointCancelledReasonV1
 }
 
 export type LearningCheckpointResultV1 =
@@ -1345,7 +1370,7 @@ export function parseLearningCheckpointResultV1(
     value,
     submitted
       ? ['protocol', 'checkpointId', 'status', 'response', 'receiptId']
-      : ['protocol', 'checkpointId', 'status', 'receiptId'],
+      : ['protocol', 'checkpointId', 'status', 'reason', 'receiptId'],
     'checkpointResult',
     issues,
   )
@@ -1356,6 +1381,29 @@ export function parseLearningCheckpointResultV1(
   token(value.receiptId, 'checkpointResult.receiptId', issues)
   if (!['submitted', 'skipped', 'cancelled'].includes(value.status as string)) {
     issues.push('checkpointResult.status must be submitted, skipped, or cancelled')
+  }
+  if (value.reason !== undefined && typeof value.reason !== 'string') {
+    issues.push('checkpointResult.reason must be a string')
+  } else if (value.status === 'skipped' && value.reason !== undefined
+    && ![
+      'learner-skipped',
+      'client-unavailable',
+      'client-response-timeout',
+      'host-unavailable',
+      'provider-failure',
+    ].includes(value.reason as LearningCheckpointSkippedReasonV1)) {
+    issues.push('checkpointResult.reason is not valid for skipped status')
+  } else if (value.status === 'cancelled' && value.reason !== undefined
+    && ![
+      'learner-cancelled',
+      'session-aborted',
+      'plugin-disposed',
+    ].includes(value.reason as LearningCheckpointCancelledReasonV1)) {
+    issues.push('checkpointResult.reason is not valid for cancelled status')
+  } else if (value.status === 'submitted' && value.reason !== undefined) {
+    // `onlyKeys` reports this too, but keeping the semantic message makes the
+    // contract clear when callers inspect protocol errors programmatically.
+    issues.push('checkpointResult.reason is allowed only for skipped or cancelled status')
   }
   if (expected.checkpointId !== undefined && value.checkpointId !== expected.checkpointId) {
     issues.push('checkpointResult.checkpointId does not match the pending checkpoint')

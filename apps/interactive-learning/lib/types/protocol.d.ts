@@ -284,6 +284,14 @@ export type LearningCheckpointResponseV1 = {
 } | {
     number: number;
 };
+/**
+ * Why a non-submitted checkpoint ended.  The field is optional on v1 result
+ * records so older persisted receipts remain readable; new Host/Client
+ * receipts should always provide it.
+ */
+export type LearningCheckpointSkippedReasonV1 = 'learner-skipped' | 'client-unavailable' | 'client-response-timeout' | 'host-unavailable' | 'provider-failure';
+export type LearningCheckpointCancelledReasonV1 = 'learner-cancelled' | 'session-aborted' | 'plugin-disposed';
+export type LearningCheckpointOutcomeReasonV1 = LearningCheckpointSkippedReasonV1 | LearningCheckpointCancelledReasonV1;
 interface LearningCheckpointResultBaseV1 {
     protocol: typeof CHECKPOINT_RESULT_PROTOCOL;
     checkpointId: string;
@@ -295,9 +303,13 @@ export interface LearningCheckpointSubmittedResultV1 extends LearningCheckpointR
 }
 export interface LearningCheckpointSkippedResultV1 extends LearningCheckpointResultBaseV1 {
     status: 'skipped';
+    /** Optional only for backwards-compatible replay of pre-reason receipts. */
+    reason?: LearningCheckpointSkippedReasonV1;
 }
 export interface LearningCheckpointCancelledResultV1 extends LearningCheckpointResultBaseV1 {
     status: 'cancelled';
+    /** Optional only for backwards-compatible replay of pre-reason receipts. */
+    reason?: LearningCheckpointCancelledReasonV1;
 }
 export type LearningCheckpointResultV1 = LearningCheckpointSubmittedResultV1 | LearningCheckpointSkippedResultV1 | LearningCheckpointCancelledResultV1;
 /** Durable safe projection used only to recover one pending checkpoint wait. */

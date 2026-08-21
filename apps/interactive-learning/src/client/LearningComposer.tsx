@@ -119,10 +119,10 @@ export function LearningInteraction({ matched, t }: LearningComposerProps) {
       await send({ ...common, status: 'submitted', response })
     }
     const skip = async (): Promise<void> => {
-      await send({ ...common, status: 'skipped' })
+      await send({ ...common, status: 'skipped', reason: 'learner-skipped' })
     }
     const cancel = async (): Promise<void> => {
-      await send({ ...common, status: 'cancelled' })
+      await send({ ...common, status: 'cancelled', reason: 'learner-cancelled' })
     }
     return (
       <LearningCheckpoint

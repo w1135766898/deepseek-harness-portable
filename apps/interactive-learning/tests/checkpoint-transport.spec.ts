@@ -151,12 +151,14 @@ describe('Learning Checkpoint Protocol v1', () => {
       protocol: CHECKPOINT_RESULT_PROTOCOL,
       checkpointId,
       status: 'skipped',
+      reason: 'client-response-timeout',
       receiptId: 'receipt_skip',
     }, { checkpointId, checkpoint: definition }).status).toBe('skipped')
     expect(parseLearningCheckpointResultV1({
       protocol: CHECKPOINT_RESULT_PROTOCOL,
       checkpointId,
       status: 'cancelled',
+      reason: 'learner-cancelled',
       receiptId: 'receipt_cancel',
     }, { checkpointId, checkpoint: definition }).status).toBe('cancelled')
 
@@ -169,6 +171,20 @@ describe('Learning Checkpoint Protocol v1', () => {
         status: 'skipped',
         response: { text: 'must not be present' },
         receiptId: 'receipt_skip',
+      },
+      {
+        protocol: CHECKPOINT_RESULT_PROTOCOL,
+        checkpointId,
+        status: 'skipped',
+        reason: 'learner-cancelled',
+        receiptId: 'receipt_wrong_reason',
+      },
+      {
+        protocol: CHECKPOINT_RESULT_PROTOCOL,
+        checkpointId,
+        status: 'cancelled',
+        reason: 'not-a-real-reason',
+        receiptId: 'receipt_unknown_reason',
       },
       {
         protocol: CHECKPOINT_RESULT_PROTOCOL,

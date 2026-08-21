@@ -9,6 +9,7 @@ export {
   LEARNING_INTENT_POLICY,
   classifyLearnIntent,
   isLearnIntent,
+  isLearningBoundary,
   type LearnIntent,
   type LearnIntentDecision,
   type LearnTrigger,
@@ -26,8 +27,11 @@ export {
 export { LearningActivityBroker as default } from './broker.ts'
 export {
   routeLearningRequest,
+  routeLearningTurn,
   type LearningRoute,
   type LearningRouteDecision,
+  type LearningRouteSession,
+  type LearningTurnRouteDecision,
 } from './teaching-route.ts'
 export type {
   LearningActivityV1,
@@ -36,9 +40,12 @@ export type {
   LearningCheckpointEvidenceKindV1,
   LearningCheckpointKindV1,
   LearningCheckpointOptionV1,
+  LearningCheckpointOutcomeReasonV1,
+  LearningCheckpointCancelledReasonV1,
   LearningCheckpointResponseV1,
   LearningCheckpointResultV1,
   LearningCheckpointSkippedResultV1,
+  LearningCheckpointSkippedReasonV1,
   LearningCheckpointSubmittedResultV1,
   LearningCheckpointV1,
   LearningCheckpointWaitEnvelopeInputV1,

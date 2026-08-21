@@ -8,6 +8,7 @@
 
 import {
   classifyLearnIntent,
+  isLearningBoundary,
   type LearnIntentDecision,
 } from './learn-intent.ts'
 
@@ -16,6 +17,7 @@ export type LearningRoute =
   | 'teach-minimum'
   | 'overview'
   | 'direct'
+  | 'continue'
 
 export interface LearningRouteDecision {
   route: LearningRoute
@@ -31,8 +33,22 @@ export interface LearningRouteDecision {
     | 'confusion-repair'
     | 'learning-path'
     | 'resource-creation'
+    | 'active-segment'
     | 'direct'
   intent: LearnIntentDecision
+}
+
+/** Session-local route memory. This is not learner state and is never a profile. */
+export interface LearningRouteSession {
+  active: boolean
+  decision?: LearningRouteDecision
+}
+
+export interface LearningTurnRouteDecision extends LearningRouteDecision {
+  /** True when this user message stays inside the prior active segment. */
+  inherited: boolean
+  /** Whether the resulting route keeps a learning segment open. */
+  segment: 'active' | 'closed'
 }
 
 const SHORT_LEARNING_REQUEST = /^(?:please\s+)?(?:teach\s+me|help\s+me\s+learn|learn|understand|get\s+to\s+know|walk\s+me\s+through|take\s+me\s+through)\b|^(?:学习|教我|了解|想学)\s*/i
@@ -89,4 +105,31 @@ export function routeLearningRequest(text: string): LearningRouteDecision {
     return { route: 'calibrate', reason: 'explicit-learning', intent }
   }
   return { route: 'direct', reason: 'direct', intent }
+}
+
+/**
+ * Resolve one claimed user message with the session's current segment in
+ * mind. The first-turn classifier remains intentionally narrow; once a
+ * learning segment is active, ordinary learner responses inherit its route.
+ * Only an explicit non-learning task, reset, or topic switch closes it.
+ */
+export function routeLearningTurn(
+  text: string,
+  session: LearningRouteSession = { active: false },
+): LearningTurnRouteDecision {
+  const fresh = routeLearningRequest(text)
+  if (session.active && session.decision !== undefined && !isLearningBoundary(text)) {
+    return {
+      ...session.decision,
+      route: 'continue',
+      reason: 'active-segment',
+      inherited: true,
+      segment: 'active',
+    }
+  }
+  return {
+    ...fresh,
+    inherited: false,
+    segment: fresh.intent.intent === 'learn' ? 'active' : 'closed',
+  }
 }

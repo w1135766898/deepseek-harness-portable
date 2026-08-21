@@ -36,9 +36,14 @@ prerequisites and learning paths, conceptual why/how questions, and requested
 flashcards or study guides are learn intent. Coding or debugging, translation,
 news updates, resource recommendations, and opinion requests stay on their
 ordinary task route. Current or contested topics remain learn intent when the
-user asks for structured understanding. Bare concepts get one route-changing
-calibration question; definitions, clear confusions, and clear goals start the
-minimum useful explanation.
+   user asks for structured understanding. Bare concepts get one route-changing
+   calibration question; definitions, clear confusions, and clear goals start the
+   minimum useful explanation.
+
+Once that learning segment is active, short answers, confusion, pressure, and
+follow-up questions inherit it instead of being reclassified as new requests.
+An explicit task/topic switch, reset, completion, or closing acknowledgement ends
+the segment and restores ordinary routing.
 
 ## Non-blocking learning flow
 
@@ -50,7 +55,8 @@ minimum useful explanation.
    is genuinely useful, it first calls `learning_visual_select` with one native
    kind and purpose.
 3. The selected kind-specific `learning_visual` schema is exposed for the next
-   model step; no eight-kind visual catalog is injected into the initial
+   model step and carries the selected purpose and learner action/question; no
+   eight-kind visual catalog is injected into the initial
    context. While arguments are streaming, the tool call's place names the
    visual being prepared instead of showing a generic wait.
 4. Validation returns `visual-result@4` immediately. No lesson token, pending
@@ -97,9 +103,10 @@ same event log; a fork rebinds inherited snapshots to its new identity and then
 diverges independently. Reset appends a cleared snapshot and advances the
 revision, so a late asynchronous update cannot resurrect prior state. Disposal
 drops only the process-local fold cache. This is not a cross-session learner
-profile, personality model, learning-style classifier, or long-term mastery
-record. A learner correction is supplied in ordinary conversation and is
-accepted only as a correction—not as self-certified mastery.
+ profile, personality model, learning-style classifier, or long-term mastery
+ record. A learner correction is supplied in ordinary conversation and is
+ accepted only as a correction—not as self-certified mastery. Low-confidence
+ evidence remains useful for choosing support but cannot promote mastery.
 
 ## Session-scoped learning route
 
@@ -141,7 +148,10 @@ and must never become a per-turn Continue ceremony.
 - The pending payload may contain only the current prompt, context, expected
   evidence, answer-free options, and a self-sufficient fallback. Correct
   answers, grading rubrics, solutions, and future steps are rejected.
-- The only terminal statuses are `submitted`, `skipped`, and `cancelled`.
+- The terminal statuses remain `submitted`, `skipped`, and `cancelled`. New
+  non-submitted results also state whether the learner acted or the Client,
+  timeout, Host, or provider made the checkpoint unavailable; old v1 receipts
+  without that reason remain readable.
   Refresh recovers the same wait and draft; call and receipt replays are
   idempotent, while conflicting reuse fails closed.
 - Skip, cancel, timeout, renderer failure, or an unavailable rich Client restores

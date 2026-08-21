@@ -18,6 +18,8 @@ import {
   parseLearningResponseV2,
   type LearningVisualStatusV4,
   type LearningCheckpointResultV1,
+  type LearningCheckpointSkippedReasonV1,
+  type LearningCheckpointCancelledReasonV1,
   type LearningCheckpointV1,
   type LearningActivityV2,
   type LearningActivityV1,
@@ -221,11 +223,21 @@ function snapshotCheckpoint(value: LearningCheckpointV1): LearningCheckpointV1 {
 }
 
 function normalizeCheckpointResult(result: LearningCheckpointResultV1): LearningCheckpointResultV1 {
-  if (result.status !== 'submitted') {
+  if (result.status === 'skipped') {
     return {
       protocol: result.protocol,
       checkpointId: result.checkpointId,
-      status: result.status,
+      status: 'skipped',
+      ...(result.reason === undefined ? {} : { reason: result.reason }),
+      receiptId: result.receiptId,
+    }
+  }
+  if (result.status === 'cancelled') {
+    return {
+      protocol: result.protocol,
+      checkpointId: result.checkpointId,
+      status: 'cancelled',
+      ...(result.reason === undefined ? {} : { reason: result.reason }),
       receiptId: result.receiptId,
     }
   }
@@ -240,6 +252,22 @@ function normalizeCheckpointResult(result: LearningCheckpointResultV1): Learning
     status: 'submitted',
     response,
     receiptId: result.receiptId,
+  }
+}
+
+type CheckpointFallbackOutcome =
+  | { status: 'skipped'; reason: LearningCheckpointSkippedReasonV1 }
+  | { status: 'cancelled'; reason: LearningCheckpointCancelledReasonV1 }
+
+function checkpointFallbackResult(
+  checkpointId: string,
+  outcome: CheckpointFallbackOutcome,
+): LearningCheckpointResultV1 {
+  return {
+    protocol: CHECKPOINT_RESULT_PROTOCOL,
+    checkpointId,
+    ...outcome,
+    receiptId: randomUUID(),
   }
 }
 
@@ -553,15 +581,18 @@ export class LearningActivityBroker extends Service {
         },
       })
     }
+    const outcomeReason = result.status === 'submitted' ? undefined : result.reason
     events.push({
       type: 'assistant_move_observed',
       move: 'checkpoint',
       observation: {
         id: `${observationBase}:move`,
         source: 'assistant-output',
-        summary: `The optional checkpoint ended ${result.status}; continue in ordinary conversation.`,
+        summary: outcomeReason === undefined
+          ? `The optional checkpoint ended ${result.status}; continue in ordinary conversation.`
+          : `The optional checkpoint ended ${result.status} (${outcomeReason}); continue in ordinary conversation.`,
       },
-      moveFingerprint: `checkpoint:${request.callId}:${result.status}`,
+      moveFingerprint: `checkpoint:${request.callId}:${result.status}:${outcomeReason ?? 'legacy'}`,
     })
     this.recordAutomaticEvents(agent, events)
   }
@@ -617,17 +648,17 @@ export class LearningActivityBroker extends Service {
     callKey: string | undefined,
   ): Promise<LearningCheckpointResultV1> {
     const checkpointId = randomUUID()
-    const fallback = (status: 'skipped' | 'cancelled'): LearningCheckpointResultV1 => ({
-      protocol: CHECKPOINT_RESULT_PROTOCOL,
-      checkpointId,
-      status,
-      receiptId: randomUUID(),
-    })
+    const fallback = (outcome: CheckpointFallbackOutcome): LearningCheckpointResultV1 =>
+      checkpointFallbackResult(checkpointId, outcome)
 
-    if (!this.hasRichClient()) return fallback('skipped')
-    if (request.agent === undefined || sessionId === '' || callKey === undefined) return fallback('skipped')
+    if (!this.hasRichClient()) return fallback({ status: 'skipped', reason: 'client-unavailable' })
+    if (request.agent === undefined || sessionId === '' || callKey === undefined) {
+      return fallback({ status: 'skipped', reason: 'host-unavailable' })
+    }
     const timeoutMs = request.timeoutMs ?? DEFAULT_LEARNING_CHECKPOINT_TIMEOUT_MS
-    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return fallback('skipped')
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+      return fallback({ status: 'skipped', reason: 'host-unavailable' })
+    }
 
     const activeCall = this.pendingCheckpointSessions.get(sessionId)
     if (activeCall !== undefined && activeCall !== callKey) {
@@ -671,12 +702,8 @@ export class LearningActivityBroker extends Service {
     }, timeoutMs)
     timer.unref?.()
 
-    const fallback = (status: 'skipped' | 'cancelled'): LearningCheckpointResultV1 => ({
-      protocol: CHECKPOINT_RESULT_PROTOCOL,
-      checkpointId,
-      status,
-      receiptId: randomUUID(),
-    })
+    const fallback = (outcome: CheckpointFallbackOutcome): LearningCheckpointResultV1 =>
+      checkpointFallbackResult(checkpointId, outcome)
 
     try {
       const questions = (this.ctx as Context & { userQuestions: UserQuestionService }).userQuestions
@@ -712,25 +739,32 @@ export class LearningActivityBroker extends Service {
         if (typeof decoded === 'object' && decoded !== null
           && (decoded as { protocol?: unknown }).protocol === CHECKPOINT_RESULT_PROTOCOL) {
           result = normalizeCheckpointResult(parseLearningCheckpointResultV1(decoded, { checkpointId, checkpoint }))
-        } else result = checkpointFallbackSubmission(checkpoint, checkpointId, custom) ?? fallback('skipped')
-      } else result = fallback('skipped')
+        } else {
+          result = checkpointFallbackSubmission(checkpoint, checkpointId, custom)
+            ?? fallback({ status: 'skipped', reason: 'provider-failure' })
+        }
+      } else result = fallback({ status: 'skipped', reason: 'provider-failure' })
       return this.acceptCheckpointReceipt((request.agent as Agent).session, result)
     } catch (cause) {
       if (cause instanceof LearningProtocolError) throw cause
       if (cause instanceof LearningWaitAbort) {
-        return fallback(cause.reason === 'client-response-timeout' ? 'skipped' : 'cancelled')
+        return cause.reason === 'client-response-timeout'
+          ? fallback({ status: 'skipped', reason: 'client-response-timeout' })
+          : fallback({ status: 'cancelled', reason: cause.reason })
       }
       const code = cause instanceof UserQuestionError ? (cause as UserQuestionError & { code: string }).code : undefined
-      if (code === 'ASK_CANCELLED') return fallback('cancelled')
+      if (code === 'ASK_CANCELLED') return fallback({ status: 'cancelled', reason: 'learner-cancelled' })
       if (code === 'ASK_ABORTED') {
         const reason = state.reason ?? 'session-aborted'
-        return fallback(reason === 'client-response-timeout' ? 'skipped' : 'cancelled')
+        return reason === 'client-response-timeout'
+          ? fallback({ status: 'skipped', reason: 'client-response-timeout' })
+          : fallback({ status: 'cancelled', reason })
       }
       if (code === 'NO_PROVIDER' || code === 'DELEGATED_CALLER' || code === 'CALLER_NOT_LIVE') {
-        return fallback('skipped')
+        return fallback({ status: 'skipped', reason: 'provider-failure' })
       }
       this.ctx.logger.warn(`learning checkpoint provider failed; continuing ordinary conversation: ${String(cause)}`)
-      return fallback('skipped')
+      return fallback({ status: 'skipped', reason: 'provider-failure' })
     } finally {
       clearTimeout(timer)
       request.signal?.removeEventListener('abort', abortFromSession)

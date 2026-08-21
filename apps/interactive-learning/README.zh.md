@@ -29,11 +29,16 @@ intent；编码实现/调试、翻译改写、新闻更新、资源推荐和观�
 当前或有争议主题在用户要结构化理解时仍属于 learn intent。裸概念先做一次改变
 路线的校准；定义、明确的混淆和清晰目标直接讲最小必要概念。
 
+学习片段开启后，短回答、继续困惑、压力表达和追问会继承当前片段，不再被当作新的
+首轮请求重新分类。明确切换任务/主题、reset、完成或结束性确认会关闭片段并恢复普通
+路由。
+
 ## 非阻塞学习流程
 
 1. 助手先用普通文本解释真正缺失的概念。
 2. 只有当操控参数确实能帮助理解时，才调用一次 `learning_visual`，传入安全的
-   声明式图表。
+   声明式图表。selector 选定的教学目的及 learner action/question 会进入下一步的
+   kind-specific 工具说明，不会在选择后丢失。
 3. 参数流式传输期间，工具调用所在位置显示正在准备的视觉标题，而不是一句笼统的
    等待提示。
 4. 校验后立刻返回 `visual-result@4`。不会创建 lesson token、pending question、
@@ -70,7 +75,8 @@ learner evidence 可以是 `correct`、`partial`、`incorrect` 或未知；parti
 到新 identity，之后各自独立变化。Reset 追加清空后的新 revision，因此旧异步结果
 不能复活之前的状态；dispose 只清理进程内 fold cache。这不是跨会话用户画像、人格或
 “学习风格”分类，也不是长期掌握度。学习者可在普通对话中纠正状态，但自称掌握不能
-替代独立正确证据。
+替代独立正确证据。低置信度证据可以帮助选择支架，但不能提升 mastery；只有置信度
+足够、正确且独立的 learner evidence 才可以。
 
 ## Session 内学习路线
 
@@ -100,8 +106,10 @@ learner evidence 可以是 `correct`、`partial`、`incorrect` 或未知；parti
 - 卡片标题显示这次要求的认知动作（预测、解释、对比、迁移或尝试），而不是“检查点”这类内部机制标签——标准策略本就禁止把普通回合标注成机制名称。
 - pending payload 只能包含当前 prompt、context、expected evidence、无答案 options
   和自洽 fallback；正确答案、评分 rubric、solution 与未来步骤都会被拒绝。
-- 终态只有 `submitted`、`skipped`、`cancelled`。刷新恢复同一 wait 和 draft；call 与
-  receipt 重放幂等，冲突复用则 fail closed。
+- 终态保持 `submitted`、`skipped`、`cancelled`。新的非提交结果还会区分学习者主动
+  skip/cancel 与 Client 不可用、timeout、Host/provider failure；旧的无 reason v1
+  receipt 仍可读取。刷新恢复同一 wait 和 draft；call 与 receipt 重放幂等，冲突复用
+  则 fail closed。
 - Skip、Cancel、timeout、renderer failure 或无 rich Client 都会恢复普通对话；不会再
   产生 Reveal、animation、Continue 或第二次等待。
 

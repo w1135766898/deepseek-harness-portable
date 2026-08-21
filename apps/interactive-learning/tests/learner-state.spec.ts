@@ -308,6 +308,49 @@ describe('LearnerState reducer', () => {
     expect(state.evidence.at(-1)?.kind).toBe('transfer')
   })
 
+  it('keeps low-confidence correctness tentative, including fresh transfer', () => {
+    let state = reduceLearnerState(createInitialLearnerState('session-low-confidence'), {
+      type: 'learner_evidence_observed',
+      evidence: {
+        kind: 'explanation',
+        summary: 'A low-confidence correct explanation',
+        confidence: 'low',
+        correctness: 'correct',
+        independence: 'independent',
+      },
+      observation: observation('low-confidence-explanation'),
+    })
+    expect(state.mastery).toBe('unseen')
+
+    state = reduceLearnerState(state, {
+      type: 'learner_evidence_observed',
+      evidence: {
+        kind: 'transfer',
+        transferContext: 'fresh',
+        summary: 'A low-confidence fresh transfer',
+        confidence: 'low',
+        correctness: 'correct',
+        independence: 'independent',
+      },
+      observation: observation('low-confidence-transfer', 'learner-action'),
+    })
+    expect(state.mastery).toBe('unseen')
+
+    state = reduceLearnerState(state, {
+      type: 'learner_evidence_observed',
+      evidence: {
+        kind: 'transfer',
+        transferContext: 'fresh',
+        summary: 'A sufficiently confident fresh transfer',
+        confidence: 'medium',
+        correctness: 'correct',
+        independence: 'independent',
+      },
+      observation: observation('medium-confidence-transfer', 'learner-action'),
+    })
+    expect(state.mastery).toBe('transfer')
+  })
+
   it('does not promote mastery from guided, unevaluated, self-claimed, or merely submitted work', () => {
     let state = createInitialLearnerState('session-a')
     const unqualified = [

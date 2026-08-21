@@ -324,7 +324,7 @@ function assertEventSourceMatrix(event, observation) {
 	if (observation.source !== "learner-message" && observation.source !== "learner-action") throw new TypeError(`${event.type} requires source learner-message or learner-action`);
 }
 function isIndependentlyCorrectEvidence(evidence) {
-	return (evidence.source === "learner-message" || evidence.source === "learner-action") && evidence.correctness === "correct" && evidence.independence === "independent" && evidence.kind !== "error";
+	return (evidence.source === "learner-message" || evidence.source === "learner-action") && evidence.correctness === "correct" && evidence.independence === "independent" && evidence.confidence !== "low" && evidence.kind !== "error";
 }
 function evidenceMastery(evidence) {
 	const independentlyCorrect = evidence.filter(isIndependentlyCorrectEvidence);

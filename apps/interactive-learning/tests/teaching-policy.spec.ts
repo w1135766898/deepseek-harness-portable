@@ -71,9 +71,10 @@ describe('authoritative compact Learning teaching policy', () => {
       'Use a visual only when one relationship is materially clearer',
       'use a checkpoint only when the learner\'s response will change the next move',
       'Both are optional and non-blocking',
-      'Load the interactive-teaching Skill only for detailed visual or supplied-source construction',
+      'Load the interactive-teaching Skill when detailed diagnosis, pressure, integrity, visual, or supplied-source guidance is needed',
       'Never invent facts, citations, source anchors, learner evidence, or confidence',
       '`learning_state_update`',
+      'Low-confidence evidence may guide support but cannot establish mastery',
     )
     expect(LEARNING_TEACHING_POLICY).not.toContain('2 to 48 nodes')
     expect(LEARNING_TEACHING_POLICY).not.toContain('Mermaid')

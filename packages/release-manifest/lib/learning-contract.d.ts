@@ -6,7 +6,7 @@ export declare const INTERACTIVE_LEARNING_DISTRIBUTION_FILES: readonly ["package
 /** App-relative runtime files that register packaged experience-pack hosts. */
 export declare const INTERACTIVE_LEARNING_APP_FILES: readonly ["lib/packaged-bin.js"];
 /** Public declarations intentionally shipped by the Learning package. */
-export declare const INTERACTIVE_LEARNING_PUBLIC_DECLARATION_FILES: readonly ["lib/types/agent.d.ts", "lib/types/bootstrap.d.ts", "lib/types/broker.d.ts", "lib/types/client/ActivityRenderer.d.ts", "lib/types/client/index.d.ts", "lib/types/client/lifecycle.d.ts", "lib/types/client/types.d.ts", "lib/types/eval.d.ts", "lib/types/index.d.ts", "lib/types/installer.d.ts", "lib/types/learner-state.d.ts", "lib/types/preset.d.ts", "lib/types/protocol.d.ts"];
+export declare const INTERACTIVE_LEARNING_PUBLIC_DECLARATION_FILES: readonly ["lib/types/agent.d.ts", "lib/types/bootstrap.d.ts", "lib/types/broker.d.ts", "lib/types/client/ActivityRenderer.d.ts", "lib/types/client/index.d.ts", "lib/types/client/lifecycle.d.ts", "lib/types/client/types.d.ts", "lib/types/eval.d.ts", "lib/types/index.d.ts", "lib/types/installer.d.ts", "lib/types/learn-intent.d.ts", "lib/types/learner-state.d.ts", "lib/types/preset.d.ts", "lib/types/protocol.d.ts", "lib/types/teaching-route.d.ts"];
 export interface InteractiveLearningCompositionRow {
     readonly id: string;
     readonly module: string;

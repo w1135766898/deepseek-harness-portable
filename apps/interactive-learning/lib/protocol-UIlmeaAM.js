@@ -840,6 +840,7 @@ function parseLearningCheckpointResultV1(value, expected = {}) {
 		"protocol",
 		"checkpointId",
 		"status",
+		"reason",
 		"receiptId"
 	], "checkpointResult", issues);
 	if (value.protocol !== "dsh-learning/checkpoint-result@1") issues.push(`checkpointResult.protocol must be ${CHECKPOINT_RESULT_PROTOCOL}`);
@@ -850,6 +851,20 @@ function parseLearningCheckpointResultV1(value, expected = {}) {
 		"skipped",
 		"cancelled"
 	].includes(value.status)) issues.push("checkpointResult.status must be submitted, skipped, or cancelled");
+	if (value.reason !== void 0 && typeof value.reason !== "string") issues.push("checkpointResult.reason must be a string");
+	else if (value.status === "skipped" && value.reason !== void 0 && ![
+		"learner-skipped",
+		"client-unavailable",
+		"client-response-timeout",
+		"host-unavailable",
+		"provider-failure"
+	].includes(value.reason)) issues.push("checkpointResult.reason is not valid for skipped status");
+	else if (value.status === "cancelled" && value.reason !== void 0 && ![
+		"learner-cancelled",
+		"session-aborted",
+		"plugin-disposed"
+	].includes(value.reason)) issues.push("checkpointResult.reason is not valid for cancelled status");
+	else if (value.status === "submitted" && value.reason !== void 0) issues.push("checkpointResult.reason is allowed only for skipped or cancelled status");
 	if (expected.checkpointId !== void 0 && value.checkpointId !== expected.checkpointId) issues.push("checkpointResult.checkpointId does not match the pending checkpoint");
 	let checkpoint;
 	if (expected.checkpoint !== void 0) try {
