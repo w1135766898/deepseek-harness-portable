@@ -28,6 +28,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec tsx scripts/build/client-manifest-bridge.ts
       - run: sudo apt-get update && sudo apt-get install -y musl-tools bubblewrap
+      - name: Configure Electron sandbox helper
+        run: |
+          electron_sandbox="$(find node_modules -type f -path '*/electron/dist/chrome-sandbox' -print -quit)"
+          test -n "$electron_sandbox"
+          sudo chown root:root "$electron_sandbox"
+          sudo chmod 4755 "$electron_sandbox"
       - run: test "$(node -p 'process.platform + "-" + process.arch')" = linux-x64
       - run: pnpm run desktop:package:linux
       - uses: actions/upload-artifact@v4

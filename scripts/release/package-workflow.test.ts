@@ -66,3 +66,15 @@ test('CI materializes portable client manifests before building the pinned kerne
   assert.ok(bridgeIndex >= 0, 'verify must create the portable client manifest bridge')
   assert.ok(kernelBuildIndex > bridgeIndex, 'verify must create the bridge before the pinned kernel build')
 })
+
+test('Linux packaging prepares Electron sandbox permissions before starting Electron', () => {
+  const workflow = load(readFileSync(resolve(root, '.github', 'workflows', 'package.yml'), 'utf8')) as Workflow
+  const steps = workflow.jobs['linux-x64']?.steps ?? []
+  const sandboxStep = steps.find(step => step.run?.includes("find node_modules -type f -path '*/electron/dist/chrome-sandbox'"))
+  const packageStep = steps.find(step => step.run === 'pnpm run desktop:package:linux')
+  assert.ok(sandboxStep, 'Linux packaging must configure the Electron chrome-sandbox helper')
+  assert.match(sandboxStep.run ?? '', /sudo chown root:root/)
+  assert.match(sandboxStep.run ?? '', /sudo chmod 4755/)
+  assert.ok(packageStep, 'Linux packaging must run the Linux package command')
+  assert.ok(steps.indexOf(packageStep) > steps.indexOf(sandboxStep), 'sandbox permissions must be configured before packaging')
+})
