@@ -57,17 +57,17 @@ Before first launch, verify the checksum published alongside the artifact. Windo
 - Native sidebar logo and system theme sync, Windows 11 Mica/title-bar styling, native macOS menus, a staged startup splash, and persisted multi-monitor-safe window bounds.
 - Minimal mode uses WSL Bash on Windows and the native `/bin/bash` POSIX PTY on Linux/macOS. Linux sandbox-capable modes use bwrap or fail-closed Landlock according to the upstream policy.
 - Preinstalled, removable plugin marketplace with paginated GitHub search, one-click installation, update management, and agent-facing market tools.
-- Vision Bridge's `view_image` analyzes local PNG, JPEG, WebP, and GIF files through the kernel attachment and model services. It can automatically select a configured image-capable model or pin one in plugin settings, with no separate endpoint or API key.
+- Vision Bridge's `view_image` analyzes local PNG, JPEG, WebP, and GIF files through the kernel attachment and model services. It can automatically select a configured image-capable model—including the official `deepseek-v4-flash-vision-exp` catalog entry—or pin one in plugin settings, with no separate endpoint or API key.
 - Learning mode provides non-blocking semantic visuals, selective understanding checks, and session-scoped learning routes. Teaching state advances from learner evidence and survives refresh, resume, and message compaction.
 
 ## Latest release
 
 | Item | Version |
 | --- | --- |
-| Release | DeepSeek Harness Desktop **v1.4.1** ([download](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.4.1)) |
-| Distribution | 1.4.1 |
+| Release | DeepSeek Harness Desktop **v1.4.2** ([download](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.4.2)) |
+| Distribution | 1.4.2 |
 | Desktop shell | 0.1.0-shell.2 |
-| Kernel | 0.1.0-rc.8 |
+| Kernel | 0.1.1-rc.1 |
 
 Read the [English release notes](RELEASE_NOTES.md) or open **Release Notes** from the desktop tray menu.
 

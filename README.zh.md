@@ -57,17 +57,17 @@ DeepSeek Harness Desktop 是 [DeepSeek Harness](https://github.com/deepseek-ai/d
 - 原生侧边栏 Logo 集成桌面菜单、系统主题同步、Windows 11 Mica/标题栏样式、macOS 原生菜单、分阶段启动过渡，以及适配多显示器的窗口状态记忆。
 - 极简模式在 Windows 使用 WSL Bash，在 Linux/macOS 使用原生 `/bin/bash` POSIX PTY；Linux 沙箱模式遵循上游 bwrap/Landlock 失败关闭策略。
 - 预装可移除的插件市场，支持 GitHub 分页搜索、一键安装、插件更新管理和 Agent 市场工具。
-- Vision Bridge 的 `view_image` 复用内核附件与模型服务分析本地 PNG、JPEG、WebP 和 GIF；可自动选择已配置的图片模型，也可在插件设置中固定模型，不需要单独配置端点或 API 密钥。
+- Vision Bridge 的 `view_image` 复用内核附件与模型服务分析本地 PNG、JPEG、WebP 和 GIF；可自动选择已配置的图片模型（包括官方 `deepseek-v4-flash-vision-exp` 目录项），也可在插件设置中固定模型，不需要单独配置端点或 API 密钥。
 - Learning 模式提供非阻塞的语义图示、按需理解检查和会话内学习路线；教学状态依据学习者证据更新，并可随刷新、恢复和消息压缩延续。
 
 ## 最新发布
 
 | 项目 | 版本 |
 | --- | --- |
-| 发布 | DeepSeek Harness Desktop **v1.4.1**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.4.1)) |
-| 分发版本 | 1.4.1 |
+| 发布 | DeepSeek Harness Desktop **v1.4.2**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.4.2)) |
+| 分发版本 | 1.4.2 |
 | 桌面外壳 | 0.1.0-shell.2 |
-| 内核 | 0.1.0-rc.8 |
+| 内核 | 0.1.1-rc.1 |
 
 请阅读[中文发布说明](RELEASE_NOTES.zh.md)，或在桌面端托盘菜单中打开“更新日志”。
 

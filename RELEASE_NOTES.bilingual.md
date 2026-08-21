@@ -1,8 +1,8 @@
-# DeepSeek Harness Desktop v1.4.1
+# DeepSeek Harness Desktop v1.4.2
 
-Windows x64 桌面版 · 2026-08-20
+Windows x64 桌面版 · 2026-08-21
 
-v1.4.1 在 0.1.0-rc.8 桌面基线上完成 Learning 图示可读性重构：状态可测、焦点上下文可追踪，Windows x64 产物也按新的分发身份重新构建和校验。
+v1.4.2 在 0.1.1-rc.1 桌面基线上完成 Learning 图示可读性重构：状态可测、焦点上下文可追踪，Windows x64 产物也按新的分发身份重新构建和校验。
 
 ## Learning 模式
 
@@ -16,21 +16,22 @@ v1.4.1 在 0.1.0-rc.8 桌面基线上完成 Learning 图示可读性重构：状
 
 ## 视觉能力与内核
 
-- **保留 rc.8 内核基线**：固定的 DeepSeek Harness 内核继续使用 0.1.0-rc.8，桌面基线重建为 v1.4.1。
+- **更新上游内核**：固定的 DeepSeek Harness 内核已更新到 0.1.1-rc.1，官方模型目录新增明确支持图片输入的 `deepseek-v4-flash-vision-exp`。
 - **`view_image` 改走原生模型通道**：图片经附件服务提交，并通过内核 LLM 通道调用已配置的图像模型，沿用现有的服务商凭据、重试策略与用量计量，不再维护独立端点或 API 密钥。
-- **按能力选择模型**：未固定模型时自动选择模型目录中声明支持图片输入的路由；固定模型不可用或明确不支持图片时，返回可操作的配置提示。
+- **原生优先的混合行为**：原生支持图片的对话模型直接接收图片块；纯文本模型使用 Vision Bridge 后备路径，后续纯文字轮次继续使用当前文字模型。
+- **按能力选择模型**：未固定模型时自动选择模型目录中声明支持图片输入的路由；同名模型可用 `provider/model` 固定，模型不可用或明确不支持图片时返回可操作提示。
 
 ## 发布与更新可靠性
 
-- **发布身份同步**：内置发布清单、更新器校验、安装器文件名、桌面文档和更新日志元数据统一指向 v1.4.1。
+- **发布身份同步**：内置发布清单、更新器校验、安装器文件名、桌面文档和更新日志元数据统一指向 v1.4.2。
 - **已验证产物刷新**：Windows ZIP 与 Setup 安装包从当前源码重新构建，完成原生插件 smoke 检查，并生成新的 SHA-256 校验值。
 - **既有桌面能力保持不变**：透明插件市场、原生图片附件、无控制台启动器和覆盖安装恢复能力继续保留。
 
 ## 组件版本
 
-- 分发：1.4.1
+- 分发：1.4.2
 - 桌面外壳：0.1.0-shell.2
-- 运行时内核：0.1.0-rc.8
+- 运行时内核：0.1.1-rc.1
 
 ---
 
@@ -38,7 +39,7 @@ v1.4.1 在 0.1.0-rc.8 桌面基线上完成 Learning 图示可读性重构：状
 
 Windows x64 desktop release · 2026-08-20
 
-v1.4.1 carries the Learning visual-legibility refactor on the 0.1.0-rc.8 desktop baseline. It makes visual state measurable, keeps focus context readable, and rebuilds the Windows x64 artifacts under the new distribution identity.
+v1.4.2 carries the Learning visual-legibility refactor on the 0.1.1-rc.1 desktop baseline. It makes visual state measurable, keeps focus context readable, and rebuilds the Windows x64 artifacts under the new distribution identity.
 
 ### Learning Mode
 
@@ -52,21 +53,22 @@ v1.4.1 carries the Learning visual-legibility refactor on the 0.1.0-rc.8 desktop
 
 ### Vision and Kernel
 
-- **Kernel baseline retained**: the pinned DeepSeek Harness kernel remains 0.1.0-rc.8 while the desktop baseline is rebuilt as v1.4.1.
+- **Upstream kernel updated**: the pinned DeepSeek Harness kernel is now 0.1.1-rc.1, and its official catalog publishes `deepseek-v4-flash-vision-exp` as image-capable.
 - **`view_image` on the native model path**: images are committed through the attachment service and sent to a configured image-capable model over the kernel LLM channel, reusing existing provider credentials, retries, and usage metering instead of maintaining a separate endpoint or API key.
-- **Capability-based model selection**: when no model is pinned, the bridge selects the first catalog route that declares image input; unavailable or explicitly text-only pinned models return actionable configuration guidance.
+- **Native-first hybrid behavior**: image-capable conversation models receive native image blocks directly; text-only models use the Vision Bridge fallback, while later text-only turns stay on the selected text model.
+- **Capability-based model selection**: when no model is pinned, the bridge selects the first catalog route that declares image input; `provider/model` pins disambiguate duplicate IDs, and invalid or explicitly text-only pins return actionable guidance.
 
 ### Release & Update Reliability
 
-- **Synchronized release identity**: the bundled release manifest, updater checks, installer filenames, desktop documentation, and release-notes metadata all target v1.4.1.
+- **Synchronized release identity**: the bundled release manifest, updater checks, installer filenames, desktop documentation, and release-notes metadata all target v1.4.2.
 - **Verified artifact refresh**: the Windows ZIP and Setup installer are rebuilt from the current source, re-tested with native addon smoke checks, and accompanied by fresh SHA-256 values.
 - **Existing desktop capabilities retained**: the transparent plugin marketplace, native image attachments, no-console launcher, and overwrite-install recovery remain available.
 
 ### Component Versions
 
-- Distribution: 1.4.1
+- Distribution: 1.4.2
 - Desktop Shell: 0.1.0-shell.2
-- Runtime Kernel: 0.1.0-rc.8
+- Runtime Kernel: 0.1.1-rc.1
 
 ---
 
@@ -77,6 +79,6 @@ v1.4.1 carries the Learning visual-legibility refactor on the 0.1.0-rc.8 desktop
 The final portable ZIP and Setup installer SHA-256 values are recorded in `SHA256SUMS.txt` and attached to the GitHub Release.
 
 ```text
-C9C81AAA4E157D8210127A45197B6E485F6B444D882D8C550D49FF65144333FC *DeepSeek-Harness-1.4.1-win32-x64.zip
-22FEFD5CA7DA50AC077094EFB45971FEC4ECDEC4C109A5F326C2885F1C1CFB98 *DeepSeek-Harness-Setup-1.4.1-win32-x64.exe
+6F97D651958BC8F07D9C85851FEE5BFFBA34092BDD94DFD7A1862DCD554947F5 *DeepSeek-Harness-1.4.2-win32-x64.zip
+981A02633B9E2D6F1FDC6A098E7FD93D7542329DD310D6B813733D5DDB30CA7F *DeepSeek-Harness-Setup-1.4.2-win32-x64.exe
 ```

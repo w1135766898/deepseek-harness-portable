@@ -1,10 +1,10 @@
-# DeepSeek Harness Desktop v1.4.1
+# DeepSeek Harness Desktop v1.4.2
 
 [中文](RELEASE_NOTES.zh.md)
 
-Windows x64, macOS Apple Silicon, and Linux x64 desktop release · 2026-08-20
+Windows x64, macOS Apple Silicon, and Linux x64 desktop release · 2026-08-21
 
-v1.4.1 carries the Learning visual-legibility refactor on the 0.1.0-rc.8 desktop baseline. It makes visual state measurable, keeps focus context readable, and rebuilds the Windows x64 artifacts under the new distribution identity.
+v1.4.2 carries the Learning visual-legibility refactor on the 0.1.1-rc.1 desktop baseline. It makes visual state measurable, keeps focus context readable, and rebuilds the Windows x64 artifacts under the new distribution identity.
 
 ## Learning Mode
 
@@ -18,22 +18,23 @@ v1.4.1 carries the Learning visual-legibility refactor on the 0.1.0-rc.8 desktop
 
 ## Vision and Kernel
 
-- **Kernel baseline retained**: the pinned DeepSeek Harness kernel remains 0.1.0-rc.8 while the desktop baseline is rebuilt as v1.4.1.
+- **Upstream kernel updated**: the pinned DeepSeek Harness kernel is now 0.1.1-rc.1. Its official catalog publishes `deepseek-v4-flash-vision-exp` as an image-capable model.
 - **`view_image` on the native model path**: images are committed through the attachment service and sent to a configured image-capable model over the kernel LLM channel, reusing existing provider credentials, retries, and usage metering instead of maintaining a separate endpoint or API key.
-- **Capability-based model selection**: when no model is pinned, the bridge selects the first catalog route that declares image input; unavailable or explicitly text-only pinned models return actionable configuration guidance.
+- **Native-first hybrid behavior**: image-capable conversation models receive native image blocks directly; text-only models use the Vision Bridge fallback, while later text-only turns stay on the selected text model.
+- **Capability-based model selection**: when no model is pinned, the bridge selects the first catalog route that declares image input; `provider/model` pins can disambiguate duplicate IDs, and unavailable or explicitly text-only pins return actionable guidance.
 
 ## Release & Update Reliability
 
-- **Synchronized release identity**: the bundled release manifest, updater checks, installer filenames, desktop documentation, and release-notes metadata all target v1.4.1.
+- **Synchronized release identity**: the bundled release manifest, updater checks, installer filenames, desktop documentation, and release-notes metadata all target v1.4.2.
 - **Verified artifact refresh**: the Windows ZIP and Setup installer are rebuilt from the current source, re-tested with native addon smoke checks, and accompanied by fresh SHA-256 values.
 - **Existing desktop capabilities retained**: the transparent plugin marketplace, native image attachments, no-console launcher, and overwrite-install recovery remain available.
 
 ## Components
 
-- Distribution: 1.4.1
+- Distribution: 1.4.2
 - Desktop shell: 0.1.0-shell.2
-- Kernel: 0.1.0-rc.8 (@deepseek-ai/dsh-web-app)
-- Tag: v1.4.1
+- Kernel: 0.1.1-rc.1 (@deepseek-ai/dsh-web-app)
+- Tag: v1.4.2
 
 ## Checksums and security
 

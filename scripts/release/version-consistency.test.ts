@@ -5,9 +5,9 @@ import { test } from 'node:test'
 import { resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..', '..')
-const approvedReleaseVersion = '1.4.1'
-const dependencyManifestSnapshot = 'f34ae592ebb18963b15c862a94f24b6afc0d18ad312790162716f79e0ae05a48'
-const lockfileSnapshot = '4af4e6bbcc9835b74b8bc2aa69e2c73b8d61d0b56f0c629cf262048ded57f6ac'
+const approvedReleaseVersion = '1.4.2'
+const dependencyManifestSnapshot = '473c0ce368618e5d207cda8bd19f2470112ecd2add795122e8c44d633b7b5c06'
+const lockfileSnapshot = '9226e05e32d064732a9f2a30c50575b0c02cb6d1c7a771b4992b61d71de4faa5'
 
 const packageVersions = {
   'package.json': '0.1.0',
