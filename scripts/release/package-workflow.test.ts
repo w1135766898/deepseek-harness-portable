@@ -70,7 +70,7 @@ test('CI materializes portable client manifests before building the pinned kerne
 test('Linux packaging prepares Electron sandbox permissions before starting Electron', () => {
   const workflow = load(readFileSync(resolve(root, '.github', 'workflows', 'package.yml'), 'utf8')) as Workflow
   const steps = workflow.jobs['linux-x64']?.steps ?? []
-  const downloadStep = steps.find(step => step.run === 'pnpm exec electron --version')
+  const downloadStep = steps.find(step => step.run === 'pnpm --filter dsh-desktop-web-pkg exec electron --version')
   const sandboxStep = steps.find(step => step.run?.includes("find . -path '*/electron/dist/chrome-sandbox'"))
   const packageStep = steps.find(step => step.run === 'pnpm run desktop:package:linux')
   assert.ok(downloadStep, 'Linux packaging must download the Electron runtime before configuring its sandbox helper')

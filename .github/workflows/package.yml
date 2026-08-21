@@ -31,7 +31,7 @@ jobs:
       - name: Download Electron runtime
         env:
           ELECTRON_DISABLE_SANDBOX: '1'
-        run: pnpm exec electron --version
+        run: pnpm --filter dsh-desktop-web-pkg exec electron --version
       - name: Configure Electron sandbox helper
         run: |
           electron_sandbox="$(find . -path '*/electron/dist/chrome-sandbox' -print -quit)"
