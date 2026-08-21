@@ -1,6 +1,7 @@
 {
   "name": "@dsh-portable/runtime",
   "version": "0.1.0",
+  "homepage": "https://github.com/wsnxxxs/deepseek-harness-portable",
   "private": true,
   "type": "module",
   "main": "lib/packaged-bin.js",
