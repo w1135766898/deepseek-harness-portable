@@ -29,7 +29,7 @@ jobs:
       - run: pnpm exec tsx scripts/build/client-manifest-bridge.ts
       - run: sudo apt-get update && sudo apt-get install -y musl-tools bubblewrap
       - run: test "$(node -p 'process.platform + "-" + process.arch')" = linux-x64
-      - run: pnpm run desktop:package:linux -- --no-cache
+      - run: pnpm run desktop:package:linux
       - uses: actions/upload-artifact@v4
         with:
           name: verified-linux-x64
@@ -58,7 +58,7 @@ jobs:
           if ((node -p "process.platform + '-' + process.arch") -ne 'win32-x64') { throw 'native win32-x64 runner required' }
           wsl.exe --status
           if ($LASTEXITCODE -ne 0) { throw 'working WSL distribution required' }
-      - run: pnpm run desktop:package:win -- --no-cache
+      - run: pnpm run desktop:package:win
       - uses: actions/upload-artifact@v4
         with:
           name: verified-win32-x64
@@ -83,7 +83,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec tsx scripts/build/client-manifest-bridge.ts
       - run: test "$(node -p 'process.platform + "-" + process.arch')" = darwin-arm64
-      - run: pnpm run desktop:package:mac -- --no-cache
+      - run: pnpm run desktop:package:mac
       - uses: actions/upload-artifact@v4
         with:
           name: verified-darwin-arm64

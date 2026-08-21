@@ -46,7 +46,7 @@ test('native package jobs upload the exact verified output produced by their pac
     const bridgeIndex = steps.findIndex(step => step.run === 'pnpm exec tsx scripts/build/client-manifest-bridge.ts')
     const buildStep = steps.find(step => step.run?.includes(`pnpm run ${target.script}`))
     assert.ok(buildStep, `${target.job} must run ${target.script}`)
-    assert.equal(buildStep.run, `pnpm run ${target.script} -- --no-cache`)
+    assert.equal(buildStep.run, `pnpm run ${target.script}`)
     const buildIndex = steps.indexOf(buildStep)
     assert.ok(bridgeIndex >= 0, `${target.job} must create the portable client manifest bridge`)
     assert.ok(buildIndex > bridgeIndex, `${target.job} must create the bridge before packaging`)
