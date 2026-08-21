@@ -915,7 +915,8 @@ if (!isSplashDocument) {
       return
     }
     if (action === 'desktop-about-and-updates') {
-      sendMenuAction('release-notes')
+      closeMenu()
+      void openModal({ mode: 'history' })
       return
     }
     if (action === 'desktop-check-updates') {
@@ -965,7 +966,8 @@ if (!isSplashDocument) {
       return
     }
     if (action === 'desktop-open-browser') {
-      sendMenuAction('open-browser')
+      closeMenu()
+      window.open(window.location.href, '_blank')
       return
     }
     if (action === 'health-reconnect') {

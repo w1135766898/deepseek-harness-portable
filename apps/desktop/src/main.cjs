@@ -31,7 +31,6 @@ const { shouldDisplayDesktopWindows } = require('./window-display-policy.cjs')
 const {
   iconPath: platformIconPath,
   nativeShellState,
-  openBrowser: openBrowserNative,
   releaseAssetName: platformReleaseAssetName,
 } = require('./desktop-platform.cjs')
 const {
@@ -1074,7 +1073,7 @@ async function openWebUiInBrowser() {
     })
     return
   }
-  openBrowserNative(harnessUrl)
+  void shell.openExternal(harnessUrl)
 }
 
 function visibleDialogParent() {
