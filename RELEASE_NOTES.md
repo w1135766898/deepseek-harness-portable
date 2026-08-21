@@ -1,40 +1,30 @@
-# DeepSeek Harness Desktop v1.4.2
+# DeepSeek Harness Desktop v1.5.0
 
 [中文](RELEASE_NOTES.zh.md)
 
 Windows x64, macOS Apple Silicon, and Linux x64 desktop release · 2026-08-21
 
-v1.4.2 carries the Learning visual-legibility refactor on the 0.1.1-rc.1 desktop baseline. It makes visual state measurable, keeps focus context readable, and rebuilds the Windows x64 artifacts under the new distribution identity.
+v1.5.0 mainly updates Learning Mode and image understanding, and upgrades the underlying kernel.
 
-## Learning Mode
+## Major Features
 
-- **Unified Learning UI**: teaching visuals and optional understanding checks now share design tokens, card styling, and focus behavior. Figures use one Tab stop with arrow-key navigation, screen-reader announcements, and structured text alternatives.
-- **More natural teaching flow**: ordinary answers remain the default. Non-blocking visuals appear only when they materially help, and understanding checks are reserved for moments that change the next teaching move instead of creating repeated Reveal/Continue steps.
-- **Session-scoped learning routes**: complex goals can keep a tentative route of up to six steps, advanced only by evidence the learner provides. State survives refresh, resume, and message compaction while remaining isolated after reset or session forks.
-- **Reliable visual state**: session updates no longer rewind sequences, collapse revealed recall cards, or resample curves. A composition without the Learning Client now reports the visual as unavailable and falls back to a complete prose explanation.
-- **Measurable visual states**: `overview`, `current`, `related`, `context`, `visited`, `inactive`, `selected`, and `disabled` use explicit strength data. `context` is 0.62, `inactive` is 0.55, and `disabled` is the only intentionally subdued state at 0.38; the value is applied once through `--lx-vs-alpha`.
-- **Readable node-link layout**: CJK-aware measurement and wrapping drive node sizes, columns, and the canvas. Group bands, edge-label backing, rectangle-boundary intersections, responsive centering, a 0.82 fit-to-width floor, and scroll fallback keep dense diagrams legible.
-- **Shared renderer contract**: all eight renderers use the same shell, controls, sequence rail, selection slot, empty state, legend, forced-colors, and reduced-motion primitives, backed by 63 visual-legibility checks.
+- **Learning Mode overhaul**: added interactive teaching visuals, understanding checks, and session-scoped learning routes, with accessible presentation and session recovery.
 
 ## Vision and Kernel
 
-- **Upstream kernel updated**: the pinned DeepSeek Harness kernel is now 0.1.1-rc.1. Its official catalog publishes `deepseek-v4-flash-vision-exp` as an image-capable model.
-- **`view_image` on the native model path**: images are committed through the attachment service and sent to a configured image-capable model over the kernel LLM channel, reusing existing provider credentials, retries, and usage metering instead of maintaining a separate endpoint or API key.
-- **Native-first hybrid behavior**: image-capable conversation models receive native image blocks directly; text-only models use the Vision Bridge fallback, while later text-only turns stay on the selected text model.
-- **Capability-based model selection**: when no model is pinned, the bridge selects the first catalog route that declares image input; `provider/model` pins can disambiguate duplicate IDs, and unavailable or explicitly text-only pins return actionable guidance.
+- **Native image understanding**: image-capable models receive images directly, while text-only models continue to use the Vision Bridge fallback.
+- **Kernel update**: updated to DeepSeek Harness 0.1.1-rc.1, including the image-capable `deepseek-v4-flash-vision-exp` model.
 
-## Release & Update Reliability
+## Fixes
 
-- **Synchronized release identity**: the bundled release manifest, updater checks, installer filenames, desktop documentation, and release-notes metadata all target v1.4.2.
-- **Verified artifact refresh**: the Windows ZIP and Setup installer are rebuilt from the current source, re-tested with native addon smoke checks, and accompanied by fresh SHA-256 values.
-- **Existing desktop capabilities retained**: the transparent plugin marketplace, native image attachments, no-console launcher, and overwrite-install recovery remain available.
+- **Bug fixes and stability improvements.**
 
 ## Components
 
-- Distribution: 1.4.2
+- Distribution: 1.5.0
 - Desktop shell: 0.1.0-shell.2
 - Kernel: 0.1.1-rc.1 (@deepseek-ai/dsh-web-app)
-- Tag: v1.4.2
+- Tag: v1.5.0
 
 ## Checksums and security
 

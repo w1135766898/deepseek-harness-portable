@@ -35,7 +35,7 @@ function settingsDescribeUrl(baseUrl) {
  */
 function parseBootManifest(html) {
   if (typeof html !== 'string') return undefined
-  const match = html.match(/window\.__DSH_BOOT__\s*=\s*(\{[\s\S]*?\})\s*<\/script>/)
+  const match = html.match(/(?:window\.__DSH_BOOT__|globalThis\[\s*["']__DSH_BOOT__["']\s*\])\s*=\s*(\{[\s\S]*?\})\s*<\/script>/)
   if (!match) return undefined
   try {
     const manifest = JSON.parse(match[1])

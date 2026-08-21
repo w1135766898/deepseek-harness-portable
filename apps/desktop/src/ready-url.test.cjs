@@ -1,7 +1,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const { createServer } = require('node:http')
-const { hasRequiredClientGraph, readyUrl, settingsDescribeUrl, waitForOnboardingReady } = require('./ready-url.cjs')
+const { hasRequiredClientGraph, parseBootManifest, readyUrl, settingsDescribeUrl, waitForOnboardingReady } = require('./ready-url.cjs')
 
 test('extracts only the loopback readiness URL', () => {
   assert.equal(readyUrl('dsh web: http://127.0.0.1:43127\n'), 'http://127.0.0.1:43127')
@@ -45,6 +45,12 @@ test('client readiness requires the portable feature rows', () => {
       { id: '@dsh-portable/vision-bridge', inject: ['@deepseek-ai/dsh-client-runtime'] },
     ],
   }), true)
+})
+
+test('parses the current globalThis boot manifest assignment', () => {
+  const manifest = { entries: [{ id: '@dsh-portable/interactive-learning', inject: [] }] }
+  const html = `<script>globalThis["__DSH_BOOT__"] = ${JSON.stringify(manifest)}</script>`
+  assert.deepEqual(parseBootManifest(html), manifest)
 })
 
 test('waits for onboarding and the complete client graph instead of trusting the first HTTP 200', async () => {
