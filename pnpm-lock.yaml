@@ -206,6 +206,9 @@ importers:
       '@deepseek-ai/dsh-attachment-local':
         specifier: workspace:^
         version: link:../../vendor/deepseek-harness/packages/attachment/attachment-local
+      '@deepseek-ai/dsh-authorization':
+        specifier: workspace:^
+        version: link:../../vendor/deepseek-harness/packages/credentials/authorization
       '@deepseek-ai/dsh-base':
         specifier: workspace:^
         version: link:../../vendor/deepseek-harness/packages/bundle/base
@@ -796,6 +799,12 @@ importers:
       '@deepseek-ai/dsh-client-runtime':
         specifier: workspace:^
         version: link:../../vendor/deepseek-harness/packages/client/runtime
+      '@deepseek-ai/dsh-client-ui-attachment':
+        specifier: workspace:^
+        version: link:../../vendor/deepseek-harness/packages/client/ui-attachment
+      '@deepseek-ai/dsh-client-ui-conversation':
+        specifier: workspace:^
+        version: link:../../vendor/deepseek-harness/packages/client/ui-conversation
       '@deepseek-ai/dsh-client-ui-primitives':
         specifier: workspace:^
         version: link:../../vendor/deepseek-harness/packages/client/ui-primitives
@@ -3718,9 +3727,15 @@ importers:
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
+      '@types/react-dom':
+        specifier: ~18.3.0
+        version: 18.3.7(@types/react@18.3.31)
       react:
         specifier: ^18.2.0
         version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
 
   vendor/deepseek-harness/packages/client/ui-theme:
     dependencies:
@@ -4628,6 +4643,21 @@ importers:
       '@deepseek-ai/dsh-user-approval':
         specifier: workspace:^
         version: link:../../interaction/user-approval
+
+  vendor/deepseek-harness/packages/credentials/authorization:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-credentials':
+        specifier: workspace:^
+        version: link:../credentials
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
 
   vendor/deepseek-harness/packages/credentials/credentials:
     devDependencies:
@@ -5872,6 +5902,9 @@ importers:
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-permission-presets':
+        specifier: workspace:^
+        version: link:../../interaction/permission-presets
       '@deepseek-ai/dsh-storage':
         specifier: workspace:^
         version: link:../../storage/storage
@@ -6344,6 +6377,9 @@ importers:
       '@deepseek-ai/dsh-attachment':
         specifier: workspace:^
         version: link:../../attachment/attachment
+      '@deepseek-ai/dsh-authorization':
+        specifier: workspace:^
+        version: link:../../credentials/authorization
       '@deepseek-ai/dsh-credentials':
         specifier: workspace:^
         version: link:../../credentials/credentials
@@ -13297,7 +13333,7 @@ packages:
     engines: {node: '>=12'}
 
   dsh-plugin-marketplace@https://codeload.github.com/AwesomeHou/dsh-plugin-marketplace/tar.gz/463e6cb856272018a7f5a76e260a0d1ef5b589e3:
-    resolution: {gitHosted: true, tarball: https://codeload.github.com/AwesomeHou/dsh-plugin-marketplace/tar.gz/463e6cb856272018a7f5a76e260a0d1ef5b589e3}
+    resolution: {gitHosted: true, integrity: sha512-doTWtqh3PTzyWDzXBbT2TMlZL8Hkim+4r2bZWS4y7VpJze9yaccB2zOHrFpGQz4EULt9yJ7QH9KecDQsW7BUZw==, tarball: https://codeload.github.com/AwesomeHou/dsh-plugin-marketplace/tar.gz/463e6cb856272018a7f5a76e260a0d1ef5b589e3}
     version: 0.3.1
 
   dts-resolver@3.0.0:
@@ -18509,7 +18545,7 @@ snapshots:
       obug: 2.1.4
       std-env: 4.2.0
       tinyrainbow: 3.1.1
-      vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@26.2.0)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@6.4.3(@types/node@26.2.0)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.12)(yaml@2.9.0))
+      vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(@vitest/coverage-v8@4.1.10)(jsdom@29.1.1)(vite@6.4.3(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.12)(yaml@2.9.0))
 
   '@vitest/expect@3.2.7':
     dependencies:
