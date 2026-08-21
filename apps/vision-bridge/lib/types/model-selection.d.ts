@@ -15,6 +15,10 @@ export interface VisionRoute {
     /** Model id passed to the adapter. */
     model: string;
 }
+/** The exact model selected for ordinary text responses. */
+export type TextRoute = VisionRoute;
+/** Capability state for the current text route's catalog entry. */
+export type ImageInputCapability = 'supported' | 'unsupported' | 'unknown';
 /** Stable machine-routing codes for an unresolvable vision route. */
 export type VisionRouteFailureReason = 'VISION_BRIDGE_DISABLED' | 'VISION_MODEL_UNAVAILABLE' | 'VISION_MODEL_NOT_IMAGE_CAPABLE';
 /** Either the resolved route or the reason no route could be chosen. */
@@ -29,6 +33,7 @@ export type VisionRouteOutcome = {
 /** The subset of the configuration that decides the route. */
 export interface VisionRouteConfig {
     enabled: boolean;
+    /** Bare model ids remain supported; `provider/model` disambiguates duplicates. */
     model: string;
 }
 /**
@@ -36,6 +41,17 @@ export interface VisionRouteConfig {
  * @param model - one catalog entry.
  */
 export declare function declaresImageInput(model: LlmModelInfo): boolean;
+/**
+ * Read image capability for one exact provider/model route.
+ *
+ * Catalog ids are only unique within a provider. Matching both parts keeps a
+ * same-named model on another provider from changing the active route.
+ */
+export declare function imageInputCapability(route: TextRoute, catalog: readonly LlmModelInfo[]): ImageInputCapability;
+/** True when the exact catalog entry positively declares image input. */
+export declare function modelSupportsImages(route: TextRoute, catalog: readonly LlmModelInfo[]): boolean;
+/** Find one exact catalog entry without conflating providers that share ids. */
+export declare function findCatalogModel(route: TextRoute, catalog: readonly LlmModelInfo[]): LlmModelInfo | undefined;
 /**
  * Whether a catalog entry declares input modalities that exclude images.
  *

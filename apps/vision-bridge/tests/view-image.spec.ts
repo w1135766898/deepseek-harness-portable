@@ -194,6 +194,83 @@ describe('view-image', () => {
     ])
   })
 
+  it('re-analyzes a session-history attachment by id without saving it again', async () => {
+    const probe = fakeRuntime()
+    const historicalExec = {
+      signal: new AbortController().signal,
+      agent: {
+        session: {
+          header: { cwd: testDir },
+          events: [{
+            type: 'user/message',
+            seq: 1,
+            time: 1,
+            data: { content: [{ type: 'image', attachment: ref(8) }] },
+          }],
+        },
+      },
+    } as never
+    const result = await executeViewImage(
+      { attachmentId: 'att-1', prompt: 'Read the old error code' } as never,
+      historicalExec,
+      () => baseConfig,
+      probe.runtime,
+    )
+    expect(result).toMatchObject({
+      source: 'history',
+      attachmentId: 'att-1',
+      path: '<history:att-1>',
+      provider: 'dashscope',
+      model: 'qwen-vl-max',
+      text: 'a red dialog',
+    })
+    expect(probe.saved).toHaveLength(0)
+    expect(probe.calls[0]?.messages[0]?.content).toEqual([
+      { type: 'text', text: 'Read the old error code' },
+      { type: 'image', attachment: ref(8) },
+    ])
+  })
+
+  it('finds history images nested in tool results and rejects ids outside this session', async () => {
+    const probe = fakeRuntime()
+    const historicalExec = {
+      signal: new AbortController().signal,
+      agent: {
+        session: {
+          header: { cwd: testDir },
+          events: [{
+            type: 'tool/result',
+            seq: 1,
+            time: 1,
+            data: {
+              message: {
+                content: [{
+                  type: 'tool-result',
+                  content: [{ type: 'image', attachment: ref(8) }],
+                }],
+              },
+            },
+          }],
+        },
+      },
+    } as never
+    const nested = await executeViewImage(
+      { attachmentId: 'att-1' } as never,
+      historicalExec,
+      () => baseConfig,
+      probe.runtime,
+    )
+    expect(nested).toMatchObject({ source: 'history', attachmentId: 'att-1', text: 'a red dialog' })
+    const result = await executeViewImage(
+      { attachmentId: 'missing' } as never,
+      historicalExec,
+      () => baseConfig,
+      probe.runtime,
+    )
+    expect(result).toMatchObject({ isError: true, reason: 'VISION_ATTACHMENT_NOT_REFERENCED', source: 'history' })
+    expect(probe.saved).toHaveLength(0)
+  })
+
   it('reports a route failure without calling the model', async () => {
     const probe = fakeRuntime({
       models: [{ provider: 'deepseek', id: 'deepseek-chat', name: 'Chat', inputModalities: ['text'] }],
@@ -270,6 +347,21 @@ describe('model-facing rendering', () => {
       path: '/tmp/a.png',
       bytes: 8,
     })).toEqual([{ type: 'text', text: '<image_analysis path="/tmp/a.png" model="qwen-vl-max">\na chart\n</image_analysis>' }])
+  })
+
+  it('labels a history analysis with its stable attachment id', () => {
+    expect(renderViewImageContent({
+      text: 'the historical dialog',
+      provider: 'dashscope',
+      model: 'qwen-vl-max',
+      path: '<history:att-1>',
+      bytes: 8,
+      source: 'history',
+      attachmentId: 'att-1',
+    } as never)).toEqual([{
+      type: 'text',
+      text: '<image_analysis source="history" attachment_id="att-1" model="qwen-vl-max">\nthe historical dialog\n</image_analysis>',
+    }])
   })
 
   it('passes a failure through unwrapped', () => {

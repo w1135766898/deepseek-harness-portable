@@ -20,9 +20,45 @@ export interface VisionRouteSummary {
 }
 
 /**
+ * The composer-side route intent for one draft.
+ *
+ * The conversation host already owns image admission, serialization, and
+ * durable history.  The client only needs to identify whether the current
+ * draft is an image turn so the host can prepare its visual route.  Keeping
+ * this as a tiny pure projection means the ordinary text path remains exactly
+ * the same (an empty image list is `text`).
+ */
+export type VisionTurnKind = 'text' | 'vision'
+
+export interface VisionTurnPlan {
+  /** Route selected for the pending composer submission. */
+  kind: VisionTurnKind
+  /** Number of browser-owned images waiting to cross the Host boundary. */
+  imageCount: number
+  /** Whether a visual override should be released after this turn settles. */
+  restoreTextRoute: boolean
+}
+
+/**
+ * Project input attachment ids into a route preparation plan.
+ *
+ * `readonly unknown[]` is intentional: this helper is also useful to host
+ * adapters and tests without importing the browser-only attachment brand.
+ * Empty/absent input follows the normal text route and never asks the host to
+ * switch models.
+ */
+export function planVisionTurn(imageIds: readonly unknown[] | undefined): VisionTurnPlan {
+  const imageCount = imageIds?.length ?? 0
+  if (imageCount === 0) {
+    return { kind: 'text', imageCount: 0, restoreTextRoute: false }
+  }
+  return { kind: 'vision', imageCount, restoreTextRoute: true }
+}
+
+/**
  * Summarize the configured vision selection.
  * @param enabled - whether the capability is offered at all.
- * @param model - configured model id; empty means discover an image-capable one.
+ * @param model - configured model id or provider/model; empty means discover an image-capable one.
  */
 export function describeVisionRoute(enabled: boolean, model: string): VisionRouteSummary {
   if (!enabled) return { kind: 'disabled' }

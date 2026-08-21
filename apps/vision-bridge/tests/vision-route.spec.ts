@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeVisionRoute } from '../src/client/vision-route.ts'
+import { describeVisionRoute, planVisionTurn } from '../src/client/vision-route.ts'
 
 describe('Vision Bridge selection summary', () => {
   it('reports automatic selection when nothing is pinned', () => {
@@ -16,5 +16,20 @@ describe('Vision Bridge selection summary', () => {
 
   it('reports disabled ahead of any selection detail', () => {
     expect(describeVisionRoute(false, 'qwen-vl-max')).toEqual({ kind: 'disabled' })
+  })
+})
+
+describe('composer visual-turn preparation', () => {
+  it('keeps ordinary text on the untouched text route', () => {
+    expect(planVisionTurn([])).toEqual({ kind: 'text', imageCount: 0, restoreTextRoute: false })
+    expect(planVisionTurn(undefined)).toEqual({ kind: 'text', imageCount: 0, restoreTextRoute: false })
+  })
+
+  it('marks an image turn and requests text-route restoration afterwards', () => {
+    expect(planVisionTurn(['draft:image-1', 'draft:image-2'])).toEqual({
+      kind: 'vision',
+      imageCount: 2,
+      restoreTextRoute: true,
+    })
   })
 })

@@ -1,11 +1,12 @@
 /**
  * Implementation of the `view_image` tool.
  *
- * Image bytes travel the kernel's own durable path: the attachment store
+ * Local image bytes travel the kernel's own durable path: the attachment store
  * validates and commits them, and the resulting immutable reference rides an
- * `image` content block through `ctx.llm`. That inherits provider
- * configuration, retry policy, token metering, and telemetry instead of
- * restating them here.
+ * `image` content block through `ctx.llm`. History re-analysis resolves an
+ * already committed reference from the current session and follows the same
+ * model path without writing a second object. Both paths inherit provider
+ * configuration, retry policy, token metering, and telemetry.
  * @module @dsh-portable/vision-bridge/view-image
  */
 
@@ -110,6 +111,8 @@ interface FailureInput {
   route?: VisionRoute
   ref?: ImageAttachmentRef
   bytes?: number
+  source?: 'local' | 'history'
+  attachmentId?: string
 }
 
 /** Build the failure result shape shared by every early return. */
@@ -121,9 +124,93 @@ function failure(input: FailureInput): ViewImageResult {
     path: input.path,
     bytes: input.ref?.bytes ?? input.bytes ?? 0,
     ...input.ref === undefined ? {} : { width: input.ref.width, height: input.ref.height },
+    ...input.source === undefined ? {} : { source: input.source },
+    ...input.attachmentId === undefined ? {} : { attachmentId: input.attachmentId },
     reason: input.reason,
     isError: true,
   }
+}
+
+/** Extract one image reference from an arbitrary model content array. */
+function imageBlockIn(
+  content: unknown,
+  match: (ref: ImageAttachmentRef) => boolean,
+): ImageAttachmentRef | undefined {
+  if (!Array.isArray(content)) return undefined
+  for (const value of content) {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) continue
+    const block = value as { type?: unknown; attachment?: unknown; content?: unknown }
+    if (block.type === 'image' && typeof block.attachment === 'object' && block.attachment !== null) {
+      const ref = block.attachment as ImageAttachmentRef
+      if (match(ref)) return ref
+    }
+    // Tool results can carry an image block nested inside their content array.
+    if (block.type === 'tool-result') {
+      const nested = imageBlockIn(block.content, match)
+      if (nested !== undefined) return nested
+    }
+  }
+  return undefined
+}
+
+/** Search all durable content carriers used by the session event vocabulary. */
+function imageInEvent(
+  event: unknown,
+  match: (ref: ImageAttachmentRef) => boolean,
+): ImageAttachmentRef | undefined {
+  if (typeof event !== 'object' || event === null) return undefined
+  const record = event as {
+    type?: unknown
+    data?: {
+      content?: unknown
+      message?: { content?: unknown }
+      inserted?: Array<{ content?: unknown }>
+      chunk?: { type?: unknown; block?: unknown }
+    }
+  }
+  const data = record.data
+  if (data === undefined) return undefined
+  const direct = imageBlockIn(data.content, match)
+  if (direct !== undefined) return direct
+  if (data.message !== undefined) {
+    const wrapped = imageBlockIn(data.message.content, match)
+    if (wrapped !== undefined) return wrapped
+  }
+  if (Array.isArray(data.inserted)) {
+    for (const message of data.inserted) {
+      const inserted = imageBlockIn(message.content, match)
+      if (inserted !== undefined) return inserted
+    }
+  }
+  // Raw assistant chunks can carry a structured image block before the
+  // assembled assistant/message event is appended.
+  if (record.type === 'assistant/chunk' && data.chunk?.type === 'block-end') {
+    return imageBlockIn([data.chunk.block], match)
+  }
+  return undefined
+}
+
+/** Resolve an opaque history id only against refs present in this session log. */
+export function findHistoricalImageRef(
+  events: readonly unknown[],
+  attachmentId: string,
+): ImageAttachmentRef | undefined {
+  for (const event of events) {
+    const found = imageInEvent(event, ref => String(ref.attachmentId) === attachmentId)
+    if (found !== undefined) return found
+  }
+  return undefined
+}
+
+/** Get the live session event log without coupling this package to a session package. */
+function sessionEvents(exec: ToolExecution): readonly unknown[] {
+  const candidate = (exec.agent as { session?: { events?: unknown } } | undefined)?.session?.events
+  return Array.isArray(candidate) ? candidate : []
+}
+
+/** Render a stable, non-path display key for a history-backed image. */
+function historyDisplayPath(attachmentId: string): string {
+  return `<history:${attachmentId}>`
 }
 
 /** Either the assembled analysis or the route/stream failure that prevented it. */
@@ -190,20 +277,68 @@ export async function executeViewImage(
   runtime: VisionRuntime,
 ): Promise<ViewImageResult> {
   const cfg = getConfig()
-  if (typeof args.path !== 'string' || args.path.trim().length === 0) {
-    throw new Error('path must be a non-empty string')
+  const input = args
+  const providedPath = typeof input.path === 'string' ? input.path : ''
+  const rawPath = providedPath.trim()
+  const rawAttachmentId = typeof input.attachmentId === 'string' ? input.attachmentId.trim() : ''
+  if (rawPath.length === 0 && rawAttachmentId.length === 0) {
+    throw new Error('path must be a non-empty string, or attachmentId must be a non-empty string')
+  }
+  if (rawPath.length > 0 && rawAttachmentId.length > 0) {
+    throw new Error('path and attachmentId are mutually exclusive')
   }
   if (!cfg.enabled) {
     return failure({
       message: 'Vision Bridge is disabled. Enable it in Settings then Plugins before using view_image.',
       reason: 'VISION_BRIDGE_DISABLED',
-      path: args.path,
+      path: rawAttachmentId.length > 0 ? historyDisplayPath(rawAttachmentId) : providedPath,
+      source: rawAttachmentId.length > 0 ? 'history' : 'local',
+      ...rawAttachmentId.length > 0 ? { attachmentId: rawAttachmentId } : {},
     })
+  }
+
+  if (rawAttachmentId.length > 0) {
+    const ref = findHistoricalImageRef(sessionEvents(exec), rawAttachmentId)
+    const path = historyDisplayPath(rawAttachmentId)
+    if (ref === undefined) {
+      return failure({
+        message: `Image attachment "${rawAttachmentId}" is not referenced by this session's history.`,
+        reason: 'VISION_ATTACHMENT_NOT_REFERENCED',
+        path,
+        source: 'history',
+        attachmentId: rawAttachmentId,
+      })
+    }
+    const instruction = input.prompt !== undefined && input.prompt.trim().length > 0
+      ? input.prompt.trim()
+      : DEFAULT_INSTRUCTION
+    const analysis = await analyzeAttachment(ref, instruction, cfg, runtime, exec.signal)
+    if (!analysis.ok) {
+      return failure({
+        message: analysis.message,
+        reason: analysis.reason,
+        path,
+        ref,
+        source: 'history',
+        attachmentId: rawAttachmentId,
+        ...analysis.route === undefined ? {} : { route: analysis.route },
+      })
+    }
+    return {
+      text: analysis.text,
+      provider: analysis.route.provider,
+      model: analysis.route.model,
+      path,
+      bytes: ref.bytes,
+      width: ref.width,
+      height: ref.height,
+      source: 'history',
+      attachmentId: rawAttachmentId,
+    }
   }
 
   // The session header's cwd is the durable workspace identity; the host
   // process cwd is the fallback when the session carries none.
-  const rawPath = args.path.trim()
   const workspaceRoot = exec.agent?.session.header.cwd ?? process.cwd()
   const targetPath = isAbsolute(rawPath) ? rawPath : resolve(workspaceRoot, rawPath)
 
@@ -213,6 +348,7 @@ export async function executeViewImage(
       message: `Cannot inspect "${rawPath}": view_image supports PNG, JPEG, WebP, and GIF images.`,
       reason: 'VISION_UNSUPPORTED_MEDIA_TYPE',
       path: targetPath,
+      source: 'local',
     })
   }
 
@@ -224,6 +360,7 @@ export async function executeViewImage(
       message: `Image file not found at "${targetPath}": ${error instanceof Error ? error.message : String(error)}`,
       reason: 'VISION_IMAGE_UNREADABLE',
       path: targetPath,
+      source: 'local',
     })
   }
   if (!fileStat.isFile()) {
@@ -231,6 +368,7 @@ export async function executeViewImage(
       message: `Specified path is a directory, not a file: "${targetPath}"`,
       reason: 'VISION_IMAGE_UNREADABLE',
       path: targetPath,
+      source: 'local',
     })
   }
   // The attachment store owns this deployment's image policy; checking its
@@ -242,6 +380,7 @@ export async function executeViewImage(
       reason: 'VISION_IMAGE_TOO_LARGE',
       path: targetPath,
       bytes: fileStat.size,
+      source: 'local',
     })
   }
 
@@ -260,11 +399,12 @@ export async function executeViewImage(
       reason: 'VISION_IMAGE_REJECTED',
       path: targetPath,
       bytes: data.byteLength,
+      source: 'local',
     })
   }
 
-  const instruction = args.prompt !== undefined && args.prompt.trim().length > 0
-    ? args.prompt.trim()
+  const instruction = input.prompt !== undefined && input.prompt.trim().length > 0
+    ? input.prompt.trim()
     : DEFAULT_INSTRUCTION
   const analysis = await analyzeAttachment(ref, instruction, cfg, runtime, exec.signal)
   if (!analysis.ok) {
@@ -273,6 +413,7 @@ export async function executeViewImage(
       reason: analysis.reason,
       path: targetPath,
       ref,
+      source: 'local',
       ...analysis.route === undefined ? {} : { route: analysis.route },
     })
   }
@@ -284,6 +425,7 @@ export async function executeViewImage(
     bytes: ref.bytes,
     width: ref.width,
     height: ref.height,
+    source: 'local',
   }
 }
 
@@ -293,6 +435,9 @@ export async function executeViewImage(
  */
 export function renderViewImageContent(result: ViewImageResult) {
   if (result.isError === true) return [{ type: 'text' as const, text: result.text }]
-  const formatted = `<image_analysis path="${result.path}" model="${result.model}">\n${result.text}\n</image_analysis>`
+  const isHistory = 'source' in result && result.source === 'history'
+  const formatted = isHistory && 'attachmentId' in result && typeof result.attachmentId === 'string'
+    ? `<image_analysis source="history" attachment_id="${result.attachmentId}" model="${result.model}">\n${result.text}\n</image_analysis>`
+    : `<image_analysis path="${result.path}" model="${result.model}">\n${result.text}\n</image_analysis>`
   return [{ type: 'text' as const, text: formatted }]
 }

@@ -1,11 +1,12 @@
 /**
  * Implementation of the `view_image` tool.
  *
- * Image bytes travel the kernel's own durable path: the attachment store
+ * Local image bytes travel the kernel's own durable path: the attachment store
  * validates and commits them, and the resulting immutable reference rides an
- * `image` content block through `ctx.llm`. That inherits provider
- * configuration, retry policy, token metering, and telemetry instead of
- * restating them here.
+ * `image` content block through `ctx.llm`. History re-analysis resolves an
+ * already committed reference from the current session and follows the same
+ * model path without writing a second object. Both paths inherit provider
+ * configuration, retry policy, token metering, and telemetry.
  * @module @dsh-portable/vision-bridge/view-image
  */
 import type { AttachmentStore, ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment';
@@ -50,6 +51,8 @@ type AnalysisOutcome = {
  * @returns the assembled text, or the terminal failure the stream reported.
  */
 export declare function collectAnalysis(chunks: AsyncIterable<StreamChunk>): Promise<AnalysisOutcome>;
+/** Resolve an opaque history id only against refs present in this session log. */
+export declare function findHistoricalImageRef(events: readonly unknown[], attachmentId: string): ImageAttachmentRef | undefined;
 /** Either the assembled analysis or the route/stream failure that prevented it. */
 export type AttachmentAnalysis = {
     ok: true;

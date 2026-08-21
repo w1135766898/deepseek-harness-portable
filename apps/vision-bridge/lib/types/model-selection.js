@@ -15,6 +15,26 @@ export function declaresImageInput(model) {
     return model.inputModalities?.includes('image') === true;
 }
 /**
+ * Read image capability for one exact provider/model route.
+ *
+ * Catalog ids are only unique within a provider. Matching both parts keeps a
+ * same-named model on another provider from changing the active route.
+ */
+export function imageInputCapability(route, catalog) {
+    const entry = catalog.find(candidate => candidate.provider === route.provider && candidate.id === route.model);
+    if (entry === undefined || entry.inputModalities === undefined)
+        return 'unknown';
+    return declaresImageInput(entry) ? 'supported' : 'unsupported';
+}
+/** True when the exact catalog entry positively declares image input. */
+export function modelSupportsImages(route, catalog) {
+    return imageInputCapability(route, catalog) === 'supported';
+}
+/** Find one exact catalog entry without conflating providers that share ids. */
+export function findCatalogModel(route, catalog) {
+    return catalog.find(candidate => candidate.provider === route.provider && candidate.id === route.model);
+}
+/**
  * Whether a catalog entry declares input modalities that exclude images.
  *
  * An absent `inputModalities` is unknown capability rather than a denial: it
@@ -44,7 +64,18 @@ export function selectVisionRoute(config, catalog) {
         };
     }
     if (config.model !== '') {
-        const pinned = catalog.find(entry => entry.id === config.model);
+        // Keep the original bare-id setting compatible. When two providers expose
+        // the same id, `provider/model` selects the exact provider without adding
+        // another settings field.
+        const pinned = catalog.find(entry => entry.id === config.model)
+            ?? (() => {
+                const separator = config.model.indexOf('/');
+                if (separator <= 0 || separator === config.model.length - 1)
+                    return undefined;
+                const provider = config.model.slice(0, separator);
+                const model = config.model.slice(separator + 1);
+                return catalog.find(entry => entry.provider === provider && entry.id === model);
+            })();
         if (pinned === undefined) {
             return {
                 ok: false,
@@ -59,7 +90,7 @@ export function selectVisionRoute(config, catalog) {
                 message: `Model ${config.model} does not accept image input. Choose an image-capable model in Settings → Plugins.`,
             };
         }
-        return { ok: true, route: { provider: pinned.provider, model: config.model } };
+        return { ok: true, route: { provider: pinned.provider, model: pinned.id } };
     }
     const discovered = catalog.find(entry => declaresImageInput(entry));
     if (discovered === undefined) {
@@ -73,6 +104,6 @@ export function selectVisionRoute(config, catalog) {
 }
 /** Catalog entries an operator can reasonably pin as the vision route. */
 export function imageCapableModels(catalog) {
-    return catalog.filter(entry => !deniesImageInput(entry));
+    return catalog.filter(declaresImageInput);
 }
 //# sourceMappingURL=model-selection.js.map

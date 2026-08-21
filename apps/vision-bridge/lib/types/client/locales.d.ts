@@ -28,6 +28,9 @@ export declare const zh: {
     routePinnedHint: string;
     routeDisabledTitle: string;
     routeDisabledHint: string;
+    visionTurnReady: string;
+    visionTurnImages: string;
+    visionTurnRestore: string;
     collapse: string;
     expand: string;
 };
@@ -57,6 +60,9 @@ export declare const en: {
     routePinnedHint: string;
     routeDisabledTitle: string;
     routeDisabledHint: string;
+    visionTurnReady: string;
+    visionTurnImages: string;
+    visionTurnRestore: string;
     collapse: string;
     expand: string;
 };

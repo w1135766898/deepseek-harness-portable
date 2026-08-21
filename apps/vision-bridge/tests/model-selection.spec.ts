@@ -37,7 +37,7 @@ describe('image capability reading', () => {
   it('treats an absent modality list as unknown rather than denied', () => {
     expect(declaresImageInput(unknownCapability)).toBe(false)
     expect(deniesImageInput(unknownCapability)).toBe(false)
-    expect(imageCapableModels([textOnly, vision, unknownCapability])).toEqual([vision, unknownCapability])
+    expect(imageCapableModels([textOnly, vision, unknownCapability])).toEqual([vision])
   })
 })
 
@@ -75,6 +75,21 @@ describe('vision route selection', () => {
     expect(selectVisionRoute({ ...enabled, model: 'unlisted' }, [])).toMatchObject({
       ok: false,
       reason: 'VISION_MODEL_UNAVAILABLE',
+    })
+  })
+
+  it('supports the official DeepSeek vision model and provider-qualified pins', () => {
+    const duplicate = [
+      { provider: 'gateway-a', id: 'deepseek-v4-flash-vision-exp', name: 'Gateway text', inputModalities: ['text'] as const },
+      { provider: 'deepseek-official', id: 'deepseek-v4-flash-vision-exp', name: 'DeepSeek Vision', inputModalities: ['text', 'image'] as const },
+    ]
+    expect(selectVisionRoute(enabled, duplicate)).toEqual({
+      ok: true,
+      route: { provider: 'deepseek-official', model: 'deepseek-v4-flash-vision-exp' },
+    })
+    expect(selectVisionRoute({ ...enabled, model: 'deepseek-official/deepseek-v4-flash-vision-exp' }, duplicate)).toEqual({
+      ok: true,
+      route: { provider: 'deepseek-official', model: 'deepseek-v4-flash-vision-exp' },
     })
   })
 })

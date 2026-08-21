@@ -18,6 +18,12 @@ export interface VisionRoute {
   model: string
 }
 
+/** The exact model selected for ordinary text responses. */
+export type TextRoute = VisionRoute
+
+/** Capability state for the current text route's catalog entry. */
+export type ImageInputCapability = 'supported' | 'unsupported' | 'unknown'
+
 /** Stable machine-routing codes for an unresolvable vision route. */
 export type VisionRouteFailureReason =
   | 'VISION_BRIDGE_DISABLED'
@@ -32,6 +38,7 @@ export type VisionRouteOutcome =
 /** The subset of the configuration that decides the route. */
 export interface VisionRouteConfig {
   enabled: boolean
+  /** Bare model ids remain supported; `provider/model` disambiguates duplicates. */
   model: string
 }
 
@@ -41,6 +48,34 @@ export interface VisionRouteConfig {
  */
 export function declaresImageInput(model: LlmModelInfo): boolean {
   return model.inputModalities?.includes('image') === true
+}
+
+/**
+ * Read image capability for one exact provider/model route.
+ *
+ * Catalog ids are only unique within a provider. Matching both parts keeps a
+ * same-named model on another provider from changing the active route.
+ */
+export function imageInputCapability(
+  route: TextRoute,
+  catalog: readonly LlmModelInfo[],
+): ImageInputCapability {
+  const entry = catalog.find(candidate => candidate.provider === route.provider && candidate.id === route.model)
+  if (entry === undefined || entry.inputModalities === undefined) return 'unknown'
+  return declaresImageInput(entry) ? 'supported' : 'unsupported'
+}
+
+/** True when the exact catalog entry positively declares image input. */
+export function modelSupportsImages(route: TextRoute, catalog: readonly LlmModelInfo[]): boolean {
+  return imageInputCapability(route, catalog) === 'supported'
+}
+
+/** Find one exact catalog entry without conflating providers that share ids. */
+export function findCatalogModel(
+  route: TextRoute,
+  catalog: readonly LlmModelInfo[],
+): LlmModelInfo | undefined {
+  return catalog.find(candidate => candidate.provider === route.provider && candidate.id === route.model)
 }
 
 /**
@@ -77,7 +112,17 @@ export function selectVisionRoute(
     }
   }
   if (config.model !== '') {
+    // Keep the original bare-id setting compatible. When two providers expose
+    // the same id, `provider/model` selects the exact provider without adding
+    // another settings field.
     const pinned = catalog.find(entry => entry.id === config.model)
+      ?? (() => {
+        const separator = config.model.indexOf('/')
+        if (separator <= 0 || separator === config.model.length - 1) return undefined
+        const provider = config.model.slice(0, separator)
+        const model = config.model.slice(separator + 1)
+        return catalog.find(entry => entry.provider === provider && entry.id === model)
+      })()
     if (pinned === undefined) {
       return {
         ok: false,
@@ -92,7 +137,7 @@ export function selectVisionRoute(
         message: `Model ${config.model} does not accept image input. Choose an image-capable model in Settings → Plugins.`,
       }
     }
-    return { ok: true, route: { provider: pinned.provider, model: config.model } }
+    return { ok: true, route: { provider: pinned.provider, model: pinned.id } }
   }
   const discovered = catalog.find(entry => declaresImageInput(entry))
   if (discovered === undefined) {
@@ -107,5 +152,5 @@ export function selectVisionRoute(
 
 /** Catalog entries an operator can reasonably pin as the vision route. */
 export function imageCapableModels(catalog: readonly LlmModelInfo[]): LlmModelInfo[] {
-  return catalog.filter(entry => !deniesImageInput(entry))
+  return catalog.filter(declaresImageInput)
 }
