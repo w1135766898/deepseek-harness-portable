@@ -1043,7 +1043,9 @@ if (!isSplashDocument) {
     :host { all: initial; color-scheme: light dark; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
     .dsh-chrome, .dsh-chrome * { box-sizing: border-box; }
     .dsh-chrome { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; color: #182235; font: 13px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif; }
-    .dsh-drag-region { position: fixed; inset: 0 140px auto 0; height: var(--dsh-titlebar-height); pointer-events: auto; -webkit-app-region: drag; }
+    /* Follow the native controls' safe area instead of assuming a fixed
+       width. Windows changes this area with display scale and RTL layout. */
+    .dsh-drag-region { position: fixed; top: 0; left: env(titlebar-area-x, 0px); width: env(titlebar-area-width, calc(100% - 140px)); height: env(titlebar-area-height, var(--dsh-titlebar-height, 36px)); pointer-events: auto; -webkit-app-region: drag; }
     .dsh-notice, .dsh-modal-layer { pointer-events: auto; }
     .dsh-menu-popover { position: fixed; top: var(--dsh-menu-top, 42px); left: var(--dsh-menu-left, 8px); z-index: 6; display: grid; min-width: 236px; max-height: calc(100vh - 16px); overflow-y: auto; padding: 6px; border: 1px solid rgba(116, 138, 171, .24); border-radius: 12px; background: rgba(250, 252, 255, .98); box-shadow: 0 16px 40px rgba(23, 43, 72, .2); pointer-events: auto; -webkit-app-region: no-drag; animation: dsh-popover-in .18s cubic-bezier(.16, 1, .3, 1) both; transform-origin: top left; }
     .dsh-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 7px 9px; border: 0; border-radius: 7px; color: #263a5a; background: transparent; cursor: pointer; text-align: left; font: 12px/1.2 inherit; -webkit-app-region: no-drag; }

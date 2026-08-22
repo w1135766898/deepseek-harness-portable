@@ -90,6 +90,8 @@ const WINDOWS_UNICODE_ROOT_FILES = [
 const MAC_DESKTOP_ICON = resolve(root, 'apps/desktop/assets/deepseek.icns')
 /** The native shell's product name and packaged executable path. */
 const ELECTRON_APP_NAME = 'DeepSeek Harness'
+/** Linux uses a shell-friendly executable name so desktop entries and dsh agree. */
+const LINUX_ELECTRON_EXECUTABLE = 'deepseek-harness'
 /** pkg base-binary download cache lives in the user profile; no repo state. */
 const OUT_DIR = 'dist-exe'
 /** The unpacked Electron app is the portable desktop distribution. */
@@ -161,6 +163,12 @@ const BUILD_INPUT_PATHS = [
   'pnpm-workspace.yaml',
   'apps/desktop/package.json',
   'apps/desktop/electron-builder.yml',
+  'apps/desktop/linux-after-install.sh',
+  'apps/desktop/linux-after-remove.sh',
+  'apps/desktop/dsh.sh',
+  'apps/desktop/start-web.sh',
+  'apps/desktop/start-desktop.sh',
+  'apps/desktop/portable-pnpm.sh',
   'apps/desktop/src',
   'apps/desktop/assets',
   'apps/runtime/package.json',
@@ -1157,7 +1165,7 @@ class DesktopExeBuild {
       ? this.cli.platform === 'darwin'
         ? join(this.electronOutDir, `${ELECTRON_APP_NAME}-darwin-${this.cli.arch}`, `${ELECTRON_APP_NAME}.app`)
         : this.cli.platform === 'linux'
-          ? join(this.electronOutDir, `${ELECTRON_APP_NAME}-linux-${this.cli.arch}`, 'runtime', ELECTRON_APP_NAME)
+          ? join(this.electronOutDir, `${ELECTRON_APP_NAME}-linux-${this.cli.arch}`, 'runtime', LINUX_ELECTRON_EXECUTABLE)
           : join(this.electronOutDir, `${ELECTRON_APP_NAME}-win32-${this.cli.arch}`, 'runtime', `${ELECTRON_APP_NAME}.exe`)
       : join(this.outDir, `${OUTPUT_BASENAME}-${version}-win-x64.exe`)
     const artifactKey = await fingerprintPaths({
@@ -1551,9 +1559,9 @@ class DesktopExeBuild {
     const nextPortableRoot = join(this.electronOutDir, `.linux-next-${process.pid}`)
     const previousPortableRoot = join(this.electronOutDir, `.linux-previous-${process.pid}`)
     const packagedRoot = join(packagerOutDir, `${ELECTRON_APP_NAME}-${target}`)
-    const packagedProduct = join(packagedRoot, ELECTRON_APP_NAME)
+    const packagedProduct = join(packagedRoot, LINUX_ELECTRON_EXECUTABLE)
     const runtimeRoot = join(portableRoot, 'runtime')
-    const product = join(runtimeRoot, ELECTRON_APP_NAME)
+    const product = join(runtimeRoot, LINUX_ELECTRON_EXECUTABLE)
     const linuxIcon = await this.prepareLinuxIcon()
 
     if (!this.cli.dryRun) {
@@ -1588,6 +1596,8 @@ class DesktopExeBuild {
       this.cli.arch,
       '--electron-version',
       electronVersion(),
+      '--executable-name',
+      LINUX_ELECTRON_EXECUTABLE,
       '--out',
       packagerOutDir,
       '--overwrite',
@@ -1623,6 +1633,11 @@ class DesktopExeBuild {
         throw error
       }
       await rm(previousPortableRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
+      // electron-packager may preserve a restrictive mode on the app root.
+      // Debian installs that mode at /opt, making the application inaccessible
+      // to normal users even when the executable itself is 755.
+      await chmod(runtimeRoot, 0o755)
+      await chmod(product, 0o755)
       await rm(packagerOutDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 })
       console.log('build-desktop-web-exe: moved Linux Electron runtime into place')
     }

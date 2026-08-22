@@ -3,7 +3,7 @@
   "productName": "DeepSeek Harness",
   "description": "Cross-platform Electron desktop shell for the DeepSeek Harness runtime capsule.",
   "version": "0.1.0-shell.2",
-  "distributionVersion": "1.5.0",
+  "distributionVersion": "1.5.2",
   "private": true,
   "type": "module",
   "main": "src/main.cjs",

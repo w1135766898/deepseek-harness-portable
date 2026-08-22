@@ -57,6 +57,7 @@ Landlock launcher is compiled with `musl-gcc`, then staged into the deploy
 closure. `electron-builder` creates the AppImage and deb from the unpacked
 runtime. Linux and macOS update checks open the release page for manual
 replacement instead of self-updating the installed application.
+After installing the deb, run `dsh` from a terminal to launch the desktop shell.
 
 Publishing is a separate copy-only step. It re-hashes the exact files named by `artifact-verification.json`; it does not build, test, patch, sign, or recreate an archive:
 
@@ -66,8 +67,8 @@ Publishing is a separate copy-only step. It re-hashes the exact files named by `
 
 ## Release identity
 
-- Release: DeepSeek Harness Desktop v1.5.0
-- Distribution: 1.5.0
+- Release: DeepSeek Harness Desktop v1.5.2
+- Distribution: 1.5.2
 - Desktop shell: 0.1.0-shell.2
 - Kernel: read from the packaged @deepseek-ai/dsh-web-app manifest
 

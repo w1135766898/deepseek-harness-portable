@@ -1,10 +1,10 @@
-# DeepSeek Harness Desktop v1.5.0
+# DeepSeek Harness Desktop v1.5.2
 
 [English](RELEASE_NOTES.md)
 
-Windows x64、macOS Apple Silicon 与 Linux x64 桌面版 · 2026-08-21
+Windows x64、macOS Apple Silicon 与 Linux x64 桌面版 · 2026-08-22
 
-v1.5.0 主要更新 Learning 模式与图片理解能力，并升级底层内核。
+v1.5.2 是继 v1.5.1 之后的 bug 修复版本。
 
 ## 重大功能
 
@@ -13,18 +13,19 @@ v1.5.0 主要更新 Learning 模式与图片理解能力，并升级底层内核
 ## 视觉能力与内核
 
 - **原生图片理解**：支持图片的模型可直接处理图片，文本模型继续通过 Vision Bridge 获得图片理解能力。
-- **内核升级**：更新至 DeepSeek Harness 0.1.1-rc.1，并新增支持图片输入的 `deepseek-v4-flash-vision-exp` 模型。
+- **内核升级**：更新至 DeepSeek Harness 0.1.1-rc.2，并新增支持图片输入的 `deepseek-v4-flash-vision-exp` 模型。
 
 ## 问题修复
 
-- **修复问题，优化稳定性。**
+- **支持粘贴最大 32 MiB 的图片，并优化桌面菜单操作响应。**
+- **修复 Linux deb 包权限和可执行文件命名问题；安装 deb 后现在可直接使用 `dsh` 命令启动。**
 
 ## 组件版本
 
-- 分发：1.5.0
+- 分发：1.5.2
 - 桌面外壳：0.1.0-shell.2
-- 内核：0.1.1-rc.1（@deepseek-ai/dsh-web-app）
-- 标签：v1.5.0
+- 内核：0.1.1-rc.2（@deepseek-ai/dsh-web-app）
+- 标签：v1.5.2
 
 ## 校验和与安全
 

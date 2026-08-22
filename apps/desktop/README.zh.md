@@ -53,6 +53,7 @@ Linux x64 构建必须在原生 Linux x64 主机执行，输出 AppImage、deb �
 Electron runtime。构建期间会使用 `musl-gcc` 编译官方上游 Landlock launcher，
 再由 `electron-builder` 生成 AppImage/deb；Linux 不使用应用内自替换更新，而是
 通过发布页手动下载新版本。
+安装 deb 后可直接在终端运行 `dsh` 启动桌面外壳。
 
 发布是独立的只复制步骤。它会重新校验 `artifact-verification.json` 指定的精确文件，不会构建、测试、打补丁、签名或重建归档：
 
@@ -62,8 +63,8 @@ Electron runtime。构建期间会使用 `musl-gcc` 编译官方上游 Landlock 
 
 ## 发布身份
 
-- 发布：DeepSeek Harness Desktop v1.5.0
-- 分发：1.5.0
+- 发布：DeepSeek Harness Desktop v1.5.2
+- 分发：1.5.2
 - 外壳：0.1.0-shell.2
 - 内核：读取打包后的 @deepseek-ai/dsh-web-app manifest
 

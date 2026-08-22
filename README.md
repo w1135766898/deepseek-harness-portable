@@ -64,10 +64,10 @@ Before first launch, verify the checksum published alongside the artifact. Windo
 
 | Item | Version |
 | --- | --- |
-| Release | DeepSeek Harness Desktop **v1.5.0** ([download](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.5.0)) |
-| Distribution | 1.5.0 |
+| Release | DeepSeek Harness Desktop **v1.5.2** ([download](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.5.2)) |
+| Distribution | 1.5.2 |
 | Desktop shell | 0.1.0-shell.2 |
-| Kernel | 0.1.1-rc.1 |
+| Kernel | 0.1.1-rc.2 |
 
 Read the [English release notes](RELEASE_NOTES.md) or open **Release Notes** from the desktop tray menu.
 
@@ -79,7 +79,7 @@ Read the [English release notes](RELEASE_NOTES.md) or open **Release Notes** fro
 4. **Verified Linux/macOS install:** download `install.sh` and `SHA256SUMS-install.txt` from the same release, verify the script, inspect it, then run `sh install.sh`. It selects only the supported native target and verifies the AppImage/DMG against `SHA256SUMS-<target>.txt` before installation. Linux defaults to `~/.local/opt/deepseek-harness` plus `~/.local/bin/deepseek-harness` and a desktop entry; macOS defaults to `~/Applications`. Use `--version <version>`, `--install-dir <path>`, or `--help` as needed.
 5. **macOS Apple Silicon (manual):** download `DeepSeek-Harness-<version>-darwin-arm64.dmg`, verify `SHA256SUMS-darwin-arm64.txt`, open it, and drag the app to **Applications**. The DMG is currently unsigned and not notarized; the installer does not bypass Gatekeeper.
 6. **Linux x64 AppImage (manual):** download `DeepSeek-Harness-<version>-linux-x64.AppImage`, verify its checksum, run `chmod +x DeepSeek-Harness-<version>-linux-x64.AppImage`, and launch it.
-7. **Linux x64 deb (manual):** download `DeepSeek-Harness-<version>-linux-x64.deb` and install it with `sudo apt install ./DeepSeek-Harness-<version>-linux-x64.deb`.
+7. **Linux x64 deb (manual):** download `DeepSeek-Harness-<version>-linux-x64.deb` and install it with `sudo apt install ./DeepSeek-Harness-<version>-linux-x64.deb`. After installation, launch it from a terminal with `dsh`.
 8. **Uninstall:** use the platform's normal app removal flow. Windows uninstall scripts are included; user data is kept unless explicitly removed.
 
 > **Note:** `setup-shortcuts.ps1` (called by the installer and by `创建桌面快捷方式.bat` in the portable package) creates a desktop shortcut that targets the no-console GUI launcher and adds the portable directory to your **user PATH**. The uninstaller removes both.
@@ -109,7 +109,7 @@ The installer and updater verify the ZIP digest, release manifest, application m
 
 Do not delete or rename the Windows `runtime` directory. macOS uses the normal `.app` bundle layout instead.
 
-Linux AppImage and deb packages contain the native Electron runtime and desktop entry. The unpacked Linux build also includes `start-desktop.sh`, `start-web.sh`, `dsh.sh`, and `portable-pnpm.sh` beside `runtime/` for terminal-driven use.
+Linux AppImage and deb packages contain the native Electron runtime and desktop entry. The deb package also registers `/usr/local/bin/dsh` for terminal startup. The unpacked Linux build includes `start-desktop.sh`, `start-web.sh`, `dsh.sh`, and `portable-pnpm.sh` beside `runtime/` for terminal-driven use.
 
 ## User data and API key
 

@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Context } from '@deepseek-ai/cordis';
@@ -219,7 +219,11 @@ async function probePosixSignals() {
     });
 }
 async function probeSandboxWorkspaceWrite() {
-    const root = await mkdtemp(join(tmpdir(), 'dsh-cap-sandbox-'));
+    // The Linux runners intentionally grant /tmp so confined commands can use
+    // normal temporary files. Keep the negative-control file outside /tmp;
+    // otherwise a successful write there would make a working sandbox look
+    // like an escape.
+    const root = await mkdtemp(join(homedir(), 'dsh-cap-sandbox-'));
     const workspace = join(root, 'workspace');
     const outside = join(root, 'outside.txt');
     const inside = join(workspace, 'inside.txt');

@@ -46,7 +46,7 @@
     "@dsh-portable/interactive-learning",
     "@dsh-portable/vision-bridge"
   ],
-  "closureHash": "sha256:74cb10e0e46aa5c6096d8f12b75d1c063831bc5f8c624e40909e188399fb380c",
+  "closureHash": "sha256:6af2c254bb3f6998e459c04e565296878c781bea6e61c58b542e309802e9fd30",
   "packages": [
     {
       "name": "@deepseek-ai/cordis",
@@ -85,952 +85,952 @@
     },
     {
       "name": "@deepseek-ai/dsh",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/apps/cli"
     },
     {
       "name": "@deepseek-ai/dsh-agent",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/core/agent"
     },
     {
       "name": "@deepseek-ai/dsh-agent-default-model",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/core/agent-default-model"
     },
     {
       "name": "@deepseek-ai/dsh-agent-instructions",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/context/agent-instructions"
     },
     {
       "name": "@deepseek-ai/dsh-agent-loop",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/core/agent-loop"
     },
     {
       "name": "@deepseek-ai/dsh-agent-presets",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/preset/agent-presets"
     },
     {
       "name": "@deepseek-ai/dsh-agent-tool-presentation",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/core/agent-tool-presentation"
     },
     {
       "name": "@deepseek-ai/dsh-anonymous-user-id",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/identity/anonymous-user-id"
     },
     {
       "name": "@deepseek-ai/dsh-api-gateway",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/api/gateway"
     },
     {
       "name": "@deepseek-ai/dsh-api-remotes",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/api/remotes"
     },
     {
       "name": "@deepseek-ai/dsh-app-boot",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/boot/app-boot"
     },
     {
       "name": "@deepseek-ai/dsh-atomic-write",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/util/atomic-write"
     },
     {
       "name": "@deepseek-ai/dsh-attachment",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/attachment/attachment"
     },
     {
       "name": "@deepseek-ai/dsh-attachment-local",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/attachment/attachment-local"
     },
     {
       "name": "@deepseek-ai/dsh-authorization",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/credentials/authorization"
     },
     {
       "name": "@deepseek-ai/dsh-base",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/bundle/base"
     },
     {
       "name": "@deepseek-ai/dsh-bash-local",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/shell/bash-local"
     },
     {
       "name": "@deepseek-ai/dsh-bash-sandbox",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/shell/bash-sandbox"
     },
     {
       "name": "@deepseek-ai/dsh-brand",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/util/brand"
     },
     {
       "name": "@deepseek-ai/dsh-client-connection",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/connection"
     },
     {
       "name": "@deepseek-ai/dsh-client-hmr",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/hmr"
     },
     {
       "name": "@deepseek-ai/dsh-client-locale",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/locale"
     },
     {
       "name": "@deepseek-ai/dsh-client-modules",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/modules"
     },
     {
       "name": "@deepseek-ai/dsh-client-runtime",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/runtime"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-agent-preset",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-agent-preset"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-attachment",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-attachment"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-brand-official",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-brand-official"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-commands",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-commands"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-conversation",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-conversation"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-cordis",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/extensions/ui-cordis"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-deliverables",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-deliverables"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-directory-picker-browse",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-directory-picker-browse"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-directory-picker-native",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-directory-picker-native"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-goal",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-goal"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-input-trigger",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-input-trigger"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-jobs",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-jobs"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-layout",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-layout"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-message-feedback",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-message-feedback"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-model-selection",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-model-selection"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-permission-presets",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-permission-presets"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-plan",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-plan"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-primitives",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-primitives"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-reference",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-reference"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-renderer",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-renderer"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-settings",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-settings"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-settings-general",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-settings-general"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-settings-models",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-settings-models"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-settings-plugin-inventory",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-settings-plugins",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-settings-plugins"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-sidebar",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-sidebar"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-skill",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-skill"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-slots",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-slots"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-subagent",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-subagent"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-theme",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-theme"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-tool",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-tool"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-trajectory",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-trajectory"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-user-questions",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-user-questions"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-workflow-run",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-workflow-run"
     },
     {
       "name": "@deepseek-ai/dsh-client-ui-workspace",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/client/ui-workspace"
     },
     {
       "name": "@deepseek-ai/dsh-cmdline",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/boot/cmdline"
     },
     {
       "name": "@deepseek-ai/dsh-code-runtime",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/code-runtime/code-runtime"
     },
     {
       "name": "@deepseek-ai/dsh-code-runtime-worker-thread",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/code-runtime/code-runtime-worker-thread"
     },
     {
       "name": "@deepseek-ai/dsh-command-compact",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/compaction/command-compact"
     },
     {
       "name": "@deepseek-ai/dsh-command-feedback",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/feedback/command-feedback"
     },
     {
       "name": "@deepseek-ai/dsh-command-goal",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/goal/command-goal"
     },
     {
       "name": "@deepseek-ai/dsh-commands",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/interaction/commands"
     },
     {
       "name": "@deepseek-ai/dsh-compaction",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/compaction/compaction"
     },
     {
       "name": "@deepseek-ai/dsh-compaction-basic",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/compaction/compaction-basic"
     },
     {
       "name": "@deepseek-ai/dsh-compaction-tool-result-pruner",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/compaction/compaction-tool-result-pruner"
     },
     {
       "name": "@deepseek-ai/dsh-cordis-client-runner",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/extensions/cordis-client-runner"
     },
     {
       "name": "@deepseek-ai/dsh-cordis-host-runner",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/extensions/cordis-host-runner"
     },
     {
       "name": "@deepseek-ai/dsh-credentials",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/credentials/credentials"
     },
     {
       "name": "@deepseek-ai/dsh-credentials-local",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/credentials/credentials-local"
     },
     {
       "name": "@deepseek-ai/dsh-file-reference",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/context/file-reference"
     },
     {
       "name": "@deepseek-ai/dsh-file-reference-local",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/context/file-reference-local"
     },
     {
       "name": "@deepseek-ai/dsh-fs",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/fs/fs"
     },
     {
       "name": "@deepseek-ai/dsh-fs-local",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/fs/fs-local"
     },
     {
       "name": "@deepseek-ai/dsh-fs-observation-policy",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/fs/fs-observation-policy"
     },
     {
       "name": "@deepseek-ai/dsh-fs-sandbox",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/fs/fs-sandbox"
     },
     {
       "name": "@deepseek-ai/dsh-goal",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/goal/goal"
     },
     {
       "name": "@deepseek-ai/dsh-goal-round-driver",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/goal/goal-round-driver"
     },
     {
       "name": "@deepseek-ai/dsh-headless",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/bundle/headless"
     },
     {
       "name": "@deepseek-ai/dsh-home-paths",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/util/home-paths"
     },
     {
       "name": "@deepseek-ai/dsh-host-apiproxy",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/host/apiproxy"
     },
     {
       "name": "@deepseek-ai/dsh-host-directory-picker",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/host/directory-picker"
     },
     {
       "name": "@deepseek-ai/dsh-host-directory-picker-auto",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/host/directory-picker-auto"
     },
     {
       "name": "@deepseek-ai/dsh-host-directory-picker-browse",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/host/directory-picker-browse"
     },
     {
       "name": "@deepseek-ai/dsh-host-directory-picker-native",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/host/directory-picker-native"
     },
     {
       "name": "@deepseek-ai/dsh-host-frontend-static",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/host/frontend-static"
     },
     {
       "name": "@deepseek-ai/dsh-host-plugin-inventory",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/host/plugin-inventory"
     },
     {
       "name": "@deepseek-ai/dsh-host-webserver",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/host/webserver"
     },
     {
       "name": "@deepseek-ai/dsh-invariants",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/runtime-diagnostics/invariants"
     },
     {
       "name": "@deepseek-ai/dsh-jobs",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/jobs/jobs"
     },
     {
       "name": "@deepseek-ai/dsh-jobs-local",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/jobs/jobs-local"
     },
     {
       "name": "@deepseek-ai/dsh-launch-environment",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/util/launch-environment"
     },
     {
       "name": "@deepseek-ai/dsh-llm",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/llm/llm"
     },
     {
       "name": "@deepseek-ai/dsh-llm-deepseek",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/llm/llm-deepseek"
     },
     {
       "name": "@deepseek-ai/dsh-llm-pi-ai",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/llm/llm-pi-ai"
     },
     {
       "name": "@deepseek-ai/dsh-llm-retry",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/llm/llm-retry"
     },
     {
       "name": "@deepseek-ai/dsh-mcp-client",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/mcp/mcp-client"
     },
     {
       "name": "@deepseek-ai/dsh-message-feedback",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/feedback/message-feedback"
     },
     {
       "name": "@deepseek-ai/dsh-native-command",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/util/native-command"
     },
     {
       "name": "@deepseek-ai/dsh-output-retention",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/util/output-retention"
     },
     {
       "name": "@deepseek-ai/dsh-permission-presets",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/interaction/permission-presets"
     },
     {
       "name": "@deepseek-ai/dsh-persona",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/preset/persona"
     },
     {
       "name": "@deepseek-ai/dsh-plan-mode",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/plan/plan-mode"
     },
     {
       "name": "@deepseek-ai/dsh-pwsh-local",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/shell/pwsh-local"
     },
     {
       "name": "@deepseek-ai/dsh-pwsh-sandbox",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/shell/pwsh-sandbox"
     },
     {
       "name": "@deepseek-ai/dsh-repeat-tool-reminder",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/guard/repeat-tool-reminder"
     },
     {
       "name": "@deepseek-ai/dsh-sandbox",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/sandbox/sandbox"
     },
     {
       "name": "@deepseek-ai/dsh-sandbox-local",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/sandbox/sandbox-local"
     },
     {
       "name": "@deepseek-ai/dsh-sandbox-policy",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/sandbox/sandbox-policy"
     },
     {
       "name": "@deepseek-ai/dsh-sandbox-windows-acl",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/sandbox/sandbox-windows-acl"
     },
     {
       "name": "@deepseek-ai/dsh-schedule",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/schedule/schedule"
     },
     {
       "name": "@deepseek-ai/dsh-scope",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/core/scope"
     },
     {
       "name": "@deepseek-ai/dsh-session",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/core/session"
     },
     {
       "name": "@deepseek-ai/dsh-session-checkpoint-policy",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/session/session-checkpoint-policy"
     },
     {
       "name": "@deepseek-ai/dsh-session-log-export",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/session-query/session-log-export"
     },
     {
       "name": "@deepseek-ai/dsh-session-persistence",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/session/session-persistence"
     },
     {
       "name": "@deepseek-ai/dsh-session-persistence-jsonl",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/session/session-persistence-jsonl"
     },
     {
       "name": "@deepseek-ai/dsh-session-projection",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/session/session-projection"
     },
     {
       "name": "@deepseek-ai/dsh-session-projection-cache",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/session/session-projection-cache"
     },
     {
       "name": "@deepseek-ai/dsh-session-query",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/session-query/session-query"
     },
     {
       "name": "@deepseek-ai/dsh-session-query-sqlite",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/session-query/session-query-sqlite"
     },
     {
       "name": "@deepseek-ai/dsh-session-reference",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/context/session-reference"
     },
     {
       "name": "@deepseek-ai/dsh-session-stats",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/session/session-stats"
     },
     {
       "name": "@deepseek-ai/dsh-session-telemetry",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/session/session-telemetry"
     },
     {
       "name": "@deepseek-ai/dsh-session-telemetry-otel",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/session/session-telemetry-otel"
     },
     {
       "name": "@deepseek-ai/dsh-session-title",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/session/session-title"
     },
     {
       "name": "@deepseek-ai/dsh-session-title-first-prompt-llm",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/session/session-title-first-prompt-llm"
     },
     {
       "name": "@deepseek-ai/dsh-session-title-llm",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/session/session-title-llm"
     },
     {
       "name": "@deepseek-ai/dsh-settings",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/settings/settings"
     },
     {
       "name": "@deepseek-ai/dsh-settings-file",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/settings/settings-file"
     },
     {
       "name": "@deepseek-ai/dsh-shell",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/shell/shell"
     },
     {
       "name": "@deepseek-ai/dsh-shell-env",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/shell/shell-env"
     },
     {
       "name": "@deepseek-ai/dsh-skill",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/skill/skill"
     },
     {
       "name": "@deepseek-ai/dsh-skill-badge",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/skill/skill-badge"
     },
     {
       "name": "@deepseek-ai/dsh-skill-filesystem",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/skill/skill-filesystem"
     },
     {
       "name": "@deepseek-ai/dsh-spill",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/spill/spill"
     },
     {
       "name": "@deepseek-ai/dsh-spill-local",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/spill/spill-local"
     },
     {
       "name": "@deepseek-ai/dsh-spill-policy",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/spill/spill-policy"
     },
     {
       "name": "@deepseek-ai/dsh-storage",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/storage/storage"
     },
     {
       "name": "@deepseek-ai/dsh-storage-domain",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/storage/storage-domain"
     },
     {
       "name": "@deepseek-ai/dsh-storage-json",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/storage/storage-json"
     },
     {
       "name": "@deepseek-ai/dsh-subagent",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/subagent/subagent"
     },
     {
       "name": "@deepseek-ai/dsh-subagent-fork-in-process",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/subagent/subagent-fork-in-process"
     },
     {
       "name": "@deepseek-ai/dsh-subagent-in-process-driver",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/subagent/subagent-in-process-driver"
     },
     {
       "name": "@deepseek-ai/dsh-subagent-spawn-in-process",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/subagent/subagent-spawn-in-process"
     },
     {
       "name": "@deepseek-ai/dsh-subprocess",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/subprocess/subprocess"
     },
     {
       "name": "@deepseek-ai/dsh-subprocess-local",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/subprocess/subprocess-local"
     },
     {
       "name": "@deepseek-ai/dsh-system-prompt",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/core/system-prompt"
     },
     {
       "name": "@deepseek-ai/dsh-terminal",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/terminal/terminal"
     },
     {
       "name": "@deepseek-ai/dsh-terminal-bash",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/terminal/terminal-bash"
     },
     {
       "name": "@deepseek-ai/dsh-time-context",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/context/time-context"
     },
     {
       "name": "@deepseek-ai/dsh-timeout",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/util/timeout"
     },
     {
       "name": "@deepseek-ai/dsh-tmux-context",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/context/tmux-context"
     },
     {
       "name": "@deepseek-ai/dsh-token-meter",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/llm/token-meter"
     },
     {
       "name": "@deepseek-ai/dsh-tool-ask-user",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/interaction/tool-ask-user"
     },
     {
       "name": "@deepseek-ai/dsh-tool-bash",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/shell/tool-bash"
     },
     {
       "name": "@deepseek-ai/dsh-tool-bash-persistent",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/shell/tool-bash-persistent"
     },
     {
       "name": "@deepseek-ai/dsh-tool-call-timeout-policy",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/guard/timeout-policy"
     },
     {
       "name": "@deepseek-ai/dsh-tool-cordis",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/extensions/tool-cordis"
     },
     {
       "name": "@deepseek-ai/dsh-tool-fs",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/fs/tool-fs"
     },
     {
       "name": "@deepseek-ai/dsh-tool-fs-search",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/fs/tool-fs-search"
     },
     {
       "name": "@deepseek-ai/dsh-tool-goal",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/goal/tool-goal"
     },
     {
       "name": "@deepseek-ai/dsh-tool-jobs",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/jobs/tool-jobs"
     },
     {
       "name": "@deepseek-ai/dsh-tool-pwsh",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/shell/tool-pwsh"
     },
     {
       "name": "@deepseek-ai/dsh-tool-pwsh-persistent",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/shell/tool-pwsh-persistent"
     },
     {
       "name": "@deepseek-ai/dsh-tool-ralph",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/workflow/tool-ralph"
     },
     {
       "name": "@deepseek-ai/dsh-tool-skill",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/skill/tool-skill"
     },
     {
       "name": "@deepseek-ai/dsh-tool-str-replace-editor",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/fs/tool-str-replace-editor"
     },
     {
       "name": "@deepseek-ai/dsh-tool-subagent",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/subagent/tool-subagent"
     },
     {
       "name": "@deepseek-ai/dsh-tool-subagent-control",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/subagent/tool-subagent-control"
     },
     {
       "name": "@deepseek-ai/dsh-tool-subagent-report",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/subagent/tool-subagent-report"
     },
     {
       "name": "@deepseek-ai/dsh-tool-todo",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/todo/tool-todo"
     },
     {
       "name": "@deepseek-ai/dsh-tool-web",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/web/tool-web"
     },
     {
       "name": "@deepseek-ai/dsh-tool-workflow",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/workflow/tool-workflow"
     },
     {
       "name": "@deepseek-ai/dsh-tools",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/core/tools"
     },
     {
       "name": "@deepseek-ai/dsh-typert-loader",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/typert/loader"
     },
     {
       "name": "@deepseek-ai/dsh-typert-protocol",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/typert/protocol"
     },
     {
       "name": "@deepseek-ai/dsh-typert-registry",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/typert/registry"
     },
     {
       "name": "@deepseek-ai/dsh-user-approval",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/interaction/user-approval"
     },
     {
       "name": "@deepseek-ai/dsh-user-questions",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/interaction/user-questions"
     },
     {
       "name": "@deepseek-ai/dsh-web",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/web/web"
     },
     {
       "name": "@deepseek-ai/dsh-web-app",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/bundle/web-app"
     },
     {
       "name": "@deepseek-ai/dsh-web-frontend",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/apps/web"
     },
     {
       "name": "@deepseek-ai/dsh-web-search-deepseek",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/web/web-search-deepseek"
     },
     {
       "name": "@deepseek-ai/dsh-workflow",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/workflow/workflow"
     },
     {
       "name": "@deepseek-ai/dsh-workflow-worker-thread",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/workflow/workflow-worker-thread"
     },
     {
       "name": "@deepseek-ai/dsh-workspace",
-      "version": "0.1.1-rc.1",
+      "version": "0.1.1-rc.2",
       "path": "vendor/deepseek-harness/packages/workspace/workspace"
     },
     {

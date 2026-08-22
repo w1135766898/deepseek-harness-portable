@@ -2467,6 +2467,7 @@ function sweepStaleUpdateArtifacts() {
 async function createApp() {
   registerReleaseNotesIpc()
   nativeTheme.themeSource = 'system'
+  const initialTheme = themePayload()
 
   const restoredBounds = restoreWindowBounds(
     readConfig().windowBounds,
@@ -2478,7 +2479,7 @@ async function createApp() {
     ? {
         backgroundMaterial: 'mica',
         titleBarStyle: 'hidden',
-        titleBarOverlay: themePayload().titleBar,
+        titleBarOverlay: initialTheme.titleBar,
       }
     : {}
 
@@ -2489,7 +2490,7 @@ async function createApp() {
     show: false,
     title: APP_NAME,
     icon: iconPath(),
-    backgroundColor: themePayload().surface,
+    backgroundColor: initialTheme.surface,
     // macOS users expect the application menu in the system menu bar. The
     // custom in-page menu remains available from the Web UI logo/tray.
     autoHideMenuBar: process.platform !== 'darwin',
@@ -2501,6 +2502,10 @@ async function createApp() {
       preload: join(__dirname, DESKTOP_PRELOAD_NAME),
     },
   })
+  // Apply the same palette after the native window exists. This keeps the
+  // first paint from briefly showing the system's default dark overlay when
+  // the app is launched with a light surface.
+  syncNativeTheme()
 
   window.webContents.on('did-start-loading', () => {
     rendererReady = false

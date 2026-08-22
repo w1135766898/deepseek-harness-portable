@@ -2,7 +2,7 @@
 set -euo pipefail
 
 app_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-runtime_exe="$app_root/runtime/DeepSeek Harness"
+runtime_exe="$app_root/runtime/deepseek-harness"
 packaged_web="$app_root/runtime/resources/app/lib/packaged-bin.js"
 
 if [[ ! -x "$runtime_exe" ]]; then

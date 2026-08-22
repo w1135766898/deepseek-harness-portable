@@ -13,6 +13,10 @@ linux:
     - deb
   synopsis: Native DeepSeek Harness desktop shell
   description: Electron desktop shell and Web runtime for DeepSeek Harness.
+deb:
+  # electron-builder runs from the runtime workspace in the prepackaged lane.
+  afterInstall: ../desktop/linux-after-install.sh
+  afterRemove: ../desktop/linux-after-remove.sh
 directories:
   output: dist-desktop/electron/linux-artifacts
 artifactName: DeepSeek-Harness-${version}-linux-x64.${ext}

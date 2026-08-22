@@ -64,10 +64,10 @@ DeepSeek Harness Desktop 是 [DeepSeek Harness](https://github.com/deepseek-ai/d
 
 | 项目 | 版本 |
 | --- | --- |
-| 发布 | DeepSeek Harness Desktop **v1.5.0**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.5.0)) |
-| 分发版本 | 1.5.0 |
+| 发布 | DeepSeek Harness Desktop **v1.5.2**（[下载](https://github.com/wsnxxxs/deepseek-harness-portable/releases/tag/v1.5.2)) |
+| 分发版本 | 1.5.2 |
 | 桌面外壳 | 0.1.0-shell.2 |
-| 内核 | 0.1.1-rc.1 |
+| 内核 | 0.1.1-rc.2 |
 
 请阅读[中文发布说明](RELEASE_NOTES.zh.md)，或在桌面端托盘菜单中打开“更新日志”。
 
@@ -79,7 +79,7 @@ DeepSeek Harness Desktop 是 [DeepSeek Harness](https://github.com/deepseek-ai/d
 4. **Linux/macOS 校验安装：** 从同一个 Release 下载 `install.sh` 与 `SHA256SUMS-install.txt`，校验并检查脚本后运行 `sh install.sh`。脚本只选择已支持的原生目标，并在安装前使用 `SHA256SUMS-<target>.txt` 校验 AppImage/DMG。Linux 默认安装到 `~/.local/opt/deepseek-harness`，同时创建 `~/.local/bin/deepseek-harness` 和桌面入口；macOS 默认安装到 `~/Applications`。可使用 `--version <版本>`、`--install-dir <路径>` 或 `--help`。
 5. **macOS Apple Silicon（手动）：** 下载 `DeepSeek-Harness-<version>-darwin-arm64.dmg`，核对 `SHA256SUMS-darwin-arm64.txt`，打开后将应用拖入“应用程序”。当前 DMG 未签名且未公证；安装脚本不会绕过 Gatekeeper。
 6. **Linux x64 AppImage（手动）：** 下载 `DeepSeek-Harness-<version>-linux-x64.AppImage`，核对校验值，运行 `chmod +x DeepSeek-Harness-<version>-linux-x64.AppImage` 后启动。
-7. **Linux x64 deb（手动）：** 下载 `DeepSeek-Harness-<version>-linux-x64.deb`，运行 `sudo apt install ./DeepSeek-Harness-<version>-linux-x64.deb` 安装。
+7. **Linux x64 deb（手动）：** 下载 `DeepSeek-Harness-<version>-linux-x64.deb`，运行 `sudo apt install ./DeepSeek-Harness-<version>-linux-x64.deb` 安装。安装后可直接在终端运行 `dsh` 启动。
 8. **卸载：** 使用平台常规的应用移除流程。Windows 便携包包含卸载脚本；除非明确删除，否则会保留用户数据。
 
 > **注意：** `setup-shortcuts.ps1`（安装程序以及便携包中的 `创建桌面快捷方式.bat` 会调用它）会创建指向无控制台 GUI 启动器的桌面快捷方式，并把便携目录加入**用户 PATH**；卸载程序会一并移除这两项。
@@ -109,7 +109,7 @@ DeepSeek Harness Desktop 是 [DeepSeek Harness](https://github.com/deepseek-ai/d
 
 不要删除或重命名 Windows 的 `runtime` 目录。macOS 使用正常的 `.app` Bundle 结构。
 
-Linux AppImage 和 deb 包内含原生 Electron runtime 与桌面入口。未压缩的 Linux 构建目录还会在 `runtime/` 旁提供 `start-desktop.sh`、`start-web.sh`、`dsh.sh` 和 `portable-pnpm.sh`。
+Linux AppImage 和 deb 包内含原生 Electron runtime 与桌面入口；deb 安装后还会注册 `/usr/local/bin/dsh`，可在终端快速启动。未压缩的 Linux 构建目录会在 `runtime/` 旁提供 `start-desktop.sh`、`start-web.sh`、`dsh.sh` 和 `portable-pnpm.sh`。
 
 ## 用户数据与API密钥
 
